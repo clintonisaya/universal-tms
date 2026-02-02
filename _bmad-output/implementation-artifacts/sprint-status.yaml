@@ -1,0 +1,71 @@
+# generated: 2026-01-25
+# project: edupo-tms
+# project_key: EDUP
+# tracking_system: file-system
+# story_location: {project-root}/_bmad-output/implementation-artifacts
+
+# STATUS DEFINITIONS:
+# ==================
+# Epic Status:
+#   - backlog: Epic not yet started
+#   - in-progress: Epic actively being worked on
+#   - done: All stories in epic completed
+#
+# Epic Status Transitions:
+#   - backlog → in-progress: Automatically when first story is created (via create-story)
+#   - in-progress → done: Manually when all stories reach 'done' status
+#
+# Story Status:
+#   - backlog: Story only exists in epic file
+#   - ready-for-dev: Story file created in stories folder
+#   - in-progress: Developer actively working on implementation
+#   - review: Ready for code review (via Dev's code-review workflow)
+#   - done: Story completed
+#
+# Retrospective Status:
+#   - optional: Can be completed but not required
+#   - done: Retrospective has been completed
+#
+# WORKFLOW NOTES:
+# ===============
+# - Epic transitions to 'in-progress' automatically when first story is created
+# - Stories can be worked in parallel if team capacity allows
+# - SM typically creates next story after previous one is 'done' to incorporate learnings
+# - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
+
+generated: 2026-01-25
+project: edupo-tms
+project_key: EDUP
+tracking_system: file-system
+story_location: {project-root}/_bmad-output/implementation-artifacts
+
+development_status:
+  # Epic 1: System Foundation & Asset Registry
+  epic-1: in-progress
+  1-1-project-initialization-scaffold: ready-for-dev
+  1-2-admin-user-management: ready-for-dev
+  1-3-secure-authentication: ready-for-dev
+  1-4-truck-registry-management: review
+  1-5-driver-registry-management: review
+  1-6-trailer-registry-management: review
+  epic-1-retrospective: optional
+
+  # Epic 2: Core Logistics Cycle (Trip & Universal Expense Gate)
+  epic-2: in-progress
+  2-1-trip-creation-dispatch: review
+  2-2-expense-request-submission: done
+  2-3-manager-approval-workflow: ready-for-dev
+  2-4-finance-payment-processing: ready-for-dev
+  2-5-voucher-printing: ready-for-dev
+  2-6-real-time-status-dashboard: in-progress
+  2-10-waybill-tracking.md: ready-for-dev
+  2-11-admin-settings: ready-for-dev
+  2-12-mass-operations: backlog
+  epic-2-retrospective: optional
+
+  # Epic 3: Maintenance & Office Overheads
+  epic-3: in-progress
+  3-1-maintenance-event-logging: ready-for-dev
+  3-2-office-expense-management: ready-for-dev
+  3-3-asset-health-history: ready-for-dev
+  epic-3-retrospective: optional

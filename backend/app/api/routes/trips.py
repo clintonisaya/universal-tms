@@ -1,0 +1,381 @@
+"""
+Trip Creation & Dispatch - Story 2.1
+CRUD endpoints for trip management with transactional integrity.
+"""
+import uuid
+from datetime import datetime
+from typing import Any
+
+from fastapi import APIRouter, HTTPException
+from sqlmodel import func, or_, select
+
+from app.api.deps import CurrentUser, SessionDep
+from app.models import (
+    Driver,
+    DriverPublic,
+    DriverStatus,
+    DriversPublic,
+    Message,
+    Trailer,
+    TrailerPublic,
+    TrailerStatus,
+    TrailersPublic,
+    Trip,
+    TripCreate,
+    TripPublic,
+    TripPublicDetailed,
+    TripsPublic,
+    TripStatus,
+    TripSwapTruck,
+    TripUpdate,
+    Truck,
+    TruckPublic,
+    TruckStatus,
+    TrucksPublic,
+    Waybill,
+    WaybillStatus,
+)
+
+router = APIRouter(prefix="/trips", tags=["trips"])
+
+
+# Status mapping for synchronized truck/trailer status updates
+TRIP_TO_TRUCK_STATUS = {
+    TripStatus.loading: TruckStatus.loading,
+    TripStatus.in_transit: TruckStatus.in_transit,
+    TripStatus.at_border: TruckStatus.at_border,
+    TripStatus.offloaded: TruckStatus.offloaded,
+    TripStatus.returned: TruckStatus.returned,
+    TripStatus.waiting_for_pods: TruckStatus.waiting_for_pods,
+    TripStatus.completed: TruckStatus.idle,
+    TripStatus.cancelled: TruckStatus.idle,
+}
+
+TRIP_TO_TRAILER_STATUS = {
+    TripStatus.loading: TrailerStatus.loading,
+    TripStatus.in_transit: TrailerStatus.in_transit,
+    TripStatus.at_border: TrailerStatus.at_border,
+    TripStatus.offloaded: TrailerStatus.offloaded,
+    TripStatus.returned: TrailerStatus.returned,
+    TripStatus.waiting_for_pods: TrailerStatus.waiting_for_pods,
+    TripStatus.completed: TrailerStatus.idle,
+    TripStatus.cancelled: TrailerStatus.idle,
+}
+
+TRIP_TO_WAYBILL_STATUS = {
+    TripStatus.loading: WaybillStatus.in_progress,
+    TripStatus.in_transit: WaybillStatus.in_progress,
+    TripStatus.at_border: WaybillStatus.in_progress,
+    TripStatus.offloaded: WaybillStatus.in_progress,
+    TripStatus.returned: WaybillStatus.in_progress,
+    TripStatus.waiting_for_pods: WaybillStatus.in_progress,
+    TripStatus.completed: WaybillStatus.completed,
+    TripStatus.cancelled: WaybillStatus.open,
+}
+
+
+def is_truck_available(truck: Truck) -> bool:
+    """Check if truck is available for a new trip."""
+    return truck.status in (TruckStatus.idle, TruckStatus.offloaded)
+
+
+def is_trailer_available(trailer: Trailer) -> bool:
+    """Check if trailer is available for a new trip."""
+    return trailer.status in (TrailerStatus.idle, TrailerStatus.offloaded)
+
+
+def is_driver_available(driver: Driver) -> bool:
+    """Check if driver is available for a new trip."""
+    return driver.status == DriverStatus.active
+
+
+def generate_trip_number(session: SessionDep, plate_number: str) -> str:
+    """Generate a unique trip number: T<Plate>-YYYY<Seq>"""
+    sanitized_plate = plate_number.replace(" ", "").upper()
+    year = datetime.now().year
+
+    # Find last sequence for this year
+    # We look for trip numbers matching "-YYYY"
+    pattern = f"%-{year}%"
+    statement = select(Trip.trip_number).where(Trip.trip_number.like(pattern)).order_by(Trip.trip_number.desc()).limit(1)
+    last_trip_number = session.exec(statement).first()
+
+    sequence = 1
+    if last_trip_number:
+        # Extract sequence from end (last 3 digits)
+        try:
+            last_seq = int(last_trip_number[-3:])
+            sequence = last_seq + 1
+        except ValueError:
+            pass  # Fallback to 1 if parsing fails
+
+    return f"T{sanitized_plate}-{year}{sequence:03d}"
+
+
+@router.get("/available-trucks", response_model=TrucksPublic)
+def get_available_trucks(
+    session: SessionDep,
+    current_user: CurrentUser,
+) -> Any:
+    """Get trucks that are available for assignment (Idle or Offloaded)."""
+    statement = select(Truck).where(
+        or_(Truck.status == TruckStatus.idle, Truck.status == TruckStatus.offloaded)
+    )
+    trucks = session.exec(statement).all()
+    return TrucksPublic(data=trucks, count=len(trucks))
+
+
+@router.get("/available-trailers", response_model=TrailersPublic)
+def get_available_trailers(
+    session: SessionDep,
+    current_user: CurrentUser,
+) -> Any:
+    """Get trailers that are available for assignment (Idle or Offloaded)."""
+    statement = select(Trailer).where(
+        or_(
+            Trailer.status == TrailerStatus.idle,
+            Trailer.status == TrailerStatus.offloaded,
+        )
+    )
+    trailers = session.exec(statement).all()
+    return TrailersPublic(data=trailers, count=len(trailers))
+
+
+@router.get("/available-drivers", response_model=DriversPublic)
+def get_available_drivers(
+    session: SessionDep,
+    current_user: CurrentUser,
+) -> Any:
+    """Get drivers that are available for assignment (Active only)."""
+    statement = select(Driver).where(Driver.status == DriverStatus.active)
+    drivers = session.exec(statement).all()
+    return DriversPublic(data=drivers, count=len(drivers))
+
+
+@router.get("/", response_model=TripsPublic)
+def read_trips(
+    session: SessionDep,
+    current_user: CurrentUser,
+    skip: int = 0,
+    limit: int = 100,
+) -> Any:
+    """Retrieve all trips."""
+    count_statement = select(func.count()).select_from(Trip)
+    count = session.exec(count_statement).one()
+    statement = (
+        select(Trip).order_by(Trip.created_at.desc()).offset(skip).limit(limit)
+    )
+    trips = session.exec(statement).all()
+    return TripsPublic(data=trips, count=count)
+
+
+@router.get("/{id}", response_model=TripPublicDetailed)
+def read_trip(
+    session: SessionDep,
+    current_user: CurrentUser,
+    id: uuid.UUID,
+) -> Any:
+    """Get trip by ID with detailed information."""
+    trip = session.get(Trip, id)
+    if not trip:
+        raise HTTPException(status_code=404, detail="Trip not found")
+    return trip
+
+
+@router.post("/", response_model=TripPublic)
+def create_trip(
+    *,
+    session: SessionDep,
+    current_user: CurrentUser,
+    trip_in: TripCreate,
+) -> Any:
+    """
+    Create a new trip with transactional integrity.
+
+    - Validates truck, trailer, and driver availability
+    - Creates trip with status "Loading"
+    - Updates truck status to "Loading"
+    - Updates trailer status to "Loading"
+    - Updates driver status to "Assigned"
+    """
+    # Validate and fetch truck
+    truck = session.get(Truck, trip_in.truck_id)
+    if not truck:
+        raise HTTPException(status_code=404, detail="Truck not found")
+    if not is_truck_available(truck):
+        raise HTTPException(status_code=400, detail="Truck is not available")
+
+    # Validate and fetch trailer
+    trailer = session.get(Trailer, trip_in.trailer_id)
+    if not trailer:
+        raise HTTPException(status_code=404, detail="Trailer not found")
+    if not is_trailer_available(trailer):
+        raise HTTPException(status_code=400, detail="Trailer is not available")
+
+    # Validate and fetch driver
+    driver = session.get(Driver, trip_in.driver_id)
+    if not driver:
+        raise HTTPException(status_code=404, detail="Driver not found")
+    if not is_driver_available(driver):
+        raise HTTPException(status_code=400, detail="Driver is not available")
+
+    # Generate trip number
+    trip_number = generate_trip_number(session, truck.plate_number)
+
+    # Create trip - all operations in same session (transactional)
+    trip = Trip.model_validate(trip_in, update={"trip_number": trip_number})
+    session.add(trip)
+
+    # Update statuses
+    truck.status = TruckStatus.loading
+    trailer.status = TrailerStatus.loading
+    driver.status = DriverStatus.assigned
+    session.add(truck)
+    session.add(trailer)
+    session.add(driver)
+
+    # Update waybill status if linked
+    if trip_in.waybill_id:
+        waybill = session.get(Waybill, trip_in.waybill_id)
+        if waybill:
+            waybill.status = WaybillStatus.in_progress
+            session.add(waybill)
+
+    session.commit()
+    session.refresh(trip)
+    return trip
+
+
+@router.patch("/{id}", response_model=TripPublic)
+def update_trip(
+    *,
+    session: SessionDep,
+    current_user: CurrentUser,
+    id: uuid.UUID,
+    trip_in: TripUpdate,
+) -> Any:
+    """
+    Update a trip.
+
+    Status changes are synchronized to truck and trailer.
+    """
+    trip = session.get(Trip, id)
+    if not trip:
+        raise HTTPException(status_code=404, detail="Trip not found")
+
+    update_dict = trip_in.model_dump(exclude_unset=True)
+
+    # Handle status change with synchronized updates
+    if "status" in update_dict:
+        new_status = TripStatus(update_dict["status"])
+
+        # Update truck status
+        truck = session.get(Truck, trip.truck_id)
+        if truck and new_status in TRIP_TO_TRUCK_STATUS:
+            truck.status = TRIP_TO_TRUCK_STATUS[new_status]
+            session.add(truck)
+
+        # Update trailer status (synchronized with truck)
+        trailer = session.get(Trailer, trip.trailer_id)
+        if trailer and new_status in TRIP_TO_TRAILER_STATUS:
+            trailer.status = TRIP_TO_TRAILER_STATUS[new_status]
+            session.add(trailer)
+
+        # Update driver status for completed/cancelled trips
+        if new_status in (TripStatus.completed, TripStatus.cancelled):
+            driver = session.get(Driver, trip.driver_id)
+            if driver:
+                driver.status = DriverStatus.active
+                session.add(driver)
+
+        # Update waybill status if linked
+        if trip.waybill_id and new_status in TRIP_TO_WAYBILL_STATUS:
+            waybill = session.get(Waybill, trip.waybill_id)
+            if waybill:
+                waybill.status = TRIP_TO_WAYBILL_STATUS[new_status]
+                session.add(waybill)
+
+    trip.sqlmodel_update(update_dict)
+    session.add(trip)
+    session.commit()
+    session.refresh(trip)
+    return trip
+
+
+@router.put("/{id}/swap-truck", response_model=TripPublic)
+def swap_truck(
+    *,
+    session: SessionDep,
+    current_user: CurrentUser,
+    id: uuid.UUID,
+    swap_in: TripSwapTruck,
+) -> Any:
+    """
+    Swap truck during an active trip (breakdown handling).
+
+    - Old truck status changes to Idle
+    - New truck takes the current trip status
+    """
+    trip = session.get(Trip, id)
+    if not trip:
+        raise HTTPException(status_code=404, detail="Trip not found")
+
+    # Validate new truck
+    new_truck = session.get(Truck, swap_in.truck_id)
+    if not new_truck:
+        raise HTTPException(status_code=404, detail="New truck not found")
+    if not is_truck_available(new_truck):
+        raise HTTPException(status_code=400, detail="New truck is not available")
+
+    # Get old truck and set to idle
+    old_truck = session.get(Truck, trip.truck_id)
+    if old_truck:
+        old_truck.status = TruckStatus.idle
+        session.add(old_truck)
+
+    # Set new truck to current trip status
+    if trip.status in TRIP_TO_TRUCK_STATUS:
+        new_truck.status = TRIP_TO_TRUCK_STATUS[trip.status]
+    else:
+        new_truck.status = TruckStatus.in_transit
+    session.add(new_truck)
+
+    # Update trip with new truck
+    trip.truck_id = swap_in.truck_id
+    session.add(trip)
+
+    session.commit()
+    session.refresh(trip)
+    return trip
+
+
+@router.delete("/{id}")
+def delete_trip(
+    session: SessionDep,
+    current_user: CurrentUser,
+    id: uuid.UUID,
+) -> Message:
+    """Delete a trip."""
+    trip = session.get(Trip, id)
+    if not trip:
+        raise HTTPException(status_code=404, detail="Trip not found")
+
+    # Reset resource statuses
+    truck = session.get(Truck, trip.truck_id)
+    if truck:
+        truck.status = TruckStatus.idle
+        session.add(truck)
+
+    trailer = session.get(Trailer, trip.trailer_id)
+    if trailer:
+        trailer.status = TrailerStatus.idle
+        session.add(trailer)
+
+    driver = session.get(Driver, trip.driver_id)
+    if driver:
+        driver.status = DriverStatus.active
+        session.add(driver)
+
+    session.delete(trip)
+    session.commit()
+    return Message(message="Trip deleted successfully")

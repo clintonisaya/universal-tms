@@ -1,0 +1,827 @@
+import uuid
+from datetime import datetime, timezone
+from decimal import Decimal
+from enum import Enum
+
+from sqlalchemy import Column, DateTime, JSON, Numeric
+from sqlmodel import Field, Relationship, SQLModel
+
+
+def get_datetime_utc() -> datetime:
+    return datetime.now(timezone.utc)
+
+
+class UserRole(str, Enum):
+    """User roles for RBAC - FR-ADMIN-01"""
+    admin = "admin"
+    manager = "manager"
+    ops = "ops"
+    finance = "finance"
+
+
+# Shared properties
+class UserBase(SQLModel):
+    username: str = Field(unique=True, index=True, min_length=3, max_length=50)
+    is_active: bool = True
+    is_superuser: bool = False
+    full_name: str | None = Field(default=None, max_length=255)
+    role: UserRole = Field(default=UserRole.ops)
+
+
+# Properties to receive via API on creation
+class UserCreate(UserBase):
+    password: str = Field(min_length=8, max_length=128)
+
+
+class UserRegister(SQLModel):
+    username: str = Field(min_length=3, max_length=50)
+    password: str = Field(min_length=8, max_length=128)
+    full_name: str | None = Field(default=None, max_length=255)
+
+
+# Properties to receive via API on update, all are optional
+class UserUpdate(UserBase):
+    username: str | None = Field(default=None, min_length=3, max_length=50)  # type: ignore
+    password: str | None = Field(default=None, min_length=8, max_length=128)
+    role: UserRole | None = Field(default=None)  # type: ignore
+
+
+class UserUpdateMe(SQLModel):
+    full_name: str | None = Field(default=None, max_length=255)
+
+
+class UpdatePassword(SQLModel):
+    current_password: str = Field(min_length=8, max_length=128)
+    new_password: str = Field(min_length=8, max_length=128)
+
+
+# Database model, database table inferred from class name
+class User(UserBase, table=True):
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    hashed_password: str
+    created_at: datetime | None = Field(
+        default_factory=get_datetime_utc,
+        sa_type=DateTime(timezone=True),  # type: ignore
+    )
+    items: list["Item"] = Relationship(back_populates="owner", cascade_delete=True)
+
+
+# Properties to return via API, id is always required
+class UserPublic(UserBase):
+    id: uuid.UUID
+    created_at: datetime | None = None
+
+
+class UsersPublic(SQLModel):
+    data: list[UserPublic]
+    count: int
+
+
+# Shared properties
+class ItemBase(SQLModel):
+    title: str = Field(min_length=1, max_length=255)
+    description: str | None = Field(default=None, max_length=255)
+
+
+# Properties to receive on item creation
+class ItemCreate(ItemBase):
+    pass
+
+
+# Properties to receive on item update
+class ItemUpdate(ItemBase):
+    title: str | None = Field(default=None, min_length=1, max_length=255)  # type: ignore
+
+
+# Database model, database table inferred from class name
+class Item(ItemBase, table=True):
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    created_at: datetime | None = Field(
+        default_factory=get_datetime_utc,
+        sa_type=DateTime(timezone=True),  # type: ignore
+    )
+    owner_id: uuid.UUID = Field(
+        foreign_key="user.id", nullable=False, ondelete="CASCADE"
+    )
+    owner: User | None = Relationship(back_populates="items")
+
+
+# Properties to return via API, id is always required
+class ItemPublic(ItemBase):
+    id: uuid.UUID
+    owner_id: uuid.UUID
+    created_at: datetime | None = None
+
+
+class ItemsPublic(SQLModel):
+    data: list[ItemPublic]
+    count: int
+
+
+# Generic message
+class Message(SQLModel):
+    message: str
+
+
+# JSON payload containing access token
+class Token(SQLModel):
+    access_token: str
+    token_type: str = "bearer"
+
+
+# Contents of JWT token
+class TokenPayload(SQLModel):
+    sub: str | None = None
+
+
+class NewPassword(SQLModel):
+    token: str
+    new_password: str = Field(min_length=8, max_length=128)
+
+
+# ============================================================================
+# Truck Models - Story 1.4: Truck Registry Management
+# ============================================================================
+
+
+class TruckStatus(str, Enum):
+    """Truck status values - FR-TRUCK-01, extended for Trip workflow"""
+    idle = "Idle"
+    loading = "Loading"
+    in_transit = "In Transit"
+    at_border = "At Border"
+    offloaded = "Offloaded"
+    returned = "Returned"
+    waiting_for_pods = "Waiting for PODs"
+    maintenance = "Maintenance"
+
+
+# Shared properties
+class TruckBase(SQLModel):
+    plate_number: str = Field(min_length=1, max_length=20, description="Unique truck plate number")
+    make: str = Field(min_length=1, max_length=100, description="Truck manufacturer")
+    model: str = Field(min_length=1, max_length=100, description="Truck model name")
+    status: str = Field(default="Idle", description="Current truck status (from VehicleStatus)")
+
+
+# Properties to receive on creation
+class TruckCreate(TruckBase):
+    pass
+
+
+# Properties to receive on update
+class TruckUpdate(SQLModel):
+    plate_number: str | None = Field(default=None, min_length=1, max_length=20)
+    make: str | None = Field(default=None, min_length=1, max_length=100)
+    model: str | None = Field(default=None, min_length=1, max_length=100)
+    status: str | None = Field(default=None)
+
+
+# Database model
+class Truck(TruckBase, table=True):
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    plate_number: str = Field(unique=True, index=True, max_length=20)
+    created_at: datetime | None = Field(
+        default_factory=get_datetime_utc,
+        sa_type=DateTime(timezone=True),  # type: ignore
+    )
+
+
+# Properties to return via API
+class TruckPublic(TruckBase):
+    id: uuid.UUID
+    created_at: datetime | None = None
+
+
+class TrucksPublic(SQLModel):
+    data: list[TruckPublic]
+    count: int
+
+
+# ============================================================================
+# Driver Models - Story 1.5: Driver Registry Management
+# ============================================================================
+
+
+class DriverStatus(str, Enum):
+    """Driver status values - FR-DRIVER-01, extended for Trip workflow"""
+    active = "Active"
+    assigned = "Assigned"
+    on_trip = "On Trip"
+    inactive = "Inactive"
+
+
+# Shared properties
+class DriverBase(SQLModel):
+    full_name: str = Field(min_length=1, max_length=255, description="Driver's full name")
+    license_number: str = Field(min_length=1, max_length=50, description="Unique license number")
+    license_expiry_date: datetime | None = Field(default=None, description="License expiration date")
+    passport_number: str | None = Field(default=None, max_length=50, description="Passport number")
+    passport_expiry_date: datetime | None = Field(default=None, description="Passport expiration date")
+    phone_number: str = Field(min_length=1, max_length=50, description="Contact phone number")
+    status: DriverStatus = Field(default=DriverStatus.active, description="Current driver status")
+
+
+# Properties to receive on creation
+class DriverCreate(DriverBase):
+    pass
+
+
+# Properties to receive on update
+class DriverUpdate(SQLModel):
+    full_name: str | None = Field(default=None, min_length=1, max_length=255)
+    license_number: str | None = Field(default=None, min_length=1, max_length=50)
+    license_expiry_date: datetime | None = Field(default=None)
+    passport_number: str | None = Field(default=None, max_length=50)
+    passport_expiry_date: datetime | None = Field(default=None)
+    phone_number: str | None = Field(default=None, min_length=1, max_length=50)
+    status: DriverStatus | None = Field(default=None)
+
+
+# Database model
+class Driver(DriverBase, table=True):
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    license_number: str = Field(unique=True, index=True, max_length=50)
+    created_at: datetime | None = Field(
+        default_factory=get_datetime_utc,
+        sa_type=DateTime(timezone=True),  # type: ignore
+    )
+
+
+# Properties to return via API
+class DriverPublic(DriverBase):
+    id: uuid.UUID
+    license_expiry_date: datetime | None = None
+    passport_number: str | None = None
+    passport_expiry_date: datetime | None = None
+    created_at: datetime | None = None
+
+
+class DriversPublic(SQLModel):
+    data: list[DriverPublic]
+    count: int
+
+
+# ============================================================================
+# Trailer Models - Story 1.6: Trailer Registry Management
+# ============================================================================
+
+
+class TrailerStatus(str, Enum):
+    """Trailer status values - FR-TRAILER-01, extended for Trip workflow"""
+    idle = "Idle"
+    loading = "Loading"
+    in_transit = "In Transit"
+    at_border = "At Border"
+    offloaded = "Offloaded"
+    returned = "Returned"
+    waiting_for_pods = "Waiting for PODs"
+    maintenance = "Maintenance"
+
+
+class TrailerType(str, Enum):
+    """Trailer type values - FR-TRAILER-01"""
+    flatbed = "Flatbed"
+    skeleton = "Skeleton"
+    box = "Box"
+    tanker = "Tanker"
+
+
+# Shared properties
+class TrailerBase(SQLModel):
+    plate_number: str = Field(min_length=1, max_length=20, description="Unique trailer plate number")
+    type: TrailerType = Field(description="Trailer type (Flatbed, Skeleton, Box, Tanker)")
+    make: str = Field(min_length=1, max_length=100, description="Trailer manufacturer")
+    status: str = Field(default="Idle", description="Current trailer status (from VehicleStatus)")
+
+
+# Properties to receive on creation
+class TrailerCreate(TrailerBase):
+    pass
+
+
+# Properties to receive on update
+class TrailerUpdate(SQLModel):
+    plate_number: str | None = Field(default=None, min_length=1, max_length=20)
+    type: TrailerType | None = Field(default=None)
+    make: str | None = Field(default=None, min_length=1, max_length=100)
+    status: str | None = Field(default=None)
+
+
+# Database model
+class Trailer(TrailerBase, table=True):
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    plate_number: str = Field(unique=True, index=True, max_length=20)
+    created_at: datetime | None = Field(
+        default_factory=get_datetime_utc,
+        sa_type=DateTime(timezone=True),  # type: ignore
+    )
+
+
+# Properties to return via API
+class TrailerPublic(TrailerBase):
+    id: uuid.UUID
+    created_at: datetime | None = None
+
+
+class TrailersPublic(SQLModel):
+    data: list[TrailerPublic]
+    count: int
+
+
+# ============================================================================
+# Waybill Models - Story 2.7: Waybill Management
+# ============================================================================
+
+
+class WaybillStatus(str, Enum):
+    """Waybill status values - Story 2.7"""
+    open = "Open"
+    in_progress = "In Progress"
+    completed = "Completed"
+    invoiced = "Invoiced"
+
+
+class WaybillBase(SQLModel):
+    waybill_number: str = Field(index=True, unique=True, description="Waybill number (WB-YYYY-SEQ)")
+    client_name: str = Field(min_length=1, max_length=255, description="Client name")
+    description: str = Field(min_length=1, max_length=500, description="Cargo details")
+    cargo_type: str | None = Field(default=None, max_length=255, description="Cargo type (e.g. Loose Cargo)")
+    weight_kg: float = Field(gt=0, description="Cargo weight in KG")
+    origin: str = Field(min_length=1, max_length=255, description="Loading point")
+    destination: str = Field(min_length=1, max_length=255, description="Destination")
+    expected_loading_date: datetime = Field(description="Expected loading date")
+    status: WaybillStatus = Field(default=WaybillStatus.open, description="Current waybill status")
+    agreed_rate: Decimal = Field(default=Decimal("0.00"), max_digits=12, decimal_places=2, description="Agreed rate")
+    currency: str = Field(default="USD", max_length=3, description="Currency code")
+
+
+class WaybillCreate(SQLModel):
+    client_name: str = Field(min_length=1, max_length=255, description="Client name")
+    description: str = Field(min_length=1, max_length=500, description="Cargo details")
+    cargo_type: str | None = Field(default=None, max_length=255, description="Cargo type")
+    weight_kg: float = Field(gt=0, description="Cargo weight in KG")
+    origin: str = Field(min_length=1, max_length=255, description="Loading point")
+    destination: str = Field(min_length=1, max_length=255, description="Destination")
+    expected_loading_date: datetime = Field(description="Expected loading date")
+    agreed_rate: Decimal = Field(default=Decimal("0.00"), max_digits=12, decimal_places=2, description="Agreed rate")
+    currency: str = Field(default="USD", max_length=3, description="Currency code")
+
+
+class WaybillUpdate(SQLModel):
+    client_name: str | None = Field(default=None, min_length=1, max_length=255)
+    description: str | None = Field(default=None, min_length=1, max_length=500)
+    cargo_type: str | None = Field(default=None, max_length=255)
+    weight_kg: float | None = Field(default=None, gt=0)
+    origin: str | None = Field(default=None, min_length=1, max_length=255)
+    destination: str | None = Field(default=None, min_length=1, max_length=255)
+    expected_loading_date: datetime | None = Field(default=None)
+    status: WaybillStatus | None = Field(default=None)
+    agreed_rate: Decimal | None = Field(default=None, max_digits=12, decimal_places=2)
+    currency: str | None = Field(default=None, max_length=3)
+
+
+class Waybill(WaybillBase, table=True):
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    created_at: datetime | None = Field(
+        default_factory=get_datetime_utc,
+        sa_type=DateTime(timezone=True),  # type: ignore
+    )
+
+
+class WaybillPublic(WaybillBase):
+    id: uuid.UUID
+    created_at: datetime | None = None
+
+
+class WaybillsPublic(SQLModel):
+    data: list[WaybillPublic]
+    count: int
+
+
+# ============================================================================
+# Trip Models - Story 2.1: Trip Creation & Dispatch
+# ============================================================================
+
+
+class TripStatus(str, Enum):
+    """Trip status values - Story 2.1"""
+    loading = "Loading"
+    in_transit = "In Transit"
+    at_border = "At Border"
+    offloaded = "Offloaded"
+    returned = "Returned"
+    waiting_for_pods = "Waiting for PODs"
+    completed = "Completed"
+    cancelled = "Cancelled"
+
+
+# Shared properties
+class TripBase(SQLModel):
+    truck_id: uuid.UUID = Field(foreign_key="truck.id", description="Assigned truck ID")
+    trailer_id: uuid.UUID = Field(foreign_key="trailer.id", description="Assigned trailer ID")
+    driver_id: uuid.UUID = Field(foreign_key="driver.id", description="Assigned driver ID")
+    route_name: str = Field(min_length=1, max_length=255, description="Route description (e.g., Mombasa - Nairobi)")
+    trip_number: str = Field(index=True, unique=True, description="Trip number (T<Plate>-YYYY<Seq>)")
+    waybill_id: uuid.UUID | None = Field(default=None, foreign_key="waybill.id", description="Link to commercial Waybill")
+    current_location: str | None = Field(default=None, description="Current location")
+    status: TripStatus = Field(default=TripStatus.loading, description="Current trip status")
+
+
+# Properties to receive on creation
+class TripCreate(SQLModel):
+    truck_id: uuid.UUID = Field(description="Truck ID to assign")
+    trailer_id: uuid.UUID = Field(description="Trailer ID to assign")
+    driver_id: uuid.UUID = Field(description="Driver ID to assign")
+    route_name: str = Field(min_length=1, max_length=255, description="Route description")
+    waybill_id: uuid.UUID | None = Field(default=None, description="Link to commercial Waybill")
+    current_location: str | None = Field(default=None, description="Current location")
+
+
+# Properties to receive on update
+class TripUpdate(SQLModel):
+    truck_id: uuid.UUID | None = Field(default=None, description="New truck ID (for swap)")
+    trailer_id: uuid.UUID | None = Field(default=None, description="New trailer ID (for swap)")
+    driver_id: uuid.UUID | None = Field(default=None, description="New driver ID")
+    route_name: str | None = Field(default=None, min_length=1, max_length=255)
+    waybill_id: uuid.UUID | None = Field(default=None, description="Link to commercial Waybill")
+    current_location: str | None = Field(default=None, description="Current location")
+    status: TripStatus | None = Field(default=None, description="New status")
+
+
+# Properties to receive for truck swap
+class TripSwapTruck(SQLModel):
+    truck_id: uuid.UUID = Field(description="New truck ID for swap")
+
+
+# Database model
+class Trip(TripBase, table=True):
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    pod_documents: list[str] = Field(default=[], sa_column=Column(JSON))
+    start_date: datetime | None = Field(
+        default_factory=get_datetime_utc,
+        sa_type=DateTime(timezone=True),  # type: ignore
+    )
+    end_date: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
+    created_at: datetime | None = Field(
+        default_factory=get_datetime_utc,
+        sa_type=DateTime(timezone=True),  # type: ignore
+    )
+
+    # Relationships
+    truck: Truck | None = Relationship()
+    trailer: Trailer | None = Relationship()
+    driver: Driver | None = Relationship()
+
+
+# Properties to return via API
+class TripPublic(TripBase):
+    id: uuid.UUID
+    pod_documents: list[str] = []
+    start_date: datetime | None = None
+    end_date: datetime | None = None
+    created_at: datetime | None = None
+
+
+# Trip with nested entities for detailed views
+class TripPublicDetailed(TripPublic):
+    truck: TruckPublic | None = None
+    trailer: TrailerPublic | None = None
+    driver: DriverPublic | None = None
+
+
+class TripsPublic(SQLModel):
+    data: list[TripPublic]
+    count: int
+
+
+# ============================================================================
+# Expense Models - Story 2.2: Expense Request Submission
+# ============================================================================
+
+
+class ExpenseStatus(str, Enum):
+    """Expense request status values - Story 2.2"""
+    pending_manager = "Pending Manager"
+    pending_finance = "Pending Finance"
+    paid = "Paid"
+    rejected = "Rejected"
+    returned = "Returned"
+
+
+class ExpenseCategory(str, Enum):
+    """Expense category values - Story 2.2"""
+    fuel = "Fuel"
+    allowance = "Allowance"
+    maintenance = "Maintenance"
+    office = "Office"
+    border = "Border"
+    other = "Other"
+
+
+class PaymentMethod(str, Enum):
+    """Payment method values - Story 2.4"""
+    cash = "CASH"
+    transfer = "TRANSFER"
+
+
+# Shared properties
+class ExpenseRequestBase(SQLModel):
+    trip_id: uuid.UUID | None = Field(default=None, foreign_key="trip.id", description="Associated trip ID (optional for office expenses)")
+    amount: Decimal = Field(gt=0, max_digits=12, decimal_places=2, description="Expense amount")
+    category: ExpenseCategory = Field(description="Expense category")
+    description: str = Field(min_length=1, max_length=500, description="Expense description")
+    status: ExpenseStatus = Field(default=ExpenseStatus.pending_manager, description="Current expense status")
+    manager_comment: str | None = Field(default=None, max_length=500, description="Comment from manager/finance")
+    payment_method: PaymentMethod | None = Field(default=None, description="Payment method (CASH or TRANSFER)")
+    payment_reference: str | None = Field(default=None, max_length=255, description="Payment reference (required for transfers)")
+    payment_date: datetime | None = Field(default=None, sa_type=DateTime(timezone=True), description="Date payment was processed")
+    paid_by_id: uuid.UUID | None = Field(default=None, foreign_key="user.id", description="User who processed the payment")
+
+
+# Properties to receive on creation
+class ExpenseRequestCreate(SQLModel):
+    trip_id: uuid.UUID | None = Field(default=None, description="Associated trip ID (optional)")
+    amount: Decimal = Field(gt=0, max_digits=12, decimal_places=2, description="Expense amount")
+    category: ExpenseCategory = Field(description="Expense category")
+    description: str = Field(min_length=1, max_length=500, description="Expense description")
+
+
+# Properties to receive on update
+class ExpenseRequestUpdate(SQLModel):
+    amount: Decimal | None = Field(default=None, gt=0, max_digits=12, decimal_places=2)
+    category: ExpenseCategory | None = Field(default=None)
+    description: str | None = Field(default=None, min_length=1, max_length=500)
+    status: ExpenseStatus | None = Field(default=None)
+
+
+# Database model
+class ExpenseRequest(ExpenseRequestBase, table=True):
+    __tablename__ = "expense_request"
+
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    amount: Decimal = Field(sa_column=Column(Numeric(12, 2), nullable=False))
+    created_by_id: uuid.UUID = Field(foreign_key="user.id", description="User who created the expense")
+    created_at: datetime | None = Field(
+        default_factory=get_datetime_utc,
+        sa_type=DateTime(timezone=True),  # type: ignore
+    )
+    updated_at: datetime | None = Field(
+        default_factory=get_datetime_utc,
+        sa_type=DateTime(timezone=True),  # type: ignore
+    )
+
+    # Relationships
+    trip: Trip | None = Relationship(sa_relationship_kwargs={"foreign_keys": "[ExpenseRequest.trip_id]"})
+    created_by: User | None = Relationship(sa_relationship_kwargs={"foreign_keys": "[ExpenseRequest.created_by_id]"})
+    paid_by: User | None = Relationship(sa_relationship_kwargs={"foreign_keys": "[ExpenseRequest.paid_by_id]"})
+
+
+# Properties to return via API
+class ExpenseRequestPublic(ExpenseRequestBase):
+    id: uuid.UUID
+    created_by_id: uuid.UUID
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
+
+
+# Expense with nested entities for detailed views
+class ExpenseRequestPublicDetailed(ExpenseRequestPublic):
+    trip: TripPublic | None = None
+    created_by: UserPublic | None = None
+
+
+class ExpenseRequestsPublic(SQLModel):
+    data: list[ExpenseRequestPublicDetailed]
+    count: int
+
+
+class ExpenseBulkUpdate(SQLModel):
+    ids: list[uuid.UUID]
+    status: ExpenseStatus
+    comment: str | None = Field(default=None, description="Optional comment for the action")
+
+
+class ExpensePayment(SQLModel):
+    """Schema for processing a payment - Story 2.4"""
+    method: PaymentMethod = Field(description="Payment method: CASH or TRANSFER")
+    reference: str | None = Field(default=None, max_length=255, description="Reference number (required for TRANSFER)")
+
+
+# ============================================================================
+# Transport Master Data Models - Story 2.8: Basic Settings
+# ============================================================================
+
+
+# --- Country & City (Hierarchical Locations) ---
+
+class CountryBase(SQLModel):
+    name: str = Field(unique=True, index=True, min_length=1, max_length=255, description="Country name")
+    code: str | None = Field(default=None, min_length=2, max_length=10, description="ISO Country Code")
+    sorting: int = Field(default=10, description="Sorting order")
+
+
+class CountryCreate(CountryBase):
+    pass
+
+
+class CountryUpdate(SQLModel):
+    name: str | None = Field(default=None, min_length=1, max_length=255)
+    code: str | None = Field(default=None, min_length=2, max_length=10)
+    sorting: int | None = Field(default=None)
+
+
+class Country(CountryBase, table=True):
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    created_at: datetime | None = Field(
+        default_factory=get_datetime_utc,
+        sa_type=DateTime(timezone=True),  # type: ignore
+    )
+    
+    # Relationships
+    cities: list["City"] = Relationship(back_populates="country", cascade_delete=True)
+
+
+class CountryPublic(CountryBase):
+    id: uuid.UUID
+    created_at: datetime | None = None
+
+
+class CountriesPublic(SQLModel):
+    data: list[CountryPublic]
+    count: int
+
+
+class CityBase(SQLModel):
+    name: str = Field(index=True, min_length=1, max_length=255, description="City name")
+    country_id: uuid.UUID = Field(foreign_key="country.id", description="Country ID")
+    sorting: int = Field(default=10, description="Sorting order")
+
+
+class CityCreate(CityBase):
+    pass
+
+
+class CityUpdate(SQLModel):
+    name: str | None = Field(default=None, min_length=1, max_length=255)
+    country_id: uuid.UUID | None = Field(default=None)
+    sorting: int | None = Field(default=None)
+
+
+class City(CityBase, table=True):
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    created_at: datetime | None = Field(
+        default_factory=get_datetime_utc,
+        sa_type=DateTime(timezone=True),  # type: ignore
+    )
+    
+    # Relationships
+    country: Country | None = Relationship(back_populates="cities")
+
+
+class CityPublic(CityBase):
+    id: uuid.UUID
+    created_at: datetime | None = None
+    country: CountryPublic | None = None
+
+
+class CitiesPublic(SQLModel):
+    data: list[CityPublic]
+    count: int
+
+
+
+
+# --- Cargo Type ---
+
+class CargoTypeBase(SQLModel):
+    name: str = Field(min_length=1, max_length=255, description="Cargo type name (e.g. Container 40ft)")
+    description: str | None = Field(default=None, max_length=500, description="Cargo type description")
+
+
+class CargoTypeCreate(CargoTypeBase):
+    pass
+
+
+class CargoTypeUpdate(SQLModel):
+    name: str | None = Field(default=None, min_length=1, max_length=255)
+    description: str | None = Field(default=None, max_length=500)
+
+
+class CargoType(CargoTypeBase, table=True):
+    __tablename__ = "cargo_type"
+
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    name: str = Field(unique=True, index=True, max_length=255)
+    created_at: datetime | None = Field(
+        default_factory=get_datetime_utc,
+        sa_type=DateTime(timezone=True),  # type: ignore
+    )
+
+
+class CargoTypePublic(CargoTypeBase):
+    id: uuid.UUID
+    created_at: datetime | None = None
+
+
+class CargoTypesPublic(SQLModel):
+    data: list[CargoTypePublic]
+    count: int
+
+
+# --- Vehicle Status ---
+
+class VehicleStatusBase(SQLModel):
+    name: str = Field(min_length=1, max_length=255, description="Status name (e.g. Waiting Offloading)")
+    description: str | None = Field(default=None, max_length=500, description="Status description")
+    is_active: bool = Field(default=True, description="Whether this status is currently active")
+
+
+class VehicleStatusCreate(VehicleStatusBase):
+    pass
+
+
+class VehicleStatusUpdate(SQLModel):
+    name: str | None = Field(default=None, min_length=1, max_length=255)
+    description: str | None = Field(default=None, max_length=500)
+    is_active: bool | None = Field(default=None)
+
+
+class VehicleStatus(VehicleStatusBase, table=True):
+    __tablename__ = "vehicle_status"
+
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    name: str = Field(unique=True, index=True, max_length=255)
+    created_at: datetime | None = Field(
+        default_factory=get_datetime_utc,
+        sa_type=DateTime(timezone=True),  # type: ignore
+    )
+
+
+class VehicleStatusPublic(VehicleStatusBase):
+    id: uuid.UUID
+    created_at: datetime | None = None
+
+
+class VehicleStatusesPublic(SQLModel):
+    data: list[VehicleStatusPublic]
+    count: int
+
+# ============================================================================
+# Maintenance Models - Story 3.1: Maintenance Event Logging
+# ============================================================================
+
+class MaintenanceEventBase(SQLModel):
+    truck_id: uuid.UUID = Field(foreign_key="truck.id", description="Truck receiving maintenance")
+    garage_name: str = Field(min_length=1, max_length=255, description="Garage/Service Provider name")
+    description: str = Field(min_length=1, max_length=500, description="Maintenance details")
+    start_date: datetime = Field(description="Date maintenance started")
+    end_date: datetime | None = Field(default=None, description="Date maintenance completed")
+
+class MaintenanceEventCreate(MaintenanceEventBase):
+    cost: Decimal = Field(gt=0, max_digits=12, decimal_places=2, description="Total cost")
+    update_truck_status: bool = Field(default=False, description="Set truck status to Maintenance")
+
+class MaintenanceEventUpdate(SQLModel):
+    truck_id: uuid.UUID | None = Field(default=None)
+    garage_name: str | None = Field(default=None, min_length=1, max_length=255)
+    description: str | None = Field(default=None, min_length=1, max_length=500)
+    start_date: datetime | None = Field(default=None)
+    end_date: datetime | None = Field(default=None)
+    cost: Decimal | None = Field(default=None, gt=0, max_digits=12, decimal_places=2)
+
+class MaintenanceEvent(MaintenanceEventBase, table=True):
+    __tablename__ = "maintenance_event"
+
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    expense_id: uuid.UUID = Field(foreign_key="expense_request.id", description="Associated expense request")
+    created_at: datetime | None = Field(
+        default_factory=get_datetime_utc,
+        sa_type=DateTime(timezone=True),  # type: ignore
+    )
+    updated_at: datetime | None = Field(
+        default_factory=get_datetime_utc,
+        sa_type=DateTime(timezone=True),  # type: ignore
+    )
+
+    # Relationships
+    truck: Truck | None = Relationship()
+    expense: ExpenseRequest | None = Relationship()
+
+class MaintenanceEventPublic(MaintenanceEventBase):
+    id: uuid.UUID
+    expense_id: uuid.UUID
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
+    expense: ExpenseRequestPublic | None = None
+
+class MaintenanceEventsPublic(SQLModel):
+    data: list[MaintenanceEventPublic]
+    count: int
+
+
+class MaintenanceHistoryPublic(SQLModel):
+    """Response model for truck maintenance history with cost summary."""
+    data: list[MaintenanceEventPublic]
+    count: int
+    total_maintenance_cost: Decimal = Decimal("0.00")

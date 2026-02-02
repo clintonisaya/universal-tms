@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edupo TMS - Design Direction (AntD Style)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f0f2f5; }
+        .ant-table { background: white; border: 1px solid #f0f0f0; border-radius: 2px; }
+        .ant-header { background: #fafafa; border-bottom: 1px solid #f0f0f0; padding: 12px 16px; font-weight: 600; color: #1f1f1f; font-size: 14px; }
+        .ant-row { border-bottom: 1px solid #f0f0f0; padding: 12px 16px; font-size: 13px; color: #262626; display: flex; align-items: center; }
+        .ant-row:hover { background: #fafafa; }
+        .status-pill { padding: 4px 8px; border-radius: 4px; font-size: 12px; border: 1px solid transparent; }
+        .status-green { background: #f6ffed; border-color: #b7eb8f; color: #52c41a; }
+        .status-blue { background: #e6f7ff; border-color: #91d5ff; color: #1890ff; }
+        .status-red { background: #fff1f0; border-color: #ffa39e; color: #ff4d4f; }
+        .status-orange { background: #fff7e6; border-color: #ffd591; color: #faad14; }
+        .action-btn { color: #1890ff; cursor: pointer; margin-right: 8px; }
+        .action-btn:hover { text-decoration: underline; }
+        
+        .workflow-node { display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 50%; border: 2px solid #d9d9d9; color: #8c8c8c; font-size: 14px; background: white; z-index: 2; position: relative;}
+        .workflow-node.done { border-color: #52c41a; color: #52c41a; background: #f6ffed; }
+        .workflow-node.active { border-color: #1890ff; color: #1890ff; background: #e6f7ff; }
+        .workflow-line { height: 2px; background: #d9d9d9; flex-grow: 1; margin: 0 8px; }
+        .workflow-line.done { background: #52c41a; }
+        
+        .detail-card { background: white; padding: 24px; border: 1px solid #f0f0f0; margin-bottom: 24px; }
+        .desc-label { color: #8c8c8c; font-size: 13px; margin-bottom: 4px; }
+        .desc-val { color: #262626; font-size: 14px; font-weight: 500; }
+        
+        .primary-btn { background: #1890ff; color: white; border: none; padding: 8px 16px; border-radius: 2px; cursor: pointer; font-size: 14px; }
+        .danger-btn { background: #ff4d4f; color: white; border: none; padding: 8px 16px; border-radius: 2px; cursor: pointer; font-size: 14px; }
+        .default-btn { background: white; border: 1px solid #d9d9d9; color: #262626; padding: 8px 16px; border-radius: 2px; cursor: pointer; font-size: 14px; }
+    </style>
+</head>
+<body class="p-8">
+
+    <!-- VIEW 1: MANAGER DASHBOARD -->
+    <div class="mb-12">
+        <h2 class="text-xl font-bold mb-4 text-gray-800">1. Manager Dashboard (Queue)</h2>
+        <div class="ant-table shadow-sm">
+            <div class="ant-header grid grid-cols-6 gap-4">
+                <div>Document Number</div>
+                <div>Type</div>
+                <div>Amount</div>
+                <div>Initiator</div>
+                <div>Status</div>
+                <div>Action</div>
+            </div>
+            <!-- Row 1 -->
+            <div class="ant-row grid grid-cols-6 gap-4">
+                <div class="font-mono text-gray-500">TRIP-2026-001</div>
+                <div><i class="fas fa-gas-pump mr-2 text-gray-400"></i>Fuel Request</div>
+                <div class="font-bold">$450.00</div>
+                <div>Clinton (Ops)</div>
+                <div><span class="status-pill status-blue">Pending You</span></div>
+                <div><span class="action-btn">Process</span></div>
+            </div>
+            <!-- Row 2 -->
+            <div class="ant-row grid grid-cols-6 gap-4 bg-gray-50">
+                <div class="font-mono text-gray-500">OFFICE-2026-89</div>
+                <div><i class="fas fa-wifi mr-2 text-gray-400"></i>Internet Bill</div>
+                <div class="font-bold">$80.00</div>
+                <div>Sarah (Admin)</div>
+                <div><span class="status-pill status-orange">Returned</span></div>
+                <div><span class="action-btn">View</span></div>
+            </div>
+             <!-- Row 3 -->
+             <div class="ant-row grid grid-cols-6 gap-4">
+                <div class="font-mono text-gray-500">TRIP-2026-003</div>
+                <div><i class="fas fa-wrench mr-2 text-gray-400"></i>Tyre Fix</div>
+                <div class="font-bold">$120.00</div>
+                <div>Clinton (Ops)</div>
+                <div><span class="status-pill status-green">Paid</span></div>
+                <div><span class="action-btn">Audit</span></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- VIEW 2: DETAIL PAGE (THE GATE) -->
+    <div>
+        <h2 class="text-xl font-bold mb-4 text-gray-800">2. Request Detail (The Workflow)</h2>
+        
+        <div class="detail-card">
+            <!-- Node Graph -->
+            <div class="flex items-center justify-between px-12 mb-8">
+                <div class="flex flex-col items-center">
+                    <div class="workflow-node done"><i class="fas fa-user"></i></div>
+                    <span class="text-xs mt-2 text-green-600 font-medium">Submitted</span>
+                    <span class="text-xs text-gray-400">10:42 AM</span>
+                </div>
+                <div class="workflow-line done"></div>
+                <div class="flex flex-col items-center">
+                    <div class="workflow-node active"><i class="fas fa-user-tie"></i></div>
+                    <span class="text-xs mt-2 text-blue-600 font-medium">Manager</span>
+                    <span class="text-xs text-blue-400">Pending</span>
+                </div>
+                <div class="workflow-line"></div>
+                <div class="flex flex-col items-center">
+                    <div class="workflow-node"><i class="fas fa-landmark"></i></div>
+                    <span class="text-xs mt-2 text-gray-400 font-medium">Finance</span>
+                </div>
+                 <div class="workflow-line"></div>
+                <div class="flex flex-col items-center">
+                    <div class="workflow-node"><i class="fas fa-check"></i></div>
+                    <span class="text-xs mt-2 text-gray-400 font-medium">Paid</span>
+                </div>
+            </div>
+            
+            <!-- Description Grid -->
+            <div class="grid grid-cols-4 gap-6 border-t pt-6 border-gray-100">
+                <div>
+                    <div class="desc-label">Document No</div>
+                    <div class="desc-val">TRIP-2026-001</div>
+                </div>
+                <div>
+                    <div class="desc-label">Truck</div>
+                    <div class="desc-val">T-9982 (Scania)</div>
+                </div>
+                 <div>
+                    <div class="desc-label">Driver</div>
+                    <div class="desc-val">John Doe</div>
+                </div>
+                 <div>
+                    <div class="desc-label">Route</div>
+                    <div class="desc-val">Dar -> Mwanza</div>
+                </div>
+            </div>
+            <div class="mt-6 p-4 bg-gray-50 border border-gray-100 rounded">
+                <div class="desc-label">Request Reason</div>
+                <div class="desc-val mt-1">First installment of fuel for the trip. Estimated 400 Liters.</div>
+            </div>
+        </div>
+
+        <!-- Action Bar (Sticky Footer Simulation) -->
+        <div class="bg-white p-4 border-t border-gray-200 flex justify-between items-center shadow-lg">
+            <div class="text-gray-500 text-sm"><i class="fas fa-info-circle mr-2"></i>Profit Impact: <span class="text-green-600 font-bold">+$1,200</span> (Safe)</div>
+            <div class="space-x-2">
+                <button class="default-btn"><i class="fas fa-history mr-2"></i>Tracking</button>
+                <button class="default-btn text-orange-500 border-orange-200 hover:border-orange-500"><i class="fas fa-reply mr-2"></i>Return</button>
+                <button class="danger-btn"><i class="fas fa-times mr-2"></i>Reject</button>
+                <button class="primary-btn"><i class="fas fa-check mr-2"></i>Approve & Forward</button>
+            </div>
+        </div>
+    </div>
+
+</body>
+</html>

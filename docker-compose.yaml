@@ -1,0 +1,63 @@
+# Edupo TMS - Development Docker Compose
+# Runs PostgreSQL database and FastAPI backend
+
+services:
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      retries: 5
+      start_period: 30s
+      timeout: 10s
+    volumes:
+      - edupo-db-data:/var/lib/postgresql/data/pgdata
+    env_file:
+      - .env
+    environment:
+      - PGDATA=/var/lib/postgresql/data/pgdata
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
+      - POSTGRES_USER=${POSTGRES_USER:-postgres}
+      - POSTGRES_DB=${POSTGRES_DB:-edupo_tms}
+    ports:
+      - "5433:5432"
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      - DOMAIN=${DOMAIN:-localhost}
+      - FRONTEND_HOST=${FRONTEND_HOST:-http://localhost:3000}
+      - ENVIRONMENT=${ENVIRONMENT:-local}
+      - BACKEND_CORS_ORIGINS=${BACKEND_CORS_ORIGINS:-http://localhost,http://localhost:3000}
+      - SECRET_KEY=${SECRET_KEY:-dev-secret-key-change-in-production}
+      - FIRST_SUPERUSER=${FIRST_SUPERUSER:-admin}
+      - FIRST_SUPERUSER_PASSWORD=${FIRST_SUPERUSER_PASSWORD:-changethis}
+      - POSTGRES_SERVER=db
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB=${POSTGRES_DB:-edupo_tms}
+      - POSTGRES_USER=${POSTGRES_USER:-postgres}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend/app:/app/app:cached
+    command: >
+      bash -c "
+        export PYTHONPATH=/app &&
+        python -m app.backend_pre_start &&
+        alembic upgrade head &&
+        python -m app.initial_data &&
+        uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+      "
+
+volumes:
+  edupo-db-data:

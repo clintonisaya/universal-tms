@@ -1,2 +1,0 @@
-# edupo-tms
-
