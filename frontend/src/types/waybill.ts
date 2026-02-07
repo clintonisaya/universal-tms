@@ -17,6 +17,7 @@ export interface Waybill {
   status: WaybillStatus;
   agreed_rate: number;
   currency: string;
+  risk_level: string;
   created_at: string | null;
 }
 
@@ -30,6 +31,7 @@ export interface WaybillCreate {
   expected_loading_date: string;
   agreed_rate: number;
   currency: string;
+  risk_level: string;
 }
 
 export interface WaybillUpdate {
@@ -43,6 +45,7 @@ export interface WaybillUpdate {
   status?: WaybillStatus;
   agreed_rate?: number;
   currency?: string;
+  risk_level?: string;
 }
 
 export interface WaybillsResponse {

@@ -5,6 +5,7 @@ import { useRouter, useParams } from "next/navigation";
 import {
   Card,
   Button,
+  Flex,
   Space,
   Tabs,
   Tag,
@@ -21,16 +22,20 @@ import {
   ToolOutlined,
 } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
-import type { Truck, TruckStatus } from "@/types/truck";
+import type { Truck } from "@/types/truck";
 import type {
   MaintenanceEvent,
   MaintenanceHistoryResponse,
 } from "@/types/maintenance";
 import { useAuth } from "@/contexts/AuthContext";
+import {
+  getColumnSearchProps,
+  getStandardRowSelection,
+} from "@/components/ui/tableUtils";
 
 const { Title, Text } = Typography;
 
-const TRUCK_STATUS_COLORS: Record<TruckStatus, string> = {
+const TRUCK_STATUS_COLORS: Record<string, string> = {
   Idle: "green",
   Loading: "cyan",
   "In Transit": "blue",
@@ -55,6 +60,9 @@ export default function TruckDetailPage() {
   const [maintenanceCount, setMaintenanceCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [maintenanceLoading, setMaintenanceLoading] = useState(true);
+  const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
 
   const fetchTruck = useCallback(async () => {
     setLoading(true);
@@ -125,12 +133,14 @@ export default function TruckDetailPage() {
       title: "Garage",
       dataIndex: "garage_name",
       key: "garage_name",
+      ...getColumnSearchProps("garage_name"),
     },
     {
       title: "Description",
       dataIndex: "description",
       key: "description",
       ellipsis: true,
+      ...getColumnSearchProps("description"),
     },
     {
       title: "Cost",
@@ -138,10 +148,7 @@ export default function TruckDetailPage() {
       render: (_, record) => {
         const amount = record.expense?.amount;
         return amount != null
-          ? new Intl.NumberFormat("en-KE", {
-              style: "currency",
-              currency: "KES",
-            }).format(amount)
+          ? `TZS ${Number(amount).toLocaleString()}`
           : "-";
       },
       align: "right",
@@ -193,7 +200,7 @@ export default function TruckDetailPage() {
       }}
     >
       <Card>
-        <Space direction="vertical" size="middle" style={{ width: "100%" }}>
+        <Flex vertical gap="middle" style={{ width: "100%" }}>
           <div
             style={{
               display: "flex",
@@ -251,9 +258,9 @@ export default function TruckDetailPage() {
                 key: "maintenance",
                 label: "Maintenance History",
                 children: (
-                  <Space
-                    direction="vertical"
-                    size="middle"
+                  <Flex
+                    vertical
+                    gap="middle"
                     style={{ width: "100%" }}
                   >
                     <div
@@ -268,8 +275,8 @@ export default function TruckDetailPage() {
                         value={totalCost}
                         precision={2}
                         prefix={<ToolOutlined />}
-                        suffix="KES"
-                        valueStyle={{ color: "#cf1322" }}
+                        suffix="TZS"
+                        styles={{ content: { color: "#cf1322" } }}
                       />
                       <Button
                         icon={<ReloadOutlined />}
@@ -284,20 +291,33 @@ export default function TruckDetailPage() {
                       dataSource={maintenanceEvents}
                       rowKey="id"
                       loading={maintenanceLoading}
+                      sticky
+                      rowSelection={getStandardRowSelection(
+                        currentPage,
+                        pageSize,
+                        selectedRowKeys,
+                        setSelectedRowKeys
+                      )}
                       pagination={{
+                        current: currentPage,
+                        pageSize,
                         total: maintenanceCount,
                         showTotal: (total) =>
                           `Total ${total} maintenance events`,
                         showSizeChanger: true,
                         pageSizeOptions: ["10", "20", "50"],
+                        onChange: (page, size) => {
+                          setCurrentPage(page);
+                          setPageSize(size);
+                        },
                       }}
                     />
-                  </Space>
+                  </Flex>
                 ),
               },
             ]}
           />
-        </Space>
+        </Flex>
       </Card>
     </div>
   );

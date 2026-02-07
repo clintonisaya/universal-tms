@@ -4,12 +4,15 @@ from app.api.routes import (
     cargo_types,
     dashboard,
     drivers,
+    exchange_rates,
     expenses,
     items,
     login,
     private,
+    tasks,
     trailers,
     trips,
+    trip_expense_types,
     trucks,
     users,
     utils,
@@ -17,8 +20,10 @@ from app.api.routes import (
     waybills,
     countries,
     cities,
+    clients,
     reports,
     maintenance,
+    office_expense_types,
 )
 
 api_router = APIRouter()
@@ -33,10 +38,15 @@ api_router.include_router(trips.router)
 api_router.include_router(waybills.router)
 api_router.include_router(expenses.router)
 api_router.include_router(cargo_types.router)
+api_router.include_router(trip_expense_types.router)
+api_router.include_router(office_expense_types.router)
 api_router.include_router(vehicle_statuses.router)
 api_router.include_router(countries.router)
 api_router.include_router(cities.router)
+api_router.include_router(clients.router)
 api_router.include_router(reports.router)
 api_router.include_router(maintenance.router)
+api_router.include_router(exchange_rates.router)
+api_router.include_router(tasks.router)
 api_router.include_router(utils.router)
 api_router.include_router(private.router)

@@ -30,6 +30,11 @@ import type {
   CargoTypesResponse,
 } from "@/types/cargo-type";
 import { useAuth } from "@/contexts/AuthContext";
+import {
+  getColumnSearchProps,
+  getStandardRowSelection,
+  useResizableColumns,
+} from "@/components/ui/tableUtils";
 
 const { Title } = Typography;
 const { TextArea } = Input;
@@ -46,6 +51,10 @@ export default function CargoTypesPage() {
     null
   );
   const [submitting, setSubmitting] = useState(false);
+  const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
+
   const [createForm] = Form.useForm<CargoTypeCreate>();
   const [editForm] = Form.useForm<CargoTypeUpdate>();
 
@@ -164,38 +173,53 @@ export default function CargoTypesPage() {
       title: "Name",
       dataIndex: "name",
       key: "name",
+      width: 200,
       sorter: (a, b) => a.name.localeCompare(b.name),
+      render: (text: string) => (
+        <div style={{ fontWeight: 600 }}>{text}</div>
+      ),
+      ...getColumnSearchProps("name"),
     },
     {
       title: "Description",
       dataIndex: "description",
       key: "description",
+      ellipsis: true,
       render: (desc: string | null) => desc || "-",
+      ...getColumnSearchProps("description"),
     },
     {
       title: "Actions",
       key: "actions",
+      width: 100,
+      fixed: "right",
       render: (_, record) => (
-        <Space size="small">
-          <Button
-            type="text"
-            icon={<EditOutlined />}
-            onClick={() => openEditModal(record)}
-          />
-          <Popconfirm
-            title="Delete cargo type"
-            description={`Delete "${record.name}"?`}
-            onConfirm={() => handleDelete(record)}
-            okText="Yes"
-            cancelText="No"
-            okButtonProps={{ danger: true }}
-          >
-            <Button type="text" danger icon={<DeleteOutlined />} />
-          </Popconfirm>
-        </Space>
+        <div className="row-actions">
+          <Space size="small">
+            <Button
+              type="text"
+              size="small"
+              icon={<EditOutlined />}
+              onClick={() => openEditModal(record)}
+            />
+            <Popconfirm
+              title="Delete cargo type"
+              description={`Delete "${record.name}"?`}
+              onConfirm={() => handleDelete(record)}
+              okText="Yes"
+              cancelText="No"
+              okButtonProps={{ danger: true }}
+            >
+              <Button type="text" danger size="small" icon={<DeleteOutlined />} />
+            </Popconfirm>
+          </Space>
+        </div>
       ),
     },
   ];
+
+  // Make columns resizable
+  const { resizableColumns, components } = useResizableColumns(columns);
 
   if (authLoading) {
     return (
@@ -215,7 +239,7 @@ export default function CargoTypesPage() {
   return (
     <div>
       <Card>
-        <Space direction="vertical" size="middle" style={{ width: "100%" }}>
+        <Space orientation="vertical" size="middle" style={{ width: "100%" }}>
           <div
             style={{
               display: "flex",
@@ -249,15 +273,29 @@ export default function CargoTypesPage() {
           </div>
 
           <Table<CargoType>
-            columns={columns}
+            columns={resizableColumns}
+            components={components}
             dataSource={cargoTypes}
             rowKey="id"
             loading={loading}
+            sticky={{ offsetHeader: 64 }}
+            rowSelection={getStandardRowSelection(
+              currentPage,
+              pageSize,
+              selectedRowKeys,
+              setSelectedRowKeys
+            )}
             pagination={{
+              current: currentPage,
+              pageSize,
               total: totalCount,
               showTotal: (total) => `Total ${total} cargo types`,
               showSizeChanger: true,
               pageSizeOptions: ["10", "20", "50", "100"],
+              onChange: (page, size) => {
+                setCurrentPage(page);
+                setPageSize(size);
+              },
             }}
           />
         </Space>
@@ -272,7 +310,7 @@ export default function CargoTypesPage() {
           createForm.resetFields();
         }}
         footer={null}
-        destroyOnClose
+        destroyOnHidden
       >
         <Form<CargoTypeCreate>
           form={createForm}
@@ -329,7 +367,7 @@ export default function CargoTypesPage() {
           editForm.resetFields();
         }}
         footer={null}
-        destroyOnClose
+        destroyOnHidden
       >
         <Form<CargoTypeUpdate>
           form={editForm}

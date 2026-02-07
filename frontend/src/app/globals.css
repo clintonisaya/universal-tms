@@ -27,3 +27,83 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
+
+/* Row actions: hidden by default, visible on hover — Story 2.18 */
+.row-actions {
+  opacity: 0 !important;
+  pointer-events: none;
+  transition: opacity 0.15s ease;
+}
+
+/* Show on table row hover */
+.ant-table-tbody > tr.ant-table-row:hover .row-actions,
+.ant-table-tbody > tr:hover .row-actions,
+tr:hover > td .row-actions {
+  opacity: 1 !important;
+  pointer-events: auto;
+}
+
+/* Also show when any child inside has focus (keyboard navigation) */
+.row-actions:focus-within {
+  opacity: 1 !important;
+  pointer-events: auto;
+}
+
+/* Sticky table pagination — always visible at bottom of scroll area */
+.ant-table-wrapper .ant-table-pagination {
+  position: sticky;
+  bottom: 0;
+  z-index: 100;
+  background: #fff;
+  padding: 12px 0;
+  margin: 0 !important;
+  border-top: 1px solid #f0f0f0;
+  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.04);
+}
+
+/* Resizable column handle — Story 2.18 adjustable columns */
+.react-resizable {
+  position: relative;
+  background-clip: padding-box;
+}
+
+.react-resizable-handle {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  z-index: 10;
+  width: 10px;
+  height: 100% !important;
+  cursor: col-resize;
+  background: transparent;
+}
+
+/* Visible resize indicator line */
+.react-resizable-handle::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 1px;
+  height: 50%;
+  min-height: 16px;
+  background-color: #d9d9d9;
+  transition: background-color 0.2s ease, width 0.2s ease;
+}
+
+.react-resizable-handle:hover::before,
+.react-resizable-handle:active::before {
+  background-color: #1677ff;
+  width: 2px;
+}
+
+/* Ensure table header cells can contain resizable handle */
+.ant-table-thead > tr > th {
+  position: relative !important;
+}
+
+/* Fix for Ant Design table header cell overflow */
+.ant-table-thead > tr > th.react-resizable {
+  overflow: visible;
+}

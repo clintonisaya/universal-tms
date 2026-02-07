@@ -12,25 +12,30 @@ export interface MaintenanceEventExpense {
 
 export interface MaintenanceEvent {
   id: string;
-  truck_id: string;
+  truck_id?: string | null;
+  trailer_id?: string | null;
   expense_id: string;
   garage_name: string;
   description: string;
   start_date: string; // ISO date
   end_date?: string | null;
+  currency: string;
   created_at?: string;
   updated_at?: string;
   expense?: MaintenanceEventExpense | null;
 }
 
 export interface MaintenanceEventCreate {
-  truck_id: string;
+  truck_id?: string | null;
+  trailer_id?: string | null;
   garage_name: string;
   description: string;
   start_date: string;
   end_date?: string | null;
   cost: number;
+  currency: string;
   update_truck_status?: boolean;
+  update_trailer_status?: boolean;
 }
 
 export interface MaintenanceEventsResponse {

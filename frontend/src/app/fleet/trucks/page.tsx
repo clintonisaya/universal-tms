@@ -19,12 +19,18 @@ import {
 } from "antd";
 import { PlusOutlined, ReloadOutlined, ArrowLeftOutlined, EditOutlined, DeleteOutlined, EyeOutlined } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
-import type { Truck, TruckCreate, TruckUpdate, TruckStatus, TrucksResponse } from "@/types/truck";
+import type { Truck, TruckCreate, TruckUpdate, TrucksResponse } from "@/types/truck";
 import { useAuth } from "@/contexts/AuthContext";
+import {
+  getColumnSearchProps,
+  getColumnFilterProps,
+  getStandardRowSelection,
+  useResizableColumns,
+} from "@/components/ui/tableUtils";
 
 const { Title } = Typography;
 
-const STATUS_COLORS: Record<TruckStatus, string> = {
+const STATUS_COLORS: Record<string, string> = {
   Idle: "green",
   Loading: "cyan",
   "In Transit": "blue",
@@ -34,6 +40,12 @@ const STATUS_COLORS: Record<TruckStatus, string> = {
   "Waiting for PODs": "magenta",
   Maintenance: "orange",
 };
+
+const STATUS_FILTERS = [
+  { text: "Idle", value: "Idle" },
+  { text: "In Transit", value: "In Transit" },
+  { text: "Maintenance", value: "Maintenance" },
+];
 
 export default function TrucksPage() {
   const router = useRouter();
@@ -45,6 +57,10 @@ export default function TrucksPage() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingTruck, setEditingTruck] = useState<Truck | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
+
   const [createForm] = Form.useForm<TruckCreate>();
   const [editForm] = Form.useForm<TruckUpdate>();
 
@@ -169,64 +185,78 @@ export default function TrucksPage() {
       title: "Plate Number",
       dataIndex: "plate_number",
       key: "plate_number",
+      width: 150,
       sorter: (a, b) => a.plate_number.localeCompare(b.plate_number),
+      render: (text: string) => (
+        <div style={{ fontWeight: 600 }}>{text}</div>
+      ),
+      ...getColumnSearchProps("plate_number"),
     },
     {
       title: "Make",
       dataIndex: "make",
       key: "make",
-      sorter: (a, b) => a.make.localeCompare(b.make),
+      width: 140,
+      render: (text: string) => text || "-",
+      ...getColumnSearchProps("make"),
     },
     {
       title: "Model",
       dataIndex: "model",
       key: "model",
-      sorter: (a, b) => a.model.localeCompare(b.model),
+      width: 140,
+      render: (text: string) => text || "-",
+      ...getColumnSearchProps("model"),
     },
     {
       title: "Status",
       dataIndex: "status",
       key: "status",
-      render: (status: TruckStatus) => (
-        <Tag color={STATUS_COLORS[status]}>{status}</Tag>
+      width: 120,
+      render: (status: string) => (
+        <Tag color={STATUS_COLORS[status] || "default"}>{status}</Tag>
       ),
-      filters: [
-        { text: "Idle", value: "Idle" },
-        { text: "In Transit", value: "In Transit" },
-        { text: "Maintenance", value: "Maintenance" },
-      ],
-      onFilter: (value, record) => record.status === value,
+      ...getColumnFilterProps("status", STATUS_FILTERS),
     },
     {
       title: "Actions",
       key: "actions",
+      width: 130,
+      fixed: "right",
       render: (_, record) => (
-        <Space size="small">
-          <Button
-            type="text"
-            icon={<EyeOutlined />}
-            title="View Details"
-            onClick={() => router.push(`/fleet/trucks/${record.id}`)}
-          />
-          <Button
-            type="text"
-            icon={<EditOutlined />}
-            onClick={() => openEditModal(record)}
-          />
-          <Popconfirm
-            title="Delete truck"
-            description={`Are you sure you want to delete ${record.plate_number}?`}
-            onConfirm={() => handleDelete(record)}
-            okText="Yes"
-            cancelText="No"
-            okButtonProps={{ danger: true }}
-          >
-            <Button type="text" danger icon={<DeleteOutlined />} />
-          </Popconfirm>
-        </Space>
+        <div className="row-actions">
+          <Space size="small">
+            <Button
+              type="text"
+              size="small"
+              icon={<EyeOutlined />}
+              title="View Details"
+              onClick={() => router.push(`/fleet/trucks/${record.id}`)}
+            />
+            <Button
+              type="text"
+              size="small"
+              icon={<EditOutlined />}
+              onClick={() => openEditModal(record)}
+            />
+            <Popconfirm
+              title="Delete truck"
+              description={`Are you sure you want to delete ${record.plate_number}?`}
+              onConfirm={() => handleDelete(record)}
+              okText="Yes"
+              cancelText="No"
+              okButtonProps={{ danger: true }}
+            >
+              <Button type="text" danger icon={<DeleteOutlined />} size="small" />
+            </Popconfirm>
+          </Space>
+        </div>
       ),
     },
   ];
+
+  // Make columns resizable
+  const { resizableColumns, components } = useResizableColumns(columns);
 
   if (authLoading) {
     return (
@@ -252,7 +282,7 @@ export default function TrucksPage() {
       }}
     >
       <Card>
-        <Space direction="vertical" size="middle" style={{ width: "100%" }}>
+        <Space orientation="vertical" size="middle" style={{ width: "100%" }}>
           <div
             style={{
               display: "flex",
@@ -286,15 +316,29 @@ export default function TrucksPage() {
           </div>
 
           <Table<Truck>
-            columns={columns}
+            columns={resizableColumns}
+            components={components}
             dataSource={trucks}
             rowKey="id"
             loading={loading}
+            sticky={{ offsetHeader: 64 }}
+            rowSelection={getStandardRowSelection(
+              currentPage,
+              pageSize,
+              selectedRowKeys,
+              setSelectedRowKeys
+            )}
             pagination={{
+              current: currentPage,
+              pageSize,
               total: totalCount,
               showTotal: (total) => `Total ${total} trucks`,
               showSizeChanger: true,
               pageSizeOptions: ["10", "20", "50", "100"],
+              onChange: (page, size) => {
+                setCurrentPage(page);
+                setPageSize(size);
+              },
             }}
           />
         </Space>
@@ -309,7 +353,7 @@ export default function TrucksPage() {
           createForm.resetFields();
         }}
         footer={null}
-        destroyOnClose
+        destroyOnHidden
       >
         <Form<TruckCreate>
           form={createForm}
@@ -386,7 +430,7 @@ export default function TrucksPage() {
           editForm.resetFields();
         }}
         footer={null}
-        destroyOnClose
+        destroyOnHidden
       >
         <Form<TruckUpdate>
           form={editForm}

@@ -1,0 +1,448 @@
+	No.	Expense Description	Expense Category	Status	Remarks	Creator	Create Time	Modifier	Modification Time
+
+No.	Expense Description	Expense Category	Status	Remarks	Creator	Create Time	Modifier	Modification Time
+
+1	Abnormal permit（Mozambique）	Cargo Charges			王英杰 Eduardo	2025-08-02 10:32:11				
+
+2	Escort (Malawi)	Cargo Charges			王英杰 Eduardo	2025-04-14 16:31:51				
+
+3	GCLA Permit	Cargo Charges			王英杰 Eduardo	2025-04-08 11:07:58				
+
+4	Police Escort (Zambia)	Cargo Charges			王英杰 Eduardo	2025-03-06 11:51:45				
+
+5	Escort Car (Uganda)	Cargo Charges			王英杰 Eduardo	2025-02-21 18:01:38	王英杰 Eduardo	2025-03-06 12:52:29		
+
+6	Abnormal Permit (Uganda)	Cargo Charges			Sally 张晓静	2025-02-13 17:35:14	王英杰 Eduardo	2025-03-06 12:52:40		
+
+7	Abnormal Permit (Zimbabwe)	Cargo Charges			Sally 张晓静	2024-11-14 17:01:14	王英杰 Eduardo	2025-03-06 12:53:01		
+
+8	Escort Car (Zimbabwe)	Cargo Charges			Sally 张晓静	2024-11-14 17:00:53	王英杰 Eduardo	2025-03-06 12:53:26		
+
+9	Police Escort (Disabled)	Cargo Charges			总管理	2024-07-31 19:17:45	总管理	2024-08-26 22:43:47		
+
+10	Escort Car (Mozambique)	Cargo Charges			Sally 张晓静	2024-04-15 22:32:22	王英杰 Eduardo	2025-03-06 12:53:45		
+
+11	Escort Car (Kenya)	Cargo Charges			Sally 张晓静	2024-01-18 23:34:00	王英杰 Eduardo	2025-03-06 12:54:00		
+
+12	Abnormal Permit (Kenya)	Cargo Charges			Sally 张晓静	2023-12-22 17:45:34	王英杰 Eduardo	2025-03-06 12:54:16		
+
+13	Police Escort (Tanzania)	Cargo Charges			Sally 张晓静	2023-12-13 13:40:13	王英杰 Eduardo	2025-03-06 12:54:39		
+
+14	Cargo Rearrangment	Cargo Charges			总管理	2023-11-30 19:54:15	Sally 张晓静	2023-12-06 23:55:04		
+
+15	Escort Car (DRC)	Cargo Charges			总管理	2023-11-01 15:25:54	王英杰 Eduardo	2025-03-06 12:54:56		
+
+16	Escort Car (Zambia)	Cargo Charges			总管理	2023-10-31 21:42:41	王英杰 Eduardo	2025-03-06 12:55:11		
+
+17	Abnormal Permit (Malawi)	Cargo Charges			总管理	2023-10-31 11:12:56	Sally 张晓静	2025-01-10 17:03:07		
+
+18	Abnormal Fabric	Cargo Charges			总管理	2023-10-30 22:41:14	Sally 张晓静	2023-12-06 23:56:11		
+
+19	Escort Car (Tanzania)	Cargo Charges			总管理	2023-10-30 22:38:23	王英杰 Eduardo	2025-03-06 12:55:32		
+
+20	Abnormal Permit (DRC)	Cargo Charges			总管理	2023-10-27 15:17:06	总管理	2023-11-23 15:42:04		
+
+21	Abnormal Permit (Zambia)	Cargo Charges			总管理	2023-10-27 15:14:49	王英杰 Eduardo	2025-03-06 12:55:43		
+
+22	Container Drop Off (40')	Cargo Charges			总管理	2023-10-27 15:13:28	王英杰 Eduardo	2025-03-06 12:56:26		
+
+23	Abnoamal Permit (Tanzania)	Cargo Charges			总管理	2023-10-09 15:16:35	王英杰 Eduardo	2025-03-06 12:55:53		
+
+24	Container Wash	Cargo Charges			总管理	2023-10-09 14:43:27	总管理	2023-11-22 22:51:32		
+
+25	Container Drop Off (20')	Cargo Charges			总管理	2023-09-15 11:51:31	总管理	2023-11-22 22:52:22	
+No.	Expense Description	Expense Category	Status	Remarks	Creator	Create Time	Modifier	Modification Time
+
+No.	Expense Description	Expense Category	Status	Remarks	Creator	Create Time	Modifier	Modification Time
+
+1	Driver Hospital Benefits	Driver Allowance			Sally 张晓静	2024-03-11 16:14:18				
+
+2	Overstay Allowance	Driver Allowance			Sally 张晓静	2024-02-07 21:48:09				
+
+3	Driver Allowance	Driver Allowance			总管理	2023-09-15 11:53:19	Sally 张晓静	2023-12-06 23:54:34	
+No.	Expense Description	Expense Category	Status	Remarks	Creator	Create Time	Modifier	Modification Time
+
+No.	Expense Description	Expense Category	Status	Remarks	Creator	Create Time	Modifier	Modification Time
+
+1	Trip Efficiency Bonus (Within 55 days)	Bonus			Sally 张晓静	2025-02-14 16:26:02				
+
+2	Trip Safety Bonus	Bonus			Sally 张晓静	2025-02-14 16:25:37			
+No.	Expense Description	Expense Category	Status	Remarks	Creator	Create Time	Modifier	Modification Time
+
+No.	Expense Description	Expense Category	Status	Remarks	Creator	Create Time	Modifier	Modification Time
+
+1	Radiation Transfer Charge	Transportation Costs-Others			王英杰 Eduardo	2026-01-09 09:17:45				
+
+2	Other Cost	Transportation Costs-Others			王英杰 Eduardo	2025-07-17 16:24:15	王英杰 Eduardo	2025-07-17 16:41:17		
+
+3	Appendax （Malawi）	Transportation Costs-Others			王英杰 Eduardo	2025-04-14 16:28:41				
+
+4	Carbon Tax Malawi	Transportation Costs-Others			王英杰 Eduardo	2025-04-14 16:26:27				
+
+5	Radiation Fee (Zambia RIT)	Transportation Costs-Others			王英杰 Eduardo	2025-03-18 12:49:51	王英杰 Eduardo	2025-12-06 09:35:13		
+
+6	Uganda Covid Certificate	Transportation Costs-Others			王英杰 Eduardo	2025-02-21 17:48:57	王英杰 Eduardo	2025-02-21 18:02:38		
+
+7	C32 Apendix	Transportation Costs-Others			王英杰 Eduardo	2025-02-21 17:36:00				
+
+8	Uganda Apendex	Transportation Costs-Others			Sally 张晓静	2025-02-13 17:37:29				
+
+9	Nakonde Entry&Exit Fee	Transportation Costs-Others			Sally 张晓静	2025-02-11 19:55:21	Sally 张晓静	2025-02-14 16:23:57		
+
+10	Awkward Permit	Transportation Costs-Others			Sally 张晓静	2025-01-10 16:55:05	Sally 张晓静	2025-01-10 17:00:49		
+
+11	Malawi Appendex	Transportation Costs-Others			Sally 张晓静	2025-01-10 16:54:38	Sally 张晓静	2025-01-10 17:01:12		
+
+12	Electricity Bill	Transportation Costs-Others			Sally 张晓静	2024-12-10 19:31:17				
+
+13	Interpol Cost	Transportation Costs-Others			Sally 张晓静	2024-12-06 17:31:45	王英杰 Eduardo	2025-03-06 12:51:13		
+
+14	Zimbawe Electronic Waybill	Transportation Costs-Others			Sally 张晓静	2024-12-03 14:17:56	Sally 张晓静	2024-12-03 14:18:10		
+
+15	Tanga Weighbridge	Transportation Costs-Others			Sally 张晓静	2024-11-29 19:21:20				
+
+16	Chemical Sticker	Transportation Costs-Others			Sally 张晓静	2024-11-22 22:17:30	Sally 张晓静	2024-11-25 16:22:19		
+
+17	Zimbabwe Empty release	Transportation Costs-Others			Sally 张晓静	2024-10-31 20:46:05				
+
+18	Electronic Seal	Transportation Costs-Others			总管理	2024-09-21 15:07:40				
+
+19	Empty Charge	Transportation Costs-Others			Sally 张晓静	2024-08-28 20:42:42				
+
+20	Route Survey Tip	Transportation Costs-Others			Sally 张晓静	2024-08-28 20:34:48	Sally 张晓静	2024-08-28 20:42:14		
+
+21	Zimbabwe TIP	Transportation Costs-Others			Sally 张晓静	2024-08-28 16:28:41	王英杰 Eduardo	2025-06-13 11:41:46		
+
+22	Cross Border Permit	Transportation Costs-Others			Sally 张晓静	2024-08-28 15:35:17				
+
+23	Commercial Vehicles Guarantie	Transportation Costs-Others			Sally 张晓静	2024-08-28 15:26:57				
+
+24	Zimbabwe Carbon Tax	Transportation Costs-Others			Sally 张晓静	2024-08-28 15:23:46				
+
+25	Trailer Insurance	Transportation Costs-Others			Sally 张晓静	2024-08-28 15:15:06				
+
+26	Horse Insurance	Transportation Costs-Others			Sally 张晓静	2024-08-28 15:14:43				
+
+27	Mobile Weight Bridge	Transportation Costs-Others			Sally 张晓静	2024-08-01 20:08:23				
+
+28	Transportation Fee For Container Docs	Transportation Costs-Others			Sally 张晓静	2024-07-01 14:49:36				
+
+29	Broker Fee	Transportation Costs-Others			总管理	2024-06-22 15:54:16				
+
+30	Mokambo Exit Fee	Transportation Costs-Others			总管理	2024-05-20 15:55:44				
+
+31	Damage Payment	Transportation Costs-Others			Sally 张晓静	2024-03-16 16:35:31	王英杰 Eduardo	2025-03-06 12:51:46		
+
+32	Advertisment	Transportation Costs-Others			Sally 张晓静	2024-02-23 21:01:40				
+
+33	Transcom	Transportation Costs-Others			Sally 张晓静	2024-02-19 16:57:38				
+
+34	Truck Entry Card	Transportation Costs-Others			Sally 张晓静	2024-02-19 16:57:14				
+
+35	Offloading Operator	Transportation Costs-Others			Sally 张晓静	2024-01-18 23:30:46				
+
+36	KRA E-seal charge	Transportation Costs-Others			Sally 张晓静	2024-01-18 14:42:20	总管理	2024-09-23 20:33:51		
+
+37	Kenya Weight Bridge	Transportation Costs-Others			Sally 张晓静	2024-01-18 14:40:38				
+
+38	Kenya Fast Approval	Transportation Costs-Others			Sally 张晓静	2024-01-18 14:19:48				
+
+39	Ndola Weighbridge Verification	Transportation Costs-Others		Cross Zambia	Sally 张晓静	2024-01-09 16:52:15				
+
+40	DRC Border Formalities-Mokambo	Transportation Costs-Others			Irene	2024-01-01 00:07:54	总管理	2024-09-10 20:39:47		
+
+41	DRC Border Formalities-Sakania	Transportation Costs-Others			Irene	2024-01-01 00:06:45				
+
+42	Movement Sheet	Transportation Costs-Others			Judith Kusirie Mushi	2023-12-27 21:27:36				
+
+43	Road Permit-Zambia	Transportation Costs-Others			Sally 张晓静	2023-12-27 15:56:33				
+
+44	Carbon TAX-Zambia	Transportation Costs-Others			Sally 张晓静	2023-12-27 15:56:04				
+
+45	First Entry DRC	Transportation Costs-Others			Sally 张晓静	2023-12-27 13:20:53				
+
+46	Malawi Carbon	Transportation Costs-Others			Irene	2023-12-21 14:35:53	Sally 张晓静	2025-01-10 16:58:03		
+
+47	Reflector	Transportation Costs-Others			Sally 张晓静	2023-12-18 22:02:32				
+
+48	Kenya Apendex	Transportation Costs-Others			Sally 张晓静	2023-12-18 22:00:24	Sally 张晓静	2025-02-13 17:36:38		
+
+49	Tony Boy Visa Renew	Transportation Costs-Others			Sally 张晓静	2023-11-29 20:39:43				
+
+50	Tony Boy Visa	Transportation Costs-Others			Sally 张晓静	2023-11-29 20:39:23				
+
+51	Urban Likasi	Transportation Costs-Others			Sally 张晓静	2023-11-29 19:43:28				
+
+52	Operation Charges	Transportation Costs-Others			Sally 张晓静	2023-11-29 19:17:49				
+
+53	Covid Certificate( go to Uriva )	Transportation Costs-Others			总管理	2023-11-25 15:25:59				
+
+54	Radiation - Nakonde	Transportation Costs-Others			总管理	2023-11-01 15:28:01	Sally 张晓静	2023-12-06 23:50:54		
+
+55	Truck Entry Card Renew	Transportation Costs-Others			总管理	2023-11-01 15:17:35	Sally 张晓静	2023-12-06 23:51:22		
+
+56	Driver Visa Renew	Transportation Costs-Others			总管理	2023-11-01 15:17:01	Sally 张晓静	2023-12-06 23:51:51		
+
+57	Agency fee for return cargo	Transportation Costs-Others			总管理	2023-10-31 21:49:16				
+
+58	Weightbridge	Transportation Costs-Others			总管理	2023-10-31 21:46:18	Sally 张晓静	2023-12-06 23:52:15		
+
+59	Malawi Apendex	Transportation Costs-Others			总管理	2023-10-30 23:17:15	Sally 张晓静	2023-12-06 23:52:39		
+
+60	Malawi TIP	Transportation Costs-Others			总管理	2023-10-30 23:16:05	王英杰 Eduardo	2025-06-13 11:41:54		
+
+61	Car Wash	Transportation Costs-Others			总管理	2023-10-30 21:07:30	总管理	2023-11-23 15:50:40		
+
+62	DRC Road Map	Transportation Costs-Others			总管理	2023-10-30 21:05:10	Sally 张晓静	2023-12-06 23:53:30		
+
+63	Withdrawl Charges	Transportation Costs-Others			总管理	2023-10-30 21:00:05	Sally 张晓静	2023-12-06 23:53:58		
+
+64	DRC Visa	Transportation Costs-Others			总管理	2023-10-30 20:26:10	总管理	2023-11-23 15:51:28		
+
+65	DRC Border Formalities-Kasumbalesa	Transportation Costs-Others			总管理	2023-10-30 20:24:33	Irene	2024-01-01 00:06:04	
+	No.	Expense Description	Expense Category	Status	Remarks	Creator	Create Time	Modifier	Modification Time
+
+No.	Expense Description	Expense Category	Status	Remarks	Creator	Create Time	Modifier	Modification Time
+
+1	Documents Pushing At Kanyaka	Transportation Costs-Tips			总管理	2023-11-01 15:47:57	王英杰 Eduardo	2025-03-06 12:50:33		
+
+2	Tips	Transportation Costs-Tips			总管理	2023-11-01 15:08:37	Sally 张晓静	2023-12-06 23:50:24	
+No.	Expense Description	Expense Category	Status	Remarks	Creator	Create Time	Modifier	Modification Time
+
+No.	Expense Description	Expense Category	Status	Remarks	Creator	Create Time	Modifier	Modification Time
+
+1	Parking Fee (Conadesi)	Parking Fee			王英杰 Eduardo	2025-02-25 16:53:53	王英杰 Eduardo	2025-03-06 12:38:53		
+
+2	Parking Fee (Sakania DRC Abnormal)	Parking Fee			Irene	2024-01-09 19:31:06	王英杰 Eduardo	2025-03-06 12:46:50		
+
+3	Parking Fee (Mokambo DRC Abnormal )	Parking Fee			Irene	2024-01-09 19:30:19	王英杰 Eduardo	2025-03-06 12:48:24		
+
+4	Parking Fee (Mokambo DRC)	Parking Fee			Sally 张晓静	2023-12-28 13:23:03	王英杰 Eduardo	2025-03-06 12:41:16		
+
+5	Parking Fee (Sakania DRC)	Parking Fee			Sally 张晓静	2023-12-28 13:22:37	王英杰 Eduardo	2025-03-06 12:41:31		
+
+6	Parking Fee (Sakania Zambia Side Lukangaba)	Parking Fee			Sally 张晓静	2023-12-28 13:22:08	王英杰 Eduardo	2025-03-06 12:42:00		
+
+7	Parking Fee (Mokambo Zambia Side Lukangaba)	Parking Fee			Sally 张晓静	2023-12-28 13:21:28	王英杰 Eduardo	2025-03-06 12:42:19		
+
+8	Parking Fee (Others)	Parking Fee			总管理	2023-11-01 15:36:23	王英杰 Eduardo	2025-03-06 12:42:35		
+
+9	Parking Fee (Kolwezi)	Parking Fee			总管理	2023-10-30 20:54:03	王英杰 Eduardo	2025-03-06 12:42:52		
+
+10	Parking Fee (Kanyaka)	Parking Fee			总管理	2023-10-30 20:33:32	王英杰 Eduardo	2025-03-06 12:48:12		
+
+11	Parking Fee (Wiskey)	Parking Fee			总管理	2023-10-30 20:28:26	王英杰 Eduardo	2025-03-06 12:48:41		
+
+12	Parking Fee (Kasumbalesa DRC Abnoamal）	Parking Fee			总管理	2023-10-30 20:05:17	王英杰 Eduardo	2025-03-06 12:49:09		
+
+13	Parking Fee (Kasumbalesa DRC Normal）	Parking Fee			总管理	2023-10-30 20:05:03	王英杰 Eduardo	2025-03-06 12:49:33		
+
+14	Parking Fee (Kasumbalesa Zambia Abnormal）	Parking Fee			总管理	2023-10-30 19:54:02	王英杰 Eduardo	2025-03-06 12:49:55		
+
+15	Parking Fee (Kasumbalesa Zambia Normal）	Parking Fee			总管理	2023-10-30 19:53:43	王英杰 Eduardo	2025-03-06 12:50:19	
+No.	Expense Description	Expense Category	Status	Remarks	Creator	Create Time	Modifier	Modification Time
+
+No.	Expense Description	Expense Category	Status	Remarks	Creator	Create Time	Modifier	Modification Time
+
+1	Bond (Zimbabwe)	Bond			Sally 张晓静	2024-08-16 14:45:40	王英杰 Eduardo	2025-03-06 12:32:39		
+
+2	Bond (Zambia Return)	Bond			Sally 张晓静	2024-01-09 16:36:21	王英杰 Eduardo	2025-03-06 12:32:53		
+
+3	Bond (Burundi 40' Container)	Bond			总管理	2023-11-01 21:59:32	王英杰 Eduardo	2025-03-06 12:33:05		
+
+4	Bond (Burundi 20' Container）	Bond			总管理	2023-11-01 21:58:21	王英杰 Eduardo	2025-03-06 12:33:21		
+
+5	Bond (Zambia)	Bond			总管理	2023-10-30 18:01:08	王英杰 Eduardo	2025-03-06 12:33:37	
+No.	Expense Description	Expense Category	Status	Remarks	Creator	Create Time	Modifier	Modification Time
+
+No.	Expense Description	Expense Category	Status	Remarks	Creator	Create Time	Modifier	Modification Time
+
+1	CNPR (Copper Return)	CNPR Tax			总管理	2023-10-30 20:47:08	王英杰 Eduardo	2025-03-06 12:31:05		
+
+2	CNPR (Container Go&Return)	CNPR Tax			总管理	2023-10-30 20:46:09	王英杰 Eduardo	2025-03-06 12:31:22		
+
+3	CNPR（Steel Structure Or Equipment Going）	CNPR Tax			总管理	2023-10-30 20:45:50	王英杰 Eduardo	2025-03-06 12:31:39		
+
+4	CNPR (Normal Loose Cargo Go）	CNPR Tax			总管理	2023-10-30 20:45:28	王英杰 Eduardo	2025-03-06 12:32:26	
+No.	Expense Description	Expense Category	Status	Remarks	Creator	Create Time	Modifier	Modification Time
+
+No.	Expense Description	Expense Category	Status	Remarks	Creator	Create Time	Modifier	Modification Time
+
+1	Council Levy (Lusaka)	Council			王英杰 Eduardo	2025-12-31 15:50:19				
+
+2	Council (Chirundu go&return)	Council			王英杰 Eduardo	2025-09-15 13:34:21	王英杰 Eduardo	2025-09-15 13:35:22		
+
+3	Council (Kasempa)	Council			王英杰 Eduardo	2025-06-16 10:46:12				
+
+4	Council Levy (Ndola)	Council			王英杰 Eduardo	2025-05-12 14:01:33				
+
+5	Council Levy (Isoka)	Council			王英杰 Eduardo	2025-05-12 14:01:18				
+
+6	Council levy (Mpika)	Council			王英杰 Eduardo	2025-05-12 14:01:01				
+
+7	Council (Namanga)	Council			Sally 张晓静	2025-01-28 13:29:59	王英杰 Eduardo	2025-03-06 12:11:16		
+
+8	Council (Isoka)	Council			Sally 张晓静	2024-11-28 15:04:25	王英杰 Eduardo	2025-03-06 12:11:31		
+
+9	Council levy	Council			Sally 张晓静	2024-10-31 20:38:44				
+
+10	Council (Zimbabwe)	Council			Sally 张晓静	2024-10-05 22:35:43	王英杰 Eduardo	2025-03-06 12:11:59		
+
+11	Council (Zambia Manganese)	Council			Sally 张晓静	2024-06-14 14:41:26	王英杰 Eduardo	2025-03-06 12:12:15		
+
+12	Council (Zambia Return Cargo)	Council			Sally 张晓静	2024-05-30 23:35:04	王英杰 Eduardo	2025-03-06 12:12:31		
+
+13	Council (Hanrui)	Council			Sally 张晓静	2024-04-18 16:05:21	王英杰 Eduardo	2025-03-06 12:13:03		
+
+14	Council (Chililabombwe)	Council		100 ZMV	Sally 张晓静	2024-03-11 22:16:45	王英杰 Eduardo	2025-03-06 12:13:18		
+
+15	Council (Kapiri With Return Cargo )	Council			Sally 张晓静	2024-03-11 20:18:21	王英杰 Eduardo	2025-03-06 12:13:45		
+
+16	Council (Kapiri Going)	Council			Sally 张晓静	2024-03-11 20:16:29	王英杰 Eduardo	2025-03-06 12:14:10		
+
+17	Council (Nakonde)	Council			Sally 张晓静	2024-03-11 20:15:56	王英杰 Eduardo	2025-03-06 12:14:26		
+
+18	Council (Tunduma)	Council			Sally 张晓静	2024-03-11 20:15:28	王英杰 Eduardo	2025-03-06 12:14:40		
+
+19	Council (Longido)	Council			Sally 张晓静	2024-01-18 23:27:52	王英杰 Eduardo	2025-03-06 12:14:55		
+
+20	Council (Kenya)	Council			Sally 张晓静	2023-12-18 21:54:13	王英杰 Eduardo	2025-03-06 12:15:09		
+
+21	Council (Tanzania)	Council			Sally 张晓静	2023-12-06 19:45:34	王英杰 Eduardo	2025-03-06 12:15:22		
+
+22	Council (DRC)	Council			总管理	2023-11-01 22:01:03	王英杰 Eduardo	2025-03-06 12:15:37		
+
+23	Council (Malawi)	Council			总管理	2023-10-30 23:10:31	王英杰 Eduardo	2025-03-06 12:15:53		
+
+24	Council (Zambia)	Council			总管理	2023-10-30 22:24:45	王英杰 Eduardo	2025-03-06 12:16:11		
+
+25	Council (Likasi)	Council			总管理	2023-10-30 21:04:03	王英杰 Eduardo	2025-03-06 12:16:24		
+
+26	Council (Kasumbalesa DRC)	Council			总管理	2023-10-30 20:00:02	王英杰 Eduardo	2025-03-06 12:16:57		
+
+27	Council (Kasumbalesa Zambia)	Council			总管理	2023-10-30 19:59:29	王英杰 Eduardo	2025-03-06 12:17:19	
+No.	Expense Description	Expense Category	Status	Remarks	Creator	Create Time	Modifier	Modification Time
+
+No.	Expense Description	Expense Category	Status	Remarks	Creator	Create Time	Modifier	Modification Time
+
+1	Agency Fee (Zimbabwe)	Agency Fee			Sally 张晓静	2024-08-28 15:39:42	王英杰 Eduardo	2025-03-06 12:30:06		
+
+2	Agency Fee	Agency Fee			总管理	2023-10-30 17:37:20	总管理	2023-11-23 16:31:19	
+No.	Expense Description	Expense Category	Status	Remarks	Creator	Create Time	Modifier	Modification Time
+
+No.	Expense Description	Expense Category	Status	Remarks	Creator	Create Time	Modifier	Modification Time
+
+1	Labour Fee For Chemical Lashing	Port Fee			王英杰 Eduardo	2025-12-16 10:57:32				
+
+2	Labour Fee For Abnormal Lashing	Port Fee			王英杰 Eduardo	2025-03-12 12:43:42				
+
+3	Labour Fee For Lashing (Return)	Port Fee			王英杰 Eduardo	2025-03-12 12:39:36				
+
+4	Port Health	Port Fee			Sally 张晓静	2024-11-07 16:52:51				
+
+5	Manila Strip For TRA Seal	Port Fee			总管理	2023-11-02 15:19:18	Sally 张晓静	2023-12-06 23:42:13		
+
+6	GPRS	Port Fee			总管理	2023-10-30 17:11:45	Sally 张晓静	2023-12-18 21:57:58		
+
+7	Wire	Port Fee			总管理	2023-10-27 15:19:31	总管理	2023-11-23 16:34:36		
+
+8	Labour Fee For Normal Lashing	Port Fee			总管理	2023-10-27 15:18:45	王英杰 Eduardo	2025-03-12 12:43:24		
+
+9	Loading Facilitation	Port Fee			总管理	2023-10-27 15:18:33	总管理	2023-11-23 16:33:03	
+No.	Expense Description	Expense Category	Status	Remarks	Creator	Create Time	Modifier	Modification Time
+
+No.	Expense Description	Expense Category	Status	Remarks	Creator	Create Time	Modifier	Modification Time
+
+1	Toll Gates (Kafulafuta low-bed)	Toll Gates			王英杰 Eduardo	2025-08-15 15:56:19				
+
+2	Toll Gates (kafulafuta)	Toll Gates			王英杰 Eduardo	2025-08-15 15:25:30				
+
+3	Bypass (Lubumbashi)	Toll Gates			Sally 张晓静	2025-01-22 21:11:50	王英杰 Eduardo	2025-03-06 12:02:52		
+
+4	Zimbabwe Bridge	Toll Gates			Sally 张晓静	2024-10-31 20:45:15				
+
+5	Toll Gates (Zambia Flatbed)	Toll Gates			Sally 张晓静	2024-10-10 20:06:27	王英杰 Eduardo	2025-03-06 12:09:42		
+
+6	Toll Gates (Zambia Lowbed)	Toll Gates			Sally 张晓静	2024-10-10 20:05:43	王英杰 Eduardo	2025-03-06 12:09:59		
+
+7	Toll Fee (Vlc Fall-Hwange)	Toll Gates			Sally 张晓静	2024-10-06 01:23:13	王英杰 Eduardo	2025-03-06 12:10:32		
+
+8	Toll Gates (Zimbabwe)	Toll Gates			Sally 张晓静	2024-08-16 14:50:52	王英杰 Eduardo	2025-03-06 12:29:31		
+
+9	Peage (Hanrui)	Toll Gates			Sally 张晓静	2024-04-18 16:05:03	王英杰 Eduardo	2025-03-06 12:03:59		
+
+10	Bypass (Kambowe)	Toll Gates			总管理	2024-04-05 16:54:04	王英杰 Eduardo	2025-03-06 12:04:18		
+
+11	Peage (Kapumpi)	Toll Gates		KAMBOVE ROUTE	总管理	2024-04-05 16:53:38	王英杰 Eduardo	2025-03-06 12:05:01		
+
+12	Peage (Kakontwe)	Toll Gates		KAMBOVE ROUTE	总管理	2024-04-05 16:53:07	王英杰 Eduardo	2025-03-06 12:05:50		
+
+13	Peage (Chilabombwe Return)	Toll Gates			Sally 张晓静	2024-01-10 16:30:33	王英杰 Eduardo	2025-03-06 12:06:30		
+
+14	Peage (Chilabombwe Go)	Toll Gates			Sally 张晓静	2024-01-10 16:30:06	王英杰 Eduardo	2025-03-06 12:06:54		
+
+15	Bypass (Likasi)	Toll Gates			Sally 张晓静	2024-01-09 17:42:51	王英杰 Eduardo	2025-03-06 12:07:08		
+
+16	Peage (Lukumi)	Toll Gates			Sally 张晓静	2024-01-09 16:34:14	王英杰 Eduardo	2025-03-06 12:07:20		
+
+17	Peage (Lukangaba Sakania & Mokambo )	Toll Gates			Sally 张晓静	2023-12-28 13:25:36	王英杰 Eduardo	2025-03-06 12:07:43		
+
+18	Peage (Other DRC )	Toll Gates			总管理	2023-11-01 15:57:05	王英杰 Eduardo	2025-03-06 12:07:59		
+
+19	Diversion	Toll Gates			总管理	2023-11-01 15:54:42	Sally 张晓静	2023-12-06 23:39:32		
+
+20	Bypass (Kolwezi)	Toll Gates			总管理	2023-10-30 20:57:25	王英杰 Eduardo	2025-03-06 12:08:10		
+
+21	Lualaba Bridge	Toll Gates			总管理	2023-10-30 20:56:20	Sally 张晓静	2023-12-06 23:40:15		
+
+22	Peage (Kolwezi)	Toll Gates			总管理	2023-10-30 20:52:27	王英杰 Eduardo	2025-03-06 12:08:36		
+
+23	Peage (Likasi)	Toll Gates			总管理	2023-10-30 20:31:28	王英杰 Eduardo	2025-03-06 12:08:52		
+
+24	Peage (Kasumbalesa)	Toll Gates			总管理	2023-10-30 20:30:35	王英杰 Eduardo	2025-03-06 12:09:07		
+
+25	Toll Gates (Zambia)	Toll Gates			总管理	2023-10-30 17:51:24	王英杰 Eduardo	2025-03-06 12:09:23	
+No.	Expense Description	Expense Category	Status	Remarks	Creator	Create Time	Modifier	Modification Time
+
+No.	Expense Description	Expense Category	Status	Remarks	Creator	Create Time	Modifier	Modification Time
+
+1	Road Toll （Malawi Spuerlink）	Road Toll			王英杰 Eduardo	2025-12-15 09:26:55				
+
+2	ZRA Transfer charges	Road Toll			王英杰 Eduardo	2025-07-15 10:44:52				
+
+3	Road Toll（Malawi）	Road Toll			王英杰 Eduardo	2025-04-14 16:24:33	王英杰 Eduardo	2025-04-14 16:25:02		
+
+4	Road Toll (Uganda)	Road Toll			王英杰 Eduardo	2025-02-21 17:34:48	王英杰 Eduardo	2025-03-06 11:56:09		
+
+5	Road Toll (Nkhotakhota)	Road Toll			Sally 张晓静	2025-01-10 16:59:52	王英杰 Eduardo	2025-03-06 11:56:23		
+
+6	Road Toll (Chirundu)	Road Toll			总管理	2024-08-19 21:05:49	王英杰 Eduardo	2025-03-06 11:56:56		
+
+7	Road Toll (Zimbabwe)	Road Toll			Sally 张晓静	2024-08-16 14:44:16	王英杰 Eduardo	2025-03-06 12:44:25		
+
+8	Road Toll (Kapiri to Kabwe)	Road Toll			Sally 张晓静	2024-06-14 14:42:53	王英杰 Eduardo	2025-03-06 11:57:30		
+
+9	Road Toll (Rwanda)	Road Toll			Sally 张晓静	2024-06-03 22:13:27	王英杰 Eduardo	2025-03-06 11:59:27		
+
+10	Road Toll (Kasumbalesa to Ndola)	Road Toll			总管理	2024-05-20 15:39:45	王英杰 Eduardo	2025-03-06 11:59:48		
+
+11	Road Toll (Muhanga)	Road Toll			Julieth Alfred	2024-02-22 19:47:30	王英杰 Eduardo	2025-03-06 12:00:00		
+
+12	Road Toll (Kenya)	Road Toll			Sally 张晓静	2023-12-18 22:07:02	王英杰 Eduardo	2025-03-06 12:00:15		
+
+13	Road Toll (Uvira DRC)	Road Toll			总管理	2023-11-01 21:56:17	王英杰 Eduardo	2025-03-06 12:00:37		
+
+14	Road Toll (Magerwa to Rwanda)	Road Toll			总管理	2023-10-31 12:29:47	王英杰 Eduardo	2025-03-06 12:00:58		
+
+15	Road Toll (Burundi)	Road Toll			总管理	2023-10-31 12:12:10	王英杰 Eduardo	2025-03-06 12:01:34		
+
+16	Road Toll (Chikwawa)	Road Toll			总管理	2023-10-31 11:23:56	王英杰 Eduardo	2025-03-06 12:01:50		
+
+17	Road Toll (Lilongwe)	Road Toll			总管理	2023-10-30 23:13:20	王英杰 Eduardo	2025-03-06 12:02:02		
+
+18	Road Toll (Zambia)	Road Toll			总管理	2023-10-10 14:33:43	王英杰 Eduardo	2026-01-30 09:23:00
+No.	Expense Description	Expense Category	Status	Remarks	Creator	Create Time	Modifier	Modification Time
+
+No.	Expense Description	Expense Category	Status	Remarks	Creator	Create Time	Modifier	Modification Time
+
+1	Fuel	Fuel			总管理	2023-09-15 11:54:44	总管理	2023-11-23 16:46:57	

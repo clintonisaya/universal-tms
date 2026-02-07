@@ -1,9 +1,34 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Modal, Form, Input, InputNumber, Select, Button, Space, message, Divider } from "antd";
+import { useState, useEffect, useMemo } from "react";
+import {
+  Modal,
+  Form,
+  Input,
+  InputNumber,
+  Select,
+  Button,
+  Space,
+  message,
+  Tabs,
+  Row,
+  Col,
+  DatePicker,
+  Table,
+  Typography,
+  Tooltip,
+} from "antd";
+import {
+  PlusOutlined,
+  DeleteOutlined,
+} from "@ant-design/icons";
 import type { ExpenseRequestCreate, ExpenseCategory } from "@/types/expense";
 import type { Trip } from "@/types/trip";
+import type { TripExpenseType } from "@/types/trip-expense-type";
+import type { OfficeExpenseType } from "@/types/office-expense-type";
+import dayjs from "dayjs";
+
+const { Text } = Typography;
 
 const EXPENSE_CATEGORIES: ExpenseCategory[] = [
   "Fuel",
@@ -14,19 +39,43 @@ const EXPENSE_CATEGORIES: ExpenseCategory[] = [
   "Other",
 ];
 
-const TRIP_RELATED_CATEGORIES: ExpenseCategory[] = [
-  "Fuel",
-  "Allowance",
-  "Maintenance",
-  "Border",
-];
+// Map Trip Expense Type categories to ExpenseCategory
+const CATEGORY_MAPPING: Record<string, ExpenseCategory> = {
+  "Fuel": "Fuel",
+  "Driver Allowance": "Allowance",
+  "Cargo Charges": "Border",
+  "Transportation Costs-Others": "Other",
+  "Toll Gates": "Border",
+  "Road Toll": "Border",
+  "Port Fee": "Border",
+  "Parking Fee": "Other",
+  "Council": "Border",
+  "Bond": "Border",
+  "Agency Fee": "Border",
+  "CNPR Tax": "Border",
+  "Bonus": "Allowance",
+  "Border Expenses": "Border",
+  "Miscellaneous": "Other",
+};
 
 interface AddExpenseModalProps {
   open: boolean;
   onClose: () => void;
   onSuccess: () => void;
   tripId?: string | null;
-  tripNumber?: string; // Optional trip number for display
+  tripNumber?: string;
+}
+
+interface ExpenseItem {
+  key: React.Key;
+  expense_type_id?: string;
+  amount?: number;
+  currency: string;
+  invoice_state: "With Invoice" | "Without Invoice";
+  details?: string;
+  exchange_rate?: number;
+  remarks?: string;
+  category?: ExpenseCategory; // To store mapped category
 }
 
 export function AddExpenseModal({
@@ -36,57 +85,278 @@ export function AddExpenseModal({
   tripId,
   tripNumber,
 }: AddExpenseModalProps) {
-  const [form] = Form.useForm<ExpenseRequestCreate & { trip_id: string }>();
+  const [form] = Form.useForm();
   const [submitting, setSubmitting] = useState(false);
-  const [trips, setTrips] = useState<Trip[]>([]);
-  const [tripsLoading, setTripsLoading] = useState(false);
-  const [category, setCategory] = useState<ExpenseCategory | null>(null);
+  const [tripExpenseTypes, setTripExpenseTypes] = useState<TripExpenseType[]>([]);
+  const [officeExpenseTypes, setOfficeExpenseTypes] = useState<OfficeExpenseType[]>([]);
+  const [expenseTypesLoading, setExpenseTypesLoading] = useState(false);
 
+  // Exchange Rate State
+  const [currentExchangeRate, setCurrentExchangeRate] = useState<number | null>(null);
+
+  // Table State
+  const [items, setItems] = useState<ExpenseItem[]>([]);
+  const [count, setCount] = useState(0);
+
+  // Watch Payment Method for conditional fields
+  const paymentMethod = Form.useWatch("payment_method", form);
+
+  // Determine if this is a Trip Expense or Office Expense
+  const isTripExpense = !!tripId;
+
+  // Get the appropriate expense types
+  const expenseTypes = isTripExpense ? tripExpenseTypes : officeExpenseTypes;
+
+  // Fetch current exchange rate (with fallback to previous months)
   useEffect(() => {
-    if (open && !tripId) {
-      const fetchTrips = async () => {
-        setTripsLoading(true);
+    if (open) {
+      const fetchExchangeRate = async () => {
+        const now = new Date();
+        const month = now.getMonth() + 1; // 1-12
+        const year = now.getFullYear();
+
         try {
-            // Fetch only active trips ideally, but for now fetch all
-          const response = await fetch("/api/v1/trips/?limit=100", { credentials: "include" });
+          const response = await fetch(
+            `/api/v1/finance/exchange-rates/current?month=${month}&year=${year}`,
+            { credentials: "include" }
+          );
           if (response.ok) {
             const data = await response.json();
-            setTrips(data.data);
+            if (data && data.rate) {
+              setCurrentExchangeRate(data.rate);
+            } else {
+              setCurrentExchangeRate(null);
+            }
+          } else {
+            setCurrentExchangeRate(null);
           }
-        } catch (error) {
-          message.error("Failed to load trips");
-        } finally {
-            setTripsLoading(false);
+        } catch {
+          setCurrentExchangeRate(null);
         }
       };
-      fetchTrips();
+      fetchExchangeRate();
     }
-  }, [open, tripId]);
+  }, [open]);
+
+  // Fetch expense types based on context (Trip vs Office)
+  useEffect(() => {
+    if (open) {
+      const fetchTypes = async () => {
+        setExpenseTypesLoading(true);
+        try {
+          if (isTripExpense) {
+            // Fetch Trip Expense Types
+            const response = await fetch("/api/v1/trip-expense-types/?active_only=true&limit=200", {
+              credentials: "include",
+            });
+            if (response.ok) {
+              const data = await response.json();
+              setTripExpenseTypes(data.data);
+            }
+          } else {
+            // Fetch Office Expense Types
+            const response = await fetch("/api/v1/office-expense-types/?active_only=true&limit=200", {
+              credentials: "include",
+            });
+            if (response.ok) {
+              const data = await response.json();
+              setOfficeExpenseTypes(data.data);
+            }
+          }
+        } catch {
+          setTripExpenseTypes([]);
+          setOfficeExpenseTypes([]);
+        } finally {
+          setExpenseTypesLoading(false);
+        }
+      };
+      fetchTypes();
+
+      // Initialize with one empty row
+      setItems([{
+        key: '0',
+        currency: 'TZS',
+        invoice_state: 'With Invoice',
+        exchange_rate: 1
+      }]);
+      setCount(1);
+
+      // Set default values
+      form.setFieldsValue({
+        company: "EDUPO COMPANY LIMITED",
+        application_date: dayjs(),
+        payment_method: "Cash"
+      });
+    }
+  }, [open, form, isTripExpense]);
+
+  // Group trip expense types by category for the dropdown
+  const groupedTripExpenseOptions = useMemo(() => {
+    if (!isTripExpense) return [];
+
+    const grouped: Record<string, TripExpenseType[]> = {};
+    tripExpenseTypes.forEach(type => {
+      if (!grouped[type.category]) {
+        grouped[type.category] = [];
+      }
+      grouped[type.category].push(type);
+    });
+
+    return Object.entries(grouped)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([category, types]) => ({
+        label: category,
+        options: types.map(t => ({ label: t.name, value: t.id }))
+      }));
+  }, [tripExpenseTypes, isTripExpense]);
+
+  // Flat office expense options
+  const officeExpenseOptions = useMemo(() => {
+    return officeExpenseTypes.map(t => ({ label: t.name, value: t.id }));
+  }, [officeExpenseTypes]);
+
+  const handleAddRow = () => {
+    const newData: ExpenseItem = {
+      key: `${count}`,
+      currency: 'TZS',
+      invoice_state: 'With Invoice',
+      exchange_rate: 1,
+    };
+    setItems([...items, newData]);
+    setCount(count + 1);
+  };
+
+  const handleDeleteRow = (key: React.Key) => {
+    const newData = items.filter((item) => item.key !== key);
+    setItems(newData);
+  };
+
+  const handleItemChange = (key: React.Key, dataIndex: keyof ExpenseItem, value: any) => {
+    const newData = [...items];
+    const index = newData.findIndex((item) => item.key === key);
+    const item = newData[index];
+
+    // If expense type changes, auto-fill details if empty
+    if (dataIndex === 'expense_type_id') {
+      if (isTripExpense) {
+        const selectedType = tripExpenseTypes.find(t => t.id === value);
+        if (selectedType) {
+          if (!item.details) {
+            (newData[index] as any).details = selectedType.name;
+          }
+          // Map category from Trip Expense Type
+          (newData[index] as any).category = CATEGORY_MAPPING[selectedType.category] || "Other";
+        }
+      } else {
+        const selectedType = officeExpenseTypes.find(t => t.id === value);
+        if (selectedType) {
+          if (!item.details) {
+            (newData[index] as any).details = selectedType.name;
+          }
+          // Office expenses always map to "Office" category
+          (newData[index] as any).category = "Office";
+        }
+      }
+    }
+
+    // If currency changes, auto-fill exchange rate
+    if (dataIndex === 'currency') {
+      if (value === 'USD' && currentExchangeRate) {
+        // Auto-fill with current exchange rate from finance
+        (newData[index] as any).exchange_rate = currentExchangeRate;
+      } else if (value === 'TZS') {
+        // Reset to 1 for TZS
+        (newData[index] as any).exchange_rate = 1;
+      }
+    }
+
+    (newData[index] as any)[dataIndex] = value;
+    setItems(newData);
+  };
+
+  // Calculate Total Application Amount
+  const totalAmount = useMemo(() => {
+    return items.reduce((sum, item) => sum + (item.amount || 0), 0);
+  }, [items]);
 
   const handleSubmit = async (values: any) => {
+    if (items.length === 0) {
+      message.error("Please add at least one expense item");
+      return;
+    }
+
+    // Validate items
+    for (const item of items) {
+      if (!item.expense_type_id && !item.details) {
+        message.error("Each item must have a type or details");
+        return;
+      }
+      if (!item.amount || item.amount <= 0) {
+        message.error("Each item must have a valid amount");
+        return;
+      }
+    }
+
     setSubmitting(true);
     try {
-      const payload = {
-        ...values,
-        trip_id: tripId || values.trip_id || null,
-      };
 
-      const response = await fetch("/api/v1/expenses/", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify(payload),
+      // Create separate requests for each item (backend limitation workaround)
+      const promises = items.map(item => {
+        // Get the expense type name for storing in metadata
+        let itemName: string | undefined;
+        if (item.expense_type_id) {
+          if (isTripExpense) {
+            const selectedType = tripExpenseTypes.find(t => t.id === item.expense_type_id);
+            itemName = selectedType?.name;
+          } else {
+            const selectedType = officeExpenseTypes.find(t => t.id === item.expense_type_id);
+            itemName = selectedType?.name;
+          }
+        }
+
+        const payload: any = {
+          trip_id: tripId || null,
+          amount: item.amount,
+          currency: item.currency,
+          // General remarks as main description (shows in table), fallback to item details
+          description: values.remarks || item.details,
+          category: item.category || (isTripExpense ? "Other" : "Office"),
+          status: "Pending Manager",
+          expense_metadata: {
+            // Item-specific details stored in metadata (shows in detail modal)
+            item_details: item.details,
+            item_name: itemName,
+            application_date: values.application_date?.toISOString(),
+            payment_method: values.payment_method,
+            remarks: values.remarks,
+            invoice_state: item.invoice_state,
+            bank_details: values.payment_method === 'Transfer' ? {
+              bank_name: values.bank_name,
+              account_name: values.account_name,
+              account_no: values.account_no
+            } : null
+          }
+        };
+
+        if (item.currency !== "TZS" && item.exchange_rate) {
+          payload.exchange_rate = item.exchange_rate;
+        }
+
+        return fetch("/api/v1/expenses/", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify(payload),
+        });
       });
 
-      if (response.ok) {
-        message.success("Expense added successfully!");
-        form.resetFields();
-        onSuccess();
-        onClose();
-      } else {
-        const error = await response.json();
-        message.error(error.detail || "Failed to add expense");
-      }
+      await Promise.all(promises);
+
+      message.success(`${items.length} expense(s) submitted successfully!`);
+      form.resetFields();
+      setItems([]);
+      onSuccess();
+      onClose();
     } catch {
       message.error("Network error");
     } finally {
@@ -94,121 +364,266 @@ export function AddExpenseModal({
     }
   };
 
-  const isTripRequired = category && TRIP_RELATED_CATEGORIES.includes(category);
+  const columns = [
+    {
+      title: "No.",
+      dataIndex: "key",
+      render: (_: any, __: any, index: number) => index + 1,
+      width: 60,
+      align: "center" as const,
+    },
+    {
+      title: "Payment Item",
+      dataIndex: "expense_type_id",
+      width: 250,
+      render: (text: string, record: ExpenseItem) => (
+        <Select
+          showSearch
+          style={{ width: "100%" }}
+          placeholder="Select Item"
+          optionFilterProp="label"
+          value={text}
+          onChange={(val) => handleItemChange(record.key, "expense_type_id", val)}
+          options={isTripExpense ? groupedTripExpenseOptions : officeExpenseOptions as any}
+          loading={expenseTypesLoading}
+        />
+      ),
+    },
+    {
+      title: "Amount",
+      dataIndex: "amount",
+      width: 140,
+      render: (text: number, record: ExpenseItem) => (
+        <InputNumber
+          style={{ width: "100%" }}
+          min={0}
+          value={text}
+          formatter={(value) => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+          parser={(value) => value?.replace(/,/g, '') as unknown as number}
+          onChange={(val) => handleItemChange(record.key, "amount", val)}
+        />
+      ),
+    },
+    {
+      title: "Currency",
+      dataIndex: "currency",
+      width: 100,
+      render: (text: string, record: ExpenseItem) => (
+        <Select
+          style={{ width: "100%" }}
+          value={text}
+          onChange={(val) => handleItemChange(record.key, "currency", val)}
+        >
+          <Select.Option value="TZS">TZS</Select.Option>
+          <Select.Option value="USD">USD</Select.Option>
+        </Select>
+      ),
+    },
+    {
+      title: "Invoice State",
+      dataIndex: "invoice_state",
+      width: 150,
+      render: (text: string, record: ExpenseItem) => (
+        <Select
+          style={{ width: "100%" }}
+          value={text}
+          onChange={(val) => handleItemChange(record.key, "invoice_state", val)}
+        >
+          <Select.Option value="With Invoice">With Invoice</Select.Option>
+          <Select.Option value="Without Invoice">Without Invoice</Select.Option>
+        </Select>
+      ),
+    },
+    {
+      title: "Details",
+      dataIndex: "details",
+      width: 180,
+      render: (text: string, record: ExpenseItem) => (
+        <Input
+          value={text}
+          onChange={(e) => handleItemChange(record.key, "details", e.target.value)}
+        />
+      ),
+    },
+    {
+      title: (
+        <Tooltip title={currentExchangeRate ? `Current rate from Finance: ${currentExchangeRate}` : "No exchange rate set"}>
+          <span style={{ cursor: 'help' }}>Ex. Rate</span>
+        </Tooltip>
+      ),
+      dataIndex: "exchange_rate",
+      width: 120,
+      render: (text: number, record: ExpenseItem) => (
+        <Tooltip title={record.currency === 'USD' && currentExchangeRate ? `Auto-filled from Finance rate` : ''}>
+          <InputNumber
+            style={{ width: "100%" }}
+            min={0}
+            value={text}
+            disabled={record.currency === 'TZS'}
+            onChange={(val) => handleItemChange(record.key, "exchange_rate", val)}
+          />
+        </Tooltip>
+      ),
+    },
+    {
+      title: "Remarks",
+      dataIndex: "remarks",
+      width: 150,
+      render: (text: string, record: ExpenseItem) => (
+        <Input
+          value={text}
+          onChange={(e) => handleItemChange(record.key, "remarks", e.target.value)}
+        />
+      ),
+    },
+    {
+      title: "",
+      width: 60,
+      align: "center" as const,
+      render: (_: any, record: ExpenseItem) => (
+        <Button
+          type="text"
+          danger
+          icon={<DeleteOutlined />}
+          aria-label="Delete Item"
+          onClick={() => handleDeleteRow(record.key)}
+        />
+      ),
+    },
+  ];
+
+  // Basic Info Tab Content
+  const BasicInfoTab = (
+    <>
+      {/* Header Grid */}
+      <div style={{ marginBottom: 24, padding: 16, background: '#f5f5f5', borderRadius: 8 }}>
+        <Row gutter={[16, 16]}>
+          <Col span={8}>
+            <Form.Item label="Company" name="company">
+              <Input readOnly />
+            </Form.Item>
+          </Col>
+          <Col span={8}>
+            <Form.Item label="Application Date" name="application_date" rules={[{ required: true }]}>
+              <DatePicker style={{ width: '100%' }} />
+            </Form.Item>
+          </Col>
+          <Col span={8}>
+            <Form.Item label="Application Amount">
+              <Input
+                value={totalAmount > 0 ? `${items[0]?.currency || 'TZS'} ${totalAmount.toLocaleString()}` : '-'}
+                readOnly
+                style={{ fontWeight: 'bold' }}
+              />
+            </Form.Item>
+          </Col>
+          <Col span={8}>
+            <Form.Item label="Payment Method" name="payment_method" rules={[{ required: true }]}>
+              <Select>
+                <Select.Option value="Cash">Cash</Select.Option>
+                <Select.Option value="Transfer">Transfer</Select.Option>
+              </Select>
+            </Form.Item>
+          </Col>
+          <Col span={16}>
+            <Form.Item label="Remarks" name="remarks">
+              <Input />
+            </Form.Item>
+          </Col>
+        </Row>
+
+        {/* Conditional Bank Details */}
+        {paymentMethod === 'Transfer' && (
+          <Row gutter={[16, 16]}>
+            <Col span={8}>
+              <Form.Item label="Bank Name" name="bank_name" rules={[{ required: true }]}>
+                <Input placeholder="Enter Bank Name" />
+              </Form.Item>
+            </Col>
+            <Col span={8}>
+              <Form.Item label="Account Name" name="account_name" rules={[{ required: true }]}>
+                <Input placeholder="Enter Account Name" />
+              </Form.Item>
+            </Col>
+            <Col span={8}>
+              <Form.Item label="Account No." name="account_no" rules={[{ required: true }]}>
+                <Input placeholder="Enter Account Number" />
+              </Form.Item>
+            </Col>
+          </Row>
+        )}
+      </div>
+
+      {/* Items Table */}
+      <div style={{ marginBottom: 16 }}>
+        <Space style={{ marginBottom: 8 }}>
+          <Button type="primary" icon={<PlusOutlined />} onClick={handleAddRow}>
+            Add Item
+          </Button>
+        </Space>
+        <Table
+          dataSource={items}
+          columns={columns}
+          pagination={false}
+          size="middle"
+          bordered
+          scroll={{ x: 1100 }}
+          footer={() => (
+            <div style={{ textAlign: 'right', fontWeight: 'bold', fontSize: 16 }}>
+              Total: {items[0]?.currency || 'TZS'} {totalAmount > 0 ? totalAmount.toLocaleString() : '-'}
+            </div>
+          )}
+        />
+      </div>
+    </>
+  );
+
+  // Dynamic modal title
+  const modalTitle = isTripExpense
+    ? `Add Trip Expense${tripNumber ? ` - ${tripNumber}` : ''}`
+    : "Add Office Expense";
 
   return (
     <Modal
-      title="Add Expense"
+      title={modalTitle}
       open={open}
+      width={1200}
+      style={{ top: 20 }}
+      styles={{ body: { maxHeight: 'calc(100vh - 200px)', overflowY: 'auto' } }}
       onCancel={() => {
         form.resetFields();
         onClose();
       }}
-      footer={null}
+      footer={[
+        <Button key="cancel" onClick={onClose}>
+          Cancel
+        </Button>,
+        <Button key="submit" type="primary" loading={submitting} onClick={form.submit}>
+          Submit Application
+        </Button>,
+      ]}
+      forceRender
     >
       <Form
         form={form}
         layout="vertical"
         onFinish={handleSubmit}
       >
-        <Form.Item
-          name="category"
-          label="Category"
-          rules={[{ required: true, message: "Please select a category" }]}
-        >
-          <Select 
-            placeholder="Select category" 
-            onChange={(val) => setCategory(val)}
-          >
-            {EXPENSE_CATEGORIES.map((cat) => (
-              <Select.Option key={cat} value={cat}>
-                {cat}
-              </Select.Option>
-            ))}
-          </Select>
-        </Form.Item>
-
-        {/* Trip Selector Logic - Story 2.2 */}
-        {tripId ? (
-             <Form.Item label="Linked Trip">
-                <Input value={tripNumber || `Trip #${tripId.slice(0, 8)}`} disabled />
-             </Form.Item>
-        ) : isTripRequired ? (
-             <Form.Item
-                name="trip_id"
-                label="Select Trip"
-                rules={[
-                    {
-                        required: true,
-                        message: "Trip is required for this category"
-                    }
-                ]}
-             >
-                <Select
-                    showSearch
-                    placeholder="Search by Trip Number"
-                    loading={tripsLoading}
-                    optionFilterProp="children"
-                    filterOption={(input, option: any) =>
-                         (option?.children as unknown as string).toLowerCase().indexOf(input.toLowerCase()) >= 0
-                    }
-                    allowClear
-                >
-                    {trips.map(trip => (
-                        <Select.Option key={trip.id} value={trip.id}>
-                            {trip.trip_number} - {trip.route_name}
-                        </Select.Option>
-                    ))}
-                </Select>
-             </Form.Item>
-        ) : null}
-
-        <Form.Item
-          name="amount"
-          label="Amount (KES)"
-          rules={[
-            { required: true, message: "Please enter the amount" },
-            { type: "number", min: 1, message: "Amount must be greater than 0" },
+        <Tabs
+          defaultActiveKey="1"
+          items={[
+            {
+              key: '1',
+              label: 'Basic Information',
+              children: BasicInfoTab,
+            },
+            {
+              key: '2',
+              label: 'Attachment Manage',
+              children: <div style={{ padding: 20, textAlign: 'center' }}>Attachment upload functionality coming soon.</div>,
+            },
           ]}
-        >
-          <InputNumber
-            style={{ width: "100%" }}
-            min={1}
-            precision={2}
-            placeholder="e.g., 50000"
-            formatter={(value) =>
-              `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ",")
-            }
-            parser={(value) => Number(value?.replace(/,/g, "") || 0) as 1}
-          />
-        </Form.Item>
-
-        <Form.Item
-          name="description"
-          label="Description"
-          rules={[
-            { required: true, message: "Please enter a description" },
-            { max: 500, message: "Description is too long" },
-          ]}
-        >
-          <Input.TextArea rows={3} placeholder="e.g., Shell V-Power fuel" />
-        </Form.Item>
-
-        <Form.Item style={{ marginBottom: 0, textAlign: "right" }}>
-          <Space>
-            <Button
-              onClick={() => {
-                form.resetFields();
-                onClose();
-              }}
-            >
-              Cancel
-            </Button>
-            <Button type="primary" htmlType="submit" loading={submitting}>
-              Add Expense
-            </Button>
-          </Space>
-        </Form.Item>
+        />
       </Form>
     </Modal>
   );

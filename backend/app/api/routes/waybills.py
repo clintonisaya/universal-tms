@@ -12,6 +12,7 @@ from sqlmodel import func, select
 from app.api.deps import CurrentUser, SessionDep
 from app.models import (
     Message,
+    UserRole,
     Waybill,
     WaybillCreate,
     WaybillPublic,
@@ -19,6 +20,11 @@ from app.models import (
     WaybillStatus,
     WaybillUpdate,
 )
+
+# Roles allowed to create/update waybills
+WRITE_ROLES = {UserRole.admin, UserRole.manager, UserRole.ops}
+# Roles allowed to delete waybills
+DELETE_ROLES = {UserRole.admin}
 
 router = APIRouter(prefix="/waybills", tags=["waybills"])
 
@@ -87,6 +93,10 @@ def create_waybill(
     waybill_in: WaybillCreate,
 ) -> Any:
     """Create a new waybill."""
+    # RBAC: Only admin, manager, and ops can create waybills
+    if current_user.role not in WRITE_ROLES:
+        raise HTTPException(status_code=403, detail="Not enough permissions to create waybills")
+
     waybill_number = generate_waybill_number(session)
     waybill = Waybill.model_validate(waybill_in, update={"waybill_number": waybill_number})
     session.add(waybill)
@@ -104,6 +114,10 @@ def update_waybill(
     waybill_in: WaybillUpdate,
 ) -> Any:
     """Update a waybill."""
+    # RBAC: Only admin, manager, and ops can update waybills
+    if current_user.role not in WRITE_ROLES:
+        raise HTTPException(status_code=403, detail="Not enough permissions to update waybills")
+
     waybill = session.get(Waybill, id)
     if not waybill:
         raise HTTPException(status_code=404, detail="Waybill not found")
@@ -123,6 +137,10 @@ def delete_waybill(
     id: uuid.UUID,
 ) -> Message:
     """Delete a waybill."""
+    # RBAC: Only admin can delete waybills
+    if current_user.role not in DELETE_ROLES:
+        raise HTTPException(status_code=403, detail="Only admin can delete waybills")
+
     waybill = session.get(Waybill, id)
     if not waybill:
         raise HTTPException(status_code=404, detail="Waybill not found")

@@ -3,7 +3,7 @@ Trip Creation & Dispatch - Story 2.1
 CRUD endpoints for trip management with transactional integrity.
 """
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 from fastapi import APIRouter, HTTPException
@@ -32,9 +32,19 @@ from app.models import (
     TruckPublic,
     TruckStatus,
     TrucksPublic,
+    UserRole,
     Waybill,
     WaybillStatus,
 )
+
+# Roles allowed to create/update trips
+WRITE_ROLES = {UserRole.admin, UserRole.manager, UserRole.ops}
+# Roles allowed to delete trips
+DELETE_ROLES = {UserRole.admin}
+# Roles allowed to reopen closed trips (Completed/Cancelled -> active)
+REOPEN_ROLES = {UserRole.admin, UserRole.manager}
+# Closed trip statuses
+CLOSED_STATUSES = {TripStatus.completed, TripStatus.cancelled}
 
 router = APIRouter(prefix="/trips", tags=["trips"])
 
@@ -198,6 +208,10 @@ def create_trip(
     - Updates trailer status to "Loading"
     - Updates driver status to "Assigned"
     """
+    # RBAC: Only admin, manager, and ops can create trips
+    if current_user.role not in WRITE_ROLES:
+        raise HTTPException(status_code=403, detail="Not enough permissions to create trips")
+
     # Validate and fetch truck
     truck = session.get(Truck, trip_in.truck_id)
     if not truck:
@@ -258,7 +272,12 @@ def update_trip(
     Update a trip.
 
     Status changes are synchronized to truck and trailer.
+    Manager/Admin can reopen closed trips (Completed/Cancelled -> active status).
     """
+    # RBAC: Only admin, manager, and ops can update trips
+    if current_user.role not in WRITE_ROLES:
+        raise HTTPException(status_code=403, detail="Not enough permissions to update trips")
+
     trip = session.get(Trip, id)
     if not trip:
         raise HTTPException(status_code=404, detail="Trip not found")
@@ -268,6 +287,51 @@ def update_trip(
     # Handle status change with synchronized updates
     if "status" in update_dict:
         new_status = TripStatus(update_dict["status"])
+        current_status = TripStatus(trip.status) if isinstance(trip.status, str) else trip.status
+
+        # Check if this is a reopen operation (Completed/Cancelled -> active)
+        is_reopen = current_status in CLOSED_STATUSES and new_status not in CLOSED_STATUSES
+        if is_reopen:
+            # Only Manager/Admin can reopen closed trips
+            if current_user.role not in REOPEN_ROLES:
+                raise HTTPException(
+                    status_code=403,
+                    detail="Only Manager or Admin can reopen completed/cancelled trips"
+                )
+
+            # Check if truck is available for reopening
+            truck = session.get(Truck, trip.truck_id)
+            if truck and truck.status not in (TruckStatus.idle, TruckStatus.offloaded):
+                # Check if truck is on another active trip
+                other_trip = session.exec(
+                    select(Trip)
+                    .where(Trip.truck_id == trip.truck_id)
+                    .where(Trip.id != trip.id)
+                    .where(Trip.status.notin_([TripStatus.completed.value, TripStatus.cancelled.value]))
+                ).first()
+                if other_trip:
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"Cannot reopen trip: Truck {truck.plate_number} is currently on Trip {other_trip.trip_number}. "
+                               f"Complete or cancel that trip first, or swap the truck."
+                    )
+
+            # Check if trailer is available for reopening
+            if trip.trailer_id:
+                trailer = session.get(Trailer, trip.trailer_id)
+                if trailer and trailer.status not in (TrailerStatus.idle, TrailerStatus.offloaded):
+                    other_trip = session.exec(
+                        select(Trip)
+                        .where(Trip.trailer_id == trip.trailer_id)
+                        .where(Trip.id != trip.id)
+                        .where(Trip.status.notin_([TripStatus.completed.value, TripStatus.cancelled.value]))
+                    ).first()
+                    if other_trip:
+                        raise HTTPException(
+                            status_code=400,
+                            detail=f"Cannot reopen trip: Trailer {trailer.plate_number} is currently on Trip {other_trip.trip_number}. "
+                                   f"Complete or cancel that trip first."
+                        )
 
         # Update truck status
         truck = session.get(Truck, trip.truck_id)
@@ -281,12 +345,22 @@ def update_trip(
             trailer.status = TRIP_TO_TRAILER_STATUS[new_status]
             session.add(trailer)
 
-        # Update driver status for completed/cancelled trips
-        if new_status in (TripStatus.completed, TripStatus.cancelled):
-            driver = session.get(Driver, trip.driver_id)
-            if driver:
+        # Update driver status based on trip status
+        driver = session.get(Driver, trip.driver_id)
+        if driver:
+            if new_status == TripStatus.in_transit:
+                driver.status = DriverStatus.on_trip
+                session.add(driver)
+            elif new_status in (TripStatus.completed, TripStatus.cancelled):
                 driver.status = DriverStatus.active
                 session.add(driver)
+
+        # Handle end_date for completed trips
+        if new_status == TripStatus.completed:
+            update_dict["end_date"] = datetime.now(timezone.utc)
+        elif new_status == TripStatus.loading:
+            # If moved back to loading, clear end_date
+            update_dict["end_date"] = None
 
         # Update waybill status if linked
         if trip.waybill_id and new_status in TRIP_TO_WAYBILL_STATUS:
@@ -316,6 +390,10 @@ def swap_truck(
     - Old truck status changes to Idle
     - New truck takes the current trip status
     """
+    # RBAC: Only admin, manager, and ops can swap trucks
+    if current_user.role not in WRITE_ROLES:
+        raise HTTPException(status_code=403, detail="Not enough permissions to swap trucks")
+
     trip = session.get(Trip, id)
     if not trip:
         raise HTTPException(status_code=404, detail="Trip not found")
@@ -356,6 +434,10 @@ def delete_trip(
     id: uuid.UUID,
 ) -> Message:
     """Delete a trip."""
+    # RBAC: Only admin can delete trips
+    if current_user.role not in DELETE_ROLES:
+        raise HTTPException(status_code=403, detail="Only admin can delete trips")
+
     trip = session.get(Trip, id)
     if not trip:
         raise HTTPException(status_code=404, detail="Trip not found")

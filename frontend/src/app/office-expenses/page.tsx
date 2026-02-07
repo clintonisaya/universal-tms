@@ -7,7 +7,6 @@ import {
   Button,
   Card,
   Space,
-  Tag,
   message,
   Typography,
   Spin,
@@ -23,6 +22,14 @@ import type { ExpenseRequestDetailed, ExpenseStatus, ExpenseRequestsResponse } f
 import { useAuth } from "@/contexts/AuthContext";
 import { AddExpenseModal } from "@/components/expenses/AddExpenseModal";
 import { PaymentModal } from "@/components/expenses/PaymentModal";
+import { ExpenseDetailModal } from "@/components/expenses/ExpenseDetailModal";
+import { ExpenseStatusBadge } from "@/components/expenses/ExpenseStatusBadge";
+import {
+  getColumnSearchProps,
+  getColumnFilterProps,
+  getStandardRowSelection,
+  useResizableColumns,
+} from "@/components/ui/tableUtils";
 
 const { Title } = Typography;
 
@@ -41,22 +48,38 @@ export default function OfficeExpensesPage() {
   const [loading, setLoading] = useState(true);
   const [totalCount, setTotalCount] = useState(0);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  
+  const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
+
   // Payment Modal State
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
   const [selectedExpense, setSelectedExpense] = useState<ExpenseRequestDetailed | null>(null);
 
+  // Detail Modal State
+  const [detailModalOpen, setDetailModalOpen] = useState(false);
+  const [detailExpense, setDetailExpense] = useState<ExpenseRequestDetailed | null>(null);
+
+  const handleViewDetail = (record: ExpenseRequestDetailed) => {
+    setDetailExpense(record);
+    setDetailModalOpen(true);
+  };
+
   const fetchExpenses = useCallback(async () => {
     setLoading(true);
     try {
-      // Filter for Office category
-      const response = await fetch("/api/v1/expenses/?category=Office", {
+      // Fetch all expenses and filter by EXP- prefix (office expenses)
+      const response = await fetch("/api/v1/expenses/", {
         credentials: "include",
       });
       if (response.ok) {
         const data = await response.json();
-        setExpenses(data.data);
-        setTotalCount(data.count);
+        // Filter to show only office expenses (expense_number starts with "EXP")
+        const officeExpenses = data.data.filter(
+          (e: ExpenseRequestDetailed) => e.expense_number?.startsWith("EXP")
+        );
+        setExpenses(officeExpenses);
+        setTotalCount(officeExpenses.length);
       } else if (response.status === 401) {
         router.push("/login");
       } else {
@@ -86,16 +109,25 @@ export default function OfficeExpensesPage() {
 
   const columns: ColumnsType<ExpenseRequestDetailed> = [
     {
-      title: "ID",
-      dataIndex: "id",
-      key: "id",
-      render: (id: string) => id?.slice(0, 8).toUpperCase(),
-      width: 100,
+      title: "Expense #",
+      dataIndex: "expense_number",
+      key: "expense_number",
+      width: 140,
+      render: (num: string | null, record: ExpenseRequestDetailed) => (
+        <a
+          onClick={() => handleViewDetail(record)}
+          style={{ fontWeight: 600, color: "#1890ff", cursor: "pointer" }}
+        >
+          {num || record.id?.slice(0, 8).toUpperCase()}
+        </a>
+      ),
+      ...getColumnSearchProps("expense_number"),
     },
     {
       title: "Date",
       dataIndex: "created_at",
       key: "created_at",
+      width: 110,
       render: (date: string | null) =>
         date ? new Date(date).toLocaleDateString() : "-",
       sorter: (a, b) => {
@@ -108,60 +140,69 @@ export default function OfficeExpensesPage() {
       title: "Description",
       dataIndex: "description",
       key: "description",
+      ellipsis: true,
+      ...getColumnSearchProps("description"),
     },
     {
       title: "Amount",
       dataIndex: "amount",
       key: "amount",
-      render: (amount: number) => `$${Number(amount).toLocaleString()}`,
+      width: 140,
+      align: "right",
+      render: (amount: number, record) => {
+        const cur = record.currency || "TZS";
+        return (
+          <div style={{ fontWeight: 600 }}>
+            {cur} {Number(amount).toLocaleString()}
+          </div>
+        );
+      },
       sorter: (a, b) => a.amount - b.amount,
     },
     {
       title: "Status",
       dataIndex: "status",
       key: "status",
-      render: (status: ExpenseStatus) => (
-        <Tag color={STATUS_COLORS[status]}>{status}</Tag>
-      ),
-      filters: Object.keys(STATUS_COLORS).map((status) => ({
-        text: status,
-        value: status,
-      })),
-      onFilter: (value, record) => record.status === value,
+      width: 220,
+      render: (status: ExpenseStatus) => <ExpenseStatusBadge status={status} />,
+      ...getColumnFilterProps("status", Object.keys(STATUS_COLORS).map((s) => ({ text: s, value: s }))),
     },
     {
       title: "Actions",
       key: "actions",
+      width: 120,
+      fixed: "right",
       render: (_, record) => (
-        <Space size="small">
-          {/* Pay Button: Only for Finance/Admin when Pending Finance */}
-          {(user?.role === "finance" || user?.role === "admin") && 
-           record.status === "Pending Finance" && (
-            <Button
-              type="primary"
-              size="small"
-              icon={<DollarOutlined />}
-              onClick={() => handlePay(record)}
-            >
-              Pay
-            </Button>
-          )}
+        <div className="row-actions">
+          <Space size="small">
+            {(user?.role === "finance" || user?.role === "admin") &&
+              record.status === "Pending Finance" && (
+                <Button
+                  type="primary"
+                  size="small"
+                  icon={<DollarOutlined />}
+                  onClick={() => handlePay(record)}
+                >
+                  Pay
+                </Button>
+              )}
 
-          {/* Print Voucher: Only when Paid */}
-          {record.status === "Paid" && (
-            <Button
-              type="default"
-              size="small"
-              icon={<PrinterOutlined />}
-              onClick={() => handlePrint(record.id)}
-            >
-              Voucher
-            </Button>
-          )}
-        </Space>
+            {record.status === "Paid" && (
+              <Button
+                type="default"
+                size="small"
+                icon={<PrinterOutlined />}
+                onClick={() => handlePrint(record.id)}
+              />
+            )}
+          </Space>
+        </div>
       ),
     },
   ];
+
+  // Make columns resizable
+  const { resizableColumns, components } = useResizableColumns(columns);
 
   if (authLoading) {
     return (
@@ -187,7 +228,7 @@ export default function OfficeExpensesPage() {
       }}
     >
       <Card>
-        <Space direction="vertical" size="middle" style={{ width: "100%" }}>
+        <Space orientation="vertical" size="middle" style={{ width: "100%" }}>
           <div
             style={{
               display: "flex",
@@ -213,15 +254,29 @@ export default function OfficeExpensesPage() {
           </div>
 
           <Table<ExpenseRequestDetailed>
-            columns={columns}
+            columns={resizableColumns}
+            components={components}
             dataSource={expenses}
             rowKey="id"
             loading={loading}
+            sticky={{ offsetHeader: 64 }}
+            rowSelection={getStandardRowSelection(
+              currentPage,
+              pageSize,
+              selectedRowKeys,
+              setSelectedRowKeys
+            )}
             pagination={{
+              current: currentPage,
+              pageSize,
               total: totalCount,
               showTotal: (total) => `Total ${total} expenses`,
               showSizeChanger: true,
               pageSizeOptions: ["10", "20", "50", "100"],
+              onChange: (page, size) => {
+                setCurrentPage(page);
+                setPageSize(size);
+              },
             }}
           />
         </Space>
@@ -233,11 +288,20 @@ export default function OfficeExpensesPage() {
         onSuccess={fetchExpenses}
       />
 
-      <PaymentModal 
+      <PaymentModal
         open={paymentModalOpen}
         onClose={() => setPaymentModalOpen(false)}
         onSuccess={fetchExpenses}
         expense={selectedExpense}
+      />
+
+      <ExpenseDetailModal
+        open={detailModalOpen}
+        onClose={() => {
+          setDetailModalOpen(false);
+          setDetailExpense(null);
+        }}
+        expense={detailExpense}
       />
     </div>
   );

@@ -35,6 +35,11 @@ import type {
   CitiesResponse,
 } from "@/types/location";
 import { useAuth } from "@/contexts/AuthContext";
+import {
+  getColumnSearchProps,
+  getStandardRowSelection,
+  useResizableColumns,
+} from "@/components/ui/tableUtils";
 
 const { Title } = Typography;
 
@@ -55,6 +60,7 @@ export default function LocationsPage() {
   const [selectedCountryName, setSelectedCountryName] = useState<string>("");
 
   const [submitting, setSubmitting] = useState(false);
+  const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
 
   const [countryForm] = Form.useForm();
   const [cityForm] = Form.useForm();
@@ -213,68 +219,84 @@ export default function LocationsPage() {
       title: "Name",
       dataIndex: "name",
       key: "name",
+      render: (text: string) => (
+        <div style={{ fontWeight: 600 }}>{text}</div>
+      ),
+      ...getColumnSearchProps("name"),
     },
     {
       title: "Code",
       dataIndex: "code",
       key: "code",
+      width: 100,
       render: (text) => text || "-",
+      ...getColumnSearchProps("code"),
     },
     {
-      title: "Sorting",
+      title: "Order",
       dataIndex: "sorting",
       key: "sorting",
+      width: 80,
+      align: "center",
     },
     {
       title: "Actions",
       key: "actions",
+      width: 180,
+      fixed: "right",
       render: (_, record) => {
         const isCountry = !("country_id" in record);
         return (
-          <Space size="small">
-            {isCountry && (
+          <div className="row-actions">
+            <Space size="small">
+              {isCountry && (
+                <Button
+                  size="small"
+                  icon={<PlusOutlined />}
+                  onClick={() => {
+                    setEditingItem(null);
+                    setSelectedCountryId(record.id);
+                    setSelectedCountryName(record.name);
+                    cityForm.resetFields();
+                    setIsCityModalOpen(true);
+                  }}
+                >
+                  City
+                </Button>
+              )}
               <Button
+                type="text"
                 size="small"
-                icon={<PlusOutlined />}
+                icon={<EditOutlined />}
                 onClick={() => {
-                  setEditingItem(null);
-                  setSelectedCountryId(record.id);
-                  setSelectedCountryName(record.name);
-                  cityForm.resetFields();
-                  setIsCityModalOpen(true);
+                  setEditingItem(record);
+                  if (isCountry) {
+                    countryForm.setFieldsValue(record);
+                    setIsCountryModalOpen(true);
+                  } else {
+                    cityForm.setFieldsValue(record);
+                    setIsCityModalOpen(true);
+                  }
                 }}
+              />
+              <Popconfirm
+                title={`Delete ${record.name}?`}
+                onConfirm={() => handleDelete(record)}
+                okText="Yes"
+                cancelText="No"
+                okButtonProps={{ danger: true }}
               >
-                Add City
-              </Button>
-            )}
-            <Button
-              type="text"
-              icon={<EditOutlined />}
-              onClick={() => {
-                setEditingItem(record);
-                if (isCountry) {
-                  countryForm.setFieldsValue(record);
-                  setIsCountryModalOpen(true);
-                } else {
-                  cityForm.setFieldsValue(record);
-                  setIsCityModalOpen(true);
-                }
-              }}
-            />
-            <Popconfirm
-              title={`Delete ${record.name}?`}
-              onConfirm={() => handleDelete(record)}
-              okText="Yes"
-              cancelText="No"
-              okButtonProps={{ danger: true }}
-            >
-              <Button type="text" danger icon={<DeleteOutlined />} />
-            </Popconfirm>
-          </Space>
+                <Button type="text" danger size="small" icon={<DeleteOutlined />} />
+              </Popconfirm>
+            </Space>
+          </div>
         );
       },
     },
   ];
+
+  // Make columns resizable
+  const { resizableColumns, components } = useResizableColumns(columns);
 
   if (authLoading) {
     return (
@@ -332,11 +354,19 @@ export default function LocationsPage() {
           </div>
 
           <Table
-            columns={columns}
+            columns={resizableColumns}
+            components={components}
             dataSource={data}
             rowKey="id"
             loading={loading}
+            sticky={{ offsetHeader: 64 }}
             pagination={false}
+            rowSelection={getStandardRowSelection(
+              1,
+              data.length || 1000,
+              selectedRowKeys,
+              setSelectedRowKeys
+            )}
           />
         </Flex>
       </Card>

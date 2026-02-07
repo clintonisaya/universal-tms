@@ -55,18 +55,20 @@ export function MetricCard({
         boxShadow: "0 1px 2px rgba(0,0,0,0.03)",
         cursor: onClick ? "pointer" : "default",
       }}
-      bodyStyle={{ padding: "20px 24px" }}
+      styles={{ body: { padding: "20px 24px" } }}
     >
       <Statistic
         title={<Text type="secondary" style={{ fontSize: 13, textTransform: "uppercase", letterSpacing: "0.5px" }}>{title}</Text>}
         value={value}
         prefix={prefix}
         suffix={suffix}
-        valueStyle={{
-          color: getValueColor(),
-          fontWeight: 700,
-          fontSize: isRevenue ? 28 : 24,
-          fontFamily: "Inter, sans-serif",
+        styles={{
+          content: {
+            color: getValueColor(),
+            fontWeight: 700,
+            fontSize: isRevenue ? 28 : 24,
+            fontFamily: "Inter, sans-serif",
+          },
         }}
       />
       {trend !== undefined && (

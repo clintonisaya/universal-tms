@@ -8,7 +8,6 @@ import {
   DashboardOutlined,
   CarOutlined,
   ScheduleOutlined,
-  TeamOutlined,
   DollarOutlined,
   SettingOutlined,
   LogoutOutlined,
@@ -16,9 +15,11 @@ import {
   MenuFoldOutlined,
   MenuUnfoldOutlined,
   CrownOutlined,
-  BankOutlined,
+  BarChartOutlined,
 } from "@ant-design/icons";
 import { useAuth } from "@/contexts/AuthContext";
+import { NotificationCenter } from "@/components/layout/NotificationCenter";
+import { clearNotifications } from "@/hooks/useNotifications";
 
 const { Sider, Content, Header } = Layout;
 const { Text } = Typography;
@@ -52,17 +53,7 @@ const menuItems: MenuProps["items"] = [
       { key: "/ops/tracking", label: "Control Tower" },
       { key: "/ops/waybills", label: "Waybills" },
       { key: "/ops/trips", label: "Trips" },
-      { key: "/ops/expenses", label: "Trip Expenses" },
-    ],
-  },
-  {
-    key: "management",
-    icon: <TeamOutlined />,
-    label: "Management",
-    children: [
-      { key: "/manager/approvals", label: "Approvals" },
-      { key: "/manager/payments", label: "Payments" },
-      { key: "/manager/reports", label: "Reports", disabled: true },
+      { key: "/ops/expenses", label: "Expenses" },
     ],
   },
   {
@@ -71,11 +62,23 @@ const menuItems: MenuProps["items"] = [
     label: "Office Expenses",
   },
   {
+    key: "reports",
+    icon: <BarChartOutlined />,
+    label: "Reports",
+    children: [
+      { key: "/reports/profitability", label: "Trip Profitability" },
+    ],
+  },
+  {
     key: "settings",
     icon: <SettingOutlined />,
     label: "Settings",
     children: [
       { key: "/settings/users", label: "Users" },
+      { key: "/settings/clients", label: "Clients" },
+      { key: "/settings/finance", label: "Exchange Rates" },
+      { key: "/settings/finance/office-expense-types", label: "Office Expense Types" },
+      { key: "/settings/trip-expenses", label: "Trip Expense Types" },
       { key: "/settings/transport/locations", label: "Locations" },
       { key: "/settings/transport/cargo-types", label: "Cargo Types" },
       { key: "/settings/transport/vehicle-statuses", label: "Vehicle Statuses" },
@@ -97,8 +100,15 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   };
 
   const handleLogout = async () => {
+    // Clear notifications on logout (Story 4.3 - privacy)
+    if (user?.id) clearNotifications(user.id);
     await logout();
     router.push("/login");
+  };
+
+  const handleNotificationClick = (taskId: string) => {
+    // Dispatch custom event for dashboard page to handle
+    window.dispatchEvent(new CustomEvent("notification-click", { detail: taskId }));
   };
 
   const userMenuItems: MenuProps["items"] = [
@@ -129,17 +139,20 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
       "/fleet/trailers",
       "/fleet/drivers",
       "/fleet/maintenance",
+      "/ops/tracking",
       "/ops/waybills",
       "/ops/trips",
       "/ops/expenses",
-      "/manager/approvals",
-      "/manager/payments",
-      "/manager/reports",
       "/office-expenses",
+      "/settings/clients",
+      "/settings/finance",
+      "/settings/finance/office-expense-types",
+      "/settings/trip-expenses",
       "/settings/transport/locations",
       "/settings/transport/cargo-types",
       "/settings/transport/vehicle-statuses",
       "/settings/users",
+      "/reports/profitability",
     ];
     // Sort by length descending to match most specific first
     return allKeys
@@ -155,7 +168,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
     // Always keep sections open if we are inside them
     if (pathname.startsWith("/fleet")) return ["fleet"];
     if (pathname.startsWith("/ops")) return ["operations"];
-    if (pathname.startsWith("/manager")) return ["management"];
+    if (pathname.startsWith("/reports")) return ["reports"];
     if (pathname.startsWith("/settings")) return ["settings"];
 
     return [];
@@ -168,9 +181,14 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
         collapsed={collapsed}
         onCollapse={setCollapsed}
         style={{
-          background: "#1F1F1F", // Charcoal
+          background: "#1F1F1F",
           boxShadow: "2px 0 8px rgba(0,0,0,0.15)",
-          zIndex: 10
+          zIndex: 10,
+          overflow: "auto",
+          height: "100vh",
+          position: "sticky",
+          top: 0,
+          left: 0,
         }}
         width={260}
         trigger={null}
@@ -240,7 +258,10 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
             justifyContent: "space-between",
             borderBottom: `1px solid ${token.colorBorderSecondary}`,
             height: 64,
-            boxShadow: "0 1px 2px rgba(0,0,0,0.03)"
+            boxShadow: "0 1px 2px rgba(0,0,0,0.03)",
+            position: "sticky",
+            top: 0,
+            zIndex: 9,
           }}
         >
           <div
@@ -258,7 +279,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
           </div>
 
           <Space size="large">
-            {/* Could add Notifications bell here later */}
+            <NotificationCenter onNotificationClick={handleNotificationClick} />
             <Dropdown menu={{ items: userMenuItems }} placement="bottomRight" trigger={['click']}>
               <div style={{ cursor: "pointer", padding: "4px 8px", borderRadius: "4px", transition: "background 0.3s" }}>
                 <Space>

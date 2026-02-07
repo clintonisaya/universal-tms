@@ -61,6 +61,16 @@ development_status:
   2-10-waybill-tracking.md: ready-for-dev
   2-11-admin-settings: ready-for-dev
   2-12-mass-operations: backlog
+  2-13-manual-location-update: ready-for-dev
+  2-14-multi-currency: ready-for-dev
+  2-15-expense-audit: ready-for-dev
+  2-16-sticky-pagination: ready-for-dev
+  2-17-tripexpense-id-format: ready-for-dev
+  2-18-standardize-tables: in-progress
+  2-19-trip-expense-types: review
+  2-20-expense-status-display: review
+  2-21-expense-payment-application: review
+  2-22-office-expense-types: review
   epic-2-retrospective: optional
 
   # Epic 3: Maintenance & Office Overheads
