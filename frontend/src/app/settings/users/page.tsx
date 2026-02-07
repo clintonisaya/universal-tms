@@ -16,6 +16,7 @@ import {
   Tooltip,
   App,
   Flex,
+  Space,
   Tag,
 } from "antd";
 import {
@@ -30,6 +31,12 @@ import {
 import type { ColumnsType } from "antd/es/table";
 import { useAuth } from "@/contexts/AuthContext";
 import BulkActionBar from "@/components/ui/BulkActionBar";
+import {
+  getColumnSearchProps,
+  getColumnFilterProps,
+  getStandardRowSelection,
+  useResizableColumns,
+} from "@/components/ui/tableUtils";
 
 const { Title, Text } = Typography;
 
@@ -51,6 +58,13 @@ interface UserCreate {
 
 const ROLES = ["admin", "manager", "ops", "finance"];
 
+const ROLE_FILTERS = ROLES.map((r) => ({ text: r.toUpperCase(), value: r }));
+
+const STATUS_FILTERS = [
+  { text: "Active", value: true },
+  { text: "Inactive", value: false },
+];
+
 // Child component to use App hook
 const UsersContent = () => {
   const router = useRouter();
@@ -66,6 +80,8 @@ const UsersContent = () => {
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
 
   const [form] = Form.useForm();
 
@@ -190,15 +206,6 @@ const UsersContent = () => {
     setIsModalOpen(true);
   };
 
-  const onSelectChange = (newSelectedRowKeys: React.Key[]) => {
-    setSelectedRowKeys(newSelectedRowKeys);
-  };
-
-  const rowSelection = {
-    selectedRowKeys,
-    onChange: onSelectChange,
-  };
-
   const handleBulkDelete = () => {
     Modal.confirm({
       title: 'Delete Selected Users',
@@ -251,66 +258,86 @@ const UsersContent = () => {
 
   const columns: ColumnsType<User> = [
     {
-      title: "Name",
+      title: "Full Name",
       dataIndex: "full_name",
       key: "full_name",
-      render: (text) => text || "-",
+      width: 180,
+      render: (text) => (
+        <div style={{ fontWeight: 600 }}>{text || "-"}</div>
+      ),
+      ...getColumnSearchProps("full_name"),
     },
     {
-      title: "Username / Email",
+      title: "Username",
       dataIndex: "username",
       key: "username",
+      width: 200,
+      render: (text) => text || "-",
+      ...getColumnSearchProps("username"),
     },
     {
       title: "Role",
       dataIndex: "role",
       key: "role",
+      width: 100,
       render: (role) => (
         <Tag color={role === "admin" ? "red" : "blue"}>{role.toUpperCase()}</Tag>
       ),
+      ...getColumnFilterProps("role", ROLE_FILTERS),
     },
     {
       title: "Status",
       key: "status",
+      dataIndex: "is_active",
+      width: 100,
       render: (_, r) => (
         <Tag color={r.is_active ? "success" : "default"}>
           {r.is_active ? "Active" : "Inactive"}
         </Tag>
-      )
+      ),
+      ...getColumnFilterProps("is_active", STATUS_FILTERS),
     },
     {
       title: "Actions",
       key: "actions",
+      width: 120,
+      fixed: "right",
       render: (_, record) => (
-        <Flex gap="small">
-          <Button
-            type="text"
-            icon={<EditOutlined />}
-            onClick={() => openModal(record)}
-          />
-          <Tooltip title="Reset Password">
+        <div className="row-actions">
+          <Space size="small">
+            <Button
+              type="text"
+              size="small"
+              icon={<EditOutlined />}
+              onClick={() => openModal(record)}
+            />
+            <Tooltip title="Reset Password">
+              <Popconfirm
+                title="Reset Password"
+                description="Reset to default password? User will need to change it."
+                onConfirm={() => handleResetPassword(record)}
+              >
+                <Button type="text" size="small" icon={<KeyOutlined />} />
+              </Popconfirm>
+            </Tooltip>
             <Popconfirm
-              title="Reset Password"
-              description="Reset to default password? User will need to change it."
-              onConfirm={() => handleResetPassword(record)}
+              title="Delete user"
+              description={`Delete ${record.username}?`}
+              onConfirm={() => handleDelete(record)}
+              okText="Yes"
+              cancelText="No"
+              okButtonProps={{ danger: true }}
             >
-              <Button type="text" icon={<KeyOutlined />} />
+              <Button type="text" danger icon={<DeleteOutlined />} size="small" />
             </Popconfirm>
-          </Tooltip>
-          <Popconfirm
-            title="Delete user"
-            description={`Delete ${record.username}?`}
-            onConfirm={() => handleDelete(record)}
-            okText="Yes"
-            cancelText="No"
-            okButtonProps={{ danger: true }}
-          >
-            <Button type="text" danger icon={<DeleteOutlined />} />
-          </Popconfirm>
-        </Flex>
+          </Space>
+        </div>
       ),
     },
   ];
+
+  // Make columns resizable
+  const { resizableColumns, components } = useResizableColumns(columns);
 
   if (authLoading) return <Spin size="large" />;
 
@@ -338,12 +365,30 @@ const UsersContent = () => {
           </div>
 
           <Table<User>
-            rowSelection={rowSelection}
-            columns={columns}
+            rowSelection={getStandardRowSelection(
+              currentPage,
+              pageSize,
+              selectedRowKeys,
+              setSelectedRowKeys
+            )}
+            columns={resizableColumns}
+            components={components}
             dataSource={users}
             rowKey="id"
             loading={loading}
-            pagination={{ total: totalCount }}
+            sticky={{ offsetHeader: 64 }}
+            pagination={{
+              current: currentPage,
+              pageSize,
+              total: totalCount,
+              showTotal: (total) => `Total ${total} users`,
+              showSizeChanger: true,
+              pageSizeOptions: ["10", "20", "50", "100"],
+              onChange: (page, size) => {
+                setCurrentPage(page);
+                setPageSize(size);
+              },
+            }}
           />
         </Flex>
       </Card>

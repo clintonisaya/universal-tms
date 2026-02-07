@@ -17,7 +17,14 @@ export function PaymentModal({ open, onClose, onSuccess, expense }: PaymentModal
   const [submitting, setSubmitting] = useState(false);
   const [method, setMethod] = useState<string>("CASH");
 
-  if (!expense) return null;
+  // Return early but still render the Modal shell to keep form connected
+  if (!expense) {
+    return (
+      <Modal open={false} footer={null}>
+        <Form form={form} />
+      </Modal>
+    );
+  }
 
   const handleFinish = async (values: any) => {
     setSubmitting(true);

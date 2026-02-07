@@ -7,7 +7,7 @@ from sqlmodel import Session, delete
 from app.core.config import settings
 from app.core.db import engine, init_db
 from app.main import app
-from app.models import CargoType, City, Country, Driver, ExpenseRequest, Item, Trailer, Trip, Truck, User, VehicleStatus, Waybill
+from app.models import CargoType, City, Country, Driver, ExpenseRequest, Item, Trailer, Trip, Truck, User, VehicleStatus, Waybill, MaintenanceEvent
 from tests.utils.user import authentication_token_from_username
 from tests.utils.utils import get_superuser_token_headers
 
@@ -17,34 +17,25 @@ def db() -> Generator[Session, None, None]:
     with Session(engine) as session:
         init_db(session)
         yield session
+        # Cleanup after tests
         # Delete in order respecting foreign key constraints
-        # statement = delete(ExpenseRequest)
-        # session.execute(statement)
-        # statement = delete(Trip)
-        # session.execute(statement)
-        # statement = delete(Waybill)
-        # session.execute(statement)
-        # statement = delete(Item)
-        # session.execute(statement)
-        # statement = delete(Truck)
-        # session.execute(statement)
-        # statement = delete(Driver)
-        # session.execute(statement)
-        # statement = delete(Trailer)
-        # session.execute(statement)
-        # statement = delete(City)
-        # session.execute(statement)
-        # statement = delete(Country)
-        # session.execute(statement)
-        # statement = delete(Location)
-        # session.execute(statement)
-        # statement = delete(CargoType)
-        # session.execute(statement)
-        # statement = delete(VehicleStatus)
-        # session.execute(statement)
-        # statement = delete(User)
-        # session.execute(statement)
-        # session.commit()
+        session.execute(delete(MaintenanceEvent))
+        session.execute(delete(ExpenseRequest))
+        session.execute(delete(Trip))
+        session.execute(delete(Waybill))
+        session.execute(delete(Item))
+        session.execute(delete(Truck))
+        session.execute(delete(Driver))
+        session.execute(delete(Trailer))
+        session.execute(delete(City))
+        session.execute(delete(Country))
+        session.execute(delete(CargoType))
+        session.execute(delete(VehicleStatus))
+        session.execute(delete(User))
+        session.commit()
+        
+        # Restore seed data (superuser, master data)
+        init_db(session)
 
 
 @pytest.fixture(scope="module")

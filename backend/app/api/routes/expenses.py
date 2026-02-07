@@ -26,10 +26,44 @@ from app.models import (
     Message,
     PaymentMethod,
     Trip,
+    TripStatus,
     UserRole,
 )
 
 router = APIRouter(prefix="/expenses", tags=["expenses"])
+
+
+def generate_expense_number(session: SessionDep, trip_id: uuid.UUID | None, trip: Trip | None) -> str:
+    """Generate a human-readable expense number.
+
+    Trip expenses:     E{trip_number}{seq:03d}  (e.g. ETDLD937F-2026781001)
+    Non-trip expenses: EXP-{YYYY}-{seq:04d}     (e.g. EXP-2026-0001)
+    """
+    if trip_id and trip:
+        # Count existing expenses for this trip
+        count_stmt = select(func.count()).select_from(ExpenseRequest).where(ExpenseRequest.trip_id == trip_id)
+        existing_count = session.exec(count_stmt).one()
+        seq = existing_count + 1
+        return f"E{trip.trip_number}{seq:03d}"
+    else:
+        # Non-trip: EXP-YYYY-SEQ
+        year = datetime.now().year
+        pattern = f"EXP-{year}-%"
+        last_stmt = (
+            select(ExpenseRequest.expense_number)
+            .where(ExpenseRequest.expense_number.like(pattern))
+            .order_by(ExpenseRequest.expense_number.desc())
+            .limit(1)
+        )
+        last_number = session.exec(last_stmt).first()
+        seq = 1
+        if last_number:
+            try:
+                last_seq = int(last_number.split("-")[-1])
+                seq = last_seq + 1
+            except ValueError:
+                pass
+        return f"EXP-{year}-{seq:04d}"
 
 # Valid status transitions by role
 # Format: {current_status: {role: [allowed_new_statuses]}}
@@ -78,8 +112,10 @@ def can_view_expense(expense: ExpenseRequest, user: Any) -> bool:
 
 def can_modify_expense(expense: ExpenseRequest, user: Any) -> bool:
     """Check if user can modify this expense (amount, description, category)."""
-    # Only creator can modify, and only when pending manager
-    if expense.status != ExpenseStatus.pending_manager:
+    # Creator can modify when pending manager OR when returned (for corrections)
+    allowed_statuses = [ExpenseStatus.pending_manager, ExpenseStatus.returned]
+    current_status = ExpenseStatus(expense.status) if isinstance(expense.status, str) else expense.status
+    if current_status not in allowed_statuses:
         return False
     return expense.created_by_id == user.id or user.role == UserRole.admin
 
@@ -91,6 +127,42 @@ def can_delete_expense(expense: ExpenseRequest, user: Any) -> bool:
         return False
     # Only creator or admin can delete
     return expense.created_by_id == user.id or user.role == UserRole.admin
+
+
+def is_trip_closed(trip: Trip | None) -> bool:
+    """Check if a trip is in a closed state (Completed or Cancelled).
+
+    When a trip is closed, no expense modifications should be allowed.
+    """
+    if trip is None:
+        return False  # Non-trip expenses (office expenses) are not affected
+
+    trip_status = TripStatus(trip.status) if isinstance(trip.status, str) else trip.status
+    closed_statuses = [TripStatus.completed, TripStatus.cancelled]
+    return trip_status in closed_statuses
+
+
+def check_trip_not_closed(session: SessionDep, trip_id: uuid.UUID | None) -> Trip | None:
+    """Fetch trip and verify it's not closed. Raises HTTPException if closed.
+
+    Returns the trip object if valid, or None if trip_id is None.
+    """
+    if trip_id is None:
+        return None
+
+    trip = session.get(Trip, trip_id)
+    if trip is None:
+        raise HTTPException(status_code=404, detail="Trip not found")
+
+    if is_trip_closed(trip):
+        trip_status = trip.status.value if hasattr(trip.status, "value") else str(trip.status)
+        raise HTTPException(
+            status_code=400,
+            detail=f"Cannot modify expenses: Trip {trip.trip_number} is {trip_status}. "
+                   f"No expense changes allowed on completed or cancelled trips."
+        )
+
+    return trip
 
 
 @router.get("/", response_model=ExpenseRequestsPublic)
@@ -161,7 +233,12 @@ def read_expenses(
         query.order_by(ExpenseRequest.created_at.desc())
         .offset(skip)
         .limit(limit)
-        .options(selectinload(ExpenseRequest.created_by), selectinload(ExpenseRequest.trip))
+        .options(
+            selectinload(ExpenseRequest.created_by),
+            selectinload(ExpenseRequest.trip),
+            selectinload(ExpenseRequest.paid_by),
+            selectinload(ExpenseRequest.approved_by),
+        )
     )
     expenses = session.exec(query).all()
 
@@ -210,15 +287,27 @@ async def batch_update_expenses(
         )
 
     updated_count = 0
-    
+
+    # Check if any expenses are linked to closed trips
+    for expense in expenses:
+        if expense.trip_id:
+            trip = session.get(Trip, expense.trip_id)
+            if trip and is_trip_closed(trip):
+                trip_status = trip.status.value if hasattr(trip.status, "value") else str(trip.status)
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Cannot modify expense {expense.expense_number}: Trip {trip.trip_number} is {trip_status}. "
+                           f"No expense changes allowed on completed or cancelled trips."
+                )
+
     for expense in expenses:
         # Check transition permission
         current_status = ExpenseStatus(expense.status) if isinstance(expense.status, str) else expense.status
-        
+
         # Skip if already in target status
         if current_status == bulk_in.status:
             continue
-            
+
         if not validate_status_transition(current_status, bulk_in.status, current_user.role):
             # For batch operations, we might want to fail all or skip. 
             # Strict approach: Fail all if one is invalid
@@ -231,15 +320,25 @@ async def batch_update_expenses(
         expense.status = bulk_in.status
         if bulk_in.comment:
             expense.manager_comment = bulk_in.comment
+        # Record approver when moving to Pending Finance (manager approval)
+        if bulk_in.status == ExpenseStatus.pending_finance:
+            expense.approved_by_id = current_user.id
+            expense.approved_at = datetime.now(timezone.utc)
         expense.updated_at = datetime.now(timezone.utc)
         session.add(expense)
         updated_count += 1
 
     session.commit()
-    
+
     # Emit socket event
     await sio.emit("expense_updated", {"count": updated_count, "message": "Batch update processed"})
-    
+
+    # Story 4.2: Notify to-do list updates
+    await sio.emit("task_updated", {
+        "target_status": bulk_in.status.value,
+        "count": updated_count,
+    })
+
     return Message(message=f"Successfully updated {updated_count} expenses")
 
 
@@ -253,17 +352,15 @@ async def create_expense(
     """
     Create a new expense request.
 
-    - If trip_id is provided, validates that the trip exists
+    - If trip_id is provided, validates that the trip exists and is not closed
     - Sets status to "Pending Manager"
     - Records the user who created the expense
     """
-    # Validate trip exists if provided
-    if expense_in.trip_id:
-        trip = session.get(Trip, expense_in.trip_id)
-        if not trip:
-            raise HTTPException(status_code=404, detail="Trip not found")
+    # Validate trip exists and is not closed (Completed/Cancelled)
+    trip = check_trip_not_closed(session, expense_in.trip_id)
 
-    # Validate trip_id is required for specific categories - Story 2.2
+    # Validate trip_id is required for specific categories - Story 2.2 & 2.22
+    # Trip expenses must always link to a trip. Office expenses do not.
     trip_related_categories = [
         ExpenseCategory.fuel,
         ExpenseCategory.allowance,
@@ -276,9 +373,13 @@ async def create_expense(
             detail=f"Trip Number is required for {expense_in.category.value} expenses"
         )
 
+    # Generate expense number - Story 2.17
+    expense_number = generate_expense_number(session, expense_in.trip_id, trip)
+
     # Create expense
     expense = ExpenseRequest(
         **expense_in.model_dump(),
+        expense_number=expense_number,
         created_by_id=current_user.id,
     )
     session.add(expense)
@@ -287,7 +388,14 @@ async def create_expense(
     
     # Emit socket event - Story 2.6
     await sio.emit("expense_created", {"id": str(expense.id), "message": "New Expense Request"})
-    
+
+    # Story 4.2: Notify to-do list update for managers
+    await sio.emit("task_created", {
+        "task_type": "expense_approval",
+        "target_role": "manager",
+        "id": str(expense.id),
+    })
+
     return expense
 
 
@@ -304,10 +412,15 @@ async def update_expense(
 
     - Status changes follow workflow rules based on user role
     - Other fields can only be modified by creator when pending
+    - Cannot modify expenses for completed/cancelled trips
     """
     expense = session.get(ExpenseRequest, id)
     if not expense:
         raise HTTPException(status_code=404, detail="Expense not found")
+
+    # Check if associated trip is closed (Completed/Cancelled)
+    if expense.trip_id:
+        check_trip_not_closed(session, expense.trip_id)
 
     update_dict = expense_in.model_dump(exclude_unset=True)
 
@@ -350,7 +463,13 @@ async def update_expense(
     
     # Emit socket event
     await sio.emit("expense_updated", {"id": str(expense.id), "status": expense.status})
-    
+
+    # Story 4.2: Notify to-do list updates
+    await sio.emit("task_updated", {
+        "id": str(expense.id),
+        "new_status": expense.status if isinstance(expense.status, str) else expense.status.value,
+    })
+
     return expense
 
 
@@ -389,6 +508,10 @@ async def process_payment(
     if not expense:
         raise HTTPException(status_code=404, detail="Expense not found")
 
+    # Check if associated trip is closed (Completed/Cancelled)
+    if expense.trip_id:
+        check_trip_not_closed(session, expense.trip_id)
+
     # Validate status
     current_status = ExpenseStatus(expense.status) if isinstance(expense.status, str) else expense.status
     if current_status != ExpenseStatus.pending_finance:
@@ -411,7 +534,13 @@ async def process_payment(
     
     # Emit socket event
     await sio.emit("expense_updated", {"id": str(expense.id), "status": "Paid"})
-    
+
+    # Story 4.2: Notify to-do list - task removed from finance queue
+    await sio.emit("task_updated", {
+        "id": str(expense.id),
+        "new_status": "Paid",
+    })
+
     return expense
 
 
@@ -421,10 +550,14 @@ def delete_expense(
     current_user: CurrentUser,
     id: uuid.UUID,
 ) -> Message:
-    """Delete an expense. Only allowed when status is 'Pending Manager'."""
+    """Delete an expense. Only allowed when status is 'Pending Manager' and trip is not closed."""
     expense = session.get(ExpenseRequest, id)
     if not expense:
         raise HTTPException(status_code=404, detail="Expense not found")
+
+    # Check if associated trip is closed (Completed/Cancelled)
+    if expense.trip_id:
+        check_trip_not_closed(session, expense.trip_id)
 
     if not can_delete_expense(expense, current_user):
         raise HTTPException(

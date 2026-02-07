@@ -7,7 +7,6 @@ import {
   Button,
   Card,
   Space,
-  Tag,
   message,
   Modal,
   Form,
@@ -25,6 +24,15 @@ import {
 import type { ColumnsType } from "antd/es/table";
 import type { ExpenseRequest, PaymentMethod } from "@/types/expense";
 import { useAuth } from "@/contexts/AuthContext";
+import {
+  getColumnSearchProps,
+  getColumnFilterProps,
+  getStandardRowSelection,
+  useResizableColumns,
+} from "@/components/ui/tableUtils";
+import { ExpenseStatusBadge } from "@/components/expenses/ExpenseStatusBadge";
+import { ExpenseDetailModal } from "@/components/expenses/ExpenseDetailModal";
+import type { ExpenseStatus, ExpenseRequestDetailed } from "@/types/expense";
 
 const { Title, Text } = Typography;
 
@@ -35,6 +43,15 @@ const STATUS_COLORS: Record<string, string> = {
   Rejected: "red",
   Returned: "purple",
 };
+
+const CATEGORY_FILTERS = [
+  { text: "Fuel", value: "Fuel" },
+  { text: "Allowance", value: "Allowance" },
+  { text: "Maintenance", value: "Maintenance" },
+  { text: "Office", value: "Office" },
+  { text: "Border", value: "Border" },
+  { text: "Other", value: "Other" },
+];
 
 interface PaymentFormValues {
   method: PaymentMethod;
@@ -50,8 +67,21 @@ export default function FinancePaymentsPage() {
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedExpense, setSelectedExpense] = useState<ExpenseRequest | null>(null);
   const [processing, setProcessing] = useState(false);
+  const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
+
   const [form] = Form.useForm<PaymentFormValues>();
   const paymentMethod = Form.useWatch("method", form);
+
+  // Detail Modal State
+  const [detailModalOpen, setDetailModalOpen] = useState(false);
+  const [detailExpense, setDetailExpense] = useState<ExpenseRequestDetailed | null>(null);
+
+  const handleViewDetail = (record: ExpenseRequest) => {
+    setDetailExpense(record as ExpenseRequestDetailed);
+    setDetailModalOpen(true);
+  };
 
   const fetchExpenses = useCallback(async () => {
     setLoading(true);
@@ -132,14 +162,29 @@ export default function FinancePaymentsPage() {
     }
   };
 
-  const totalPending = expenses.reduce((sum, e) => sum + e.amount, 0);
+  const totalPending = expenses.reduce((sum, e) => sum + Number(e.amount), 0);
 
   const columns: ColumnsType<ExpenseRequest> = [
+    {
+      title: "Expense #",
+      dataIndex: "expense_number",
+      key: "expense_number",
+      width: 140,
+      render: (num: string | null, record: ExpenseRequest) => (
+        <a
+          onClick={() => handleViewDetail(record)}
+          style={{ fontWeight: 600, color: "#1890ff", cursor: "pointer" }}
+        >
+          {num || record.id?.slice(0, 8).toUpperCase()}
+        </a>
+      ),
+      ...getColumnSearchProps("expense_number"),
+    },
     {
       title: "Date",
       dataIndex: "created_at",
       key: "created_at",
-      width: 120,
+      width: 110,
       render: (date: string) =>
         date ? new Date(date).toLocaleDateString() : "-",
       sorter: (a, b) => (a.created_at || "").localeCompare(b.created_at || ""),
@@ -148,58 +193,61 @@ export default function FinancePaymentsPage() {
       title: "Category",
       dataIndex: "category",
       key: "category",
-      filters: [
-        { text: "Fuel", value: "Fuel" },
-        { text: "Allowance", value: "Allowance" },
-        { text: "Maintenance", value: "Maintenance" },
-        { text: "Office", value: "Office" },
-        { text: "Border", value: "Border" },
-        { text: "Other", value: "Other" },
-      ],
-      onFilter: (value, record) => record.category === value,
+      width: 120,
+      ...getColumnFilterProps("category", CATEGORY_FILTERS),
     },
     {
       title: "Description",
       dataIndex: "description",
       key: "description",
       ellipsis: true,
+      ...getColumnSearchProps("description"),
     },
     {
       title: "Amount",
       dataIndex: "amount",
       key: "amount",
+      width: 140,
       align: "right",
-      render: (amount: number) =>
-        new Intl.NumberFormat("en-KE", {
-          style: "currency",
-          currency: "KES",
-        }).format(amount),
-      sorter: (a, b) => a.amount - b.amount,
+      render: (amount: number, record) => {
+        const cur = record.currency || "TZS";
+        return (
+          <div style={{ fontWeight: 600 }}>
+            {cur} {Number(amount).toLocaleString()}
+          </div>
+        );
+      },
+      sorter: (a, b) => Number(a.amount) - Number(b.amount),
     },
     {
       title: "Status",
       dataIndex: "status",
       key: "status",
-      render: (status: string) => (
-        <Tag color={STATUS_COLORS[status]}>{status}</Tag>
-      ),
+      width: 220,
+      render: (status: ExpenseStatus) => <ExpenseStatusBadge status={status} />,
     },
     {
-      title: "Action",
-      key: "action",
-      width: 120,
+      title: "Actions",
+      key: "actions",
+      width: 100,
+      fixed: "right",
       render: (_, record) => (
-        <Button
-          type="primary"
-          icon={<DollarOutlined />}
-          size="small"
-          onClick={() => openPaymentModal(record)}
-        >
-          Pay
-        </Button>
+        <div className="row-actions">
+          <Button
+            type="primary"
+            icon={<DollarOutlined />}
+            size="small"
+            onClick={() => openPaymentModal(record)}
+          >
+            Pay
+          </Button>
+        </div>
       ),
     },
   ];
+
+  // Make columns resizable
+  const { resizableColumns, components } = useResizableColumns(columns);
 
   if (authLoading) {
     return (
@@ -219,7 +267,7 @@ export default function FinancePaymentsPage() {
   return (
     <div style={{ minHeight: "100vh", background: "#f0f2f5", padding: "24px" }}>
       <Card>
-        <Space direction="vertical" size="middle" style={{ width: "100%" }}>
+        <Space orientation="vertical" size="middle" style={{ width: "100%" }}>
           {/* Header */}
           <div
             style={{
@@ -246,7 +294,7 @@ export default function FinancePaymentsPage() {
                 title="Pending Total"
                 value={totalPending}
                 precision={2}
-                prefix="KES"
+                prefix="TZS"
                 style={{ marginRight: 24 }}
               />
               <Button icon={<ReloadOutlined />} onClick={fetchExpenses}>
@@ -257,15 +305,29 @@ export default function FinancePaymentsPage() {
 
           {/* Table */}
           <Table<ExpenseRequest>
-            columns={columns}
+            columns={resizableColumns}
+            components={components}
             dataSource={expenses}
             rowKey="id"
             loading={loading}
+            sticky={{ offsetHeader: 64 }}
+            rowSelection={getStandardRowSelection(
+              currentPage,
+              pageSize,
+              selectedRowKeys,
+              setSelectedRowKeys
+            )}
             pagination={{
+              current: currentPage,
+              pageSize,
               total: totalCount,
               showTotal: (total) => `Total ${total} pending expenses`,
               showSizeChanger: true,
               pageSizeOptions: ["10", "20", "50", "100"],
+              onChange: (page, size) => {
+                setCurrentPage(page);
+                setPageSize(size);
+              },
             }}
           />
         </Space>
@@ -281,16 +343,13 @@ export default function FinancePaymentsPage() {
           form.resetFields();
         }}
         footer={null}
-        destroyOnClose
+        forceRender
       >
         {selectedExpense && (
           <div style={{ marginBottom: 16 }}>
             <Text type="secondary">Amount: </Text>
             <Text strong>
-              {new Intl.NumberFormat("en-KE", {
-                style: "currency",
-                currency: "KES",
-              }).format(selectedExpense.amount)}
+              {selectedExpense.currency || "TZS"} {Number(selectedExpense.amount).toLocaleString()}
             </Text>
           </div>
         )}
@@ -345,6 +404,16 @@ export default function FinancePaymentsPage() {
           </Form.Item>
         </Form>
       </Modal>
+
+      {/* Expense Detail Modal */}
+      <ExpenseDetailModal
+        open={detailModalOpen}
+        onClose={() => {
+          setDetailModalOpen(false);
+          setDetailExpense(null);
+        }}
+        expense={detailExpense}
+      />
     </div>
   );
 }

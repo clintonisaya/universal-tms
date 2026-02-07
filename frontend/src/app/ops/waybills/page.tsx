@@ -6,6 +6,7 @@ import {
   Table,
   Button,
   Card,
+  Flex,
   Space,
   Tag,
   message,
@@ -23,6 +24,15 @@ import {
 import type { ColumnsType } from "antd/es/table";
 import type { Waybill, WaybillStatus, WaybillsResponse } from "@/types/waybill";
 import { useAuth } from "@/contexts/AuthContext";
+import { CreateWaybillDrawer } from "@/components/waybills/CreateWaybillDrawer";
+import { WaybillDetailDrawer } from "@/components/waybills/WaybillDetailDrawer";
+import { CreateTripDrawer } from "@/components/trips/CreateTripDrawer";
+import {
+  getColumnSearchProps,
+  getColumnFilterProps,
+  getStandardRowSelection,
+  useResizableColumns,
+} from "@/components/ui/tableUtils";
 
 const { Title } = Typography;
 
@@ -33,12 +43,26 @@ const STATUS_COLORS: Record<WaybillStatus, string> = {
   Invoiced: "gold",
 };
 
+const STATUS_FILTERS = Object.keys(STATUS_COLORS).map((status) => ({
+  text: status,
+  value: status,
+}));
+
 export default function WaybillsPage() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
   const [waybills, setWaybills] = useState<Waybill[]>([]);
   const [loading, setLoading] = useState(true);
   const [totalCount, setTotalCount] = useState(0);
+  const [createDrawerOpen, setCreateDrawerOpen] = useState(false);
+  const [detailDrawerOpen, setDetailDrawerOpen] = useState(false);
+  const [detailWaybillId, setDetailWaybillId] = useState<string | null>(null);
+  const [tripDrawerOpen, setTripDrawerOpen] = useState(false);
+  const [tripDrawerWaybillId, setTripDrawerWaybillId] = useState<string | null>(null);
+  const [tripDrawerRouteName, setTripDrawerRouteName] = useState<string | null>(null);
+  const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
 
   const fetchWaybills = useCallback(async () => {
     setLoading(true);
@@ -88,13 +112,14 @@ export default function WaybillsPage() {
   };
 
   const handleCreateTrip = (waybill: Waybill) => {
-    // Navigate to Trip creation with waybill details
-    // We can pass data via URL search params
-    const params = new URLSearchParams({
-      waybill_id: waybill.id,
-      route_name: `${waybill.origin} - ${waybill.destination}`,
-    });
-    router.push(`/ops/trips/new?${params.toString()}`);
+    setTripDrawerWaybillId(waybill.id);
+    setTripDrawerRouteName(`${waybill.origin} - ${waybill.destination}`);
+    setTripDrawerOpen(true);
+  };
+
+  const openDetailDrawer = (id: string) => {
+    setDetailWaybillId(id);
+    setDetailDrawerOpen(true);
   };
 
   const columns: ColumnsType<Waybill> = [
@@ -102,71 +127,97 @@ export default function WaybillsPage() {
       title: "Waybill #",
       dataIndex: "waybill_number",
       key: "waybill_number",
+      width: 140,
       sorter: (a, b) => a.waybill_number.localeCompare(b.waybill_number),
+      render: (text: string, record: Waybill) => (
+        <Button
+          type="link"
+          onClick={() => openDetailDrawer(record.id)}
+          style={{ padding: 0, height: "auto", fontWeight: 600 }}
+        >
+          {text}
+        </Button>
+      ),
+      ...getColumnSearchProps<Waybill>("waybill_number"),
     },
     {
       title: "Client",
       dataIndex: "client_name",
       key: "client_name",
+      width: 160,
+      render: (text: string) => text || "-",
+      ...getColumnSearchProps<Waybill>("client_name"),
     },
     {
       title: "Origin",
       dataIndex: "origin",
       key: "origin",
+      width: 140,
+      render: (text: string) => text || "-",
+      ...getColumnSearchProps<Waybill>("origin"),
     },
     {
       title: "Destination",
       dataIndex: "destination",
       key: "destination",
-    },
-    {
-      title: "Status",
-      dataIndex: "status",
-      key: "status",
-      render: (status: WaybillStatus) => (
-        <Tag color={STATUS_COLORS[status]}>{status}</Tag>
-      ),
-      filters: Object.keys(STATUS_COLORS).map((status) => ({
-        text: status,
-        value: status,
-      })),
-      onFilter: (value, record) => record.status === value,
+      width: 140,
+      render: (text: string) => text || "-",
+      ...getColumnSearchProps<Waybill>("destination"),
     },
     {
       title: "Loading Date",
       dataIndex: "expected_loading_date",
       key: "expected_loading_date",
-      render: (date: string) => new Date(date).toLocaleDateString(),
+      width: 120,
+      render: (date: string) => date ? new Date(date).toLocaleDateString() : "-",
+      sorter: (a, b) => (a.expected_loading_date || "").localeCompare(b.expected_loading_date || ""),
+    },
+    {
+      title: "Status",
+      dataIndex: "status",
+      key: "status",
+      width: 100,
+      render: (status: WaybillStatus) => (
+        <Tag color={STATUS_COLORS[status]}>{status}</Tag>
+      ),
+      ...getColumnFilterProps("status", STATUS_FILTERS),
     },
     {
       title: "Actions",
       key: "actions",
+      width: 130,
+      fixed: "right",
       render: (_, record) => (
-        <Space size="small">
-          {record.status === "Open" && (
-            <Button
-              type="primary"
-              size="small"
-              icon={<RocketOutlined />}
-              onClick={() => handleCreateTrip(record)}
+        <div className="row-actions">
+          <Space size="small">
+            {record.status === "Open" && (
+              <Button
+                type="primary"
+                size="small"
+                icon={<RocketOutlined />}
+                onClick={() => handleCreateTrip(record)}
+              >
+                Dispatch
+              </Button>
+            )}
+            <Popconfirm
+              title="Delete waybill"
+              description="Are you sure you want to delete this waybill?"
+              onConfirm={() => handleDelete(record)}
+              okText="Yes"
+              cancelText="No"
+              okButtonProps={{ danger: true }}
             >
-              Dispatch
-            </Button>
-          )}
-          <Popconfirm
-            title="Delete waybill"
-            description="Are you sure you want to delete this waybill?"
-            onConfirm={() => handleDelete(record)}
-            okText="Yes"
-            cancelText="No"
-            okButtonProps={{ danger: true }}
-          >
-            <Button type="text" danger icon={<DeleteOutlined />} size="small" />
-          </Popconfirm>
-        </Space>
+              <Button type="text" danger icon={<DeleteOutlined />} size="small" />
+            </Popconfirm>
+          </Space>
+        </div>
       ),
     },
   ];
+
+  // Make columns resizable
+  const { resizableColumns, components } = useResizableColumns(columns);
 
   if (authLoading) {
     return (
@@ -192,7 +243,7 @@ export default function WaybillsPage() {
       }}
     >
       <Card>
-        <Space direction="vertical" size="middle" style={{ width: "100%" }}>
+        <Flex vertical gap="middle" style={{ width: "100%" }}>
           <div
             style={{
               display: "flex",
@@ -200,7 +251,7 @@ export default function WaybillsPage() {
               alignItems: "center",
             }}
           >
-            <Space>
+            <Flex gap="small">
               <Button
                 icon={<ArrowLeftOutlined />}
                 onClick={() => router.push("/dashboard")}
@@ -210,35 +261,76 @@ export default function WaybillsPage() {
               <Title level={2} style={{ margin: 0 }}>
                 Waybills
               </Title>
-            </Space>
-            <Space>
+            </Flex>
+            <Flex gap="small">
               <Button icon={<ReloadOutlined />} onClick={fetchWaybills}>
                 Refresh
               </Button>
               <Button
                 type="primary"
                 icon={<PlusOutlined />}
-                onClick={() => router.push("/ops/waybills/new")}
+                onClick={() => setCreateDrawerOpen(true)}
               >
                 New Waybill
               </Button>
-            </Space>
+            </Flex>
           </div>
 
           <Table<Waybill>
-            columns={columns}
+            columns={resizableColumns}
+            components={components}
             dataSource={waybills}
             rowKey="id"
             loading={loading}
+            sticky={{ offsetHeader: 64 }}
+            rowSelection={getStandardRowSelection(
+              currentPage,
+              pageSize,
+              selectedRowKeys,
+              setSelectedRowKeys
+            )}
             pagination={{
+              current: currentPage,
+              pageSize,
               total: totalCount,
               showTotal: (total) => `Total ${total} waybills`,
               showSizeChanger: true,
               pageSizeOptions: ["10", "20", "50", "100"],
+              onChange: (page, size) => {
+                setCurrentPage(page);
+                setPageSize(size);
+              },
             }}
           />
-        </Space>
+        </Flex>
       </Card>
+
+      <CreateWaybillDrawer
+        open={createDrawerOpen}
+        onClose={() => setCreateDrawerOpen(false)}
+        onSuccess={fetchWaybills}
+      />
+
+      <WaybillDetailDrawer
+        open={detailDrawerOpen}
+        onClose={() => {
+          setDetailDrawerOpen(false);
+          setDetailWaybillId(null);
+        }}
+        waybillId={detailWaybillId}
+      />
+
+      <CreateTripDrawer
+        open={tripDrawerOpen}
+        onClose={() => {
+          setTripDrawerOpen(false);
+          setTripDrawerWaybillId(null);
+          setTripDrawerRouteName(null);
+        }}
+        onSuccess={fetchWaybills}
+        waybillId={tripDrawerWaybillId}
+        routeName={tripDrawerRouteName}
+      />
     </div>
   );
 }

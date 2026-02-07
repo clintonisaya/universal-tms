@@ -88,10 +88,10 @@ function LoginForm() {
             zIndex: 1,
             background: "rgba(255, 255, 255, 0.98)",
           }}
-          bodyStyle={{ padding: "40px 32px" }}
+          styles={{ body: { padding: "40px 32px" } }}
         >
           <Space
-            direction="vertical"
+            orientation="vertical"
             size="large"
             style={{ width: "100%", textAlign: "center" }}
           >

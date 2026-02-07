@@ -7,13 +7,12 @@ import {
   Button,
   Card,
   Space,
-  Tag,
   Select,
-  message,
   Modal,
   Input,
   Typography,
   Spin,
+  App,
 } from "antd";
 import {
   CheckCircleOutlined,
@@ -25,6 +24,15 @@ import {
 import type { ColumnsType } from "antd/es/table";
 import type { ExpenseRequest, ExpenseStatus, ExpenseCategory } from "@/types/expense";
 import { useAuth } from "@/contexts/AuthContext";
+import {
+  getColumnSearchProps,
+  getColumnFilterProps,
+  getStandardRowSelection,
+  useResizableColumns,
+} from "@/components/ui/tableUtils";
+import { ExpenseStatusBadge } from "@/components/expenses/ExpenseStatusBadge";
+import { ExpenseDetailModal } from "@/components/expenses/ExpenseDetailModal";
+import type { ExpenseRequestDetailed } from "@/types/expense";
 
 const { TextArea } = Input;
 const { Title, Text } = Typography;
@@ -54,9 +62,20 @@ const STATUS_OPTIONS: { label: string; value: ExpenseStatus }[] = [
   { label: "Returned", value: "Returned" },
 ];
 
-export default function ApprovalPage() {
+const CATEGORY_FILTERS = CATEGORY_OPTIONS.map((o) => ({
+  text: o.label,
+  value: o.value,
+}));
+
+const STATUS_FILTERS = STATUS_OPTIONS.map((o) => ({
+  text: o.label,
+  value: o.value,
+}));
+
+function ApprovalPageContent() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
+  const { message } = App.useApp();
   const [expenses, setExpenses] = useState<ExpenseRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [totalCount, setTotalCount] = useState(0);
@@ -67,6 +86,17 @@ export default function ApprovalPage() {
   const [processing, setProcessing] = useState(false);
   const [statusFilter, setStatusFilter] = useState<ExpenseStatus>("Pending Manager");
   const [categoryFilter, setCategoryFilter] = useState<ExpenseCategory | "">("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
+
+  // Detail Modal State
+  const [detailModalOpen, setDetailModalOpen] = useState(false);
+  const [detailExpense, setDetailExpense] = useState<ExpenseRequestDetailed | null>(null);
+
+  const handleViewDetail = (record: ExpenseRequest) => {
+    setDetailExpense(record as ExpenseRequestDetailed);
+    setDetailModalOpen(true);
+  };
 
   const fetchExpenses = useCallback(async () => {
     setLoading(true);
@@ -94,7 +124,7 @@ export default function ApprovalPage() {
     } finally {
       setLoading(false);
     }
-  }, [router, statusFilter, categoryFilter]);
+  }, [router, statusFilter, categoryFilter, message]);
 
   useEffect(() => {
     if (!authLoading && user) {
@@ -138,10 +168,41 @@ export default function ApprovalPage() {
     }
   };
 
-  const openCommentModal = (type: "Returned" | "Rejected") => {
-    if (selectedRowKeys.length === 0) {
+  const handleSingleApprove = async (id: string) => {
+    setProcessing(true);
+    try {
+      const response = await fetch("/api/v1/expenses/batch", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          ids: [id],
+          status: "Pending Finance",
+        }),
+      });
+
+      if (response.ok) {
+        message.success("Expense approved successfully");
+        fetchExpenses();
+      } else {
+        const error = await response.json();
+        message.error(error.detail || "Operation failed");
+      }
+    } catch {
+      message.error("Network error");
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  const openCommentModal = (type: "Returned" | "Rejected", overrideId?: string) => {
+    const ids = overrideId ? [overrideId] : selectedRowKeys;
+    if (ids.length === 0) {
       message.warning("Please select items first");
       return;
+    }
+    if (overrideId) {
+      setSelectedRowKeys([overrideId]);
     }
     setActionType(type);
     setModalVisible(true);
@@ -149,10 +210,25 @@ export default function ApprovalPage() {
 
   const columns: ColumnsType<ExpenseRequest> = [
     {
+      title: "Expense #",
+      dataIndex: "expense_number",
+      key: "expense_number",
+      width: 140,
+      render: (num: string | null, record: ExpenseRequest) => (
+        <a
+          onClick={() => handleViewDetail(record)}
+          style={{ fontWeight: 600, color: "#1890ff", cursor: "pointer" }}
+        >
+          {num || record.id?.slice(0, 8).toUpperCase()}
+        </a>
+      ),
+      ...getColumnSearchProps("expense_number"),
+    },
+    {
       title: "Date",
       dataIndex: "created_at",
       key: "created_at",
-      width: 120,
+      width: 110,
       render: (date: string) => (date ? new Date(date).toLocaleDateString() : "-"),
       sorter: (a, b) => (a.created_at || "").localeCompare(b.created_at || ""),
     },
@@ -160,38 +236,90 @@ export default function ApprovalPage() {
       title: "Category",
       dataIndex: "category",
       key: "category",
+      width: 120,
+      ...getColumnFilterProps("category", CATEGORY_FILTERS),
     },
     {
       title: "Description",
       dataIndex: "description",
       key: "description",
       ellipsis: true,
+      ...getColumnSearchProps("description"),
     },
     {
       title: "Amount",
       dataIndex: "amount",
       key: "amount",
+      width: 140,
       align: "right",
-      render: (amount: number) =>
-        new Intl.NumberFormat("en-KE", { style: "currency", currency: "KES" }).format(amount),
-      sorter: (a, b) => a.amount - b.amount,
+      render: (amount: number, record) => {
+        const cur = record.currency || "TZS";
+        return (
+          <div style={{ fontWeight: 600 }}>
+            {cur} {Number(amount).toLocaleString()}
+          </div>
+        );
+      },
+      sorter: (a, b) => Number(a.amount) - Number(b.amount),
     },
     {
       title: "Status",
       dataIndex: "status",
       key: "status",
-      render: (status: ExpenseStatus) => (
-        <Tag color={STATUS_COLORS[status]}>{status}</Tag>
-      ),
+      width: 220,
+      render: (status: ExpenseStatus) => <ExpenseStatusBadge status={status} />,
+      ...getColumnFilterProps("status", STATUS_FILTERS),
     },
     {
       title: "Comment",
       dataIndex: "manager_comment",
       key: "manager_comment",
+      width: 160,
       ellipsis: true,
       render: (comment: string | null) => comment || "-",
     },
+    {
+      title: "Actions",
+      key: "actions",
+      width: 120,
+      fixed: "right",
+      render: (_, record) => (
+        <div className="row-actions">
+          {record.status === "Pending Manager" && (
+            <Space size="small">
+              <Button
+                type="text"
+                size="small"
+                icon={<CheckCircleOutlined />}
+                style={{ color: "#52c41a" }}
+                onClick={() => handleSingleApprove(record.id)}
+                title="Approve"
+              />
+              <Button
+                type="text"
+                size="small"
+                danger
+                icon={<RollbackOutlined />}
+                onClick={() => openCommentModal("Returned", record.id)}
+                title="Return"
+              />
+              <Button
+                type="text"
+                size="small"
+                danger
+                icon={<CloseCircleOutlined />}
+                onClick={() => openCommentModal("Rejected", record.id)}
+                title="Reject"
+              />
+            </Space>
+          )}
+        </div>
+      ),
+    },
   ];
+
+  // Make columns resizable
+  const { resizableColumns, components } = useResizableColumns(columns);
 
   if (authLoading) {
     return (
@@ -211,7 +339,7 @@ export default function ApprovalPage() {
   return (
     <div style={{ minHeight: "100vh", background: "#f0f2f5", padding: "24px" }}>
       <Card>
-        <Space direction="vertical" size="middle" style={{ width: "100%" }}>
+        <Space orientation="vertical" size="middle" style={{ width: "100%" }}>
           {/* Header */}
           <div
             style={{
@@ -304,19 +432,29 @@ export default function ApprovalPage() {
 
           {/* Table */}
           <Table<ExpenseRequest>
-            columns={columns}
+            columns={resizableColumns}
+            components={components}
             dataSource={expenses}
             rowKey="id"
             loading={loading}
-            rowSelection={{
+            sticky={{ offsetHeader: 64 }}
+            rowSelection={getStandardRowSelection(
+              currentPage,
+              pageSize,
               selectedRowKeys,
-              onChange: (keys) => setSelectedRowKeys(keys),
-            }}
+              setSelectedRowKeys
+            )}
             pagination={{
+              current: currentPage,
+              pageSize,
               total: totalCount,
               showTotal: (total) => `Total ${total} expenses`,
               showSizeChanger: true,
               pageSizeOptions: ["10", "20", "50", "100"],
+              onChange: (page, size) => {
+                setCurrentPage(page);
+                setPageSize(size);
+              },
             }}
           />
         </Space>
@@ -335,7 +473,7 @@ export default function ApprovalPage() {
         okText={`Confirm ${actionType}`}
         okButtonProps={{ danger: true }}
       >
-        <Space direction="vertical" style={{ width: "100%" }}>
+        <Space orientation="vertical" style={{ width: "100%" }}>
           <Text>Please provide a reason for this action:</Text>
           <TextArea
             rows={4}
@@ -345,6 +483,24 @@ export default function ApprovalPage() {
           />
         </Space>
       </Modal>
+
+      {/* Expense Detail Modal */}
+      <ExpenseDetailModal
+        open={detailModalOpen}
+        onClose={() => {
+          setDetailModalOpen(false);
+          setDetailExpense(null);
+        }}
+        expense={detailExpense}
+      />
     </div>
+  );
+}
+
+export default function ApprovalPage() {
+  return (
+    <App>
+      <ApprovalPageContent />
+    </App>
   );
 }

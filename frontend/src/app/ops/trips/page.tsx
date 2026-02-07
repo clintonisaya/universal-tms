@@ -23,6 +23,14 @@ import {
 import type { ColumnsType } from "antd/es/table";
 import type { Trip, TripStatus, TripsResponse } from "@/types/trip";
 import { useAuth } from "@/contexts/AuthContext";
+import { CreateTripDrawer } from "@/components/trips/CreateTripDrawer";
+import { TripDetailDrawer } from "@/components/trips/TripDetailDrawer";
+import {
+  getColumnSearchProps,
+  getColumnFilterProps,
+  getStandardRowSelection,
+  useResizableColumns,
+} from "@/components/ui/tableUtils";
 
 const { Title } = Typography;
 
@@ -37,12 +45,22 @@ const STATUS_COLORS: Record<TripStatus, string> = {
   Cancelled: "red",
 };
 
+const STATUS_FILTERS = Object.keys(STATUS_COLORS).map((status) => ({
+  text: status,
+  value: status,
+}));
+
 export default function TripsPage() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
   const [trips, setTrips] = useState<Trip[]>([]);
   const [loading, setLoading] = useState(true);
   const [totalCount, setTotalCount] = useState(0);
+  const [createDrawerOpen, setCreateDrawerOpen] = useState(false);
+  const [detailDrawerTripId, setDetailDrawerTripId] = useState<string | null>(null);
+  const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
 
   const fetchTrips = useCallback(async () => {
     setLoading(true);
@@ -96,70 +114,87 @@ export default function TripsPage() {
       title: "Trip Number",
       dataIndex: "trip_number",
       key: "trip_number",
+      width: 150,
       sorter: (a, b) => (a.trip_number || "").localeCompare(b.trip_number || ""),
+      render: (text: string, record: Trip) => (
+        <Button
+          type="link"
+          onClick={() => setDetailDrawerTripId(record.id)}
+          style={{ padding: 0, height: "auto", fontWeight: 600 }}
+        >
+          {text}
+        </Button>
+      ),
+      ...getColumnSearchProps<Trip>("trip_number"),
     },
     {
       title: "Route",
       dataIndex: "route_name",
       key: "route_name",
       sorter: (a, b) => a.route_name.localeCompare(b.route_name),
-    },
-    {
-      title: "Status",
-      dataIndex: "status",
-      key: "status",
-      render: (status: TripStatus) => (
-        <Tag color={STATUS_COLORS[status]}>{status}</Tag>
+      render: (text: string) => (
+        <div style={{ fontWeight: 500 }}>{text}</div>
       ),
-      filters: Object.keys(STATUS_COLORS).map((status) => ({
-        text: status,
-        value: status,
-      })),
-      onFilter: (value, record) => record.status === value,
+      ...getColumnSearchProps<Trip>("route_name"),
     },
     {
       title: "Start Date",
       dataIndex: "start_date",
       key: "start_date",
-      render: (date: string | null) =>
-        date ? new Date(date).toLocaleDateString() : "-",
-      sorter: (a, b) => {
-        if (!a.start_date) return 1;
-        if (!b.start_date) return -1;
-        return new Date(a.start_date).getTime() - new Date(b.start_date).getTime();
-      },
+      width: 120,
+      render: (date: string | null) => date ? new Date(date).toLocaleDateString() : "-",
+      sorter: (a, b) => (a.start_date || "").localeCompare(b.start_date || ""),
     },
     {
       title: "End Date",
       dataIndex: "end_date",
       key: "end_date",
-      render: (date: string | null) =>
-        date ? new Date(date).toLocaleDateString() : "-",
+      width: 120,
+      render: (date: string | null) => date ? new Date(date).toLocaleDateString() : "-",
+      sorter: (a, b) => (a.end_date || "").localeCompare(b.end_date || ""),
+    },
+    {
+      title: "Status",
+      dataIndex: "status",
+      key: "status",
+      width: 130,
+      render: (status: TripStatus) => (
+        <Tag color={STATUS_COLORS[status]}>{status}</Tag>
+      ),
+      ...getColumnFilterProps("status", STATUS_FILTERS),
     },
     {
       title: "Actions",
       key: "actions",
+      width: 100,
+      fixed: "right",
       render: (_, record) => (
-        <Space size="small">
-          <Button
-            type="text"
-            icon={<EyeOutlined />}
-            onClick={() => router.push(`/ops/trips/${record.id}`)}
-          />
-          <Popconfirm
-            title="Delete trip"
-            description="Are you sure you want to delete this trip?"
-            onConfirm={() => handleDelete(record)}
-            okText="Yes"
-            cancelText="No"
-            okButtonProps={{ danger: true }}
-          >
-            <Button type="text" danger icon={<DeleteOutlined />} />
-          </Popconfirm>
-        </Space>
+        <div className="row-actions">
+          <Space size="small">
+            <Button
+              type="text"
+              size="small"
+              icon={<EyeOutlined />}
+              onClick={() => setDetailDrawerTripId(record.id)}
+            />
+            <Popconfirm
+              title="Delete trip"
+              description="Are you sure you want to delete this trip?"
+              onConfirm={() => handleDelete(record)}
+              okText="Yes"
+              cancelText="No"
+              okButtonProps={{ danger: true }}
+            >
+              <Button type="text" danger size="small" icon={<DeleteOutlined />} />
+            </Popconfirm>
+          </Space>
+        </div>
       ),
     },
   ];
+
+  // Make columns resizable
+  const { resizableColumns, components } = useResizableColumns(columns);
 
   if (authLoading) {
     return (
@@ -185,7 +220,7 @@ export default function TripsPage() {
       }}
     >
       <Card>
-        <Space direction="vertical" size="middle" style={{ width: "100%" }}>
+        <Space orientation="vertical" size="middle" style={{ width: "100%" }}>
           <div
             style={{
               display: "flex",
@@ -211,7 +246,7 @@ export default function TripsPage() {
               <Button
                 type="primary"
                 icon={<PlusOutlined />}
-                onClick={() => router.push("/ops/trips/new")}
+                onClick={() => setCreateDrawerOpen(true)}
               >
                 New Trip
               </Button>
@@ -219,19 +254,45 @@ export default function TripsPage() {
           </div>
 
           <Table<Trip>
-            columns={columns}
+            columns={resizableColumns}
+            components={components}
             dataSource={trips}
             rowKey="id"
             loading={loading}
+            sticky={{ offsetHeader: 64 }}
+            rowSelection={getStandardRowSelection(
+              currentPage,
+              pageSize,
+              selectedRowKeys,
+              setSelectedRowKeys
+            )}
             pagination={{
+              current: currentPage,
+              pageSize,
               total: totalCount,
               showTotal: (total) => `Total ${total} trips`,
               showSizeChanger: true,
               pageSizeOptions: ["10", "20", "50", "100"],
+              onChange: (page, size) => {
+                setCurrentPage(page);
+                setPageSize(size);
+              },
             }}
           />
         </Space>
       </Card>
+
+      <CreateTripDrawer
+        open={createDrawerOpen}
+        onClose={() => setCreateDrawerOpen(false)}
+        onSuccess={fetchTrips}
+      />
+
+      <TripDetailDrawer
+        open={!!detailDrawerTripId}
+        onClose={() => setDetailDrawerTripId(null)}
+        tripId={detailDrawerTripId}
+      />
     </div>
   );
 }

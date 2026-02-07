@@ -87,7 +87,7 @@ export default function VoucherPage() {
         {/* Details Grid */}
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px", marginBottom: "30px" }}>
           <div>
-            <p><strong>Voucher No:</strong> <span style={{ fontFamily: "monospace", fontSize: "16px" }}>{expense.id.slice(0, 8).toUpperCase()}</span></p>
+            <p><strong>Voucher No:</strong> <span style={{ fontFamily: "monospace", fontSize: "16px" }}>{expense.expense_number || expense.id.slice(0, 8).toUpperCase()}</span></p>
             <p><strong>Date:</strong> {expense.payment_date ? new Date(expense.payment_date).toLocaleDateString() : "-"}</p>
             <p><strong>Payment Method:</strong> {expense.payment_method || "CASH"}</p>
           </div>
@@ -103,7 +103,7 @@ export default function VoucherPage() {
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <span style={{ fontSize: "16px", fontWeight: "bold" }}>AMOUNT PAID:</span>
             <span style={{ fontSize: "20px", fontWeight: "bold" }}>
-              KES {Number(expense.amount).toLocaleString()}
+              {expense.currency || "TZS"} {Number(expense.amount).toLocaleString()}
             </span>
           </div>
         </div>

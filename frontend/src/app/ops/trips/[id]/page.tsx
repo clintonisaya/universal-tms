@@ -14,6 +14,8 @@ import {
   Typography,
   Spin,
   Popconfirm,
+  Alert,
+  Tooltip,
 } from "antd";
 import {
   ArrowLeftOutlined,
@@ -138,6 +140,9 @@ export default function TripDetailPage() {
     }
   };
 
+  // Check if trip is in a closed state (no expense modifications allowed)
+  const isTripClosed = trip?.status === "Completed" || trip?.status === "Cancelled";
+
   const expenseColumns: ColumnsType<ExpenseRequest> = [
     {
       title: "Category",
@@ -154,11 +159,10 @@ export default function TripDetailPage() {
       title: "Amount",
       dataIndex: "amount",
       key: "amount",
-      render: (amount: number) =>
-        new Intl.NumberFormat("en-KE", {
-          style: "currency",
-          currency: "KES",
-        }).format(amount),
+      render: (amount: number, record: any) => {
+        const cur = record.currency || "TZS";
+        return `${cur} ${Number(amount).toLocaleString()}`;
+      },
       align: "right",
     },
     {
@@ -180,17 +184,19 @@ export default function TripDetailPage() {
       title: "Actions",
       key: "actions",
       render: (_, record) =>
-        record.status === "Pending Manager" ? (
-          <Popconfirm
-            title="Delete expense"
-            description="Are you sure?"
-            onConfirm={() => handleDeleteExpense(record)}
-            okText="Yes"
-            cancelText="No"
-            okButtonProps={{ danger: true }}
-          >
-            <Button type="text" danger icon={<DeleteOutlined />} size="small" />
-          </Popconfirm>
+        record.status === "Pending Manager" && !isTripClosed ? (
+          <div className="row-actions">
+            <Popconfirm
+              title="Delete expense"
+              description="Are you sure?"
+              onConfirm={() => handleDeleteExpense(record)}
+              okText="Yes"
+              cancelText="No"
+              okButtonProps={{ danger: true }}
+            >
+              <Button type="text" danger icon={<DeleteOutlined />} size="small" />
+            </Popconfirm>
+          </div>
         ) : null,
     },
   ];
@@ -225,7 +231,7 @@ export default function TripDetailPage() {
       }}
     >
       <Card>
-        <Space direction="vertical" size="middle" style={{ width: "100%" }}>
+        <Space orientation="vertical" size="middle" style={{ width: "100%" }}>
           <div
             style={{
               display: "flex",
@@ -307,7 +313,15 @@ export default function TripDetailPage() {
                 key: "financials",
                 label: "Financials",
                 children: (
-                  <Space direction="vertical" size="middle" style={{ width: "100%" }}>
+                  <Space orientation="vertical" size="middle" style={{ width: "100%" }}>
+                    {isTripClosed && (
+                      <Alert
+                        message="Trip Closed"
+                        description={`This trip is ${trip.status.toLowerCase()}. No expense modifications are allowed.`}
+                        type="info"
+                        showIcon
+                      />
+                    )}
                     <div
                       style={{
                         display: "flex",
@@ -318,10 +332,7 @@ export default function TripDetailPage() {
                       <Space>
                         <Text strong>Total Expenses:</Text>
                         <Text>
-                          {new Intl.NumberFormat("en-KE", {
-                            style: "currency",
-                            currency: "KES",
-                          }).format(totalExpenses)}
+                          TZS {Number(totalExpenses).toLocaleString()}
                         </Text>
                       </Space>
                       <Space>
@@ -331,13 +342,18 @@ export default function TripDetailPage() {
                         >
                           Refresh
                         </Button>
-                        <Button
-                          type="primary"
-                          icon={<PlusOutlined />}
-                          onClick={() => setIsModalOpen(true)}
+                        <Tooltip
+                          title={isTripClosed ? "Cannot add expenses to completed/cancelled trips" : ""}
                         >
-                          Add Expense
-                        </Button>
+                          <Button
+                            type="primary"
+                            icon={<PlusOutlined />}
+                            onClick={() => setIsModalOpen(true)}
+                            disabled={isTripClosed}
+                          >
+                            Add Expense
+                          </Button>
+                        </Tooltip>
                       </Space>
                     </div>
 
@@ -346,6 +362,7 @@ export default function TripDetailPage() {
                       dataSource={expenses}
                       rowKey="id"
                       loading={expensesLoading}
+                      sticky
                       pagination={false}
                       size="small"
                     />
@@ -367,7 +384,10 @@ export default function TripDetailPage() {
       <UpdateTripStatusModal
         open={isStatusModalOpen}
         onClose={() => setIsStatusModalOpen(false)}
-        onSuccess={fetchTrip}
+        onSuccess={() => {
+          fetchTrip();
+          fetchExpenses();
+        }}
         tripId={tripId}
         initialValues={{
           status: trip.status,

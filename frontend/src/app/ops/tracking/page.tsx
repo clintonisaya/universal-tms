@@ -6,6 +6,7 @@ import {
   Table,
   Button,
   Card,
+  Flex,
   Space,
   Tag,
   Input,
@@ -28,9 +29,10 @@ import {
   EnvironmentOutlined,
 } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
-import * as XLSX from "xlsx";
+import ExcelJS from "exceljs";
 import { useAuth } from "@/contexts/AuthContext";
 import { UpdateTripStatusModal } from "@/components/trips/UpdateTripStatusModal";
+import { getStandardRowSelection } from "@/components/ui/tableUtils";
 
 const { Title, Text } = Typography;
 
@@ -114,6 +116,11 @@ export default function TrackingPage() {
   const [isStatusModalOpen, setIsStatusModalOpen] = useState(false);
   const [initialStatusValues, setInitialStatusValues] = useState<any>(null);
 
+  // Standard Table States
+  const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(100);
+
   const fetchReport = useCallback(async () => {
     setLoading(true);
     try {
@@ -190,28 +197,50 @@ export default function TrackingPage() {
   };
 
   // Excel Export
-  const handleExport = () => {
-    const exportData = filteredData.map((row) => ({
-      "Waybill #": row.waybill_number,
-      "Trip #": row.trip_number || "-",
-      "Waybill Status": row.waybill_status,
-      "Trip Status": row.trip_status,
-      Client: row.client_name,
-      Cargo: `${row.cargo_description} (${row.cargo_weight}kg)`,
-      Route: `${row.origin} -> ${row.destination}`,
-      "Current Location": row.current_location || "-",
-      "Truck/Trailer": `${row.truck_plate || '-'} / ${row.trailer_plate || '-'}`,
-      Driver: row.driver_name || "-",
-      Mileage: row.mileage_km,
-      Risk: row.risk_level,
-    }));
+  const handleExport = async () => {
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet("Control Tower");
 
-    const ws = XLSX.utils.json_to_sheet(exportData);
-    const colWidths = Object.keys(exportData[0] || {}).map((key) => ({ wch: 18 }));
-    ws["!cols"] = colWidths;
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Control Tower");
-    XLSX.writeFile(wb, `Edupo_Control_Tower_${new Date().toISOString().slice(0, 10)}.xlsx`);
+    worksheet.columns = [
+      { header: "Waybill #", key: "waybill_number", width: 20 },
+      { header: "Trip #", key: "trip_number", width: 20 },
+      { header: "Waybill Status", key: "waybill_status", width: 15 },
+      { header: "Trip Status", key: "trip_status", width: 15 },
+      { header: "Client", key: "client_name", width: 25 },
+      { header: "Cargo", key: "cargo", width: 30 },
+      { header: "Route", key: "route", width: 30 },
+      { header: "Current Location", key: "current_location", width: 25 },
+      { header: "Truck/Trailer", key: "truck_trailer", width: 25 },
+      { header: "Driver", key: "driver_name", width: 20 },
+      { header: "Mileage", key: "mileage_km", width: 15 },
+      { header: "Risk", key: "risk_level", width: 15 },
+    ];
+
+    filteredData.forEach((row) => {
+      worksheet.addRow({
+        waybill_number: row.waybill_number,
+        trip_number: row.trip_number || "-",
+        waybill_status: row.waybill_status,
+        trip_status: row.trip_status,
+        client_name: row.client_name,
+        cargo: `${row.cargo_description} (${row.cargo_weight}kg)`,
+        route: `${row.origin} -> ${row.destination}`,
+        current_location: row.current_location || "-",
+        truck_trailer: `${row.truck_plate || '-'} / ${row.trailer_plate || '-'}`,
+        driver_name: row.driver_name || "-",
+        mileage_km: row.mileage_km,
+        risk_level: row.risk_level,
+      });
+    });
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `Edupo_Control_Tower_${new Date().toISOString().slice(0, 10)}.xlsx`;
+    a.click();
+    window.URL.revokeObjectURL(url);
   };
 
   const openStatusModal = (record: TrackingRow) => {
@@ -234,10 +263,10 @@ export default function TrackingPage() {
       width: 140,
       fixed: "left",
       render: (_, r) => (
-        <Space direction="vertical" size={2}>
+        <Flex vertical gap={2}>
             <Tag color={STATUS_COLORS[r.waybill_status]}>WB: {r.waybill_status}</Tag>
             <Tag color={STATUS_COLORS[r.trip_status]}>Trip: {r.trip_status}</Tag>
-        </Space>
+        </Flex>
       )
     },
     {
@@ -246,12 +275,12 @@ export default function TrackingPage() {
       width: 140,
       fixed: "left",
       render: (_, r) => (
-        <Space direction="vertical" size={0}>
+        <Flex vertical gap={0}>
            <Text strong style={{ color: '#1890ff', cursor: 'pointer' }}>{r.waybill_number}</Text>
            {r.trip_number ? (
              <Text style={{ fontSize: 12, color: '#1890ff' }}>{r.trip_number}</Text>
            ) : <Text type="secondary" style={{ fontSize: 12 }}>No Trip</Text>}
-        </Space>
+        </Flex>
       )
     },
     {
@@ -259,12 +288,12 @@ export default function TrackingPage() {
       key: "entity",
       width: 180,
       render: (_, r) => (
-        <Space direction="vertical" size={0}>
+        <Flex vertical gap={0}>
             <Text strong>{r.client_name}</Text>
             <Text type="secondary" style={{ fontSize: 12 }}>
                 {r.cargo_type} • {r.cargo_weight.toLocaleString()}kg
             </Text>
-        </Space>
+        </Flex>
       )
     },
     {
@@ -272,8 +301,8 @@ export default function TrackingPage() {
       key: "route",
       width: 250,
       render: (_, r) => (
-        <Space direction="vertical" size={0}>
-             <Space split={<Text type="secondary">→</Text>}>
+        <Flex vertical gap={0}>
+             <Space separator={<Text type="secondary">→</Text>}>
                 <Text>{r.origin}</Text>
                 <Text>{r.destination}</Text>
              </Space>
@@ -283,7 +312,7 @@ export default function TrackingPage() {
                     {r.current_location || "Update Loc"}
                 </Text>
              </div>
-        </Space>
+        </Flex>
       )
     },
     {
@@ -291,11 +320,11 @@ export default function TrackingPage() {
       key: "assets",
       width: 180,
       render: (_, r) => (
-        <Space direction="vertical" size={0}>
+        <Flex vertical gap={0}>
              <Text><CarOutlined /> {r.truck_plate || "-"}</Text>
              <Text type="secondary" style={{ fontSize: 12 }}>TL: {r.trailer_plate || "-"}</Text>
              <Text type="secondary" style={{ fontSize: 12 }}><UserOutlined /> {r.driver_name || "-"}</Text>
-        </Space>
+        </Flex>
       )
     },
     {
@@ -303,10 +332,10 @@ export default function TrackingPage() {
       key: "metrics",
       width: 120,
       render: (_, r) => (
-        <Space direction="vertical" size={0}>
+        <Flex vertical gap={0}>
              <Text>{r.mileage_km} km</Text>
              <Text type="secondary" style={{ fontSize: 12 }}>{r.fuel_consumption_liters} L</Text>
-        </Space>
+        </Flex>
       )
     },
     {
@@ -321,8 +350,8 @@ export default function TrackingPage() {
 
   return (
     <div>
-      <Card bodyStyle={{ padding: '12px 24px' }}>
-          <Space direction="vertical" size="middle" style={{ width: "100%" }}>
+      <Card styles={{ body: { padding: '12px 24px' } }}>
+          <Flex vertical gap="middle" style={{ width: "100%" }}>
             
             {/* Header */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -397,16 +426,28 @@ export default function TrackingPage() {
                 rowKey="waybill_id"
                 loading={loading}
                 scroll={{ x: 1300 }}
-                size="small" // Compact density
+                sticky={{ offsetHeader: 64 }}
+                size="small"
+                rowSelection={getStandardRowSelection(
+                  currentPage,
+                  pageSize,
+                  selectedRowKeys,
+                  setSelectedRowKeys
+                )}
                 pagination={{
+                    current: currentPage,
+                    pageSize: pageSize,
                     total: filteredData.length,
                     showTotal: (total) => `Total ${total} loads`,
-                    pageSize: 100, // 100 items per page
                     showSizeChanger: true,
-                    pageSizeOptions: ['50', '100', '200']
+                    pageSizeOptions: ['50', '100', '200'],
+                    onChange: (page, size) => {
+                      setCurrentPage(page);
+                      setPageSize(size);
+                    },
                 }}
             />
-          </Space>
+          </Flex>
       </Card>
 
       {/* Re-use Status Update Modal */}

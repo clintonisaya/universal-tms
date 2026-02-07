@@ -354,6 +354,7 @@ class WaybillBase(SQLModel):
     status: WaybillStatus = Field(default=WaybillStatus.open, description="Current waybill status")
     agreed_rate: Decimal = Field(default=Decimal("0.00"), max_digits=12, decimal_places=2, description="Agreed rate")
     currency: str = Field(default="USD", max_length=3, description="Currency code")
+    risk_level: str = Field(default="Low", max_length=20, description="Risk level (Low, Medium, High)")
 
 
 class WaybillCreate(SQLModel):
@@ -366,6 +367,7 @@ class WaybillCreate(SQLModel):
     expected_loading_date: datetime = Field(description="Expected loading date")
     agreed_rate: Decimal = Field(default=Decimal("0.00"), max_digits=12, decimal_places=2, description="Agreed rate")
     currency: str = Field(default="USD", max_length=3, description="Currency code")
+    risk_level: str = Field(default="Low", description="Risk level (Low, Medium, High)")
 
 
 class WaybillUpdate(SQLModel):
@@ -379,6 +381,7 @@ class WaybillUpdate(SQLModel):
     status: WaybillStatus | None = Field(default=None)
     agreed_rate: Decimal | None = Field(default=None, max_digits=12, decimal_places=2)
     currency: str | None = Field(default=None, max_length=3)
+    risk_level: str | None = Field(default=None)
 
 
 class Waybill(WaybillBase, table=True):
@@ -527,8 +530,11 @@ class PaymentMethod(str, Enum):
 
 # Shared properties
 class ExpenseRequestBase(SQLModel):
+    expense_number: str | None = Field(default=None, index=True, unique=True, description="Human-readable expense number (E<TripNumber><Seq> or EXP-YYYY-SEQ)")
     trip_id: uuid.UUID | None = Field(default=None, foreign_key="trip.id", description="Associated trip ID (optional for office expenses)")
     amount: Decimal = Field(gt=0, max_digits=12, decimal_places=2, description="Expense amount")
+    currency: str = Field(default="TZS", max_length=3, description="Currency code (TZS or USD)")
+    exchange_rate: Decimal | None = Field(default=None, max_digits=12, decimal_places=2, description="Exchange rate snapshot (1 USD = X TZS)")
     category: ExpenseCategory = Field(description="Expense category")
     description: str = Field(min_length=1, max_length=500, description="Expense description")
     status: ExpenseStatus = Field(default=ExpenseStatus.pending_manager, description="Current expense status")
@@ -537,6 +543,9 @@ class ExpenseRequestBase(SQLModel):
     payment_reference: str | None = Field(default=None, max_length=255, description="Payment reference (required for transfers)")
     payment_date: datetime | None = Field(default=None, sa_type=DateTime(timezone=True), description="Date payment was processed")
     paid_by_id: uuid.UUID | None = Field(default=None, foreign_key="user.id", description="User who processed the payment")
+    approved_by_id: uuid.UUID | None = Field(default=None, foreign_key="user.id", description="User who approved the expense")
+    approved_at: datetime | None = Field(default=None, sa_type=DateTime(timezone=True), description="Date expense was approved")
+    expense_metadata: dict | None = Field(default=None, description="Additional expense metadata (item details, payment info, etc.)")
 
 
 # Properties to receive on creation
@@ -545,6 +554,9 @@ class ExpenseRequestCreate(SQLModel):
     amount: Decimal = Field(gt=0, max_digits=12, decimal_places=2, description="Expense amount")
     category: ExpenseCategory = Field(description="Expense category")
     description: str = Field(min_length=1, max_length=500, description="Expense description")
+    currency: str = Field(default="TZS", max_length=3, description="Currency code (TZS or USD)")
+    exchange_rate: Decimal | None = Field(default=None, max_digits=12, decimal_places=2, description="Exchange rate snapshot at creation")
+    expense_metadata: dict | None = Field(default=None, description="Additional expense metadata")
 
 
 # Properties to receive on update
@@ -561,6 +573,7 @@ class ExpenseRequest(ExpenseRequestBase, table=True):
 
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     amount: Decimal = Field(sa_column=Column(Numeric(12, 2), nullable=False))
+    expense_metadata: dict | None = Field(default=None, sa_column=Column(JSON))
     created_by_id: uuid.UUID = Field(foreign_key="user.id", description="User who created the expense")
     created_at: datetime | None = Field(
         default_factory=get_datetime_utc,
@@ -575,6 +588,7 @@ class ExpenseRequest(ExpenseRequestBase, table=True):
     trip: Trip | None = Relationship(sa_relationship_kwargs={"foreign_keys": "[ExpenseRequest.trip_id]"})
     created_by: User | None = Relationship(sa_relationship_kwargs={"foreign_keys": "[ExpenseRequest.created_by_id]"})
     paid_by: User | None = Relationship(sa_relationship_kwargs={"foreign_keys": "[ExpenseRequest.paid_by_id]"})
+    approved_by: User | None = Relationship(sa_relationship_kwargs={"foreign_keys": "[ExpenseRequest.approved_by_id]"})
 
 
 # Properties to return via API
@@ -589,6 +603,8 @@ class ExpenseRequestPublic(ExpenseRequestBase):
 class ExpenseRequestPublicDetailed(ExpenseRequestPublic):
     trip: TripPublic | None = None
     created_by: UserPublic | None = None
+    paid_by: UserPublic | None = None
+    approved_by: UserPublic | None = None
 
 
 class ExpenseRequestsPublic(SQLModel):
@@ -606,6 +622,46 @@ class ExpensePayment(SQLModel):
     """Schema for processing a payment - Story 2.4"""
     method: PaymentMethod = Field(description="Payment method: CASH or TRANSFER")
     reference: str | None = Field(default=None, max_length=255, description="Reference number (required for TRANSFER)")
+
+
+# ============================================================================
+# Exchange Rate Models - Story 2.14: Multi-Currency Support
+# ============================================================================
+
+
+class ExchangeRateBase(SQLModel):
+    month: int = Field(ge=1, le=12, description="Month (1-12)")
+    year: int = Field(ge=2020, le=2100, description="Year")
+    rate: Decimal = Field(gt=0, max_digits=12, decimal_places=2, description="1 USD = X TZS")
+
+
+class ExchangeRateCreate(ExchangeRateBase):
+    pass
+
+
+class ExchangeRateUpdate(SQLModel):
+    rate: Decimal = Field(gt=0, max_digits=12, decimal_places=2, description="1 USD = X TZS")
+
+
+class ExchangeRate(ExchangeRateBase, table=True):
+    __tablename__ = "exchange_rate"
+
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    rate: Decimal = Field(sa_column=Column(Numeric(12, 2), nullable=False))
+    created_at: datetime | None = Field(
+        default_factory=get_datetime_utc,
+        sa_type=DateTime(timezone=True),
+    )
+
+
+class ExchangeRatePublic(ExchangeRateBase):
+    id: uuid.UUID
+    created_at: datetime | None = None
+
+
+class ExchangeRatesPublic(SQLModel):
+    data: list[ExchangeRatePublic]
+    count: int
 
 
 # ============================================================================
@@ -767,28 +823,74 @@ class VehicleStatusesPublic(SQLModel):
     data: list[VehicleStatusPublic]
     count: int
 
+
+# --- Client ---
+
+class ClientBase(SQLModel):
+    system_id: str = Field(unique=True, index=True, description="System-generated client ID")
+    name: str = Field(index=True, min_length=1, max_length=255, description="Client name")
+    tin: str | None = Field(default=None, max_length=50, description="Tax Identification Number")
+
+
+class ClientCreate(ClientBase):
+    pass
+
+
+class ClientUpdate(SQLModel):
+    system_id: str | None = Field(default=None)
+    name: str | None = Field(default=None, min_length=1, max_length=255)
+    tin: str | None = Field(default=None, max_length=50)
+
+
+class Client(ClientBase, table=True):
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    created_at: datetime | None = Field(
+        default_factory=get_datetime_utc,
+        sa_type=DateTime(timezone=True),  # type: ignore
+    )
+    updated_at: datetime | None = Field(
+        default_factory=get_datetime_utc,
+        sa_type=DateTime(timezone=True),  # type: ignore
+    )
+
+
+class ClientPublic(ClientBase):
+    id: uuid.UUID
+    created_at: datetime | None = None
+
+
+class ClientsPublic(SQLModel):
+    data: list[ClientPublic]
+    count: int
+
+
 # ============================================================================
 # Maintenance Models - Story 3.1: Maintenance Event Logging
 # ============================================================================
 
 class MaintenanceEventBase(SQLModel):
-    truck_id: uuid.UUID = Field(foreign_key="truck.id", description="Truck receiving maintenance")
+    truck_id: uuid.UUID | None = Field(default=None, foreign_key="truck.id", description="Truck receiving maintenance")
+    trailer_id: uuid.UUID | None = Field(default=None, foreign_key="trailer.id", description="Trailer receiving maintenance")
     garage_name: str = Field(min_length=1, max_length=255, description="Garage/Service Provider name")
     description: str = Field(min_length=1, max_length=500, description="Maintenance details")
     start_date: datetime = Field(description="Date maintenance started")
     end_date: datetime | None = Field(default=None, description="Date maintenance completed")
+    currency: str = Field(default="USD", max_length=3, description="Currency code (TZS or USD)")
 
 class MaintenanceEventCreate(MaintenanceEventBase):
     cost: Decimal = Field(gt=0, max_digits=12, decimal_places=2, description="Total cost")
     update_truck_status: bool = Field(default=False, description="Set truck status to Maintenance")
+    update_trailer_status: bool = Field(default=False, description="Set trailer status to Maintenance")
 
 class MaintenanceEventUpdate(SQLModel):
     truck_id: uuid.UUID | None = Field(default=None)
+    trailer_id: uuid.UUID | None = Field(default=None)
     garage_name: str | None = Field(default=None, min_length=1, max_length=255)
     description: str | None = Field(default=None, min_length=1, max_length=500)
     start_date: datetime | None = Field(default=None)
     end_date: datetime | None = Field(default=None)
     cost: Decimal | None = Field(default=None, gt=0, max_digits=12, decimal_places=2)
+    currency: str | None = Field(default=None, max_length=3)
 
 class MaintenanceEvent(MaintenanceEventBase, table=True):
     __tablename__ = "maintenance_event"
@@ -806,6 +908,7 @@ class MaintenanceEvent(MaintenanceEventBase, table=True):
 
     # Relationships
     truck: Truck | None = Relationship()
+    trailer: Trailer | None = Relationship()
     expense: ExpenseRequest | None = Relationship()
 
 class MaintenanceEventPublic(MaintenanceEventBase):
@@ -825,3 +928,87 @@ class MaintenanceHistoryPublic(SQLModel):
     data: list[MaintenanceEventPublic]
     count: int
     total_maintenance_cost: Decimal = Decimal("0.00")
+
+
+# ============================================================================
+# Trip Expense Type Models - Story 2.19: Trip Expense Master Data
+# ============================================================================
+
+
+class TripExpenseTypeBase(SQLModel):
+    name: str = Field(min_length=1, max_length=255, description="Expense type name (e.g., Abnormal Permit (Zimbabwe))")
+    category: str = Field(min_length=1, max_length=100, description="Expense category (e.g., Cargo Charges)")
+    is_active: bool = Field(default=True, description="Whether this expense type is active")
+
+
+class TripExpenseTypeCreate(TripExpenseTypeBase):
+    pass
+
+
+class TripExpenseTypeUpdate(SQLModel):
+    name: str | None = Field(default=None, min_length=1, max_length=255)
+    category: str | None = Field(default=None, min_length=1, max_length=100)
+    is_active: bool | None = Field(default=None)
+
+
+class TripExpenseType(TripExpenseTypeBase, table=True):
+    __tablename__ = "trip_expense_type"
+
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    name: str = Field(unique=True, index=True, max_length=255)
+    category: str = Field(index=True, max_length=100)
+    created_at: datetime | None = Field(
+        default_factory=get_datetime_utc,
+        sa_type=DateTime(timezone=True),
+    )
+
+
+class TripExpenseTypePublic(TripExpenseTypeBase):
+    id: uuid.UUID
+    created_at: datetime | None = None
+
+
+class TripExpenseTypesPublic(SQLModel):
+    data: list[TripExpenseTypePublic]
+    count: int
+
+
+# ============================================================================
+# Office Expense Type Models - Story 2.22: Office Expense Master Data
+# ============================================================================
+
+
+class OfficeExpenseTypeBase(SQLModel):
+    name: str = Field(unique=True, index=True, min_length=1, max_length=255, description="Office expense type name")
+    description: str | None = Field(default=None, max_length=500, description="Description")
+    is_active: bool = Field(default=True, description="Whether this expense type is active")
+
+
+class OfficeExpenseTypeCreate(OfficeExpenseTypeBase):
+    pass
+
+
+class OfficeExpenseTypeUpdate(SQLModel):
+    name: str | None = Field(default=None, min_length=1, max_length=255)
+    description: str | None = Field(default=None, max_length=500)
+    is_active: bool | None = Field(default=None)
+
+
+class OfficeExpenseType(OfficeExpenseTypeBase, table=True):
+    __tablename__ = "office_expense_type"
+
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    created_at: datetime | None = Field(
+        default_factory=get_datetime_utc,
+        sa_type=DateTime(timezone=True),
+    )
+
+
+class OfficeExpenseTypePublic(OfficeExpenseTypeBase):
+    id: uuid.UUID
+    created_at: datetime | None = None
+
+
+class OfficeExpenseTypesPublic(SQLModel):
+    data: list[OfficeExpenseTypePublic]
+    count: int

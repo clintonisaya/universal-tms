@@ -1,14 +1,20 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { Row, Col, message, Empty, Typography } from "antd";
+import { Row, Col, Empty, Typography, App, notification } from "antd";
 import { useRouter } from "next/navigation";
 import { useSocket } from "@/lib/socket";
 import { useAuth } from "@/contexts/AuthContext";
+import { useNotifications } from "@/hooks/useNotifications";
 import { MetricCard } from "@/components/dashboard/MetricCard";
 import { ProfitTrendChart } from "@/components/dashboard/ProfitTrendChart";
+import { IncomeVsExpenseChart } from "@/components/dashboard/IncomeVsExpenseChart";
+import { ExpenseDistributionChart } from "@/components/dashboard/ExpenseDistributionChart";
 import { UtilizationChart } from "@/components/dashboard/UtilizationChart";
 import { RecentTripsTable } from "@/components/dashboard/RecentTripsTable";
+import { ToDoWidget } from "@/components/dashboard/ToDoWidget";
+import type { TaskType } from "@/types/notification";
+import { TASK_TYPE_ICONS, TOAST_DURATION_SECONDS } from "@/types/notification";
 
 const { Title } = Typography;
 
@@ -29,6 +35,18 @@ interface DashboardStats {
   pending_manager: number;
   pending_finance: number;
   total_paid_amount: number;
+  profit_trend: Array<{ date: string; profit: number }>;
+}
+
+interface FinancialPulseData {
+  daily_trend: Array<{ date: string; profit: number; revenue: number; expense: number }>;
+  monthly_stats: {
+    income: number;
+    expenses: number;
+    net_profit: number;
+    month: string;
+  };
+  expense_breakdown: Array<{ category: string; amount: number }>;
 }
 
 // Role visibility helpers
@@ -41,16 +59,63 @@ function canSee(role: string | undefined, allowedRoles: string[]): boolean {
   return allowedRoles.includes(role);
 }
 
-export default function DashboardPage() {
+// Shape of data the server sends with task_created / task_updated events
+interface TaskSocketEvent {
+  task_id?: string;
+  task_type?: TaskType;
+  requester?: string;
+  expense_type?: string;
+  amount?: number;
+  currency?: string;
+  count?: number;
+  manager?: string;
+}
+
+function buildToastMessage(taskType: TaskType | undefined, data: TaskSocketEvent): string {
+  switch (taskType) {
+    case "expense_approval":
+      return `${data.requester || "Someone"} submitted ${data.expense_type || "an"} expense${data.amount ? ` (${data.amount.toLocaleString()} ${data.currency || "TZS"})` : ""}`;
+    case "payment_processing": {
+      const c = data.count ?? 1;
+      return `${c} expense${c > 1 ? "s" : ""} ready for payment`;
+    }
+    case "expense_correction":
+      return `Your ${data.expense_type || ""} expense was returned by ${data.manager || "Manager"}`;
+    default:
+      return "New task requires your attention";
+  }
+}
+
+function DashboardContent() {
   const router = useRouter();
   const socket = useSocket();
   const { user } = useAuth();
+  const { message: msg } = App.useApp();
   const role = user?.role;
+  const { addNotification } = useNotifications(user?.id);
 
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [recentTrips, setRecentTrips] = useState<any[]>([]);
   const [tripsLoading, setTripsLoading] = useState(true);
+
+  // Financial Pulse state
+  const [financialPulse, setFinancialPulse] = useState<FinancialPulseData | null>(null);
+  const [financialLoading, setFinancialLoading] = useState(true);
+
+  // To-Do state
+  const [todoCount, setTodoCount] = useState(0);
+  const [todoCountLoading, setTodoCountLoading] = useState(true);
+
+  // Listen for notification-click events from the NotificationCenter in the header
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const taskId = (e as CustomEvent<string>).detail;
+      router.push(`/dashboard/tasks?highlight=${taskId}`);
+    };
+    window.addEventListener("notification-click", handler);
+    return () => window.removeEventListener("notification-click", handler);
+  }, [router]);
 
   const fetchStats = useCallback(async () => {
     try {
@@ -64,11 +129,11 @@ export default function DashboardPage() {
         router.push("/login");
       }
     } catch {
-      message.error("Failed to load dashboard stats");
+      msg.error("Failed to load dashboard stats");
     } finally {
       setLoading(false);
     }
-  }, [router]);
+  }, [router, msg]);
 
   const fetchRecentTrips = useCallback(async () => {
     try {
@@ -86,10 +151,44 @@ export default function DashboardPage() {
     }
   }, []);
 
+  const fetchTodoCount = useCallback(async () => {
+    try {
+      const response = await fetch("/api/v1/tasks/my-tasks?sort_by=date&sort_order=desc", {
+        credentials: "include",
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setTodoCount(data.total ?? 0);
+      }
+    } catch {
+      // Silent fail
+    } finally {
+      setTodoCountLoading(false);
+    }
+  }, []);
+
+  const fetchFinancialPulse = useCallback(async () => {
+    try {
+      const response = await fetch("/api/v1/reports/financial-pulse", {
+        credentials: "include",
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setFinancialPulse(data);
+      }
+    } catch {
+      // Silent fail - financial pulse is optional
+    } finally {
+      setFinancialLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     fetchStats();
     fetchRecentTrips();
-  }, [fetchStats, fetchRecentTrips]);
+    fetchTodoCount();
+    fetchFinancialPulse();
+  }, [fetchStats, fetchRecentTrips, fetchTodoCount, fetchFinancialPulse]);
 
   // WebSocket real-time updates
   useEffect(() => {
@@ -107,11 +206,65 @@ export default function DashboardPage() {
       setStats((prev) => (prev ? { ...prev, ...data } : prev));
     });
 
+    // Story 4.2 + 4.3: To-Do real-time updates with contextual toast notifications
+    socket.on("task_created", (data?: TaskSocketEvent) => {
+      setTodoCount((prev) => prev + 1);
+
+      const eventData = data || {};
+      const taskType = eventData.task_type;
+      const toastMsg = buildToastMessage(taskType, eventData);
+      const taskId = eventData.task_id || "";
+
+      // Create persistent notification
+      addNotification({
+        type: "task_created",
+        taskId,
+        taskType: taskType || "expense_approval",
+        message: toastMsg,
+        requester: eventData.requester,
+        amount: eventData.amount,
+        currency: eventData.currency,
+      });
+
+      // Show contextual toast (bottom-right, clickable)
+      notification.open({
+        message: "New Task",
+        description: toastMsg,
+        icon: <span>{TASK_TYPE_ICONS[taskType || "expense_approval"]}</span>,
+        placement: "bottomRight",
+        duration: TOAST_DURATION_SECONDS,
+        onClick: () => {
+          router.push(`/dashboard/tasks?highlight=${taskId}`);
+          notification.destroy();
+        },
+        style: { cursor: "pointer" },
+      });
+    });
+
+    socket.on("task_updated", (data?: TaskSocketEvent) => {
+      fetchTodoCount();
+
+      if (data?.task_type) {
+        const toastMsg = buildToastMessage(data.task_type, data);
+        addNotification({
+          type: "task_updated",
+          taskId: data.task_id || "",
+          taskType: data.task_type,
+          message: toastMsg,
+          requester: data.requester,
+          amount: data.amount,
+          currency: data.currency,
+        });
+      }
+    });
+
     return () => {
       socket.off("expense_created");
       socket.off("metrics_update");
+      socket.off("task_created");
+      socket.off("task_updated");
     };
-  }, [socket]);
+  }, [socket, msg, fetchTodoCount, addNotification, router]);
 
   // Build utilization data from trucks_by_status for the chart
   const utilizationData = stats
@@ -128,9 +281,16 @@ export default function DashboardPage() {
 
   return (
     <div>
-      <Title level={3} style={{ marginBottom: 24 }}>
-        Dashboard
-      </Title>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24 }}>
+        <Title level={3} style={{ margin: 0 }}>
+          Dashboard
+        </Title>
+        <ToDoWidget
+          count={todoCount}
+          loading={todoCountLoading}
+          onClick={() => router.push("/dashboard/tasks")}
+        />
+      </div>
 
       {/* KPI Cards Row */}
       <Row gutter={[16, 16]}>
@@ -144,7 +304,7 @@ export default function DashboardPage() {
                 (stats?.pending_approvals ?? 0) > 0 ? "active" : "normal"
               }
               loading={loading}
-              onClick={() => router.push("/manager/approvals")}
+              onClick={() => router.push("/dashboard/tasks")}
             />
           </Col>
         )}
@@ -200,40 +360,55 @@ export default function DashboardPage() {
           </Col>
         )}
 
-        {/* Total Paid Expenses: admin, manager, finance */}
-        {canSee(role, ["finance"]) && (
+        {/* Idle Trucks: admin, manager, ops */}
+        {canSee(role, ["ops"]) && (
           <Col xs={24} sm={12} lg={6} xl={4}>
             <MetricCard
-              title="Total Paid"
-              value={
-                stats
-                  ? `KES ${stats.total_paid_amount.toLocaleString()}`
-                  : "KES 0"
+              title="Idle Trucks"
+              value={stats?.trucks_idle ?? 0}
+              status={
+                (stats?.trucks_idle ?? 0) > 0 ? "critical" : "active"
               }
-              isRevenue
               loading={loading}
-              onClick={() => router.push("/manager/payments")}
+              onClick={() => router.push("/fleet/trucks")}
             />
           </Col>
         )}
       </Row>
 
-      {/* Charts Row */}
-      <Row gutter={[16, 16]} style={{ marginTop: 24 }}>
-        {/* Profit / Expense Overview: admin, manager, finance */}
-        {canSee(role, ["finance"]) && (
-          <Col xs={24} lg={16}>
-            <ProfitTrendChart data={[]} loading={false} />
-          </Col>
-        )}
+      {/* Financial Pulse Section: admin, manager, finance */}
+      {canSee(role, ["finance"]) && (
+        <>
+          <Title level={4} style={{ marginTop: 32, marginBottom: 16 }}>
+            Financial Pulse
+          </Title>
+          <Row gutter={[16, 16]}>
+            {/* Daily Profit Trend Chart */}
+            <Col xs={24} lg={12}>
+              <ProfitTrendChart
+                data={financialPulse?.daily_trend || []}
+                loading={financialLoading}
+              />
+            </Col>
 
-        {/* Vehicle Utilization: admin, manager, ops */}
-        {canSee(role, ["ops"]) && (
-          <Col xs={24} lg={canSee(role, ["finance"]) ? 8 : 24}>
-            <UtilizationChart data={utilizationData} loading={loading} />
-          </Col>
-        )}
-      </Row>
+            {/* Monthly Income vs Expense */}
+            <Col xs={24} lg={6}>
+              <IncomeVsExpenseChart
+                data={financialPulse?.monthly_stats || null}
+                loading={financialLoading}
+              />
+            </Col>
+
+            {/* Expense Distribution Donut */}
+            <Col xs={24} lg={6}>
+              <ExpenseDistributionChart
+                data={financialPulse?.expense_breakdown || []}
+                loading={financialLoading}
+              />
+            </Col>
+          </Row>
+        </>
+      )}
 
       {/* Recent Trips Table: visible to all roles */}
       <RecentTripsTable data={recentTrips} loading={tripsLoading} />
@@ -246,5 +421,13 @@ export default function DashboardPage() {
         />
       )}
     </div>
+  );
+}
+
+export default function DashboardPage() {
+  return (
+    <App>
+      <DashboardContent />
+    </App>
   );
 }

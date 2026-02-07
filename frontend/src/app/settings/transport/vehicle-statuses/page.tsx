@@ -32,9 +32,20 @@ import type {
   VehicleStatusesResponse,
 } from "@/types/vehicle-status";
 import { useAuth } from "@/contexts/AuthContext";
+import {
+  getColumnSearchProps,
+  getColumnFilterProps,
+  getStandardRowSelection,
+  useResizableColumns,
+} from "@/components/ui/tableUtils";
 
 const { Title } = Typography;
 const { TextArea } = Input;
+
+const STATUS_FILTERS = [
+  { text: "Active", value: true },
+  { text: "Inactive", value: false },
+];
 
 export default function VehicleStatusesPage() {
   const router = useRouter();
@@ -48,6 +59,10 @@ export default function VehicleStatusesPage() {
     null
   );
   const [submitting, setSubmitting] = useState(false);
+  const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
+
   const [createForm] = Form.useForm<VehicleStatusCreate>();
   const [editForm] = Form.useForm<VehicleStatusUpdate>();
 
@@ -168,51 +183,63 @@ export default function VehicleStatusesPage() {
       title: "Name",
       dataIndex: "name",
       key: "name",
+      width: 200,
       sorter: (a, b) => a.name.localeCompare(b.name),
+      render: (text: string) => (
+        <div style={{ fontWeight: 600 }}>{text}</div>
+      ),
+      ...getColumnSearchProps("name"),
     },
     {
       title: "Description",
       dataIndex: "description",
       key: "description",
+      ellipsis: true,
       render: (desc: string | null) => desc || "-",
+      ...getColumnSearchProps("description"),
     },
     {
-      title: "Active",
+      title: "Status",
       dataIndex: "is_active",
       key: "is_active",
+      width: 100,
       render: (active: boolean) => (
         <Tag color={active ? "green" : "red"}>{active ? "Active" : "Inactive"}</Tag>
       ),
-      filters: [
-        { text: "Active", value: true },
-        { text: "Inactive", value: false },
-      ],
-      onFilter: (value, record) => record.is_active === value,
+      ...getColumnFilterProps("is_active", STATUS_FILTERS),
     },
     {
       title: "Actions",
       key: "actions",
+      width: 100,
+      fixed: "right",
       render: (_, record) => (
-        <Space size="small">
-          <Button
-            type="text"
-            icon={<EditOutlined />}
-            onClick={() => openEditModal(record)}
-          />
-          <Popconfirm
-            title="Delete vehicle status"
-            description={`Delete "${record.name}"?`}
-            onConfirm={() => handleDelete(record)}
-            okText="Yes"
-            cancelText="No"
-            okButtonProps={{ danger: true }}
-          >
-            <Button type="text" danger icon={<DeleteOutlined />} />
-          </Popconfirm>
-        </Space>
+        <div className="row-actions">
+          <Space size="small">
+            <Button
+              type="text"
+              size="small"
+              icon={<EditOutlined />}
+              onClick={() => openEditModal(record)}
+            />
+            <Popconfirm
+              title="Delete vehicle status"
+              description={`Delete "${record.name}"?`}
+              onConfirm={() => handleDelete(record)}
+              okText="Yes"
+              cancelText="No"
+              okButtonProps={{ danger: true }}
+            >
+              <Button type="text" danger size="small" icon={<DeleteOutlined />} />
+            </Popconfirm>
+          </Space>
+        </div>
       ),
     },
   ];
+
+  // Make columns resizable
+  const { resizableColumns, components } = useResizableColumns(columns);
 
   if (authLoading) {
     return (
@@ -232,7 +259,7 @@ export default function VehicleStatusesPage() {
   return (
     <div>
       <Card>
-        <Space direction="vertical" size="middle" style={{ width: "100%" }}>
+        <Space orientation="vertical" size="middle" style={{ width: "100%" }}>
           <div
             style={{
               display: "flex",
@@ -266,15 +293,29 @@ export default function VehicleStatusesPage() {
           </div>
 
           <Table<VehicleStatus>
-            columns={columns}
+            columns={resizableColumns}
+            components={components}
             dataSource={statuses}
             rowKey="id"
             loading={loading}
+            sticky={{ offsetHeader: 64 }}
+            rowSelection={getStandardRowSelection(
+              currentPage,
+              pageSize,
+              selectedRowKeys,
+              setSelectedRowKeys
+            )}
             pagination={{
+              current: currentPage,
+              pageSize,
               total: totalCount,
               showTotal: (total) => `Total ${total} vehicle statuses`,
               showSizeChanger: true,
               pageSizeOptions: ["10", "20", "50", "100"],
+              onChange: (page, size) => {
+                setCurrentPage(page);
+                setPageSize(size);
+              },
             }}
           />
         </Space>
@@ -289,7 +330,7 @@ export default function VehicleStatusesPage() {
           createForm.resetFields();
         }}
         footer={null}
-        destroyOnClose
+        destroyOnHidden
       >
         <Form<VehicleStatusCreate>
           form={createForm}
@@ -355,7 +396,7 @@ export default function VehicleStatusesPage() {
           editForm.resetFields();
         }}
         footer={null}
-        destroyOnClose
+        destroyOnHidden
       >
         <Form<VehicleStatusUpdate>
           form={editForm}

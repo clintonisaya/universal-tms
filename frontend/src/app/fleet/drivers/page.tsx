@@ -36,6 +36,12 @@ import type {
   DriverFormValues,
 } from "@/types/driver";
 import { useAuth } from "@/contexts/AuthContext";
+import {
+  getColumnSearchProps,
+  getColumnFilterProps,
+  getStandardRowSelection,
+  useResizableColumns,
+} from "@/components/ui/tableUtils";
 
 const { Title } = Typography;
 
@@ -45,6 +51,12 @@ const STATUS_COLORS: Record<DriverStatus, string> = {
   "On Trip": "blue",
   Inactive: "gray",
 };
+
+const STATUS_FILTERS = [
+  { text: "Active", value: "Active" },
+  { text: "On Trip", value: "On Trip" },
+  { text: "Inactive", value: "Inactive" },
+];
 
 export default function DriversPage() {
   const router = useRouter();
@@ -56,6 +68,10 @@ export default function DriversPage() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingDriver, setEditingDriver] = useState<Driver | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
+
   const [createForm] = Form.useForm<DriverFormValues>();
   const [editForm] = Form.useForm<DriverFormValues>();
 
@@ -187,87 +203,93 @@ export default function DriversPage() {
       title: "Full Name",
       dataIndex: "full_name",
       key: "full_name",
+      width: 180,
       sorter: (a, b) => a.full_name.localeCompare(b.full_name),
+      render: (text: string) => <span style={{ fontWeight: 600 }}>{text}</span>,
+      ...getColumnSearchProps("full_name"),
     },
     {
-      title: "License Number",
+      title: "Phone",
+      dataIndex: "phone_number",
+      key: "phone_number",
+      width: 140,
+      render: (text: string) => text || "-",
+      ...getColumnSearchProps("phone_number"),
+    },
+    {
+      title: "License #",
       dataIndex: "license_number",
       key: "license_number",
-      sorter: (a, b) => a.license_number.localeCompare(b.license_number),
+      width: 140,
+      render: (text: string) => text || "-",
+      ...getColumnSearchProps("license_number"),
     },
     {
       title: "License Expiry",
       dataIndex: "license_expiry_date",
       key: "license_expiry_date",
-      render: (date: string | null) =>
-        date ? dayjs(date).format("YYYY-MM-DD") : "-",
-      sorter: (a, b) => {
-        if (!a.license_expiry_date) return 1;
-        if (!b.license_expiry_date) return -1;
-        return a.license_expiry_date.localeCompare(b.license_expiry_date);
-      },
+      width: 120,
+      render: (date: string | null) => date ? new Date(date).toLocaleDateString() : "-",
+      sorter: (a, b) => (a.license_expiry_date || "").localeCompare(b.license_expiry_date || ""),
     },
     {
-      title: "Passport",
+      title: "Passport #",
       dataIndex: "passport_number",
       key: "passport_number",
-      render: (passport: string | null) => passport || "-",
+      width: 140,
+      render: (text: string) => text || "-",
+      ...getColumnSearchProps("passport_number"),
     },
     {
       title: "Passport Expiry",
       dataIndex: "passport_expiry_date",
       key: "passport_expiry_date",
-      render: (date: string | null) =>
-        date ? dayjs(date).format("YYYY-MM-DD") : "-",
-      sorter: (a, b) => {
-        if (!a.passport_expiry_date) return 1;
-        if (!b.passport_expiry_date) return -1;
-        return a.passport_expiry_date.localeCompare(b.passport_expiry_date);
-      },
-    },
-    {
-      title: "Phone Number",
-      dataIndex: "phone_number",
-      key: "phone_number",
+      width: 120,
+      render: (date: string | null) => date ? new Date(date).toLocaleDateString() : "-",
+      sorter: (a, b) => (a.passport_expiry_date || "").localeCompare(b.passport_expiry_date || ""),
     },
     {
       title: "Status",
       dataIndex: "status",
       key: "status",
+      width: 100,
       render: (status: DriverStatus) => (
         <Tag color={STATUS_COLORS[status]}>{status}</Tag>
       ),
-      filters: [
-        { text: "Active", value: "Active" },
-        { text: "On Trip", value: "On Trip" },
-        { text: "Inactive", value: "Inactive" },
-      ],
-      onFilter: (value, record) => record.status === value,
+      ...getColumnFilterProps("status", STATUS_FILTERS),
     },
     {
       title: "Actions",
       key: "actions",
+      width: 100,
+      fixed: "right",
       render: (_, record) => (
-        <Space size="small">
-          <Button
-            type="text"
-            icon={<EditOutlined />}
-            onClick={() => openEditModal(record)}
-          />
-          <Popconfirm
-            title="Delete driver"
-            description={`Are you sure you want to delete ${record.full_name}?`}
-            onConfirm={() => handleDelete(record)}
-            okText="Yes"
-            cancelText="No"
-            okButtonProps={{ danger: true }}
-          >
-            <Button type="text" danger icon={<DeleteOutlined />} />
-          </Popconfirm>
-        </Space>
+        <div className="row-actions">
+          <Space size="small">
+            <Button
+              type="text"
+              size="small"
+              icon={<EditOutlined />}
+              onClick={() => openEditModal(record)}
+            />
+            <Popconfirm
+              title="Delete driver"
+              description={`Are you sure you want to delete ${record.full_name}?`}
+              onConfirm={() => handleDelete(record)}
+              okText="Yes"
+              cancelText="No"
+              okButtonProps={{ danger: true }}
+            >
+              <Button type="text" danger icon={<DeleteOutlined />} size="small" />
+            </Popconfirm>
+          </Space>
+        </div>
       ),
     },
   ];
+
+  // Make columns resizable
+  const { resizableColumns, components } = useResizableColumns(columns);
 
   if (authLoading) {
     return (
@@ -293,7 +315,7 @@ export default function DriversPage() {
       }}
     >
       <Card>
-        <Space direction="vertical" size="middle" style={{ width: "100%" }}>
+        <Space orientation="vertical" size="middle" style={{ width: "100%" }}>
           <div
             style={{
               display: "flex",
@@ -327,15 +349,29 @@ export default function DriversPage() {
           </div>
 
           <Table<Driver>
-            columns={columns}
+            columns={resizableColumns}
+            components={components}
             dataSource={drivers}
             rowKey="id"
             loading={loading}
+            sticky={{ offsetHeader: 64 }}
+            rowSelection={getStandardRowSelection(
+              currentPage,
+              pageSize,
+              selectedRowKeys,
+              setSelectedRowKeys
+            )}
             pagination={{
+              current: currentPage,
+              pageSize,
               total: totalCount,
               showTotal: (total) => `Total ${total} drivers`,
               showSizeChanger: true,
               pageSizeOptions: ["10", "20", "50", "100"],
+              onChange: (page, size) => {
+                setCurrentPage(page);
+                setPageSize(size);
+              },
             }}
           />
         </Space>
@@ -350,7 +386,7 @@ export default function DriversPage() {
           createForm.resetFields();
         }}
         footer={null}
-        destroyOnClose
+        destroyOnHidden
       >
         <Form<DriverFormValues>
           form={createForm}
@@ -458,7 +494,7 @@ export default function DriversPage() {
           editForm.resetFields();
         }}
         footer={null}
-        destroyOnClose
+        destroyOnHidden
       >
         <Form<DriverFormValues>
           form={editForm}

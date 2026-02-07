@@ -23,6 +23,7 @@ export interface Trip {
   driver_id: string;
   route_name: string;
   trip_number: string;
+  waybill_id: string | null;
   status: TripStatus;
   current_location: string | null;
   pod_documents: string[];
@@ -42,6 +43,8 @@ export interface TripCreate {
   trailer_id: string;
   driver_id: string;
   route_name: string;
+  waybill_id?: string | null;
+  current_location?: string | null;
 }
 
 export interface TripUpdate {
@@ -49,6 +52,7 @@ export interface TripUpdate {
   trailer_id?: string;
   driver_id?: string;
   route_name?: string;
+  waybill_id?: string | null;
   status?: TripStatus;
   current_location?: string | null;
 }
