@@ -104,22 +104,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  // Initial auth check - only runs once on mount
   useEffect(() => {
     const init = async () => {
       const userData = await fetchUser();
       setUser(userData);
       setLoading(false);
-
-      // Redirect logic
-      const isPublicPath = PUBLIC_PATHS.includes(pathname);
-      if (!userData && !isPublicPath) {
-        router.push("/login");
-      } else if (userData && pathname === "/login") {
-        router.push("/dashboard");
-      }
     };
     init();
-  }, [pathname, router]);
+  }, []);
+
+  // Handle redirects based on auth state and pathname
+  useEffect(() => {
+    if (loading) return; // Wait for auth check to complete
+
+    const isPublicPath = PUBLIC_PATHS.includes(pathname);
+    if (!user && !isPublicPath) {
+      router.push("/login");
+    } else if (user && pathname === "/login") {
+      router.push("/dashboard");
+    }
+  }, [user, loading, pathname, router]);
 
   return (
     <AuthContext.Provider value={{ user, loading, login, logout, refreshUser }}>
