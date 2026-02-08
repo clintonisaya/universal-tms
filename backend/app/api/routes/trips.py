@@ -162,7 +162,7 @@ def get_available_drivers(
     return DriversPublic(data=drivers, count=len(drivers))
 
 
-@router.get("/", response_model=TripsPublic)
+@router.get("", response_model=TripsPublic)
 def read_trips(
     session: SessionDep,
     current_user: CurrentUser,
@@ -192,7 +192,7 @@ def read_trip(
     return trip
 
 
-@router.post("/", response_model=TripPublic)
+@router.post("", response_model=TripPublic)
 def create_trip(
     *,
     session: SessionDep,

@@ -51,7 +51,7 @@ def format_plate_number(plate: str) -> str:
     return cleaned
 
 
-@router.get("/", response_model=TrailersPublic)
+@router.get("", response_model=TrailersPublic)
 def read_trailers(
     session: SessionDep,
     current_user: CurrentUser,
@@ -85,7 +85,7 @@ def read_trailer(
     return trailer
 
 
-@router.post("/", response_model=TrailerPublic)
+@router.post("", response_model=TrailerPublic)
 def create_trailer(
     *,
     session: SessionDep,

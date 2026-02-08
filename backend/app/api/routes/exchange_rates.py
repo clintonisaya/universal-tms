@@ -31,7 +31,7 @@ def require_finance_role(user: Any) -> None:
         )
 
 
-@router.get("/", response_model=ExchangeRatesPublic)
+@router.get("", response_model=ExchangeRatesPublic)
 def read_exchange_rates(
     session: SessionDep,
     current_user: CurrentUser,
@@ -87,7 +87,7 @@ def get_current_rate(
     return None
 
 
-@router.post("/", response_model=ExchangeRatePublic)
+@router.post("", response_model=ExchangeRatePublic)
 def create_exchange_rate(
     *,
     session: SessionDep,

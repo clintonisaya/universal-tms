@@ -30,7 +30,7 @@ def normalize_license_number(license_num: str) -> str:
     return re.sub(r"\s+", "", license_num.upper().strip())
 
 
-@router.get("/", response_model=DriversPublic)
+@router.get("", response_model=DriversPublic)
 def read_drivers(
     session: SessionDep,
     current_user: CurrentUser,
@@ -64,7 +64,7 @@ def read_driver(
     return driver
 
 
-@router.post("/", response_model=DriverPublic)
+@router.post("", response_model=DriverPublic)
 def create_driver(
     *,
     session: SessionDep,

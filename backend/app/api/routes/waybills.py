@@ -50,7 +50,7 @@ def generate_waybill_number(session: SessionDep) -> str:
     return f"WB-{year}-{sequence:04d}"
 
 
-@router.get("/", response_model=WaybillsPublic)
+@router.get("", response_model=WaybillsPublic)
 def read_waybills(
     session: SessionDep,
     current_user: CurrentUser,
@@ -85,7 +85,7 @@ def read_waybill(
     return waybill
 
 
-@router.post("/", response_model=WaybillPublic)
+@router.post("", response_model=WaybillPublic)
 def create_waybill(
     *,
     session: SessionDep,

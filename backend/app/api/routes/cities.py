@@ -9,7 +9,7 @@ from app.models import City, CityCreate, CityPublic, CitiesPublic, CityUpdate, M
 
 router = APIRouter(prefix="/cities", tags=["cities"])
 
-@router.get("/", response_model=CitiesPublic)
+@router.get("", response_model=CitiesPublic)
 def read_cities(
     session: SessionDep, current_user: CurrentUser, skip: int = 0, limit: int = 100
 ) -> Any:
@@ -32,7 +32,7 @@ def read_city(session: SessionDep, current_user: CurrentUser, id: uuid.UUID) -> 
         raise HTTPException(status_code=404, detail="City not found")
     return city
 
-@router.post("/", response_model=CityPublic)
+@router.post("", response_model=CityPublic)
 def create_city(
     *, session: SessionDep, current_user: CurrentUser, city_in: CityCreate
 ) -> Any:

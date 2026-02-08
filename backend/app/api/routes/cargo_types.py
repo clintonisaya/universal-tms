@@ -21,7 +21,7 @@ from app.models import (
 router = APIRouter(prefix="/cargo-types", tags=["cargo-types"])
 
 
-@router.get("/", response_model=CargoTypesPublic)
+@router.get("", response_model=CargoTypesPublic)
 def read_cargo_types(
     session: SessionDep,
     current_user: CurrentUser,
@@ -51,7 +51,7 @@ def read_cargo_type(
     return cargo_type
 
 
-@router.post("/", response_model=CargoTypePublic)
+@router.post("", response_model=CargoTypePublic)
 def create_cargo_type(
     *,
     session: SessionDep,

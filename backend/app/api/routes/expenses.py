@@ -165,7 +165,7 @@ def check_trip_not_closed(session: SessionDep, trip_id: uuid.UUID | None) -> Tri
     return trip
 
 
-@router.get("/", response_model=ExpenseRequestsPublic)
+@router.get("", response_model=ExpenseRequestsPublic)
 def read_expenses(
     session: SessionDep,
     current_user: CurrentUser,
@@ -342,7 +342,7 @@ async def batch_update_expenses(
     return Message(message=f"Successfully updated {updated_count} expenses")
 
 
-@router.post("/", response_model=ExpenseRequestPublic)
+@router.post("", response_model=ExpenseRequestPublic)
 async def create_expense(
     *,
     session: SessionDep,

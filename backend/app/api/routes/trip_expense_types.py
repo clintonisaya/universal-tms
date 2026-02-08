@@ -21,7 +21,7 @@ from app.models import (
 router = APIRouter(prefix="/trip-expense-types", tags=["trip-expense-types"])
 
 
-@router.get("/", response_model=TripExpenseTypesPublic)
+@router.get("", response_model=TripExpenseTypesPublic)
 def read_trip_expense_types(
     session: SessionDep,
     current_user: CurrentUser,
@@ -80,7 +80,7 @@ def read_trip_expense_type(
     return expense_type
 
 
-@router.post("/", response_model=TripExpenseTypePublic)
+@router.post("", response_model=TripExpenseTypePublic)
 def create_trip_expense_type(
     *,
     session: SessionDep,

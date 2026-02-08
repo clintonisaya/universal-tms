@@ -21,7 +21,7 @@ from app.models import (
 router = APIRouter(prefix="/clients", tags=["clients"])
 
 
-@router.get("/", response_model=ClientsPublic)
+@router.get("", response_model=ClientsPublic)
 def read_clients(
     session: SessionDep,
     current_user: CurrentUser,
@@ -55,7 +55,7 @@ def read_client(
     return client
 
 
-@router.post("/", response_model=ClientPublic)
+@router.post("", response_model=ClientPublic)
 def create_client(
     *,
     session: SessionDep,

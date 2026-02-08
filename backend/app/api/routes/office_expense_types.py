@@ -21,7 +21,7 @@ from app.models import (
 router = APIRouter(prefix="/office-expense-types", tags=["office-expense-types"])
 
 
-@router.get("/", response_model=OfficeExpenseTypesPublic)
+@router.get("", response_model=OfficeExpenseTypesPublic)
 def read_office_expense_types(
     session: SessionDep,
     current_user: CurrentUser,
@@ -60,7 +60,7 @@ def read_office_expense_type(
     return expense_type
 
 
-@router.post("/", response_model=OfficeExpenseTypePublic)
+@router.post("", response_model=OfficeExpenseTypePublic)
 def create_office_expense_type(
     *,
     session: SessionDep,

@@ -57,7 +57,7 @@ def format_plate_number(plate: str) -> str:
     return cleaned
 
 
-@router.get("/", response_model=TrucksPublic)
+@router.get("", response_model=TrucksPublic)
 def read_trucks(
     session: SessionDep,
     current_user: CurrentUser,
@@ -136,7 +136,7 @@ def read_truck_maintenance_history(
     )
 
 
-@router.post("/", response_model=TruckPublic)
+@router.post("", response_model=TruckPublic)
 def create_truck(
     *,
     session: SessionDep,
