@@ -1,10 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // 1. CRITICAL: This reduces the build size by 80% and allows Docker to run it.
-  output: "standalone",
-
-  // 2. Fixes the API proxy so it works on both Local (Laptop) and Docker (Server)
+  // Fixes the API proxy so it works on both Local (Laptop) and Docker (Server)
   async rewrites() {
     return [
       {
