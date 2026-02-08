@@ -27,7 +27,16 @@ def upgrade():
                existing_type=postgresql.ENUM('idle', 'in_transit', 'maintenance', 'loading', 'at_border', 'offloaded', 'returned', 'waiting_for_pods', name='truckstatus'),
                type_=sqlmodel.sql.sqltypes.AutoString(),
                existing_nullable=False)
-    
+
+    # Create userrole enum if it doesn't exist
+    op.execute("""
+        DO $$ BEGIN
+            CREATE TYPE userrole AS ENUM ('admin', 'manager', 'ops', 'finance');
+        EXCEPTION
+            WHEN duplicate_object THEN null;
+        END $$;
+    """)
+
     # Manual Fix for Role Enum migration
     # 1. Drop default constraint first
     op.alter_column('user', 'role', server_default=None)
