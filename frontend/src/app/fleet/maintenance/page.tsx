@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Table,
@@ -8,7 +8,6 @@ import {
   Card,
   Flex,
   Tag,
-  message,
   Typography,
   Spin,
 } from "antd";
@@ -20,6 +19,7 @@ import {
 import type { ColumnsType } from "antd/es/table";
 import type { MaintenanceEvent } from "@/types/maintenance";
 import { useAuth } from "@/contexts/AuthContext";
+import { useMaintenance, useInvalidateQueries } from "@/hooks/useApi";
 import { CreateMaintenanceDrawer } from "@/components/maintenance/CreateMaintenanceDrawer";
 import {
   getColumnSearchProps,
@@ -32,39 +32,18 @@ const { Title } = Typography;
 export default function MaintenancePage() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
-  const [events, setEvents] = useState<MaintenanceEvent[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [totalCount, setTotalCount] = useState(0);
+  
+  // TanStack Query for maintenance data
+  const { data, isLoading: loading, refetch } = useMaintenance();
+  const { invalidateMaintenance } = useInvalidateQueries();
+
+  const events = (data?.data || []) as MaintenanceEvent[];
+  const totalCount = data?.count || 0;
+
   const [createDrawerOpen, setCreateDrawerOpen] = useState(false);
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
-
-  const fetchEvents = async () => {
-    setLoading(true);
-    try {
-      const response = await fetch("/api/v1/maintenance/", {
-        credentials: "include",
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setEvents(data.data);
-        setTotalCount(data.count);
-      } else {
-        message.error("Failed to fetch maintenance records");
-      }
-    } catch {
-      message.error("Network error");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    if (!authLoading && user) {
-      fetchEvents();
-    }
-  }, [authLoading, user]);
 
   const columns: ColumnsType<MaintenanceEvent> = [
     {
@@ -145,7 +124,7 @@ export default function MaintenancePage() {
               <Title level={2} style={{ margin: 0 }}>Maintenance Log</Title>
             </Flex>
             <Flex gap="small">
-              <Button icon={<ReloadOutlined />} onClick={fetchEvents}>Refresh</Button>
+              <Button icon={<ReloadOutlined />} onClick={() => refetch()}>Refresh</Button>
               <Button type="primary" icon={<PlusOutlined />} onClick={() => setCreateDrawerOpen(true)}>
                 New Record
               </Button>
@@ -183,7 +162,7 @@ export default function MaintenancePage() {
       <CreateMaintenanceDrawer
         open={createDrawerOpen}
         onClose={() => setCreateDrawerOpen(false)}
-        onSuccess={fetchEvents}
+        onSuccess={() => invalidateMaintenance()}
       />
     </div>
   );

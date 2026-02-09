@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Table,
@@ -27,9 +27,9 @@ import type {
   Client,
   ClientCreate,
   ClientUpdate,
-  ClientsResponse,
 } from "@/types/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useClients, useInvalidateQueries } from "@/hooks/useApi";
 import {
   getColumnSearchProps,
   getStandardRowSelection,
@@ -40,9 +40,14 @@ const { Title } = Typography;
 export default function ClientsPage() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
-  const [clients, setClients] = useState<Client[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [totalCount, setTotalCount] = useState(0);
+  
+  // TanStack Query for clients data
+  const { data, isLoading: loading, refetch } = useClients();
+  const { invalidateClients } = useInvalidateQueries();
+  
+  const clients = (data?.data || []) as Client[];
+  const totalCount = data?.count || 0;
+
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingClient, setEditingClient] = useState<Client | null>(null);
@@ -53,34 +58,6 @@ export default function ClientsPage() {
 
   const [createForm] = Form.useForm<ClientCreate>();
   const [editForm] = Form.useForm<ClientUpdate>();
-
-  const fetchClients = useCallback(async () => {
-    setLoading(true);
-    try {
-      const response = await fetch("/api/v1/clients/", {
-        credentials: "include",
-      });
-      if (response.ok) {
-        const data: ClientsResponse = await response.json();
-        setClients(data.data);
-        setTotalCount(data.count);
-      } else if (response.status === 401) {
-        router.push("/login");
-      } else {
-        message.error("Failed to fetch clients");
-      }
-    } catch {
-      message.error("Network error");
-    } finally {
-      setLoading(false);
-    }
-  }, [router]);
-
-  useEffect(() => {
-    if (!authLoading && user) {
-      fetchClients();
-    }
-  }, [authLoading, user, fetchClients]);
 
   const generateSystemId = () => {
     const random = Math.floor(1000 + Math.random() * 9000);
@@ -107,7 +84,7 @@ export default function ClientsPage() {
         message.success("Client added successfully");
         setIsCreateModalOpen(false);
         createForm.resetFields();
-        fetchClients();
+        invalidateClients();
       } else {
         const error = await response.json();
         message.error(error.detail || "Failed to create client");
@@ -134,7 +111,7 @@ export default function ClientsPage() {
         setIsEditModalOpen(false);
         setEditingClient(null);
         editForm.resetFields();
-        fetchClients();
+        invalidateClients();
       } else {
         const error = await response.json();
         message.error(error.detail || "Failed to update client");
@@ -154,7 +131,7 @@ export default function ClientsPage() {
       });
       if (response.ok) {
         message.success("Client deleted successfully");
-        fetchClients();
+        invalidateClients();
       } else {
         const error = await response.json();
         message.error(error.detail || "Failed to delete client");
@@ -261,7 +238,7 @@ export default function ClientsPage() {
               </Title>
             </Space>
             <Space>
-              <Button icon={<ReloadOutlined />} onClick={fetchClients}>
+              <Button icon={<ReloadOutlined />} onClick={() => refetch()}>
                 Refresh
               </Button>
               <Button

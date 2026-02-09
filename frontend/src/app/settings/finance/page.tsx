@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Table,
@@ -25,6 +25,7 @@ import {
 import type { ColumnsType } from "antd/es/table";
 import type { ExchangeRate, ExchangeRateCreate } from "@/types/finance";
 import { useAuth } from "@/contexts/AuthContext";
+import { useExchangeRates, useInvalidateQueries } from "@/hooks/useApi";
 import { getStandardRowSelection, useResizableColumns } from "@/components/ui/tableUtils";
 
 const { Title } = Typography;
@@ -37,8 +38,13 @@ const MONTHS = [
 export default function ExchangeRateSettingsPage() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
-  const [rates, setRates] = useState<ExchangeRate[]>([]);
-  const [loading, setLoading] = useState(true);
+  
+  // TanStack Query
+  const { data, isLoading: loading, refetch } = useExchangeRates();
+  const { invalidateExchangeRates } = useInvalidateQueries();
+
+  const rates = (data?.data || []) as ExchangeRate[];
+
   const [modalOpen, setModalOpen] = useState(false);
   const [editingRate, setEditingRate] = useState<ExchangeRate | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -47,31 +53,6 @@ export default function ExchangeRateSettingsPage() {
   const [pageSize, setPageSize] = useState(20);
 
   const [form] = Form.useForm<ExchangeRateCreate>();
-
-  const fetchRates = useCallback(async () => {
-    setLoading(true);
-    try {
-      const response = await fetch("/api/v1/finance/exchange-rates/", {
-        credentials: "include",
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setRates(data.data);
-      } else {
-        message.error("Failed to fetch exchange rates");
-      }
-    } catch {
-      message.error("Network error");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (!authLoading && user) {
-      fetchRates();
-    }
-  }, [authLoading, user, fetchRates]);
 
   const openCreate = () => {
     setEditingRate(null);
@@ -103,7 +84,7 @@ export default function ExchangeRateSettingsPage() {
         if (response.ok) {
           message.success("Rate updated");
           setModalOpen(false);
-          fetchRates();
+          invalidateExchangeRates();
         } else {
           const error = await response.json();
           message.error(error.detail || "Update failed");
@@ -118,7 +99,7 @@ export default function ExchangeRateSettingsPage() {
         if (response.ok) {
           message.success("Rate created");
           setModalOpen(false);
-          fetchRates();
+          invalidateExchangeRates();
         } else {
           const error = await response.json();
           message.error(error.detail || "Creation failed");
@@ -139,7 +120,7 @@ export default function ExchangeRateSettingsPage() {
       );
       if (response.ok) {
         message.success("Rate deleted");
-        fetchRates();
+        invalidateExchangeRates();
       } else {
         message.error("Delete failed");
       }
@@ -237,7 +218,7 @@ export default function ExchangeRateSettingsPage() {
               </Title>
             </Space>
             <Space>
-              <Button icon={<ReloadOutlined />} onClick={fetchRates}>
+              <Button icon={<ReloadOutlined />} onClick={() => refetch()}>
                 Refresh
               </Button>
               {(user?.role === "finance" || user?.role === "admin" || user?.is_superuser) && (

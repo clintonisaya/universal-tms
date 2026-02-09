@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import {
   Table,
@@ -16,7 +16,6 @@ import {
   Typography,
   Spin,
   Popconfirm,
-  InputNumber,
   Flex,
 } from "antd";
 import {
@@ -31,10 +30,10 @@ import type { ColumnsType } from "antd/es/table";
 import type {
   TripExpenseType,
   TripExpenseTypeCreate,
-  TripExpenseTypeUpdate,
   TripExpenseTypesResponse,
 } from "@/types/trip-expense-type";
 import { useAuth } from "@/contexts/AuthContext";
+import { useTripExpenseTypes, useInvalidateQueries } from "@/hooks/useApi";
 import {
   getColumnSearchProps,
   getStandardRowSelection,
@@ -63,8 +62,11 @@ type TreeNode = CategoryNode | ExpenseTypeNode;
 export default function TripExpenseTypesPage() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
-  const [treeData, setTreeData] = useState<CategoryNode[]>([]);
-  const [loading, setLoading] = useState(true);
+  
+  // TanStack Query for expense types
+  const { data: queryData, isLoading: loading, refetch } = useTripExpenseTypes();
+  const { invalidateTripExpenseTypes } = useInvalidateQueries();
+  
   const [seeding, setSeeding] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
@@ -80,72 +82,50 @@ export default function TripExpenseTypesPage() {
   const [categoryForm] = Form.useForm();
   const [expenseTypeForm] = Form.useForm();
 
-  const fetchData = useCallback(async () => {
-    setLoading(true);
-    try {
-      const response = await fetch("/api/v1/trip-expense-types/?active_only=false", {
-        credentials: "include",
-      });
+  // Transform data into tree structure
+  const treeData = useMemo(() => {
+    const rawData = (queryData?.data || []) as TripExpenseType[];
+    if (!rawData.length) return [];
 
-      if (response.ok) {
-        const data: TripExpenseTypesResponse = await response.json();
+    const categoryMap = new Map<string, CategoryNode>();
 
-        // Build tree structure: Categories as parents, Expense Types as children
-        const categoryMap = new Map<string, CategoryNode>();
-
-        // First pass: collect all unique categories
-        data.data.forEach((expenseType) => {
-          if (!categoryMap.has(expenseType.category)) {
-            categoryMap.set(expenseType.category, {
-              id: `category-${expenseType.category}`,
-              key: `category-${expenseType.category}`,
-              name: expenseType.category,
-              sorting: 10,
-              isCategory: true,
-              children: [],
-            });
-          }
+    // First pass: collect all unique categories
+    rawData.forEach((expenseType) => {
+      if (!categoryMap.has(expenseType.category)) {
+        categoryMap.set(expenseType.category, {
+          id: `category-${expenseType.category}`,
+          key: `category-${expenseType.category}`,
+          name: expenseType.category,
+          sorting: 10,
+          isCategory: true,
+          children: [],
         });
-
-        // Second pass: add expense types as children
-        data.data.forEach((expenseType) => {
-          const category = categoryMap.get(expenseType.category);
-          if (category) {
-            category.children.push({
-              ...expenseType,
-              key: expenseType.id,
-              isCategory: false,
-            });
-          }
-        });
-
-        // Sort categories alphabetically, then sort children by name
-        const sortedCategories = Array.from(categoryMap.values()).sort(
-          (a, b) => a.name.localeCompare(b.name)
-        );
-
-        sortedCategories.forEach((cat) => {
-          cat.children.sort((a, b) => a.name.localeCompare(b.name));
-        });
-
-        setTreeData(sortedCategories);
-      } else if (response.status === 401) {
-        router.push("/login");
-      } else {
-        message.error("Failed to fetch expense types");
       }
-    } catch {
-      message.error("Network error");
-    } finally {
-      setLoading(false);
-    }
-  }, [router]);
+    });
 
-  useEffect(() => {
-    if (!authLoading && user) {
-      fetchData();
-    }
-  }, [authLoading, user, fetchData]);
+    // Second pass: add expense types as children
+    rawData.forEach((expenseType) => {
+      const category = categoryMap.get(expenseType.category);
+      if (category) {
+        category.children.push({
+          ...expenseType,
+          key: expenseType.id,
+          isCategory: false,
+            });
+          }
+        });
+
+    // Sort categories alphabetically, then sort children by name
+    const sortedCategories = Array.from(categoryMap.values()).sort(
+      (a, b) => a.name.localeCompare(b.name)
+    );
+
+    sortedCategories.forEach((cat) => {
+      cat.children.sort((a, b) => a.name.localeCompare(b.name));
+    });
+
+    return sortedCategories;
+  }, [queryData]);
 
   // Category Handlers (categories are virtual - they're derived from expense types)
   const handleCategorySubmit = async (values: { name: string; sorting?: number }) => {
@@ -179,7 +159,7 @@ export default function TripExpenseTypesPage() {
         setIsCategoryModalOpen(false);
         categoryForm.resetFields();
         setEditingItem(null);
-        fetchData();
+        invalidateTripExpenseTypes();
       } catch {
         message.error("Failed to rename category");
       } finally {
@@ -218,7 +198,7 @@ export default function TripExpenseTypesPage() {
         setIsExpenseTypeModalOpen(false);
         expenseTypeForm.resetFields();
         setEditingItem(null);
-        fetchData();
+        invalidateTripExpenseTypes();
       } else {
         const error = await response.json();
         message.error(error.detail || "Failed");
@@ -244,7 +224,7 @@ export default function TripExpenseTypesPage() {
             });
           }
           message.success("Category and all expense types deleted");
-          fetchData();
+          invalidateTripExpenseTypes();
         } catch {
           message.error("Failed to delete category");
         }
@@ -258,7 +238,7 @@ export default function TripExpenseTypesPage() {
         });
         if (response.ok) {
           message.success("Expense type deleted");
-          fetchData();
+          invalidateTripExpenseTypes();
         } else {
           const error = await response.json();
           message.error(error.detail || "Failed to delete");
@@ -279,7 +259,7 @@ export default function TripExpenseTypesPage() {
       if (response.ok) {
         const data = await response.json();
         message.success(data.message);
-        fetchData();
+        invalidateTripExpenseTypes();
       } else {
         const error = await response.json();
         message.error(error.detail || "Failed to seed data");
@@ -314,8 +294,7 @@ export default function TripExpenseTypesPage() {
         const expenseType = record as ExpenseTypeNode;
         return (
           <Tag color={expenseType.is_active ? "green" : "default"}>
-            {expenseType.is_active ? "Active" : "Inactive"}
-          </Tag>
+            {expenseType.is_active ? "Active" : "Inactive"}</Tag>
         );
       },
     },
@@ -432,7 +411,7 @@ export default function TripExpenseTypesPage() {
                   Seed Data
                 </Button>
               </Popconfirm>
-              <Button icon={<ReloadOutlined />} onClick={fetchData}>
+              <Button icon={<ReloadOutlined />} onClick={() => refetch()}>
                 Refresh
               </Button>
               <Button

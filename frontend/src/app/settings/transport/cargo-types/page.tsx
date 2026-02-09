@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Table,
@@ -27,9 +27,9 @@ import type {
   CargoType,
   CargoTypeCreate,
   CargoTypeUpdate,
-  CargoTypesResponse,
 } from "@/types/cargo-type";
 import { useAuth } from "@/contexts/AuthContext";
+import { useCargoTypes, useInvalidateQueries } from "@/hooks/useApi";
 import {
   getColumnSearchProps,
   getStandardRowSelection,
@@ -42,9 +42,14 @@ const { TextArea } = Input;
 export default function CargoTypesPage() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
-  const [cargoTypes, setCargoTypes] = useState<CargoType[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [totalCount, setTotalCount] = useState(0);
+  
+  // TanStack Query
+  const { data, isLoading: loading, refetch } = useCargoTypes();
+  const { invalidateCargoTypes } = useInvalidateQueries();
+
+  const cargoTypes = (data?.data || []) as CargoType[];
+  const totalCount = data?.count || 0;
+
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingCargoType, setEditingCargoType] = useState<CargoType | null>(
@@ -57,34 +62,6 @@ export default function CargoTypesPage() {
 
   const [createForm] = Form.useForm<CargoTypeCreate>();
   const [editForm] = Form.useForm<CargoTypeUpdate>();
-
-  const fetchCargoTypes = useCallback(async () => {
-    setLoading(true);
-    try {
-      const response = await fetch("/api/v1/cargo-types/", {
-        credentials: "include",
-      });
-      if (response.ok) {
-        const data: CargoTypesResponse = await response.json();
-        setCargoTypes(data.data);
-        setTotalCount(data.count);
-      } else if (response.status === 401) {
-        router.push("/login");
-      } else {
-        message.error("Failed to fetch cargo types");
-      }
-    } catch {
-      message.error("Network error");
-    } finally {
-      setLoading(false);
-    }
-  }, [router]);
-
-  useEffect(() => {
-    if (!authLoading && user) {
-      fetchCargoTypes();
-    }
-  }, [authLoading, user, fetchCargoTypes]);
 
   const handleCreate = async (values: CargoTypeCreate) => {
     setSubmitting(true);
@@ -99,7 +76,7 @@ export default function CargoTypesPage() {
         message.success("Cargo type added successfully");
         setIsCreateModalOpen(false);
         createForm.resetFields();
-        fetchCargoTypes();
+        invalidateCargoTypes();
       } else {
         const error = await response.json();
         message.error(error.detail || "Failed to create cargo type");
@@ -129,7 +106,7 @@ export default function CargoTypesPage() {
         setIsEditModalOpen(false);
         setEditingCargoType(null);
         editForm.resetFields();
-        fetchCargoTypes();
+        invalidateCargoTypes();
       } else {
         const error = await response.json();
         message.error(error.detail || "Failed to update cargo type");
@@ -149,7 +126,7 @@ export default function CargoTypesPage() {
       });
       if (response.ok) {
         message.success("Cargo type deleted successfully");
-        fetchCargoTypes();
+        invalidateCargoTypes();
       } else {
         const error = await response.json();
         message.error(error.detail || "Failed to delete cargo type");
@@ -259,7 +236,7 @@ export default function CargoTypesPage() {
               </Title>
             </Space>
             <Space>
-              <Button icon={<ReloadOutlined />} onClick={fetchCargoTypes}>
+              <Button icon={<ReloadOutlined />} onClick={() => refetch()}>
                 Refresh
               </Button>
               <Button

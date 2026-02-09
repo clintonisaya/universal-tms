@@ -37,6 +37,10 @@ export const queryKeys = {
   todoCount: ["todoCount"] as const,
   financialPulse: ["financialPulse"] as const,
   tracking: ["tracking"] as const,
+  tripExpenseTypes: ["tripExpenseTypes"] as const,
+  countries: ["countries"] as const,
+  cities: ["cities"] as const,
+  vehicleStatuses: ["vehicleStatuses"] as const,
 };
 
 // Trucks
@@ -178,6 +182,64 @@ export function useTracking() {
   });
 }
 
+// Trip Expense Types
+export function useTripExpenseTypes(activeOnly = false) {
+  return useQuery({
+    queryKey: [...queryKeys.tripExpenseTypes, activeOnly],
+    queryFn: () =>
+      apiFetch<{ data: any[]; count: number }>(`/api/v1/trip-expense-types/?active_only=${activeOnly}`),
+  });
+}
+
+// Office Expense Types
+export function useOfficeExpenseTypes(activeOnly = false) {
+  return useQuery({
+    queryKey: ["officeExpenseTypes", activeOnly] as const,
+    queryFn: () =>
+      apiFetch<{ data: any[]; count: number }>(`/api/v1/office-expense-types/?active_only=${activeOnly}`),
+  });
+}
+
+// Countries
+export function useCountries() {
+  return useQuery({
+    queryKey: queryKeys.countries,
+    queryFn: () => apiFetch<{ data: any[]; count: number }>("/api/v1/countries/"),
+  });
+}
+
+// Cities
+export function useCities() {
+  return useQuery({
+    queryKey: queryKeys.cities,
+    queryFn: () => apiFetch<{ data: any[]; count: number }>("/api/v1/cities/"),
+  });
+}
+
+// Vehicle Statuses
+export function useVehicleStatuses() {
+  return useQuery({
+    queryKey: queryKeys.vehicleStatuses,
+    queryFn: () => apiFetch<{ data: any[]; count: number }>("/api/v1/vehicle-statuses/"),
+  });
+}
+
+// Cargo Types
+export function useCargoTypes() {
+  return useQuery({
+    queryKey: ["cargoTypes"] as const,
+    queryFn: () => apiFetch<{ data: any[]; count: number }>("/api/v1/cargo-types/"),
+  });
+}
+
+// Exchange Rates
+export function useExchangeRates() {
+  return useQuery({
+    queryKey: ["exchangeRates"] as const,
+    queryFn: () => apiFetch<{ data: any[]; count: number }>("/api/v1/finance/exchange-rates/"),
+  });
+}
+
 // Hook to invalidate queries after mutations
 export function useInvalidateQueries() {
   const queryClient = useQueryClient();
@@ -197,6 +259,13 @@ export function useInvalidateQueries() {
     invalidateTodoCount: () => queryClient.invalidateQueries({ queryKey: queryKeys.todoCount }),
     invalidateFinancialPulse: () => queryClient.invalidateQueries({ queryKey: queryKeys.financialPulse }),
     invalidateTracking: () => queryClient.invalidateQueries({ queryKey: queryKeys.tracking }),
+    invalidateTripExpenseTypes: () => queryClient.invalidateQueries({ queryKey: queryKeys.tripExpenseTypes }),
+    invalidateOfficeExpenseTypes: () => queryClient.invalidateQueries({ queryKey: ["officeExpenseTypes"] }),
+    invalidateCountries: () => queryClient.invalidateQueries({ queryKey: queryKeys.countries }),
+    invalidateCities: () => queryClient.invalidateQueries({ queryKey: queryKeys.cities }),
+    invalidateVehicleStatuses: () => queryClient.invalidateQueries({ queryKey: queryKeys.vehicleStatuses }),
+    invalidateCargoTypes: () => queryClient.invalidateQueries({ queryKey: ["cargoTypes"] }),
+    invalidateExchangeRates: () => queryClient.invalidateQueries({ queryKey: ["exchangeRates"] }),
     invalidateAll: () => queryClient.invalidateQueries(),
   };
 }

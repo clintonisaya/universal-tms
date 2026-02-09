@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import {
   Table,
@@ -31,10 +31,9 @@ import type {
   CountryCreate,
   City,
   CityCreate,
-  CountriesResponse,
-  CitiesResponse,
 } from "@/types/location";
 import { useAuth } from "@/contexts/AuthContext";
+import { useCountries, useCities, useInvalidateQueries } from "@/hooks/useApi";
 import {
   getColumnSearchProps,
   getStandardRowSelection,
@@ -46,9 +45,48 @@ const { Title } = Typography;
 export default function LocationsPage() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
+  
+  // TanStack Query for locations data
+  const { data: countriesData, isLoading: countriesLoading, refetch: refetchCountries } = useCountries();
+  const { data: citiesData, isLoading: citiesLoading, refetch: refetchCities } = useCities();
+  const { invalidateCountries, invalidateCities } = useInvalidateQueries();
 
-  const [data, setData] = useState<Country[]>([]);
-  const [loading, setLoading] = useState(true);
+  const loading = countriesLoading || citiesLoading;
+
+  // Construct Tree Data
+  const data = useMemo(() => {
+    const countries = (countriesData?.data || []) as Country[];
+    const cities = (citiesData?.data || []) as City[];
+
+    const countryMap = new Map<string, Country>();
+    
+    // Deep copy to avoid mutating cache
+    countries.forEach((c) => {
+      countryMap.set(c.id, { ...c, key: c.id, children: [] });
+    });
+
+    cities.forEach((city) => {
+      const country = countryMap.get(city.country_id);
+      if (country && country.children) {
+        country.children.push({ ...city, key: city.id });
+      }
+    });
+
+    // Sort
+    const sortedCountries = Array.from(countryMap.values()).sort(
+      (a, b) => a.sorting - b.sorting || a.name.localeCompare(b.name)
+    );
+    
+    sortedCountries.forEach((c) => {
+      if (c.children) {
+        c.children.sort(
+          (a, b) => a.sorting - b.sorting || a.name.localeCompare(b.name)
+        );
+      }
+    });
+
+    return sortedCountries;
+  }, [countriesData, citiesData]);
 
   // Modals
   const [isCountryModalOpen, setIsCountryModalOpen] = useState(false);
@@ -64,61 +102,6 @@ export default function LocationsPage() {
 
   const [countryForm] = Form.useForm();
   const [cityForm] = Form.useForm();
-
-  const fetchData = useCallback(async () => {
-    setLoading(true);
-    try {
-      const [countryRes, cityRes] = await Promise.all([
-        fetch("/api/v1/countries/", { credentials: "include" }),
-        fetch("/api/v1/cities/", { credentials: "include" }),
-      ]);
-
-      if (countryRes.ok && cityRes.ok) {
-        const countriesData: CountriesResponse = await countryRes.json();
-        const citiesData: CitiesResponse = await cityRes.json();
-
-        // Construct Tree
-        const countryMap = new Map<string, Country>();
-        countriesData.data.forEach((c) => {
-          countryMap.set(c.id, { ...c, key: c.id, children: [] });
-        });
-
-        citiesData.data.forEach((city) => {
-          const country = countryMap.get(city.country_id);
-          if (country && country.children) {
-            country.children.push({ ...city, key: city.id });
-          }
-        });
-
-        // Sort
-        const sortedCountries = Array.from(countryMap.values()).sort(
-          (a, b) => a.sorting - b.sorting || a.name.localeCompare(b.name)
-        );
-        
-        sortedCountries.forEach((c) => {
-          if (c.children) {
-            c.children.sort(
-              (a, b) => a.sorting - b.sorting || a.name.localeCompare(b.name)
-            );
-          }
-        });
-
-        setData(sortedCountries);
-      } else {
-        message.error("Failed to fetch data");
-      }
-    } catch {
-      message.error("Network error");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (!authLoading && user) {
-      fetchData();
-    }
-  }, [authLoading, user, fetchData]);
 
   // Country Handlers
   const handleCountrySubmit = async (values: CountryCreate) => {
@@ -141,7 +124,7 @@ export default function LocationsPage() {
         setIsCountryModalOpen(false);
         countryForm.resetFields();
         setEditingItem(null);
-        fetchData();
+        invalidateCountries();
       } else {
         const error = await response.json();
         message.error(error.detail || "Failed");
@@ -179,7 +162,7 @@ export default function LocationsPage() {
         setIsCityModalOpen(false);
         cityForm.resetFields();
         setEditingItem(null);
-        fetchData();
+        invalidateCities();
       } else {
         const error = await response.json();
         message.error(error.detail || "Failed");
@@ -204,7 +187,8 @@ export default function LocationsPage() {
       });
       if (response.ok) {
         message.success("Deleted successfully");
-        fetchData();
+        if (isCity) invalidateCities();
+        else invalidateCountries();
       } else {
         const error = await response.json();
         message.error(error.detail || "Failed to delete");
@@ -212,6 +196,11 @@ export default function LocationsPage() {
     } catch {
       message.error("Network error");
     }
+  };
+
+  const handleRefresh = () => {
+    refetchCountries();
+    refetchCities();
   };
 
   const columns: ColumnsType<any> = [
@@ -336,7 +325,7 @@ export default function LocationsPage() {
               </Title>
             </Space>
             <Space>
-              <Button icon={<ReloadOutlined />} onClick={fetchData}>
+              <Button icon={<ReloadOutlined />} onClick={handleRefresh}>
                 Refresh
               </Button>
               <Button

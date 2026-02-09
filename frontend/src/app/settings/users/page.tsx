@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
   Table,
@@ -30,6 +30,7 @@ import {
 } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
 import { useAuth } from "@/contexts/AuthContext";
+import { useUsers, useInvalidateQueries } from "@/hooks/useApi";
 import BulkActionBar from "@/components/ui/BulkActionBar";
 import {
   getColumnSearchProps,
@@ -38,7 +39,7 @@ import {
   useResizableColumns,
 } from "@/components/ui/tableUtils";
 
-const { Title, Text } = Typography;
+const { Title } = Typography;
 
 interface User {
   id: string;
@@ -70,10 +71,12 @@ const UsersContent = () => {
   const router = useRouter();
   const { user: currentUser, loading: authLoading } = useAuth();
   const { message } = App.useApp();
+  const { invalidateUsers } = useInvalidateQueries();
 
-  const [users, setUsers] = useState<User[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [totalCount, setTotalCount] = useState(0);
+  // TanStack Query for users data
+  const { data, isLoading: loading, refetch } = useUsers();
+  const users = (data?.data || []) as User[];
+  const totalCount = data?.count || 0;
 
   // Modals
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -85,41 +88,15 @@ const UsersContent = () => {
 
   const [form] = Form.useForm();
 
-  const fetchUsers = useCallback(async () => {
-    setLoading(true);
-    try {
-      const response = await fetch("/api/v1/users/", {
-        credentials: "include",
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setUsers(data.data);
-        setTotalCount(data.count);
-      } else if (response.status === 401) {
-        router.push("/login");
-      } else if (response.status === 403) {
-        message.error("Access denied: Admins only");
-        router.push("/dashboard");
-      } else {
-        message.error("Failed to fetch users");
-      }
-    } catch {
-      message.error("Network error");
-    } finally {
-      setLoading(false);
-    }
-  }, [router, message]);
-
+  // Role Access Control
   useEffect(() => {
     if (!authLoading && currentUser) {
       if (currentUser.role !== "admin" && !currentUser.is_superuser) {
         message.error("Access denied: Admins only");
         router.push("/dashboard");
-        return;
       }
-      fetchUsers();
     }
-  }, [authLoading, currentUser, fetchUsers, router, message]);
+  }, [authLoading, currentUser, router, message]);
 
   // Handle Form population when modal opens or user changes
   useEffect(() => {
@@ -153,7 +130,7 @@ const UsersContent = () => {
         message.success(`User ${editingUser ? "updated" : "created"} successfully`);
         setIsModalOpen(false);
         setEditingUser(null);
-        fetchUsers();
+        invalidateUsers();
       } else {
         const error = await response.json();
         let errorMsg = "Operation failed";
@@ -166,6 +143,8 @@ const UsersContent = () => {
       }
     } catch {
       message.error("Network error");
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -177,7 +156,7 @@ const UsersContent = () => {
       });
       if (response.ok) {
         message.success("User deleted successfully");
-        fetchUsers();
+        invalidateUsers();
       } else {
         const error = await response.json();
         message.error(error.detail || "Failed to delete user");
@@ -237,7 +216,7 @@ const UsersContent = () => {
             message.error(`Failed to delete ${failCount} users.`);
           }
           setSelectedRowKeys([]);
-          fetchUsers();
+          invalidateUsers();
         } catch {
           hide();
           message.error('Network error during bulk delete');
@@ -355,7 +334,7 @@ const UsersContent = () => {
               </Title>
             </Flex>
             <Flex gap="small">
-              <Button icon={<ReloadOutlined />} onClick={fetchUsers}>
+              <Button icon={<ReloadOutlined />} onClick={() => refetch()}>
                 Refresh
               </Button>
               <Button type="primary" icon={<PlusOutlined />} onClick={() => openModal()}>

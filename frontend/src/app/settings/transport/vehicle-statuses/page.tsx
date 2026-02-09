@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Table,
@@ -29,9 +29,9 @@ import type {
   VehicleStatus,
   VehicleStatusCreate,
   VehicleStatusUpdate,
-  VehicleStatusesResponse,
 } from "@/types/vehicle-status";
 import { useAuth } from "@/contexts/AuthContext";
+import { useVehicleStatuses, useInvalidateQueries } from "@/hooks/useApi";
 import {
   getColumnSearchProps,
   getColumnFilterProps,
@@ -50,9 +50,14 @@ const STATUS_FILTERS = [
 export default function VehicleStatusesPage() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
-  const [statuses, setStatuses] = useState<VehicleStatus[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [totalCount, setTotalCount] = useState(0);
+  
+  // TanStack Query for vehicle statuses
+  const { data, isLoading: loading, refetch } = useVehicleStatuses();
+  const { invalidateVehicleStatuses } = useInvalidateQueries();
+
+  const statuses = (data?.data || []) as VehicleStatus[];
+  const totalCount = data?.count || 0;
+
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingStatus, setEditingStatus] = useState<VehicleStatus | null>(
@@ -65,34 +70,6 @@ export default function VehicleStatusesPage() {
 
   const [createForm] = Form.useForm<VehicleStatusCreate>();
   const [editForm] = Form.useForm<VehicleStatusUpdate>();
-
-  const fetchStatuses = useCallback(async () => {
-    setLoading(true);
-    try {
-      const response = await fetch("/api/v1/vehicle-statuses/", {
-        credentials: "include",
-      });
-      if (response.ok) {
-        const data: VehicleStatusesResponse = await response.json();
-        setStatuses(data.data);
-        setTotalCount(data.count);
-      } else if (response.status === 401) {
-        router.push("/login");
-      } else {
-        message.error("Failed to fetch vehicle statuses");
-      }
-    } catch {
-      message.error("Network error");
-    } finally {
-      setLoading(false);
-    }
-  }, [router]);
-
-  useEffect(() => {
-    if (!authLoading && user) {
-      fetchStatuses();
-    }
-  }, [authLoading, user, fetchStatuses]);
 
   const handleCreate = async (values: VehicleStatusCreate) => {
     setSubmitting(true);
@@ -108,7 +85,7 @@ export default function VehicleStatusesPage() {
         message.success("Vehicle status added successfully");
         setIsCreateModalOpen(false);
         createForm.resetFields();
-        fetchStatuses();
+        invalidateVehicleStatuses();
       } else {
         const error = await response.json();
         message.error(error.detail || "Failed to create vehicle status");
@@ -138,7 +115,7 @@ export default function VehicleStatusesPage() {
         setIsEditModalOpen(false);
         setEditingStatus(null);
         editForm.resetFields();
-        fetchStatuses();
+        invalidateVehicleStatuses();
       } else {
         const error = await response.json();
         message.error(error.detail || "Failed to update vehicle status");
@@ -158,7 +135,7 @@ export default function VehicleStatusesPage() {
       });
       if (response.ok) {
         message.success("Vehicle status deleted successfully");
-        fetchStatuses();
+        invalidateVehicleStatuses();
       } else {
         const error = await response.json();
         message.error(error.detail || "Failed to delete vehicle status");
@@ -279,7 +256,7 @@ export default function VehicleStatusesPage() {
               </Title>
             </Space>
             <Space>
-              <Button icon={<ReloadOutlined />} onClick={fetchStatuses}>
+              <Button icon={<ReloadOutlined />} onClick={() => refetch()}>
                 Refresh
               </Button>
               <Button

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Table,
@@ -29,9 +29,9 @@ import type {
   OfficeExpenseType,
   OfficeExpenseTypeCreate,
   OfficeExpenseTypeUpdate,
-  OfficeExpenseTypesResponse,
 } from "@/types/office-expense-type";
 import { useAuth } from "@/contexts/AuthContext";
+import { useOfficeExpenseTypes, useInvalidateQueries } from "@/hooks/useApi";
 import {
   getColumnSearchProps,
   getStandardRowSelection,
@@ -45,9 +45,14 @@ const { TextArea } = Input;
 export default function OfficeExpenseTypesPage() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
-  const [expenseTypes, setExpenseTypes] = useState<OfficeExpenseType[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [totalCount, setTotalCount] = useState(0);
+  
+  // TanStack Query
+  const { data, isLoading: loading, refetch } = useOfficeExpenseTypes(false); // Fetch all (active and inactive)
+  const { invalidateOfficeExpenseTypes } = useInvalidateQueries();
+
+  const expenseTypes = (data?.data || []) as OfficeExpenseType[];
+  const totalCount = data?.count || 0;
+
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingType, setEditingType] = useState<OfficeExpenseType | null>(
@@ -60,35 +65,6 @@ export default function OfficeExpenseTypesPage() {
 
   const [createForm] = Form.useForm<OfficeExpenseTypeCreate>();
   const [editForm] = Form.useForm<OfficeExpenseTypeUpdate>();
-
-  const fetchExpenseTypes = useCallback(async () => {
-    setLoading(true);
-    try {
-      // Fetch all (active and inactive) for management
-      const response = await fetch("/api/v1/office-expense-types/?active_only=false", {
-        credentials: "include",
-      });
-      if (response.ok) {
-        const data: OfficeExpenseTypesResponse = await response.json();
-        setExpenseTypes(data.data);
-        setTotalCount(data.count);
-      } else if (response.status === 401) {
-        router.push("/login");
-      } else {
-        message.error("Failed to fetch office expense types");
-      }
-    } catch {
-      message.error("Network error");
-    } finally {
-      setLoading(false);
-    }
-  }, [router]);
-
-  useEffect(() => {
-    if (!authLoading && user) {
-      fetchExpenseTypes();
-    }
-  }, [authLoading, user, fetchExpenseTypes]);
 
   const handleCreate = async (values: OfficeExpenseTypeCreate) => {
     setSubmitting(true);
@@ -103,7 +79,7 @@ export default function OfficeExpenseTypesPage() {
         message.success("Office expense type added successfully");
         setIsCreateModalOpen(false);
         createForm.resetFields();
-        fetchExpenseTypes();
+        invalidateOfficeExpenseTypes();
       } else {
         const error = await response.json();
         message.error(error.detail || "Failed to create office expense type");
@@ -133,7 +109,7 @@ export default function OfficeExpenseTypesPage() {
         setIsEditModalOpen(false);
         setEditingType(null);
         editForm.resetFields();
-        fetchExpenseTypes();
+        invalidateOfficeExpenseTypes();
       } else {
         const error = await response.json();
         message.error(error.detail || "Failed to update office expense type");
@@ -153,7 +129,7 @@ export default function OfficeExpenseTypesPage() {
       });
       if (response.ok) {
         message.success("Office expense type deleted successfully");
-        fetchExpenseTypes();
+        invalidateOfficeExpenseTypes();
       } else {
         const error = await response.json();
         message.error(error.detail || "Failed to delete office expense type");
@@ -279,7 +255,7 @@ export default function OfficeExpenseTypesPage() {
               </Title>
             </Space>
             <Space>
-              <Button icon={<ReloadOutlined />} onClick={fetchExpenseTypes}>
+              <Button icon={<ReloadOutlined />} onClick={() => refetch()}>
                 Refresh
               </Button>
               <Button

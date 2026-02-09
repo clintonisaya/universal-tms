@@ -1,13 +1,12 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import {
   Table,
   Button,
   Card,
   Space,
-  message,
   Typography,
   Spin,
 } from "antd";
@@ -18,8 +17,9 @@ import {
   PrinterOutlined,
 } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
-import type { ExpenseRequestDetailed, ExpenseStatus, ExpenseRequestsResponse } from "@/types/expense";
+import type { ExpenseRequestDetailed, ExpenseStatus } from "@/types/expense";
 import { useAuth } from "@/contexts/AuthContext";
+import { useExpenses, useInvalidateQueries } from "@/hooks/useApi";
 import { AddExpenseModal } from "@/components/expenses/AddExpenseModal";
 import { PaymentModal } from "@/components/expenses/PaymentModal";
 import { ExpenseDetailModal } from "@/components/expenses/ExpenseDetailModal";
@@ -44,9 +44,21 @@ const STATUS_COLORS: Record<ExpenseStatus, string> = {
 export default function OfficeExpensesPage() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
-  const [expenses, setExpenses] = useState<ExpenseRequestDetailed[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [totalCount, setTotalCount] = useState(0);
+  const { invalidateExpenses } = useInvalidateQueries();
+
+  // TanStack Query for expenses data
+  const { data: expensesData, isLoading: loading, refetch } = useExpenses();
+
+  // Filter to show only office expenses (expense_number starts with "EXP")
+  const expenses = useMemo(() => {
+    const allExpenses = (expensesData?.data || []) as ExpenseRequestDetailed[];
+    return allExpenses.filter(
+      (e: ExpenseRequestDetailed) => e.expense_number?.startsWith("EXP")
+    );
+  }, [expensesData]);
+
+  const totalCount = expenses.length;
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
@@ -64,39 +76,6 @@ export default function OfficeExpensesPage() {
     setDetailExpense(record);
     setDetailModalOpen(true);
   };
-
-  const fetchExpenses = useCallback(async () => {
-    setLoading(true);
-    try {
-      // Fetch all expenses and filter by EXP- prefix (office expenses)
-      const response = await fetch("/api/v1/expenses/", {
-        credentials: "include",
-      });
-      if (response.ok) {
-        const data = await response.json();
-        // Filter to show only office expenses (expense_number starts with "EXP")
-        const officeExpenses = data.data.filter(
-          (e: ExpenseRequestDetailed) => e.expense_number?.startsWith("EXP")
-        );
-        setExpenses(officeExpenses);
-        setTotalCount(officeExpenses.length);
-      } else if (response.status === 401) {
-        router.push("/login");
-      } else {
-        message.error("Failed to fetch expenses");
-      }
-    } catch {
-      message.error("Network error");
-    } finally {
-      setLoading(false);
-    }
-  }, [router]);
-
-  useEffect(() => {
-    if (!authLoading && user) {
-      fetchExpenses();
-    }
-  }, [authLoading, user, fetchExpenses]);
 
   const handlePay = (record: ExpenseRequestDetailed) => {
     setSelectedExpense(record);
@@ -240,7 +219,7 @@ export default function OfficeExpensesPage() {
               Office Expenses
             </Title>
             <Space>
-              <Button icon={<ReloadOutlined />} onClick={fetchExpenses}>
+              <Button icon={<ReloadOutlined />} onClick={() => refetch()}>
                 Refresh
               </Button>
               <Button
@@ -285,13 +264,13 @@ export default function OfficeExpensesPage() {
       <AddExpenseModal 
         open={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        onSuccess={fetchExpenses}
+        onSuccess={() => invalidateExpenses()}
       />
 
       <PaymentModal
         open={paymentModalOpen}
         onClose={() => setPaymentModalOpen(false)}
-        onSuccess={fetchExpenses}
+        onSuccess={() => invalidateExpenses()}
         expense={selectedExpense}
       />
 
