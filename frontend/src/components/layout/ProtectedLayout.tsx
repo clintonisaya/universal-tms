@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Spin, Typography } from "antd";
 import { useAuth } from "@/contexts/AuthContext";
@@ -10,55 +10,140 @@ import { SessionExpiredModal } from "@/components/auth/SessionExpiredModal";
 
 const { Text } = Typography;
 
+// Key to track if user was previously authenticated in this browser session
+const WAS_AUTHENTICATED_KEY = "edupo_was_authenticated";
+
 interface ProtectedLayoutProps {
   children: React.ReactNode;
 }
 
 export function ProtectedLayout({ children }: ProtectedLayoutProps) {
   const { user, loading } = useAuth();
+  const router = useRouter();
   const [showLoginModal, setShowLoginModal] = useState(false);
+  const [isRedirecting, setIsRedirecting] = useState(false);
+  const hasCheckedAuth = useRef(false);
 
+  // Track when user becomes authenticated
   useEffect(() => {
-    // If not loading and no user, force hard redirect
-    // Use window.location.href to ensure reliable navigation even if router is stuck
-    if (!loading && !user) {
-      window.location.href = "/login";
+    if (user && typeof window !== "undefined") {
+      sessionStorage.setItem(WAS_AUTHENTICATED_KEY, "true");
     }
-  }, [user, loading]);
+  }, [user]);
 
+  // Handle initial auth check result
+  useEffect(() => {
+    if (loading || hasCheckedAuth.current) return;
+
+    hasCheckedAuth.current = true;
+
+    if (!user) {
+      const wasAuthenticated =
+        typeof window !== "undefined" &&
+        sessionStorage.getItem(WAS_AUTHENTICATED_KEY) === "true";
+
+      if (wasAuthenticated) {
+        // User was logged in before → show modal so they can continue
+        setShowLoginModal(true);
+      } else {
+        // First visit, never authenticated → redirect to login
+        setIsRedirecting(true);
+        router.replace("/login");
+      }
+    }
+  }, [user, loading, router]);
+
+  // Listen for session expiry during active use (API calls returning 401)
   useEffect(() => {
     const handleSessionExpiry = () => setShowLoginModal(true);
     window.addEventListener("session-expired", handleSessionExpiry);
     return () => window.removeEventListener("session-expired", handleSessionExpiry);
   }, []);
 
+  // Handle successful re-login from modal
+  const handleLoginSuccess = () => {
+    setShowLoginModal(false);
+    window.location.reload();
+  };
+
+  // Loading state with explicit light background
   if (loading) {
     return (
-      <div style={{ height: "100vh", display: "flex", justifyContent: "center", alignItems: "center" }}>
+      <div
+        style={{
+          height: "100vh",
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          background: "#f5f7fa",
+        }}
+      >
         <Spin size="large" />
       </div>
     );
   }
 
-  if (!user) {
-    // Render a redirecting state instead of null to prevent "blank screen" confusion
+  // Redirecting state
+  if (isRedirecting) {
     return (
-      <div style={{ height: "100vh", display: "flex", justifyContent: "center", alignItems: "center", flexDirection: "column", gap: "16px" }}>
+      <div
+        style={{
+          height: "100vh",
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          flexDirection: "column",
+          gap: "16px",
+          background: "#f5f7fa",
+        }}
+      >
         <Spin size="large" />
         <Text type="secondary">Redirecting to login...</Text>
       </div>
     );
   }
 
-  // Always render the layout - middleware handles initial access control
-  // This prevents infinite loading if backend is slow/down
-  // If auth check eventually fails, the useEffect will redirect
+  // Session expired - show modal on light background (don't render DashboardLayout without user)
+  if (showLoginModal && !user) {
+    return (
+      <div
+        style={{
+          height: "100vh",
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          background: "#f5f7fa",
+        }}
+      >
+        <SessionExpiredModal open={true} onSuccess={handleLoginSuccess} />
+      </div>
+    );
+  }
+
+  // Fallback for no user (shouldn't normally reach here)
+  if (!user) {
+    return (
+      <div
+        style={{
+          height: "100vh",
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          background: "#f5f7fa",
+        }}
+      >
+        <Spin size="large" />
+      </div>
+    );
+  }
+
+  // User is authenticated - render normally
   return (
     <SocketProvider>
       <DashboardLayout>{children}</DashboardLayout>
-      <SessionExpiredModal 
-        open={showLoginModal} 
-        onSuccess={() => setShowLoginModal(false)} 
+      <SessionExpiredModal
+        open={showLoginModal}
+        onSuccess={handleLoginSuccess}
       />
     </SocketProvider>
   );
