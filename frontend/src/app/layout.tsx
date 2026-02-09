@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { AntdRegistry } from "@ant-design/nextjs-registry";
 import { Geist, Geist_Mono } from "next/font/google";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { QueryProvider } from "@/lib/queryClient";
 import { ConfigProvider } from "antd";
 import themeConfig from "@/theme/themeConfig";
 import "react-resizable/css/styles.css";
@@ -33,9 +34,11 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <AntdRegistry>
-          <ConfigProvider theme={themeConfig}>
-            <AuthProvider>{children}</AuthProvider>
-          </ConfigProvider>
+          <QueryProvider>
+            <ConfigProvider theme={themeConfig}>
+              <AuthProvider>{children}</AuthProvider>
+            </ConfigProvider>
+          </QueryProvider>
         </AntdRegistry>
       </body>
     </html>

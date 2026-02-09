@@ -43,7 +43,10 @@
       "Bash(docker compose exec backend bash -c \"export PYTHONPATH=/app && alembic revision --autogenerate -m ''add_expense_metadata_to_expense_request''\")",
       "Bash(docker compose exec:*)",
       "Bash(docker compose:*)",
-      "Bash(dir /s /b *alembic*)"
+      "Bash(dir /s /b *alembic*)",
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nfix: simplify frontend Dockerfile and use Node 20\n\n- Use simpler single-stage Dockerfile\n- Upgrade to Node 20 for Next.js 16 + React 19 compatibility\n- Remove standalone output mode\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(git push:*)"
     ]
   }
 }

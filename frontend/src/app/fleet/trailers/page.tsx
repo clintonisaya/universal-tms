@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Table,
@@ -21,6 +21,7 @@ import { PlusOutlined, ReloadOutlined, ArrowLeftOutlined, EditOutlined, DeleteOu
 import type { ColumnsType } from "antd/es/table";
 import type { Trailer, TrailerCreate, TrailerUpdate, TrailerType, TrailersResponse } from "@/types/trailer";
 import { useAuth } from "@/contexts/AuthContext";
+import { useTrailers, useInvalidateQueries } from "@/hooks/useApi";
 import {
   getColumnSearchProps,
   getColumnFilterProps,
@@ -64,9 +65,12 @@ const TYPE_FILTERS = [
 export default function TrailersPage() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
-  const [trailers, setTrailers] = useState<Trailer[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [totalCount, setTotalCount] = useState(0);
+  const { data, isLoading, refetch } = useTrailers();
+  const { invalidateTrailers } = useInvalidateQueries();
+
+  const trailers = (data?.data || []) as Trailer[];
+  const totalCount = data?.count || 0;
+
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingTrailer, setEditingTrailer] = useState<Trailer | null>(null);
@@ -78,38 +82,10 @@ export default function TrailersPage() {
   const [createForm] = Form.useForm<TrailerCreate>();
   const [editForm] = Form.useForm<TrailerUpdate>();
 
-  const fetchTrailers = useCallback(async () => {
-    setLoading(true);
-    try {
-      const response = await fetch("/api/v1/trailers/", {
-        credentials: "include",
-      });
-      if (response.ok) {
-        const data: TrailersResponse = await response.json();
-        setTrailers(data.data);
-        setTotalCount(data.count);
-      } else if (response.status === 401) {
-        router.push("/login");
-      } else {
-        message.error("Failed to fetch trailers");
-      }
-    } catch {
-      message.error("Network error");
-    } finally {
-      setLoading(false);
-    }
-  }, [router]);
-
-  useEffect(() => {
-    if (!authLoading && user) {
-      fetchTrailers();
-    }
-  }, [authLoading, user, fetchTrailers]);
-
   const handleCreate = async (values: TrailerCreate) => {
     setSubmitting(true);
     try {
-      const response = await fetch("/api/v1/trailers/", {
+      const response = await fetch("/api/v1/trailers", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -122,7 +98,7 @@ export default function TrailersPage() {
         message.success("Trailer registered successfully");
         setIsCreateModalOpen(false);
         createForm.resetFields();
-        fetchTrailers();
+        invalidateTrailers();
       } else {
         const error = await response.json();
         message.error(error.detail || "Failed to create trailer");
@@ -152,7 +128,7 @@ export default function TrailersPage() {
         setIsEditModalOpen(false);
         setEditingTrailer(null);
         editForm.resetFields();
-        fetchTrailers();
+        invalidateTrailers();
       } else {
         const error = await response.json();
         message.error(error.detail || "Failed to update trailer");
@@ -173,7 +149,7 @@ export default function TrailersPage() {
 
       if (response.ok) {
         message.success("Trailer deleted successfully");
-        fetchTrailers();
+        invalidateTrailers();
       } else {
         const error = await response.json();
         message.error(error.detail || "Failed to delete trailer");
@@ -311,7 +287,7 @@ export default function TrailersPage() {
               </Title>
             </Space>
             <Space>
-              <Button icon={<ReloadOutlined />} onClick={fetchTrailers}>
+              <Button icon={<ReloadOutlined />} onClick={() => refetch()}>
                 Refresh
               </Button>
               <Button
@@ -329,7 +305,7 @@ export default function TrailersPage() {
             components={components}
             dataSource={trailers}
             rowKey="id"
-            loading={loading}
+            loading={isLoading}
             sticky={{ offsetHeader: 64 }}
             rowSelection={getStandardRowSelection(
               currentPage,

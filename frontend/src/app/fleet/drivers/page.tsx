@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Table,
@@ -36,6 +36,7 @@ import type {
   DriverFormValues,
 } from "@/types/driver";
 import { useAuth } from "@/contexts/AuthContext";
+import { useDrivers, useInvalidateQueries } from "@/hooks/useApi";
 import {
   getColumnSearchProps,
   getColumnFilterProps,
@@ -61,9 +62,12 @@ const STATUS_FILTERS = [
 export default function DriversPage() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
-  const [drivers, setDrivers] = useState<Driver[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [totalCount, setTotalCount] = useState(0);
+  const { data, isLoading, refetch } = useDrivers();
+  const { invalidateDrivers } = useInvalidateQueries();
+
+  const drivers = (data?.data || []) as Driver[];
+  const totalCount = data?.count || 0;
+
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingDriver, setEditingDriver] = useState<Driver | null>(null);
@@ -75,38 +79,10 @@ export default function DriversPage() {
   const [createForm] = Form.useForm<DriverFormValues>();
   const [editForm] = Form.useForm<DriverFormValues>();
 
-  const fetchDrivers = useCallback(async () => {
-    setLoading(true);
-    try {
-      const response = await fetch("/api/v1/drivers/", {
-        credentials: "include",
-      });
-      if (response.ok) {
-        const data: DriversResponse = await response.json();
-        setDrivers(data.data);
-        setTotalCount(data.count);
-      } else if (response.status === 401) {
-        router.push("/login");
-      } else {
-        message.error("Failed to fetch drivers");
-      }
-    } catch {
-      message.error("Network error");
-    } finally {
-      setLoading(false);
-    }
-  }, [router]);
-
-  useEffect(() => {
-    if (!authLoading && user) {
-      fetchDrivers();
-    }
-  }, [authLoading, user, fetchDrivers]);
-
   const handleCreate = async (values: DriverCreate) => {
     setSubmitting(true);
     try {
-      const response = await fetch("/api/v1/drivers/", {
+      const response = await fetch("/api/v1/drivers", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -119,7 +95,7 @@ export default function DriversPage() {
         message.success("Driver registered successfully");
         setIsCreateModalOpen(false);
         createForm.resetFields();
-        fetchDrivers();
+        invalidateDrivers();
       } else {
         const error = await response.json();
         message.error(error.detail || "Failed to create driver");
@@ -149,7 +125,7 @@ export default function DriversPage() {
         setIsEditModalOpen(false);
         setEditingDriver(null);
         editForm.resetFields();
-        fetchDrivers();
+        invalidateDrivers();
       } else {
         const error = await response.json();
         message.error(error.detail || "Failed to update driver");
@@ -170,7 +146,7 @@ export default function DriversPage() {
 
       if (response.ok) {
         message.success("Driver deleted successfully");
-        fetchDrivers();
+        invalidateDrivers();
       } else {
         const error = await response.json();
         message.error(error.detail || "Failed to delete driver");
@@ -335,7 +311,7 @@ export default function DriversPage() {
               </Title>
             </Space>
             <Space>
-              <Button icon={<ReloadOutlined />} onClick={fetchDrivers}>
+              <Button icon={<ReloadOutlined />} onClick={() => refetch()}>
                 Refresh
               </Button>
               <Button
@@ -353,7 +329,7 @@ export default function DriversPage() {
             components={components}
             dataSource={drivers}
             rowKey="id"
-            loading={loading}
+            loading={isLoading}
             sticky={{ offsetHeader: 64 }}
             rowSelection={getStandardRowSelection(
               currentPage,

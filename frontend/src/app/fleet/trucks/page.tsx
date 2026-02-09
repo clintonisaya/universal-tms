@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Table,
@@ -19,8 +19,9 @@ import {
 } from "antd";
 import { PlusOutlined, ReloadOutlined, ArrowLeftOutlined, EditOutlined, DeleteOutlined, EyeOutlined } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
-import type { Truck, TruckCreate, TruckUpdate, TrucksResponse } from "@/types/truck";
+import type { Truck, TruckCreate, TruckUpdate } from "@/types/truck";
 import { useAuth } from "@/contexts/AuthContext";
+import { useTrucks, useInvalidateQueries } from "@/hooks/useApi";
 import {
   getColumnSearchProps,
   getColumnFilterProps,
@@ -50,9 +51,12 @@ const STATUS_FILTERS = [
 export default function TrucksPage() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
-  const [trucks, setTrucks] = useState<Truck[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [totalCount, setTotalCount] = useState(0);
+  const { data, isLoading, refetch } = useTrucks();
+  const { invalidateTrucks } = useInvalidateQueries();
+
+  const trucks = (data?.data || []) as Truck[];
+  const totalCount = data?.count || 0;
+
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingTruck, setEditingTruck] = useState<Truck | null>(null);
@@ -64,38 +68,10 @@ export default function TrucksPage() {
   const [createForm] = Form.useForm<TruckCreate>();
   const [editForm] = Form.useForm<TruckUpdate>();
 
-  const fetchTrucks = useCallback(async () => {
-    setLoading(true);
-    try {
-      const response = await fetch("/api/v1/trucks/", {
-        credentials: "include",
-      });
-      if (response.ok) {
-        const data: TrucksResponse = await response.json();
-        setTrucks(data.data);
-        setTotalCount(data.count);
-      } else if (response.status === 401) {
-        router.push("/login");
-      } else {
-        message.error("Failed to fetch trucks");
-      }
-    } catch {
-      message.error("Network error");
-    } finally {
-      setLoading(false);
-    }
-  }, [router]);
-
-  useEffect(() => {
-    if (!authLoading && user) {
-      fetchTrucks();
-    }
-  }, [authLoading, user, fetchTrucks]);
-
   const handleCreate = async (values: TruckCreate) => {
     setSubmitting(true);
     try {
-      const response = await fetch("/api/v1/trucks/", {
+      const response = await fetch("/api/v1/trucks", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -108,7 +84,7 @@ export default function TrucksPage() {
         message.success("Truck registered successfully");
         setIsCreateModalOpen(false);
         createForm.resetFields();
-        fetchTrucks();
+        invalidateTrucks();
       } else {
         const error = await response.json();
         message.error(error.detail || "Failed to create truck");
@@ -138,7 +114,7 @@ export default function TrucksPage() {
         setIsEditModalOpen(false);
         setEditingTruck(null);
         editForm.resetFields();
-        fetchTrucks();
+        invalidateTrucks();
       } else {
         const error = await response.json();
         message.error(error.detail || "Failed to update truck");
@@ -159,7 +135,7 @@ export default function TrucksPage() {
 
       if (response.ok) {
         message.success("Truck deleted successfully");
-        fetchTrucks();
+        invalidateTrucks();
       } else {
         const error = await response.json();
         message.error(error.detail || "Failed to delete truck");
@@ -302,7 +278,7 @@ export default function TrucksPage() {
               </Title>
             </Space>
             <Space>
-              <Button icon={<ReloadOutlined />} onClick={fetchTrucks}>
+              <Button icon={<ReloadOutlined />} onClick={() => refetch()}>
                 Refresh
               </Button>
               <Button
@@ -320,7 +296,7 @@ export default function TrucksPage() {
             components={components}
             dataSource={trucks}
             rowKey="id"
-            loading={loading}
+            loading={isLoading}
             sticky={{ offsetHeader: 64 }}
             rowSelection={getStandardRowSelection(
               currentPage,
