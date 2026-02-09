@@ -75,8 +75,13 @@ const UsersContent = () => {
 
   // TanStack Query for users data
   const { data, isLoading: loading, refetch } = useUsers();
-  const users = (data?.data || []) as User[];
-  const totalCount = data?.count || 0;
+  
+  // Filter out superusers (like the initial admin) to prevent self-deletion or editing of the root account
+  const allUsers = (data?.data || []) as User[];
+  const users = allUsers.filter(u => !u.is_superuser);
+  
+  // Use filtered length for pagination since we are doing client-side filtering
+  const totalCount = users.length;
 
   // Modals
   const [isModalOpen, setIsModalOpen] = useState(false);
