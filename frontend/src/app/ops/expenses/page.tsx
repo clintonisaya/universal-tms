@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import {
   Table,
@@ -25,8 +25,9 @@ import {
 } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
 import type { ExpenseRequestDetailed, ExpenseStatus } from "@/types/expense";
-import type { Trip, TripsResponse } from "@/types/trip";
+import type { Trip } from "@/types/trip";
 import { useAuth } from "@/contexts/AuthContext";
+import { useExpenses, useTrips, useInvalidateQueries } from "@/hooks/useApi";
 import { AddExpenseModal } from "@/components/expenses/AddExpenseModal";
 import { PaymentModal } from "@/components/expenses/PaymentModal";
 import { ExpenseHistoryModal } from "@/components/expenses/ExpenseHistoryModal";
@@ -69,9 +70,28 @@ const HISTORY_STATUSES: ExpenseStatus[] = ["Paid", "Rejected"];
 export default function ExpensesPage() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
-  const [expenses, setExpenses] = useState<ExpenseRequestDetailed[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [totalCount, setTotalCount] = useState(0);
+  const { invalidateExpenses } = useInvalidateQueries();
+
+  // TanStack Query for expenses and trips data
+  const { data: expensesData, isLoading: loading, refetch } = useExpenses();
+  const { data: tripsData, isLoading: tripsLoading } = useTrips({ limit: 100 });
+
+  // Filter to show only trip expenses (expense_number does NOT start with "EXP")
+  const expenses = useMemo(() => {
+    const allExpenses = expensesData?.data || [];
+    return allExpenses.filter(
+      (e: ExpenseRequestDetailed) => !e.expense_number?.startsWith("EXP")
+    );
+  }, [expensesData]);
+
+  // Filter to active trips only for the dropdown
+  const trips = useMemo(() => {
+    const allTrips = tripsData?.data || [];
+    return allTrips.filter(
+      (t: Trip) => !["Completed", "Cancelled"].includes(t.status)
+    );
+  }, [tripsData]);
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<string>("active");
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
@@ -80,10 +100,8 @@ export default function ExpensesPage() {
 
   // Trip Selection State
   const [tripSelectModalOpen, setTripSelectModalOpen] = useState(false);
-  const [trips, setTrips] = useState<Trip[]>([]);
   const [selectedTripId, setSelectedTripId] = useState<string | null>(null);
   const [selectedTripNumber, setSelectedTripNumber] = useState<string>("");
-  const [tripsLoading, setTripsLoading] = useState(false);
 
   // Payment Modal State
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
@@ -101,61 +119,6 @@ export default function ExpensesPage() {
     setDetailExpense(record);
     setDetailModalOpen(true);
   };
-
-  const fetchExpenses = useCallback(async () => {
-    setLoading(true);
-    try {
-      // Fetch all expenses and filter for trip expenses
-      const response = await fetch("/api/v1/expenses/", {
-        credentials: "include",
-      });
-      if (response.ok) {
-        const data = await response.json();
-        // Filter to show only trip expenses (expense_number does NOT start with "EXP")
-        const tripExpenses = data.data.filter(
-          (e: ExpenseRequestDetailed) => !e.expense_number?.startsWith("EXP")
-        );
-        setExpenses(tripExpenses);
-        setTotalCount(tripExpenses.length);
-      } else if (response.status === 401) {
-        router.push("/login");
-      } else {
-        message.error("Failed to fetch expenses");
-      }
-    } catch {
-      message.error("Network error");
-    } finally {
-      setLoading(false);
-    }
-  }, [router]);
-
-  const fetchTrips = useCallback(async () => {
-    setTripsLoading(true);
-    try {
-      const response = await fetch("/api/v1/trips/?limit=100", {
-        credentials: "include",
-      });
-      if (response.ok) {
-        const data: TripsResponse = await response.json();
-        // Filter to active trips only
-        const activeTrips = data.data.filter(
-          (t) => !["Completed", "Cancelled"].includes(t.status)
-        );
-        setTrips(activeTrips);
-      }
-    } catch {
-      setTrips([]);
-    } finally {
-      setTripsLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (!authLoading && user) {
-      fetchExpenses();
-      fetchTrips();
-    }
-  }, [authLoading, user, fetchExpenses, fetchTrips]);
 
   const handleNewExpense = () => {
     setTripSelectModalOpen(true);
@@ -356,7 +319,7 @@ export default function ExpensesPage() {
               </Title>
             </Space>
             <Space>
-              <Button icon={<ReloadOutlined />} onClick={fetchExpenses}>
+              <Button icon={<ReloadOutlined />} onClick={() => refetch()}>
                 Refresh
               </Button>
               <Button
@@ -453,7 +416,7 @@ export default function ExpensesPage() {
           setSelectedTripId(null);
           setSelectedTripNumber("");
         }}
-        onSuccess={fetchExpenses}
+        onSuccess={() => invalidateExpenses()}
         tripId={selectedTripId}
         tripNumber={selectedTripNumber}
       />
@@ -461,7 +424,7 @@ export default function ExpensesPage() {
       <PaymentModal
         open={paymentModalOpen}
         onClose={() => setPaymentModalOpen(false)}
-        onSuccess={fetchExpenses}
+        onSuccess={() => invalidateExpenses()}
         expense={selectedExpense}
       />
 

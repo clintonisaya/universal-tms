@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Table,
@@ -22,8 +22,9 @@ import {
   RocketOutlined,
 } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
-import type { Waybill, WaybillStatus, WaybillsResponse } from "@/types/waybill";
+import type { Waybill, WaybillStatus } from "@/types/waybill";
 import { useAuth } from "@/contexts/AuthContext";
+import { useWaybills, useInvalidateQueries } from "@/hooks/useApi";
 import { CreateWaybillDrawer } from "@/components/waybills/CreateWaybillDrawer";
 import { WaybillDetailDrawer } from "@/components/waybills/WaybillDetailDrawer";
 import { CreateTripDrawer } from "@/components/trips/CreateTripDrawer";
@@ -51,9 +52,13 @@ const STATUS_FILTERS = Object.keys(STATUS_COLORS).map((status) => ({
 export default function WaybillsPage() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
-  const [waybills, setWaybills] = useState<Waybill[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [totalCount, setTotalCount] = useState(0);
+  const { invalidateWaybills } = useInvalidateQueries();
+
+  // TanStack Query for waybills data
+  const { data, isLoading: loading, refetch } = useWaybills();
+  const waybills = data?.data || [];
+  const totalCount = data?.count || 0;
+
   const [createDrawerOpen, setCreateDrawerOpen] = useState(false);
   const [detailDrawerOpen, setDetailDrawerOpen] = useState(false);
   const [detailWaybillId, setDetailWaybillId] = useState<string | null>(null);
@@ -64,34 +69,6 @@ export default function WaybillsPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
 
-  const fetchWaybills = useCallback(async () => {
-    setLoading(true);
-    try {
-      const response = await fetch("/api/v1/waybills/", {
-        credentials: "include",
-      });
-      if (response.ok) {
-        const data: WaybillsResponse = await response.json();
-        setWaybills(data.data);
-        setTotalCount(data.count);
-      } else if (response.status === 401) {
-        router.push("/login");
-      } else {
-        message.error("Failed to fetch waybills");
-      }
-    } catch {
-      message.error("Network error");
-    } finally {
-      setLoading(false);
-    }
-  }, [router]);
-
-  useEffect(() => {
-    if (!authLoading && user) {
-      fetchWaybills();
-    }
-  }, [authLoading, user, fetchWaybills]);
-
   const handleDelete = async (waybill: Waybill) => {
     try {
       const response = await fetch(`/api/v1/waybills/${waybill.id}`, {
@@ -101,7 +78,7 @@ export default function WaybillsPage() {
 
       if (response.ok) {
         message.success("Waybill deleted successfully");
-        fetchWaybills();
+        invalidateWaybills();
       } else {
         const error = await response.json();
         message.error(error.detail || "Failed to delete waybill");
@@ -263,7 +240,7 @@ export default function WaybillsPage() {
               </Title>
             </Flex>
             <Flex gap="small">
-              <Button icon={<ReloadOutlined />} onClick={fetchWaybills}>
+              <Button icon={<ReloadOutlined />} onClick={() => refetch()}>
                 Refresh
               </Button>
               <Button
@@ -308,7 +285,7 @@ export default function WaybillsPage() {
       <CreateWaybillDrawer
         open={createDrawerOpen}
         onClose={() => setCreateDrawerOpen(false)}
-        onSuccess={fetchWaybills}
+        onSuccess={() => invalidateWaybills()}
       />
 
       <WaybillDetailDrawer
@@ -327,7 +304,7 @@ export default function WaybillsPage() {
           setTripDrawerWaybillId(null);
           setTripDrawerRouteName(null);
         }}
-        onSuccess={fetchWaybills}
+        onSuccess={() => invalidateWaybills()}
         waybillId={tripDrawerWaybillId}
         routeName={tripDrawerRouteName}
       />

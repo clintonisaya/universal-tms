@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Table,
@@ -21,8 +21,9 @@ import {
   EyeOutlined,
 } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
-import type { Trip, TripStatus, TripsResponse } from "@/types/trip";
+import type { Trip, TripStatus } from "@/types/trip";
 import { useAuth } from "@/contexts/AuthContext";
+import { useTrips, useInvalidateQueries } from "@/hooks/useApi";
 import { CreateTripDrawer } from "@/components/trips/CreateTripDrawer";
 import { TripDetailDrawer } from "@/components/trips/TripDetailDrawer";
 import {
@@ -53,42 +54,18 @@ const STATUS_FILTERS = Object.keys(STATUS_COLORS).map((status) => ({
 export default function TripsPage() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
-  const [trips, setTrips] = useState<Trip[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [totalCount, setTotalCount] = useState(0);
+  const { invalidateTrips } = useInvalidateQueries();
+
+  // TanStack Query for trips data
+  const { data, isLoading: loading, refetch } = useTrips();
+  const trips = data?.data || [];
+  const totalCount = data?.count || 0;
+
   const [createDrawerOpen, setCreateDrawerOpen] = useState(false);
   const [detailDrawerTripId, setDetailDrawerTripId] = useState<string | null>(null);
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
-
-  const fetchTrips = useCallback(async () => {
-    setLoading(true);
-    try {
-      const response = await fetch("/api/v1/trips/", {
-        credentials: "include",
-      });
-      if (response.ok) {
-        const data: TripsResponse = await response.json();
-        setTrips(data.data);
-        setTotalCount(data.count);
-      } else if (response.status === 401) {
-        router.push("/login");
-      } else {
-        message.error("Failed to fetch trips");
-      }
-    } catch {
-      message.error("Network error");
-    } finally {
-      setLoading(false);
-    }
-  }, [router]);
-
-  useEffect(() => {
-    if (!authLoading && user) {
-      fetchTrips();
-    }
-  }, [authLoading, user, fetchTrips]);
 
   const handleDelete = async (trip: Trip) => {
     try {
@@ -99,7 +76,7 @@ export default function TripsPage() {
 
       if (response.ok) {
         message.success("Trip deleted successfully");
-        fetchTrips();
+        invalidateTrips();
       } else {
         const error = await response.json();
         message.error(error.detail || "Failed to delete trip");
@@ -240,7 +217,7 @@ export default function TripsPage() {
               </Title>
             </Space>
             <Space>
-              <Button icon={<ReloadOutlined />} onClick={fetchTrips}>
+              <Button icon={<ReloadOutlined />} onClick={() => refetch()}>
                 Refresh
               </Button>
               <Button
@@ -285,7 +262,7 @@ export default function TripsPage() {
       <CreateTripDrawer
         open={createDrawerOpen}
         onClose={() => setCreateDrawerOpen(false)}
-        onSuccess={fetchTrips}
+        onSuccess={() => invalidateTrips()}
       />
 
       <TripDetailDrawer

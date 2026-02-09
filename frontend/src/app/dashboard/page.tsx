@@ -1,11 +1,20 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect } from "react";
 import { Row, Col, Empty, Typography, App, notification } from "antd";
 import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import { useSocket } from "@/lib/socket";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNotifications } from "@/hooks/useNotifications";
+import {
+  useDashboardStats,
+  useRecentTrips,
+  useTodoCount,
+  useFinancialPulse,
+  useInvalidateQueries,
+  queryKeys,
+} from "@/hooks/useApi";
 import { MetricCard } from "@/components/dashboard/MetricCard";
 import { ProfitTrendChart } from "@/components/dashboard/ProfitTrendChart";
 import { IncomeVsExpenseChart } from "@/components/dashboard/IncomeVsExpenseChart";
@@ -93,19 +102,20 @@ function DashboardContent() {
   const { message: msg } = App.useApp();
   const role = user?.role;
   const { addNotification } = useNotifications(user?.id);
+  const queryClient = useQueryClient();
+  const { invalidateTodoCount, invalidateDashboard } = useInvalidateQueries();
 
-  const [stats, setStats] = useState<DashboardStats | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [recentTrips, setRecentTrips] = useState<any[]>([]);
-  const [tripsLoading, setTripsLoading] = useState(true);
+  // TanStack Query hooks for data fetching with stale-while-revalidate
+  const { data: statsData, isLoading: loading } = useDashboardStats();
+  const { data: tripsData, isLoading: tripsLoading } = useRecentTrips();
+  const { data: todoData, isLoading: todoCountLoading } = useTodoCount();
+  const { data: pulseData, isLoading: financialLoading } = useFinancialPulse();
 
-  // Financial Pulse state
-  const [financialPulse, setFinancialPulse] = useState<FinancialPulseData | null>(null);
-  const [financialLoading, setFinancialLoading] = useState(true);
-
-  // To-Do state
-  const [todoCount, setTodoCount] = useState(0);
-  const [todoCountLoading, setTodoCountLoading] = useState(true);
+  // Derive values from query data
+  const stats = statsData || null;
+  const recentTrips = tripsData?.data || [];
+  const todoCount = todoData?.total ?? 0;
+  const financialPulse = pulseData || null;
 
   // Listen for notification-click events from the NotificationCenter in the header
   useEffect(() => {
@@ -117,85 +127,13 @@ function DashboardContent() {
     return () => window.removeEventListener("notification-click", handler);
   }, [router]);
 
-  const fetchStats = useCallback(async () => {
-    try {
-      const response = await fetch("/api/v1/dashboard/stats", {
-        credentials: "include",
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setStats(data);
-      } else if (response.status === 401) {
-        router.push("/login");
-      }
-    } catch {
-      msg.error("Failed to load dashboard stats");
-    } finally {
-      setLoading(false);
-    }
-  }, [router, msg]);
-
-  const fetchRecentTrips = useCallback(async () => {
-    try {
-      const response = await fetch("/api/v1/trips/?limit=5&skip=0", {
-        credentials: "include",
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setRecentTrips(data.data || []);
-      }
-    } catch {
-      // Silent fail for trips
-    } finally {
-      setTripsLoading(false);
-    }
-  }, []);
-
-  const fetchTodoCount = useCallback(async () => {
-    try {
-      const response = await fetch("/api/v1/tasks/my-tasks?sort_by=date&sort_order=desc", {
-        credentials: "include",
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setTodoCount(data.total ?? 0);
-      }
-    } catch {
-      // Silent fail
-    } finally {
-      setTodoCountLoading(false);
-    }
-  }, []);
-
-  const fetchFinancialPulse = useCallback(async () => {
-    try {
-      const response = await fetch("/api/v1/reports/financial-pulse", {
-        credentials: "include",
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setFinancialPulse(data);
-      }
-    } catch {
-      // Silent fail - financial pulse is optional
-    } finally {
-      setFinancialLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchStats();
-    fetchRecentTrips();
-    fetchTodoCount();
-    fetchFinancialPulse();
-  }, [fetchStats, fetchRecentTrips, fetchTodoCount, fetchFinancialPulse]);
-
   // WebSocket real-time updates
   useEffect(() => {
     if (!socket) return;
 
     socket.on("expense_created", () => {
-      setStats((prev) =>
+      // Optimistically update the cache for pending_approvals
+      queryClient.setQueryData(queryKeys.dashboard, (prev: DashboardStats | undefined) =>
         prev
           ? { ...prev, pending_approvals: prev.pending_approvals + 1 }
           : prev
@@ -203,12 +141,17 @@ function DashboardContent() {
     });
 
     socket.on("metrics_update", (data: Partial<DashboardStats>) => {
-      setStats((prev) => (prev ? { ...prev, ...data } : prev));
+      queryClient.setQueryData(queryKeys.dashboard, (prev: DashboardStats | undefined) =>
+        prev ? { ...prev, ...data } : prev
+      );
     });
 
     // Story 4.2 + 4.3: To-Do real-time updates with contextual toast notifications
     socket.on("task_created", (data?: TaskSocketEvent) => {
-      setTodoCount((prev) => prev + 1);
+      // Optimistically increment todo count in cache
+      queryClient.setQueryData(queryKeys.todoCount, (prev: { total: number } | undefined) =>
+        prev ? { ...prev, total: prev.total + 1 } : { total: 1 }
+      );
 
       const eventData = data || {};
       const taskType = eventData.task_type;
@@ -242,7 +185,8 @@ function DashboardContent() {
     });
 
     socket.on("task_updated", (data?: TaskSocketEvent) => {
-      fetchTodoCount();
+      // Invalidate to refetch the accurate count
+      invalidateTodoCount();
 
       if (data?.task_type) {
         const toastMsg = buildToastMessage(data.task_type, data);
@@ -264,7 +208,7 @@ function DashboardContent() {
       socket.off("task_created");
       socket.off("task_updated");
     };
-  }, [socket, msg, fetchTodoCount, addNotification, router]);
+  }, [socket, queryClient, invalidateTodoCount, addNotification, router]);
 
   // Build utilization data from trucks_by_status for the chart
   const utilizationData = stats

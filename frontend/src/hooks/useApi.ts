@@ -33,6 +33,10 @@ export const queryKeys = {
   maintenance: ["maintenance"] as const,
   dashboard: ["dashboard"] as const,
   clients: ["clients"] as const,
+  recentTrips: ["recentTrips"] as const,
+  todoCount: ["todoCount"] as const,
+  financialPulse: ["financialPulse"] as const,
+  tracking: ["tracking"] as const,
 };
 
 // Trucks
@@ -136,6 +140,44 @@ export function useDashboardStats() {
   });
 }
 
+// Recent trips for dashboard
+export function useRecentTrips(limit = 5) {
+  return useQuery({
+    queryKey: [...queryKeys.recentTrips, limit],
+    queryFn: () =>
+      apiFetch<{ data: any[]; count: number }>(
+        `/api/v1/trips/?limit=${limit}&skip=0`
+      ),
+  });
+}
+
+// Todo count for dashboard
+export function useTodoCount() {
+  return useQuery({
+    queryKey: queryKeys.todoCount,
+    queryFn: () =>
+      apiFetch<{ total: number }>(
+        "/api/v1/tasks/my-tasks?sort_by=date&sort_order=desc"
+      ),
+  });
+}
+
+// Financial pulse for dashboard
+export function useFinancialPulse() {
+  return useQuery({
+    queryKey: queryKeys.financialPulse,
+    queryFn: () => apiFetch<any>("/api/v1/reports/financial-pulse"),
+  });
+}
+
+// Tracking report
+export function useTracking() {
+  return useQuery({
+    queryKey: queryKeys.tracking,
+    queryFn: () => apiFetch<any[]>("/api/v1/reports/waybill-tracking"),
+  });
+}
+
 // Hook to invalidate queries after mutations
 export function useInvalidateQueries() {
   const queryClient = useQueryClient();
@@ -151,6 +193,10 @@ export function useInvalidateQueries() {
     invalidateMaintenance: () => queryClient.invalidateQueries({ queryKey: queryKeys.maintenance }),
     invalidateClients: () => queryClient.invalidateQueries({ queryKey: queryKeys.clients }),
     invalidateDashboard: () => queryClient.invalidateQueries({ queryKey: queryKeys.dashboard }),
+    invalidateRecentTrips: () => queryClient.invalidateQueries({ queryKey: queryKeys.recentTrips }),
+    invalidateTodoCount: () => queryClient.invalidateQueries({ queryKey: queryKeys.todoCount }),
+    invalidateFinancialPulse: () => queryClient.invalidateQueries({ queryKey: queryKeys.financialPulse }),
+    invalidateTracking: () => queryClient.invalidateQueries({ queryKey: queryKeys.tracking }),
     invalidateAll: () => queryClient.invalidateQueries(),
   };
 }

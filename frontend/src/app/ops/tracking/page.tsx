@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
   Table,
@@ -31,6 +31,7 @@ import {
 import type { ColumnsType } from "antd/es/table";
 import ExcelJS from "exceljs";
 import { useAuth } from "@/contexts/AuthContext";
+import { useTracking, useInvalidateQueries } from "@/hooks/useApi";
 import { UpdateTripStatusModal } from "@/components/trips/UpdateTripStatusModal";
 import { getStandardRowSelection } from "@/components/ui/tableUtils";
 
@@ -102,15 +103,18 @@ const RISK_COLORS: Record<string, string> = {
 export default function TrackingPage() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
-  
-  const [data, setData] = useState<TrackingRow[]>([]);
+  const { invalidateTracking } = useInvalidateQueries();
+
+  // TanStack Query for tracking data
+  const { data: rawData, isLoading: loading, refetch } = useTracking();
+  const data = rawData || [];
+
   const [filteredData, setFilteredData] = useState<TrackingRow[]>([]);
-  const [loading, setLoading] = useState(true);
-  
+
   // Filter States
   const [activeTab, setActiveTab] = useState<string>("All");
   const [searchForm] = Form.useForm();
-  
+
   // Status Update Modal State
   const [selectedTripId, setSelectedTripId] = useState<string | null>(null);
   const [isStatusModalOpen, setIsStatusModalOpen] = useState(false);
@@ -121,33 +125,12 @@ export default function TrackingPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(100);
 
-  const fetchReport = useCallback(async () => {
-    setLoading(true);
-    try {
-      const response = await fetch("/api/v1/reports/waybill-tracking", {
-        credentials: "include",
-      });
-      if (response.ok) {
-        const result = await response.json();
-        setData(result);
-        applyFilters(result, activeTab, searchForm.getFieldsValue());
-      } else if (response.status === 401) {
-        router.push("/login");
-      } else {
-        message.error("Failed to fetch tracking report");
-      }
-    } catch {
-      message.error("Network error");
-    } finally {
-      setLoading(false);
-    }
-  }, [router, activeTab, searchForm]);
-
+  // Apply filters when data or tab changes
   useEffect(() => {
-    if (!authLoading && user) {
-      fetchReport();
+    if (data.length > 0) {
+      applyFilters(data, activeTab, searchForm.getFieldsValue());
     }
-  }, [authLoading, user, fetchReport]);
+  }, [data, activeTab]);
 
   // Combined Filter Logic
   const applyFilters = (
@@ -362,7 +345,7 @@ export default function TrackingPage() {
                     <Title level={3} style={{ margin: 0 }}>Control Tower</Title>
                 </Space>
                 <Space>
-                    <Button icon={<ReloadOutlined />} onClick={fetchReport}>Refresh</Button>
+                    <Button icon={<ReloadOutlined />} onClick={() => refetch()}>Refresh</Button>
                     <Button type="primary" icon={<DownloadOutlined />} onClick={handleExport}>
                         Export Excel
                     </Button>
@@ -458,7 +441,7 @@ export default function TrackingPage() {
                 setIsStatusModalOpen(false);
                 setSelectedTripId(null);
             }}
-            onSuccess={fetchReport}
+            onSuccess={() => invalidateTracking()}
             tripId={selectedTripId}
             initialValues={initialStatusValues}
         />
