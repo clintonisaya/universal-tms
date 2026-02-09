@@ -9,6 +9,8 @@ async function apiFetch<T>(url: string, options?: RequestInit): Promise<T> {
 
   if (!response.ok) {
     if (response.status === 401) {
+      // Dispatch event for UI to handle (e.g., show login modal)
+      window.dispatchEvent(new Event("session-expired"));
       throw new Error("Unauthorized");
     }
     throw new Error(`API error: ${response.status}`);
