@@ -54,8 +54,11 @@ export default function WaybillsPage() {
   const { user, loading: authLoading } = useAuth();
   const { invalidateWaybills } = useInvalidateQueries();
 
+  // Only fetch when user is authenticated
+  const isAuthenticated = !!user && !authLoading;
+
   // TanStack Query for waybills data
-  const { data, isLoading: loading, refetch } = useWaybills();
+  const { data, isLoading: loading, refetch } = useWaybills(isAuthenticated);
   const waybills = data?.data || [];
   const totalCount = data?.count || 0;
 

@@ -98,18 +98,24 @@ function buildToastMessage(taskType: TaskType | undefined, data: TaskSocketEvent
 function DashboardContent() {
   const router = useRouter();
   const socket = useSocket();
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const { message: msg } = App.useApp();
   const role = user?.role;
   const { addNotification } = useNotifications(user?.id);
   const queryClient = useQueryClient();
   const { invalidateTodoCount, invalidateDashboard } = useInvalidateQueries();
 
+  // Only fetch when user is authenticated
+  const isAuthenticated = !!user && !authLoading;
+
   // TanStack Query hooks for data fetching with stale-while-revalidate
-  const { data: statsData, isLoading: loading } = useDashboardStats();
-  const { data: tripsData, isLoading: tripsLoading } = useRecentTrips();
-  const { data: todoData, isLoading: todoCountLoading } = useTodoCount();
-  const { data: pulseData, isLoading: financialLoading } = useFinancialPulse();
+  const { data: statsData, isLoading: statsLoading } = useDashboardStats(isAuthenticated);
+  const { data: tripsData, isLoading: tripsLoading } = useRecentTrips(5, isAuthenticated);
+  const { data: todoData, isLoading: todoCountLoading } = useTodoCount(isAuthenticated);
+  const { data: pulseData, isLoading: financialLoading } = useFinancialPulse(isAuthenticated);
+
+  // Show loading while auth is checking or while data is loading
+  const loading = authLoading || statsLoading;
 
   // Derive values from query data
   const stats = statsData || null;

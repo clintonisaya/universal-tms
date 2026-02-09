@@ -78,7 +78,7 @@ export function useDrivers() {
 }
 
 // Trips
-export function useTrips(params?: { limit?: number; skip?: number }) {
+export function useTrips(params?: { limit?: number; skip?: number }, enabled = true) {
   const queryString = params
     ? `?${new URLSearchParams(params as Record<string, string>).toString()}`
     : "";
@@ -86,6 +86,7 @@ export function useTrips(params?: { limit?: number; skip?: number }) {
     queryKey: [...queryKeys.trips, params],
     queryFn: () =>
       apiFetch<{ data: any[]; count: number }>(`/api/v1/trips${queryString}`),
+    enabled,
   });
 }
 
@@ -98,18 +99,20 @@ export function useTrip(id: string) {
 }
 
 // Waybills
-export function useWaybills() {
+export function useWaybills(enabled = true) {
   return useQuery({
     queryKey: queryKeys.waybills,
     queryFn: () => apiFetch<{ data: any[]; count: number }>("/api/v1/waybills"),
+    enabled,
   });
 }
 
 // Expenses
-export function useExpenses() {
+export function useExpenses(enabled = true) {
   return useQuery({
     queryKey: queryKeys.expenses,
     queryFn: () => apiFetch<{ data: any[]; count: number }>("/api/v1/expenses"),
+    enabled,
   });
 }
 
@@ -139,48 +142,53 @@ export function useClients() {
 }
 
 // Dashboard stats
-export function useDashboardStats() {
+export function useDashboardStats(enabled = true) {
   return useQuery({
     queryKey: queryKeys.dashboard,
     queryFn: () => apiFetch<any>("/api/v1/dashboard/stats"),
+    enabled,
   });
 }
 
 // Recent trips for dashboard
-export function useRecentTrips(limit = 5) {
+export function useRecentTrips(limit = 5, enabled = true) {
   return useQuery({
     queryKey: [...queryKeys.recentTrips, limit],
     queryFn: () =>
       apiFetch<{ data: any[]; count: number }>(
         `/api/v1/trips/?limit=${limit}&skip=0`
       ),
+    enabled,
   });
 }
 
 // Todo count for dashboard
-export function useTodoCount() {
+export function useTodoCount(enabled = true) {
   return useQuery({
     queryKey: queryKeys.todoCount,
     queryFn: () =>
       apiFetch<{ total: number }>(
         "/api/v1/tasks/my-tasks?sort_by=date&sort_order=desc"
       ),
+    enabled,
   });
 }
 
 // Financial pulse for dashboard
-export function useFinancialPulse() {
+export function useFinancialPulse(enabled = true) {
   return useQuery({
     queryKey: queryKeys.financialPulse,
     queryFn: () => apiFetch<any>("/api/v1/reports/financial-pulse"),
+    enabled,
   });
 }
 
 // Tracking report
-export function useTracking() {
+export function useTracking(enabled = true) {
   return useQuery({
     queryKey: queryKeys.tracking,
     queryFn: () => apiFetch<any[]>("/api/v1/reports/waybill-tracking"),
+    enabled,
   });
 }
 

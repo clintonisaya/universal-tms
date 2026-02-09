@@ -56,8 +56,11 @@ export default function TripsPage() {
   const { user, loading: authLoading } = useAuth();
   const { invalidateTrips } = useInvalidateQueries();
 
+  // Only fetch when user is authenticated
+  const isAuthenticated = !!user && !authLoading;
+
   // TanStack Query for trips data
-  const { data, isLoading: loading, refetch } = useTrips();
+  const { data, isLoading: loading, refetch } = useTrips(undefined, isAuthenticated);
   const trips = data?.data || [];
   const totalCount = data?.count || 0;
 

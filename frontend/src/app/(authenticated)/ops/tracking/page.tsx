@@ -105,8 +105,11 @@ export default function TrackingPage() {
   const { user, loading: authLoading } = useAuth();
   const { invalidateTracking } = useInvalidateQueries();
 
+  // Only fetch when user is authenticated
+  const isAuthenticated = !!user && !authLoading;
+
   // TanStack Query for tracking data
-  const { data: rawData, isLoading: loading, refetch } = useTracking();
+  const { data: rawData, isLoading: loading, refetch } = useTracking(isAuthenticated);
   const data = rawData || [];
 
   const [filteredData, setFilteredData] = useState<TrackingRow[]>([]);

@@ -72,9 +72,12 @@ export default function ExpensesPage() {
   const { user, loading: authLoading } = useAuth();
   const { invalidateExpenses } = useInvalidateQueries();
 
+  // Only fetch when user is authenticated
+  const isAuthenticated = !!user && !authLoading;
+
   // TanStack Query for expenses and trips data
-  const { data: expensesData, isLoading: loading, refetch } = useExpenses();
-  const { data: tripsData, isLoading: tripsLoading } = useTrips({ limit: 100 });
+  const { data: expensesData, isLoading: loading, refetch } = useExpenses(isAuthenticated);
+  const { data: tripsData, isLoading: tripsLoading } = useTrips({ limit: 100 }, isAuthenticated);
 
   // Filter to show only trip expenses (expense_number does NOT start with "EXP")
   const expenses = useMemo(() => {
