@@ -21,7 +21,7 @@ import type { ExpenseRequestDetailed, ExpenseStatus } from "@/types/expense";
 import { useAuth } from "@/contexts/AuthContext";
 import { useExpenses, useInvalidateQueries } from "@/hooks/useApi";
 import { AddExpenseModal } from "@/components/expenses/AddExpenseModal";
-import { PaymentModal } from "@/components/expenses/PaymentModal";
+import { ProcessPaymentModal } from "@/components/expenses/ProcessPaymentModal";
 import { ExpenseDetailModal } from "@/components/expenses/ExpenseDetailModal";
 import { ExpenseStatusBadge } from "@/components/expenses/ExpenseStatusBadge";
 import {
@@ -260,14 +260,14 @@ export default function OfficeExpensesPage() {
           />
         </Space>
       </Card>
-      
-      <AddExpenseModal 
+
+      <AddExpenseModal
         open={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onSuccess={() => invalidateExpenses()}
       />
 
-      <PaymentModal
+      <ProcessPaymentModal
         open={paymentModalOpen}
         onClose={() => setPaymentModalOpen(false)}
         onSuccess={() => invalidateExpenses()}

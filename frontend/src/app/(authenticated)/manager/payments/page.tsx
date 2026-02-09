@@ -9,12 +9,9 @@ import {
   Space,
   message,
   Modal,
-  Form,
-  Input,
-  Radio,
+  Statistic,
   Typography,
   Spin,
-  Statistic,
 } from "antd";
 import {
   DollarOutlined,
@@ -32,6 +29,7 @@ import {
 } from "@/components/ui/tableUtils";
 import { ExpenseStatusBadge } from "@/components/expenses/ExpenseStatusBadge";
 import { ExpenseDetailModal } from "@/components/expenses/ExpenseDetailModal";
+import { ProcessPaymentModal } from "@/components/expenses/ProcessPaymentModal";
 import type { ExpenseStatus, ExpenseRequestDetailed } from "@/types/expense";
 
 const { Title, Text } = Typography;
@@ -65,14 +63,10 @@ export default function FinancePaymentsPage() {
   const [loading, setLoading] = useState(true);
   const [totalCount, setTotalCount] = useState(0);
   const [modalVisible, setModalVisible] = useState(false);
-  const [selectedExpense, setSelectedExpense] = useState<ExpenseRequest | null>(null);
-  const [processing, setProcessing] = useState(false);
+  const [selectedExpense, setSelectedExpense] = useState<ExpenseRequestDetailed | null>(null);
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
-
-  const [form] = Form.useForm<PaymentFormValues>();
-  const paymentMethod = Form.useWatch("method", form);
 
   // Detail Modal State
   const [detailModalOpen, setDetailModalOpen] = useState(false);
@@ -117,50 +111,11 @@ export default function FinancePaymentsPage() {
   }, [authLoading, user, fetchExpenses]);
 
   const openPaymentModal = (expense: ExpenseRequest) => {
-    setSelectedExpense(expense);
-    form.resetFields();
-    form.setFieldsValue({ method: "CASH" });
+    setSelectedExpense(expense as ExpenseRequestDetailed);
     setModalVisible(true);
   };
 
-  const handlePayment = async (values: PaymentFormValues) => {
-    if (!selectedExpense) return;
 
-    setProcessing(true);
-    try {
-      const body: { method: string; reference?: string } = {
-        method: values.method,
-      };
-      if (values.method === "TRANSFER" && values.reference) {
-        body.reference = values.reference;
-      }
-
-      const response = await fetch(
-        `/api/v1/expenses/${selectedExpense.id}/payment`,
-        {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify(body),
-        }
-      );
-
-      if (response.ok) {
-        message.success("Payment processed successfully");
-        setModalVisible(false);
-        setSelectedExpense(null);
-        form.resetFields();
-        fetchExpenses();
-      } else {
-        const error = await response.json();
-        message.error(error.detail || "Payment processing failed");
-      }
-    } catch {
-      message.error("Network error");
-    } finally {
-      setProcessing(false);
-    }
-  };
 
   const totalPending = expenses.reduce((sum, e) => sum + Number(e.amount), 0);
 
@@ -334,76 +289,17 @@ export default function FinancePaymentsPage() {
       </Card>
 
       {/* Payment Modal */}
-      <Modal
-        title={`Process Payment — ${selectedExpense?.description || ""}`}
+      <ProcessPaymentModal
         open={modalVisible}
-        onCancel={() => {
+        onClose={() => {
           setModalVisible(false);
           setSelectedExpense(null);
-          form.resetFields();
         }}
-        footer={null}
-        forceRender
-      >
-        {selectedExpense && (
-          <div style={{ marginBottom: 16 }}>
-            <Text type="secondary">Amount: </Text>
-            <Text strong>
-              {selectedExpense.currency || "TZS"} {Number(selectedExpense.amount).toLocaleString()}
-            </Text>
-          </div>
-        )}
-
-        <Form<PaymentFormValues>
-          form={form}
-          layout="vertical"
-          onFinish={handlePayment}
-          initialValues={{ method: "CASH" }}
-        >
-          <Form.Item
-            name="method"
-            label="Payment Method"
-            rules={[{ required: true, message: "Please select a payment method" }]}
-          >
-            <Radio.Group>
-              <Radio.Button value="CASH">Cash</Radio.Button>
-              <Radio.Button value="TRANSFER">Transfer</Radio.Button>
-            </Radio.Group>
-          </Form.Item>
-
-          {paymentMethod === "TRANSFER" && (
-            <Form.Item
-              name="reference"
-              label="Reference Number"
-              rules={[
-                {
-                  required: true,
-                  message: "Reference Number is required for transfers",
-                },
-              ]}
-            >
-              <Input placeholder="e.g. Bank Transaction ID" />
-            </Form.Item>
-          )}
-
-          <Form.Item style={{ marginBottom: 0, textAlign: "right" }}>
-            <Space>
-              <Button
-                onClick={() => {
-                  setModalVisible(false);
-                  setSelectedExpense(null);
-                  form.resetFields();
-                }}
-              >
-                Cancel
-              </Button>
-              <Button type="primary" htmlType="submit" loading={processing}>
-                Confirm Payment
-              </Button>
-            </Space>
-          </Form.Item>
-        </Form>
-      </Modal>
+        onSuccess={() => {
+          fetchExpenses();
+        }}
+        expense={selectedExpense}
+      />
 
       {/* Expense Detail Modal */}
       <ExpenseDetailModal

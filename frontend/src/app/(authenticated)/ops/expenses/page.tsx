@@ -29,7 +29,7 @@ import type { Trip } from "@/types/trip";
 import { useAuth } from "@/contexts/AuthContext";
 import { useExpenses, useTrips, useInvalidateQueries } from "@/hooks/useApi";
 import { AddExpenseModal } from "@/components/expenses/AddExpenseModal";
-import { PaymentModal } from "@/components/expenses/PaymentModal";
+import { ProcessPaymentModal } from "@/components/expenses/ProcessPaymentModal";
 import { ExpenseHistoryModal } from "@/components/expenses/ExpenseHistoryModal";
 import { ExpenseDetailModal } from "@/components/expenses/ExpenseDetailModal";
 import { ExpenseStatusBadge } from "@/components/expenses/ExpenseStatusBadge";
@@ -424,7 +424,7 @@ export default function ExpensesPage() {
         tripNumber={selectedTripNumber}
       />
 
-      <PaymentModal
+      <ProcessPaymentModal
         open={paymentModalOpen}
         onClose={() => setPaymentModalOpen(false)}
         onSuccess={() => invalidateExpenses()}
