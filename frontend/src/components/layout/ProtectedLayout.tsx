@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Spin, Typography } from "antd";
 import { useAuth } from "@/contexts/AuthContext";
@@ -18,14 +18,17 @@ export function ProtectedLayout({ children }: ProtectedLayoutProps) {
   const { user, loading } = useAuth();
   const router = useRouter();
   const [showLoginModal, setShowLoginModal] = useState(false);
+  const redirectAttempted = useRef(false);
 
   useEffect(() => {
     // Redirect to login if auth check completes and no user found
-    // using replace to prevent back-button looping
-    if (!loading && !user) {
-      router.replace("/login");
+    // Use ref to prevent multiple redirect attempts
+    if (!loading && !user && !redirectAttempted.current) {
+      redirectAttempted.current = true;
+      // Use window.location for reliable redirect (router.replace can fail silently)
+      window.location.href = "/login";
     }
-  }, [user, loading, router]);
+  }, [user, loading]);
 
   useEffect(() => {
     const handleSessionExpiry = () => setShowLoginModal(true);
@@ -35,16 +38,30 @@ export function ProtectedLayout({ children }: ProtectedLayoutProps) {
 
   if (loading) {
     return (
-      <div style={{ height: "100vh", display: "flex", justifyContent: "center", alignItems: "center" }}>
+      <div style={{
+        height: "100vh",
+        display: "flex",
+        justifyContent: "center",
+        alignItems: "center",
+        background: "#f5f7fa",
+      }}>
         <Spin size="large" />
       </div>
     );
   }
 
   if (!user) {
-    // Render a redirecting state instead of null to prevent "blank screen" confusion
+    // Render a redirecting state with explicit light background
     return (
-      <div style={{ height: "100vh", display: "flex", justifyContent: "center", alignItems: "center", flexDirection: "column", gap: "16px" }}>
+      <div style={{
+        height: "100vh",
+        display: "flex",
+        justifyContent: "center",
+        alignItems: "center",
+        flexDirection: "column",
+        gap: "16px",
+        background: "#f5f7fa",
+      }}>
         <Spin size="large" />
         <Text type="secondary">Redirecting to login...</Text>
       </div>

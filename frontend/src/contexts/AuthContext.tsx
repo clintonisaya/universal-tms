@@ -28,8 +28,6 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const PUBLIC_PATHS = ["/login"];
-
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
@@ -114,14 +112,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     init();
   }, []);
 
-  // Handle redirects based on auth state and pathname
+  // Handle redirect from login page when already logged in
+  // Note: Redirect TO login for unauthenticated users is handled by ProtectedLayout
   useEffect(() => {
     if (loading) return; // Wait for auth check to complete
 
-    const isPublicPath = PUBLIC_PATHS.includes(pathname);
-    if (!user && !isPublicPath) {
-      router.push("/login");
-    } else if (user && pathname === "/login") {
+    // Only redirect authenticated users away from login page
+    if (user && pathname === "/login") {
       router.push("/dashboard");
     }
   }, [user, loading, pathname, router]);
