@@ -41,7 +41,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     try {
       const response = await fetch("/api/v1/login/test-token", {
-        method: "POST",
+        method: "GET",
         credentials: "include",
         signal: controller.signal,
       });
