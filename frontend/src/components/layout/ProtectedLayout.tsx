@@ -2,11 +2,13 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Spin } from "antd";
+import { Spin, Typography } from "antd";
 import { useAuth } from "@/contexts/AuthContext";
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
 import { SocketProvider } from "@/lib/socket";
 import { SessionExpiredModal } from "@/components/auth/SessionExpiredModal";
+
+const { Text } = Typography;
 
 interface ProtectedLayoutProps {
   children: React.ReactNode;
@@ -19,9 +21,9 @@ export function ProtectedLayout({ children }: ProtectedLayoutProps) {
 
   useEffect(() => {
     // Redirect to login if auth check completes and no user found
-    // AND we are not already showing the modal (though if !user, we likely want full redirect unless it's an expiry)
+    // using replace to prevent back-button looping
     if (!loading && !user) {
-      router.push("/login");
+      router.replace("/login");
     }
   }, [user, loading, router]);
 
@@ -40,7 +42,13 @@ export function ProtectedLayout({ children }: ProtectedLayoutProps) {
   }
 
   if (!user) {
-    return null;
+    // Render a redirecting state instead of null to prevent "blank screen" confusion
+    return (
+      <div style={{ height: "100vh", display: "flex", justifyContent: "center", alignItems: "center", flexDirection: "column", gap: "16px" }}>
+        <Spin size="large" />
+        <Text type="secondary">Redirecting to login...</Text>
+      </div>
+    );
   }
 
   // Always render the layout - middleware handles initial access control
