@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { Spin } from "antd";
 import { useAuth } from "@/contexts/AuthContext";
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
 import { SocketProvider } from "@/lib/socket";
@@ -29,6 +30,18 @@ export function ProtectedLayout({ children }: ProtectedLayoutProps) {
     window.addEventListener("session-expired", handleSessionExpiry);
     return () => window.removeEventListener("session-expired", handleSessionExpiry);
   }, []);
+
+  if (loading) {
+    return (
+      <div style={{ height: "100vh", display: "flex", justifyContent: "center", alignItems: "center" }}>
+        <Spin size="large" />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return null;
+  }
 
   // Always render the layout - middleware handles initial access control
   // This prevents infinite loading if backend is slow/down
