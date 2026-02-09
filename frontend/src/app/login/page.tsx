@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
+import { useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button, Card, Form, Input, Typography, message, Space, Spin } from "antd";
 import { UserOutlined, LockOutlined, CrownOutlined } from "@ant-design/icons";
@@ -16,19 +16,13 @@ interface LoginFormFields {
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { user, loading: authLoading, login } = useAuth();
+  const { login } = useAuth();
   const [loading, setLoading] = useState(false);
   const [messageApi, contextHolder] = message.useMessage();
 
   // Get the callback URL from query params (set by middleware when redirecting)
+  // Note: Redirect for already logged-in users is handled by AuthContext
   const callbackUrl = searchParams.get("callbackUrl") || "/dashboard";
-
-  // Redirect to dashboard if already logged in
-  useEffect(() => {
-    if (!authLoading && user) {
-      router.push(callbackUrl);
-    }
-  }, [user, authLoading, router, callbackUrl]);
 
   const onFinish = async (values: LoginFormFields) => {
     setLoading(true);

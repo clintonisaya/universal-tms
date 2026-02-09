@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Spin, Typography } from "antd";
 import { useAuth } from "@/contexts/AuthContext";
@@ -18,17 +18,15 @@ export function ProtectedLayout({ children }: ProtectedLayoutProps) {
   const { user, loading } = useAuth();
   const router = useRouter();
   const [showLoginModal, setShowLoginModal] = useState(false);
-  const redirectAttempted = useRef(false);
+  const [isRedirecting, setIsRedirecting] = useState(false);
 
   useEffect(() => {
     // Redirect to login if auth check completes and no user found
-    // Use ref to prevent multiple redirect attempts
-    if (!loading && !user && !redirectAttempted.current) {
-      redirectAttempted.current = true;
-      // Use window.location for reliable redirect (router.replace can fail silently)
-      window.location.href = "/login";
+    if (!loading && !user && !isRedirecting) {
+      setIsRedirecting(true);
+      router.replace("/login");
     }
-  }, [user, loading]);
+  }, [user, loading, router, isRedirecting]);
 
   useEffect(() => {
     const handleSessionExpiry = () => setShowLoginModal(true);
@@ -36,22 +34,8 @@ export function ProtectedLayout({ children }: ProtectedLayoutProps) {
     return () => window.removeEventListener("session-expired", handleSessionExpiry);
   }, []);
 
-  if (loading) {
-    return (
-      <div style={{
-        height: "100vh",
-        display: "flex",
-        justifyContent: "center",
-        alignItems: "center",
-        background: "#f5f7fa",
-      }}>
-        <Spin size="large" />
-      </div>
-    );
-  }
-
-  if (!user) {
-    // Render a redirecting state with explicit light background
+  // Show loading spinner while auth is checking OR while redirecting
+  if (loading || isRedirecting || !user) {
     return (
       <div style={{
         height: "100vh",
@@ -63,7 +47,9 @@ export function ProtectedLayout({ children }: ProtectedLayoutProps) {
         background: "#f5f7fa",
       }}>
         <Spin size="large" />
-        <Text type="secondary">Redirecting to login...</Text>
+        {!loading && !user && (
+          <Text type="secondary">Redirecting to login...</Text>
+        )}
       </div>
     );
   }
