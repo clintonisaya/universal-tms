@@ -98,7 +98,7 @@ function LoginForm() {
             <div style={{ marginBottom: "16px" }}>
               <CrownOutlined style={{ fontSize: "42px", color: "#D4AF37", marginBottom: "12px" }} />
               <Title level={3} style={{ margin: 0, color: "#1F1F1F", letterSpacing: "-0.5px", fontWeight: 700 }}>
-                EDUPO TMS
+                EDUPO
               </Title>
               <Text type="secondary" style={{ fontSize: "13px", letterSpacing: "1px", textTransform: "uppercase" }}>
                 Secure Login

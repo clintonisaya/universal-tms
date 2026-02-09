@@ -213,7 +213,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                   fontFamily: "Inter, sans-serif"
                 }}
               >
-                EDUPO TMS
+                EDUPO
               </Text>
             )}
           </Space>
