@@ -75,7 +75,7 @@ export default function VehicleStatusesPage() {
     setSubmitting(true);
     try {
       const payload = { ...values, is_active: values.is_active ?? true };
-      const response = await fetch("/api/v1/vehicle-statuses/", {
+      const response = await fetch("/api/v1/vehicle-statuses", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",

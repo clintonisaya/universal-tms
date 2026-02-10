@@ -100,14 +100,27 @@ def is_driver_available(driver: Driver) -> bool:
 
 
 def generate_trip_number(session: SessionDep, plate_number: str) -> str:
-    """Generate a unique trip number: T<Plate>-YYYY<Seq>"""
+    """Generate a unique trip number: <Plate>-YYYY<Seq>
+
+    Sequence is per-vehicle per-year:
+    - T512EZD-2026001 (first trip for truck T512EZD in 2026)
+    - T512EZD-2026002 (second trip for truck T512EZD in 2026)
+    - T556EDS-2026001 (first trip for truck T556EDS in 2026 - independent)
+    - New year resets sequence to 001 for each vehicle
+
+    Note: Plate number already includes prefix (e.g., T512EZD), no extra T added.
+    """
     sanitized_plate = plate_number.replace(" ", "").upper()
     year = datetime.now().year
 
-    # Find last sequence for this year
-    # We look for trip numbers matching "-YYYY"
-    pattern = f"%-{year}%"
-    statement = select(Trip.trip_number).where(Trip.trip_number.like(pattern)).order_by(Trip.trip_number.desc()).limit(1)
+    # Find last sequence for THIS vehicle in THIS year
+    pattern = f"{sanitized_plate}-{year}%"
+    statement = (
+        select(Trip.trip_number)
+        .where(Trip.trip_number.like(pattern))
+        .order_by(Trip.trip_number.desc())
+        .limit(1)
+    )
     last_trip_number = session.exec(statement).first()
 
     sequence = 1
@@ -119,7 +132,7 @@ def generate_trip_number(session: SessionDep, plate_number: str) -> str:
         except ValueError:
             pass  # Fallback to 1 if parsing fails
 
-    return f"T{sanitized_plate}-{year}{sequence:03d}"
+    return f"{sanitized_plate}-{year}{sequence:03d}"
 
 
 @router.get("/available-trucks", response_model=TrucksPublic)
@@ -457,6 +470,13 @@ def delete_trip(
     if driver:
         driver.status = DriverStatus.active
         session.add(driver)
+
+    # Reset waybill status back to Open if linked
+    if trip.waybill_id:
+        waybill = session.get(Waybill, trip.waybill_id)
+        if waybill:
+            waybill.status = WaybillStatus.open
+            session.add(waybill)
 
     session.delete(trip)
     session.commit()

@@ -9,12 +9,14 @@ import {
   Space,
   Typography,
   Spin,
+  message,
 } from "antd";
 import {
   ReloadOutlined,
   PlusOutlined,
   DollarOutlined,
   PrinterOutlined,
+  HistoryOutlined,
 } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
 import type { ExpenseRequestDetailed, ExpenseStatus } from "@/types/expense";
@@ -23,7 +25,9 @@ import { useExpenses, useInvalidateQueries } from "@/hooks/useApi";
 import { AddExpenseModal } from "@/components/expenses/AddExpenseModal";
 import { ProcessPaymentModal } from "@/components/expenses/ProcessPaymentModal";
 import { ExpenseDetailModal } from "@/components/expenses/ExpenseDetailModal";
+import { ExpenseHistoryModal } from "@/components/expenses/ExpenseHistoryModal";
 import { ExpenseStatusBadge } from "@/components/expenses/ExpenseStatusBadge";
+import { PrintPreviewModal } from "@/components/expenses/PrintPreviewModal";
 import {
   getColumnSearchProps,
   getColumnFilterProps,
@@ -41,6 +45,11 @@ const STATUS_COLORS: Record<ExpenseStatus, string> = {
   "Returned": "purple",
 };
 
+const STATUS_FILTERS = Object.keys(STATUS_COLORS).map((status) => ({
+  text: status,
+  value: status,
+}));
+
 export default function OfficeExpensesPage() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
@@ -49,11 +58,12 @@ export default function OfficeExpensesPage() {
   // TanStack Query for expenses data
   const { data: expensesData, isLoading: loading, refetch } = useExpenses();
 
-  // Filter to show only office expenses (expense_number starts with "EXP")
+  // Filter to show only office expenses (expense_number starts with "EX")
+  // Matches both old format (EXP-2026-0001) and new format (EX-2026-0001)
   const expenses = useMemo(() => {
     const allExpenses = (expensesData?.data || []) as ExpenseRequestDetailed[];
     return allExpenses.filter(
-      (e: ExpenseRequestDetailed) => e.expense_number?.startsWith("EXP")
+      (e: ExpenseRequestDetailed) => e.expense_number?.startsWith("EX")
     );
   }, [expensesData]);
 
@@ -72,6 +82,14 @@ export default function OfficeExpensesPage() {
   const [detailModalOpen, setDetailModalOpen] = useState(false);
   const [detailExpense, setDetailExpense] = useState<ExpenseRequestDetailed | null>(null);
 
+  // History Modal State
+  const [historyModalOpen, setHistoryModalOpen] = useState(false);
+  const [historyExpense, setHistoryExpense] = useState<ExpenseRequestDetailed | null>(null);
+
+  // Print Preview Modal State
+  const [printModalOpen, setPrintModalOpen] = useState(false);
+  const [printExpenseIds, setPrintExpenseIds] = useState<string[]>([]);
+
   const handleViewDetail = (record: ExpenseRequestDetailed) => {
     setDetailExpense(record);
     setDetailModalOpen(true);
@@ -83,10 +101,67 @@ export default function OfficeExpensesPage() {
   };
 
   const handlePrint = (id: string) => {
-    window.open(`/finance/vouchers/${id}`, '_blank');
+    setPrintExpenseIds([id]);
+    setPrintModalOpen(true);
+  };
+
+  // Bulk print - open print preview modal with all selected expenses
+  const handleBulkPrint = () => {
+    if (selectedRowKeys.length === 0) {
+      message.warning("Please select expenses to print");
+      return;
+    }
+    setPrintExpenseIds(selectedRowKeys as string[]);
+    setPrintModalOpen(true);
+  };
+
+  const handleViewHistory = (record: ExpenseRequestDetailed) => {
+    setHistoryExpense(record);
+    setHistoryModalOpen(true);
+  };
+
+  // Check if print is allowed (after manager approval)
+  const canPrint = (status: ExpenseStatus) => {
+    return ["Pending Finance", "Paid"].includes(status);
   };
 
   const columns: ColumnsType<ExpenseRequestDetailed> = [
+    {
+      title: "Actions",
+      key: "actions",
+      width: 100,
+      render: (_, record) => (
+        <Space size={4}>
+          <Button
+            type="text"
+            size="small"
+            icon={<HistoryOutlined />}
+            title="View History"
+            onClick={() => handleViewHistory(record)}
+          />
+          {canPrint(record.status) && (
+            <Button
+              type="text"
+              size="small"
+              icon={<PrinterOutlined />}
+              title="Print Voucher"
+              onClick={() => handlePrint(record.id)}
+            />
+          )}
+          {(user?.role === "finance" || user?.role === "admin") &&
+            record.status === "Pending Finance" && (
+              <Button
+                type="primary"
+                size="small"
+                icon={<DollarOutlined />}
+                onClick={() => handlePay(record)}
+              >
+                Pay
+              </Button>
+            )}
+        </Space>
+      ),
+    },
     {
       title: "Expense #",
       dataIndex: "expense_number",
@@ -144,39 +219,7 @@ export default function OfficeExpensesPage() {
       key: "status",
       width: 220,
       render: (status: ExpenseStatus) => <ExpenseStatusBadge status={status} />,
-      ...getColumnFilterProps("status", Object.keys(STATUS_COLORS).map((s) => ({ text: s, value: s }))),
-    },
-    {
-      title: "Actions",
-      key: "actions",
-      width: 120,
-      fixed: "right",
-      render: (_, record) => (
-        <div className="row-actions">
-          <Space size="small">
-            {(user?.role === "finance" || user?.role === "admin") &&
-              record.status === "Pending Finance" && (
-                <Button
-                  type="primary"
-                  size="small"
-                  icon={<DollarOutlined />}
-                  onClick={() => handlePay(record)}
-                >
-                  Pay
-                </Button>
-              )}
-
-            {record.status === "Paid" && (
-              <Button
-                type="default"
-                size="small"
-                icon={<PrinterOutlined />}
-                onClick={() => handlePrint(record.id)}
-              />
-            )}
-          </Space>
-        </div>
-      ),
+      ...getColumnFilterProps("status", STATUS_FILTERS),
     },
   ];
 
@@ -219,6 +262,14 @@ export default function OfficeExpensesPage() {
               Office Expenses
             </Title>
             <Space>
+              {selectedRowKeys.length > 0 && (
+                <Button
+                  icon={<PrinterOutlined />}
+                  onClick={handleBulkPrint}
+                >
+                  Print Selected ({selectedRowKeys.length})
+                </Button>
+              )}
               <Button icon={<ReloadOutlined />} onClick={() => refetch()}>
                 Refresh
               </Button>
@@ -281,6 +332,24 @@ export default function OfficeExpensesPage() {
           setDetailExpense(null);
         }}
         expense={detailExpense}
+      />
+
+      <ExpenseHistoryModal
+        open={historyModalOpen}
+        onClose={() => {
+          setHistoryModalOpen(false);
+          setHistoryExpense(null);
+        }}
+        expense={historyExpense}
+      />
+
+      <PrintPreviewModal
+        open={printModalOpen}
+        onClose={() => {
+          setPrintModalOpen(false);
+          setPrintExpenseIds([]);
+        }}
+        expenseIds={printExpenseIds}
       />
     </div>
   );

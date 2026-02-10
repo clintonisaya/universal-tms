@@ -7,7 +7,7 @@ import {
   Input,
   Button,
   Space,
-  message,
+  App,
   Typography,
   Divider,
   DatePicker,
@@ -33,6 +33,7 @@ export function CreateWaybillDrawer({
   onClose,
   onSuccess,
 }: CreateWaybillDrawerProps) {
+  const { message } = App.useApp();
   const [form] = Form.useForm<WaybillCreate>();
   const [submitting, setSubmitting] = useState(false);
   const [locations, setLocations] = useState<any[]>([]);
@@ -51,9 +52,9 @@ export function CreateWaybillDrawer({
     setLoadingResources(true);
     try {
       const [cityRes, cargoRes, clientRes] = await Promise.all([
-        fetch("/api/v1/cities/", { credentials: "include" }),
-        fetch("/api/v1/cargo-types/", { credentials: "include" }),
-        fetch("/api/v1/clients/", { credentials: "include" }),
+        fetch("/api/v1/cities", { credentials: "include" }),
+        fetch("/api/v1/cargo-types", { credentials: "include" }),
+        fetch("/api/v1/clients", { credentials: "include" }),
       ]);
 
       if (cityRes.ok && cargoRes.ok && clientRes.ok) {
@@ -74,7 +75,7 @@ export function CreateWaybillDrawer({
   const onFinish = async (values: any) => {
     setSubmitting(true);
     try {
-      const response = await fetch("/api/v1/waybills/", {
+      const response = await fetch("/api/v1/waybills", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

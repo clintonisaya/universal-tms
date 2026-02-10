@@ -146,7 +146,7 @@ export function AddExpenseModal({
         try {
           if (isTripExpense) {
             // Fetch Trip Expense Types
-            const response = await fetch("/api/v1/trip-expense-types/?active_only=true&limit=200", {
+            const response = await fetch("/api/v1/trip-expense-types?active_only=true&limit=200", {
               credentials: "include",
             });
             if (response.ok) {
@@ -155,7 +155,7 @@ export function AddExpenseModal({
             }
           } else {
             // Fetch Office Expense Types
-            const response = await fetch("/api/v1/office-expense-types/?active_only=true&limit=200", {
+            const response = await fetch("/api/v1/office-expense-types?active_only=true&limit=200", {
               credentials: "include",
             });
             if (response.ok) {
@@ -342,7 +342,7 @@ export function AddExpenseModal({
           payload.exchange_rate = item.exchange_rate;
         }
 
-        return fetch("/api/v1/expenses/", {
+        return fetch("/api/v1/expenses", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           credentials: "include",

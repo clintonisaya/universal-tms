@@ -175,7 +175,7 @@ export default function TripExpenseTypesPage() {
       const isEditing = editingItem && !("isCategory" in editingItem && editingItem.isCategory);
       const url = isEditing
         ? `/api/v1/trip-expense-types/${editingItem!.id}`
-        : "/api/v1/trip-expense-types/";
+        : "/api/v1/trip-expense-types";
       const method = isEditing ? "PATCH" : "POST";
 
       const payload = { ...values };

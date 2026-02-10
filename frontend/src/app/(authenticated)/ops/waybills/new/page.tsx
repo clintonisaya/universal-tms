@@ -43,9 +43,9 @@ export default function NewWaybillPage() {
     setLoadingResources(true);
     try {
       const [cityRes, cargoRes, clientRes] = await Promise.all([
-        fetch("/api/v1/cities/", { credentials: "include" }),
-        fetch("/api/v1/cargo-types/", { credentials: "include" }),
-        fetch("/api/v1/clients/", { credentials: "include" }),
+        fetch("/api/v1/cities", { credentials: "include" }),
+        fetch("/api/v1/cargo-types", { credentials: "include" }),
+        fetch("/api/v1/clients", { credentials: "include" }),
       ]);
 
       if (cityRes.ok && cargoRes.ok && clientRes.ok) {
@@ -66,7 +66,7 @@ export default function NewWaybillPage() {
   const onFinish = async (values: any) => {
     setSubmitting(true);
     try {
-      const response = await fetch("/api/v1/waybills/", {
+      const response = await fetch("/api/v1/waybills", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

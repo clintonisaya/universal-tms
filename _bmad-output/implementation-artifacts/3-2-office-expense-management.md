@@ -21,20 +21,20 @@
     - Description: "Jan 2026 Office Rent"
 **And** I upload the Invoice Image
 **Then** an `ExpenseRequest` is created
-**And** it has a unique ID like `OFF-EXP-2026-001`
+**And** it has a unique ID like `EX-2026-0001`
 **And** it status is "Pending Manager"
 
 ### Scenario 2: Approval Flow
 **Given** I am a Manager
 **When** I view my Approval Queue
 **Then** I see this Office Expense mixed in with Trip Expenses
-**And** I can see the ID (`OFF-EXP...`) to distinguish it
+**And** I can see the ID (`EX-...`) to distinguish it
 
 ## 3. Technical Requirements
 
 ### 🏗️ Architecture & Stack
 *   **Backend:** Reuse `ExpenseRequest` and `Sequence` logic.
-*   **ID Prefix:** `OFF-EXP`.
+*   **ID Prefix:** `EX`.
 *   **Frontend:** Dedicated page for Office Expenses.
 
 ### 📂 File Structure

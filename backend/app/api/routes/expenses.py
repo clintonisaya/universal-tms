@@ -44,11 +44,11 @@ def generate_expense_number(session: SessionDep, trip_id: uuid.UUID | None, trip
         count_stmt = select(func.count()).select_from(ExpenseRequest).where(ExpenseRequest.trip_id == trip_id)
         existing_count = session.exec(count_stmt).one()
         seq = existing_count + 1
-        return f"E{trip.trip_number}{seq:03d}"
+        return f"E{trip.trip_number}-{seq:03d}"
     else:
-        # Non-trip: EXP-YYYY-SEQ
+        # Non-trip (Office): EX-YYYY-SEQ - Story 2.17 Scenario 4
         year = datetime.now().year
-        pattern = f"EXP-{year}-%"
+        pattern = f"EX-{year}-%"
         last_stmt = (
             select(ExpenseRequest.expense_number)
             .where(ExpenseRequest.expense_number.like(pattern))
@@ -63,7 +63,7 @@ def generate_expense_number(session: SessionDep, trip_id: uuid.UUID | None, trip
                 seq = last_seq + 1
             except ValueError:
                 pass
-        return f"EXP-{year}-{seq:04d}"
+        return f"EX-{year}-{seq:04d}"
 
 # Valid status transitions by role
 # Format: {current_status: {role: [allowed_new_statuses]}}

@@ -110,7 +110,7 @@ export function EditExpenseModal({
         setExpenseTypesLoading(true);
         try {
           if (isTripExpense) {
-            const response = await fetch("/api/v1/trip-expense-types/?active_only=true&limit=200", {
+            const response = await fetch("/api/v1/trip-expense-types?active_only=true&limit=200", {
               credentials: "include",
             });
             if (response.ok) {
@@ -118,7 +118,7 @@ export function EditExpenseModal({
               setTripExpenseTypes(data.data);
             }
           } else {
-            const response = await fetch("/api/v1/office-expense-types/?active_only=true&limit=200", {
+            const response = await fetch("/api/v1/office-expense-types?active_only=true&limit=200", {
               credentials: "include",
             });
             if (response.ok) {

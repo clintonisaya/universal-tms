@@ -3,7 +3,7 @@ import { AntdRegistry } from "@ant-design/nextjs-registry";
 import { Geist, Geist_Mono } from "next/font/google";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { QueryProvider } from "@/lib/queryClient";
-import { ConfigProvider } from "antd";
+import { ConfigProvider, App } from "antd";
 import themeConfig from "@/theme/themeConfig";
 import "react-resizable/css/styles.css";
 import "./globals.css";
@@ -36,7 +36,9 @@ export default function RootLayout({
         <AntdRegistry>
           <QueryProvider>
             <ConfigProvider theme={themeConfig}>
-              <AuthProvider>{children}</AuthProvider>
+              <App>
+                <AuthProvider>{children}</AuthProvider>
+              </App>
             </ConfigProvider>
           </QueryProvider>
         </AntdRegistry>

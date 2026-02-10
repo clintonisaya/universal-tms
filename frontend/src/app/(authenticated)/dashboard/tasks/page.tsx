@@ -32,6 +32,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { ExpenseDetailModal } from "@/components/expenses/ExpenseDetailModal";
 import { EditExpenseModal } from "@/components/expenses/EditExpenseModal";
+import { ProcessPaymentModal } from "@/components/expenses/ProcessPaymentModal";
 import type { ExpenseRequestDetailed } from "@/types/expense";
 
 const { Text, Title } = Typography;
@@ -97,9 +98,7 @@ function TasksContent() {
 
   // Payment modal state
   const [payModalVisible, setPayModalVisible] = useState(false);
-  const [payTaskId, setPayTaskId] = useState<string>("");
-  const [payMethod, setPayMethod] = useState<string>("CASH");
-  const [payReference, setPayReference] = useState("");
+  const [payExpense, setPayExpense] = useState<ExpenseRequestDetailed | null>(null);
 
   // Expense detail modal state
   const [detailModalVisible, setDetailModalVisible] = useState(false);
@@ -254,41 +253,20 @@ function TasksContent() {
     }
   };
 
-  const openPayModal = (taskId: string) => {
-    setPayTaskId(taskId);
-    setPayMethod("CASH");
-    setPayReference("");
-    setPayModalVisible(true);
-  };
-
-  const handlePay = async () => {
-    if (payMethod === "TRANSFER" && !payReference.trim()) {
-      message.warning("Reference is required for transfers");
-      return;
-    }
-    setProcessing(true);
+  const openPayModal = async (taskId: string) => {
     try {
-      const body: { method: string; reference?: string } = { method: payMethod };
-      if (payMethod === "TRANSFER") body.reference = payReference;
-
-      const response = await fetch(`/api/v1/expenses/${payTaskId}/payment`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+      const response = await fetch(`/api/v1/expenses/${taskId}`, {
         credentials: "include",
-        body: JSON.stringify(body),
       });
       if (response.ok) {
-        message.success("Payment processed");
-        setTasks((prev) => prev.filter((t) => t.id !== payTaskId));
-        setPayModalVisible(false);
+        const data = await response.json();
+        setPayExpense(data);
+        setPayModalVisible(true);
       } else {
-        const err = await response.json();
-        message.error(err.detail || "Payment failed");
+        message.error("Failed to load expense details");
       }
     } catch {
       message.error("Network error");
-    } finally {
-      setProcessing(false);
     }
   };
 
@@ -575,37 +553,17 @@ function TasksContent() {
       </Modal>
 
       {/* Payment modal */}
-      <Modal
-        title="Process Payment"
+      <ProcessPaymentModal
         open={payModalVisible}
-        onOk={handlePay}
-        onCancel={() => setPayModalVisible(false)}
-        confirmLoading={processing}
-        okText="Confirm Payment"
-      >
-        <Flex vertical gap="small" style={{ width: "100%" }}>
-          <Text>Payment Method:</Text>
-          <Select
-            value={payMethod}
-            onChange={setPayMethod}
-            options={[
-              { value: "CASH", label: "Cash" },
-              { value: "TRANSFER", label: "Transfer" },
-            ]}
-            style={{ width: "100%" }}
-          />
-          {payMethod === "TRANSFER" && (
-            <>
-              <Text>Reference Number:</Text>
-              <Input
-                value={payReference}
-                onChange={(e) => setPayReference(e.target.value)}
-                placeholder="e.g. Bank Transaction ID"
-              />
-            </>
-          )}
-        </Flex>
-      </Modal>
+        onClose={() => {
+          setPayModalVisible(false);
+          setPayExpense(null);
+        }}
+        onSuccess={() => {
+          fetchTasks();
+        }}
+        expense={payExpense}
+      />
 
       {/* Expense Detail Modal */}
       <ExpenseDetailModal

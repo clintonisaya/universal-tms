@@ -1,7 +1,6 @@
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
-import { useSearchParams } from "next/navigation";
+import { useState, useEffect } from "react";
 import {
   Drawer,
   Form,
@@ -41,6 +40,15 @@ interface Driver {
   status: string;
 }
 
+interface Waybill {
+  id: string;
+  waybill_number: string;
+  client_name: string;
+  origin: string;
+  destination: string;
+  status: string;
+}
+
 interface CreateTripDrawerProps {
   open: boolean;
   onClose: () => void;
@@ -61,13 +69,16 @@ export function CreateTripDrawer({
   const [trucks, setTrucks] = useState<Truck[]>([]);
   const [trailers, setTrailers] = useState<Trailer[]>([]);
   const [drivers, setDrivers] = useState<Driver[]>([]);
+  const [waybills, setWaybills] = useState<Waybill[]>([]);
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [selectedWaybill, setSelectedWaybill] = useState<Waybill | null>(null);
 
   useEffect(() => {
     if (open) {
       fetchResources();
       form.resetFields();
+      setSelectedWaybill(null);
       if (waybillId || routeName) {
         form.setFieldsValue({
           waybill_id: waybillId,
@@ -80,10 +91,11 @@ export function CreateTripDrawer({
   const fetchResources = async () => {
     setLoading(true);
     try {
-      const [trucksRes, trailersRes, driversRes] = await Promise.all([
+      const [trucksRes, trailersRes, driversRes, waybillsRes] = await Promise.all([
         fetch("/api/v1/trips/available-trucks", { credentials: "include" }),
         fetch("/api/v1/trips/available-trailers", { credentials: "include" }),
         fetch("/api/v1/trips/available-drivers", { credentials: "include" }),
+        fetch("/api/v1/waybills?status=Open&limit=100", { credentials: "include" }),
       ]);
 
       if (trucksRes.ok && trailersRes.ok && driversRes.ok) {
@@ -97,6 +109,11 @@ export function CreateTripDrawer({
       } else {
         message.error("Failed to fetch available resources");
       }
+
+      if (waybillsRes.ok) {
+        const waybillsData = await waybillsRes.json();
+        setWaybills(waybillsData.data);
+      }
     } catch {
       message.error("Network error fetching resources");
     } finally {
@@ -104,10 +121,23 @@ export function CreateTripDrawer({
     }
   };
 
+  const handleWaybillChange = (waybillId: string) => {
+    const waybill = waybills.find((w) => w.id === waybillId);
+    setSelectedWaybill(waybill || null);
+    if (waybill) {
+      // Auto-populate route from waybill origin and destination
+      form.setFieldsValue({
+        route_name: `${waybill.origin} - ${waybill.destination}`,
+      });
+    } else {
+      form.setFieldsValue({ route_name: "" });
+    }
+  };
+
   const onFinish = async (values: any) => {
     setSubmitting(true);
     try {
-      const response = await fetch("/api/v1/trips/", {
+      const response = await fetch("/api/v1/trips", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -164,17 +194,42 @@ export function CreateTripDrawer({
           onFinish={onFinish}
           size="large"
         >
-          <Form.Item name="waybill_id" hidden>
-            <Input />
+          <Title level={5}>Waybill & Route</Title>
+          <Form.Item
+            name="waybill_id"
+            label="Select Waybill"
+            rules={[{ required: true, message: "Please select a waybill" }]}
+            help="Only 'Open' waybills are listed"
+          >
+            <Select
+              placeholder="Select a waybill"
+              showSearch
+              optionFilterProp="children"
+              onChange={handleWaybillChange}
+              allowClear
+              onClear={() => {
+                setSelectedWaybill(null);
+                form.setFieldsValue({ route_name: "" });
+              }}
+            >
+              {waybills.map((waybill) => (
+                <Option key={waybill.id} value={waybill.id}>
+                  {waybill.waybill_number} - {waybill.client_name} ({waybill.origin} → {waybill.destination})
+                </Option>
+              ))}
+            </Select>
           </Form.Item>
 
-          <Title level={5}>Route Information</Title>
           <Form.Item
             name="route_name"
-            label="Route Name"
-            rules={[{ required: true, message: "Please enter the route" }]}
+            label="Route"
+            rules={[{ required: true, message: "Route is required" }]}
           >
-            <Input placeholder="e.g. Mombasa - Nairobi" />
+            <Input
+              placeholder="Auto-filled from waybill"
+              readOnly={!!selectedWaybill}
+              style={selectedWaybill ? { backgroundColor: "#f5f5f5" } : undefined}
+            />
           </Form.Item>
 
           <Divider />

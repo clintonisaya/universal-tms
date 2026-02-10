@@ -102,7 +102,7 @@ function NewTripForm() {
   const onFinish = async (values: any) => {
     setSubmitting(true);
     try {
-      const response = await fetch("/api/v1/trips/", {
+      const response = await fetch("/api/v1/trips", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

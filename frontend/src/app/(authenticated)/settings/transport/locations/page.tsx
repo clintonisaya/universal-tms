@@ -109,7 +109,7 @@ export default function LocationsPage() {
     try {
       const url = editingItem
         ? `/api/v1/countries/${editingItem.id}`
-        : "/api/v1/countries/";
+        : "/api/v1/countries";
       const method = editingItem ? "PATCH" : "POST";
 
       const response = await fetch(url, {
@@ -142,7 +142,7 @@ export default function LocationsPage() {
     try {
       const url = editingItem
         ? `/api/v1/cities/${editingItem.id}`
-        : "/api/v1/cities/";
+        : "/api/v1/cities";
       const method = editingItem ? "PATCH" : "POST";
 
       const payload = { ...values };

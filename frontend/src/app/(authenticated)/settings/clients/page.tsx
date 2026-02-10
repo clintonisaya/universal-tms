@@ -74,7 +74,7 @@ export default function ClientsPage() {
   const handleCreate = async (values: ClientCreate) => {
     setSubmitting(true);
     try {
-      const response = await fetch("/api/v1/clients/", {
+      const response = await fetch("/api/v1/clients", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",

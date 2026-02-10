@@ -121,7 +121,7 @@ const UsersContent = () => {
   const handleSubmit = async (values: UserCreate) => {
     setSubmitting(true);
     try {
-      const url = editingUser ? `/api/v1/users/${editingUser.id}` : "/api/v1/users/";
+      const url = editingUser ? `/api/v1/users/${editingUser.id}` : "/api/v1/users";
       const method = editingUser ? "PATCH" : "POST";
 
       const response = await fetch(url, {

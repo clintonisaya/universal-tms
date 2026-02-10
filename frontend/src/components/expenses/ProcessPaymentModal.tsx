@@ -1,27 +1,28 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import {
     Modal,
     Form,
     Select,
     Input,
     Button,
-    message,
+    App,
     Row,
     Col,
     DatePicker,
     Table,
     Typography,
     Tabs,
-    InputNumber,
     Tooltip,
+    Descriptions,
+    Tag,
 } from "antd";
-import { DollarOutlined } from "@ant-design/icons";
-import type { ExpenseRequestDetailed, PaymentMethod } from "@/types/expense";
+import { UserOutlined, FileTextOutlined, CarOutlined, CheckCircleOutlined } from "@ant-design/icons";
+import type { ExpenseRequestDetailed } from "@/types/expense";
 import dayjs from "dayjs";
 
-const { Text } = Typography;
+const { Text, Paragraph } = Typography;
 
 interface ProcessPaymentModalProps {
     open: boolean;
@@ -31,6 +32,7 @@ interface ProcessPaymentModalProps {
 }
 
 export function ProcessPaymentModal({ open, onClose, onSuccess, expense }: ProcessPaymentModalProps) {
+    const { message } = App.useApp();
     const [form] = Form.useForm();
     const [submitting, setSubmitting] = useState(false);
 
@@ -102,22 +104,33 @@ export function ProcessPaymentModal({ open, onClose, onSuccess, expense }: Proce
         {
             title: "No.",
             dataIndex: "key",
-            width: 60,
+            width: 50,
             align: "center" as const,
             render: (_: any, __: any, index: number) => index + 1,
         },
         {
             title: "Payment Item",
             dataIndex: "item",
-            width: 250,
-            ellipsis: true,
+            width: 200,
+            ellipsis: { showTitle: false },
+            render: (text: string) => (
+                <Tooltip placement="topLeft" title={text} overlayStyle={{ maxWidth: 400 }}>
+                    <span style={{ cursor: "pointer" }}>{text || "-"}</span>
+                </Tooltip>
+            ),
+        },
+        {
+            title: "Category",
+            dataIndex: "category",
+            width: 100,
+            render: (cat: string) => <Tag color="blue">{cat}</Tag>,
         },
         {
             title: "Amount",
             dataIndex: "amount",
-            width: 140,
+            width: 120,
             align: "right" as const,
-            render: (amount: number, record: any) => (
+            render: (amount: number) => (
                 <Text strong>
                     {Number(amount).toLocaleString()}
                 </Text>
@@ -126,64 +139,143 @@ export function ProcessPaymentModal({ open, onClose, onSuccess, expense }: Proce
         {
             title: "Currency",
             dataIndex: "currency",
-            width: 100,
+            width: 80,
         },
         {
             title: "Invoice State",
             dataIndex: "invoice_state",
-            width: 150,
+            width: 120,
         },
         {
             title: "Details",
             dataIndex: "details",
-            width: 200,
-            ellipsis: true,
+            width: 180,
+            ellipsis: { showTitle: false },
+            render: (text: string) => (
+                <Tooltip placement="topLeft" title={text} overlayStyle={{ maxWidth: 400 }}>
+                    <span style={{ cursor: "pointer" }}>{text || "-"}</span>
+                </Tooltip>
+            ),
         },
         {
             title: "Ex. Rate",
             dataIndex: "exchange_rate",
-            width: 100,
+            width: 80,
             render: (rate: number) => rate || "-",
         },
         {
             title: "Remarks",
             dataIndex: "remarks",
-            width: 150,
-            ellipsis: true,
+            ellipsis: { showTitle: false },
+            render: (text: string) => text ? (
+                <Tooltip placement="topLeft" title={text} overlayStyle={{ maxWidth: 400 }}>
+                    <span style={{ cursor: "pointer" }}>{text}</span>
+                </Tooltip>
+            ) : "-",
         },
     ];
+
+    // Expense Summary Section
+    const ExpenseSummary = (
+        <div style={{ marginBottom: 20, padding: 16, background: "#fafafa", borderRadius: 8, border: "1px solid #e8e8e8" }}>
+            <Descriptions
+                title={<Text strong><FileTextOutlined style={{ marginRight: 8 }} />Expense Details</Text>}
+                bordered
+                size="small"
+                column={{ xs: 1, sm: 2, md: 3 }}
+            >
+                <Descriptions.Item label="Expense Number">
+                    <Text strong style={{ color: "#1890ff" }}>{expense.expense_number || "N/A"}</Text>
+                </Descriptions.Item>
+                <Descriptions.Item label="Category">
+                    <Tag color="blue">{expense.category}</Tag>
+                </Descriptions.Item>
+                <Descriptions.Item label="Status">
+                    <Tag color="gold">{expense.status}</Tag>
+                </Descriptions.Item>
+                <Descriptions.Item label={<><UserOutlined /> Initiated By</>}>
+                    <Text strong>{expense.created_by?.full_name || expense.created_by?.username || "Unknown"}</Text>
+                    <br />
+                    <Text type="secondary" style={{ fontSize: 12 }}>
+                        {expense.created_at ? dayjs(expense.created_at).format("YYYY-MM-DD HH:mm") : ""}
+                    </Text>
+                </Descriptions.Item>
+                <Descriptions.Item label={<><CheckCircleOutlined /> Approved By</>}>
+                    {expense.approved_by ? (
+                        <>
+                            <Text strong style={{ color: "#52c41a" }}>
+                                {expense.approved_by.full_name || expense.approved_by.username}
+                            </Text>
+                            <br />
+                            <Text type="secondary" style={{ fontSize: 12 }}>
+                                {expense.approved_at ? dayjs(expense.approved_at).format("YYYY-MM-DD HH:mm") : ""}
+                            </Text>
+                        </>
+                    ) : (
+                        <Text type="secondary">-</Text>
+                    )}
+                </Descriptions.Item>
+                <Descriptions.Item label="Amount">
+                    <Text strong style={{ fontSize: 16, color: "#52c41a" }}>
+                        {expense.currency || "TZS"} {expense.amount.toLocaleString()}
+                    </Text>
+                </Descriptions.Item>
+                {isTripExpense && (
+                    <Descriptions.Item label={<><CarOutlined /> Trip</>}>
+                        <Text strong>{tripNumber || expense.trip_id}</Text>
+                    </Descriptions.Item>
+                )}
+                <Descriptions.Item label="Description" span={isTripExpense ? 2 : 3}>
+                    <Paragraph
+                        style={{ margin: 0, maxWidth: 500 }}
+                        ellipsis={{ rows: 2, expandable: true, symbol: "more" }}
+                    >
+                        {expense.description || "-"}
+                    </Paragraph>
+                </Descriptions.Item>
+                {expense.manager_comment && (
+                    <Descriptions.Item label="Manager Comment" span={3}>
+                        <Text type="warning">{expense.manager_comment}</Text>
+                    </Descriptions.Item>
+                )}
+            </Descriptions>
+        </div>
+    );
 
     // Basic Info Tab Content
     const BasicInfoTab = (
         <>
-            {/* Header Grid */}
-            <div style={{ marginBottom: 24, padding: 16, background: "#f5f5f5", borderRadius: 8 }}>
-                <Row gutter={[16, 16]}>
-                    <Col span={8}>
-                        <Form.Item label="Company">
-                            <Input value="EDUPO COMPANY LIMITED" readOnly />
-                        </Form.Item>
-                    </Col>
-                    <Col span={8}>
-                        <Form.Item label="Payment Date" name="payment_date" initialValue={dayjs()}>
-                            <DatePicker style={{ width: "100%" }} format="YYYY-MM-DD" />
-                        </Form.Item>
-                    </Col>
-                    <Col span={8}>
-                        <Form.Item label="Payment Amount">
-                            <Input
-                                value={`${expense.currency || "TZS"} ${expense.amount.toLocaleString()}`}
-                                readOnly
-                                style={{ fontWeight: "bold" }}
-                            />
-                        </Form.Item>
-                    </Col>
-                    <Col span={8}>
+            {/* Expense Summary */}
+            {ExpenseSummary}
+
+            {/* Items Table */}
+            <div style={{ marginBottom: 20 }}>
+                <Text strong style={{ display: "block", marginBottom: 12, fontSize: 14 }}>Expense Items</Text>
+                <Table
+                    dataSource={tableData}
+                    columns={columns}
+                    pagination={false}
+                    size="small"
+                    bordered
+                    scroll={{ x: 900 }}
+                    footer={() => (
+                        <div style={{ textAlign: "right", fontWeight: "bold", fontSize: 16 }}>
+                            Total: {expense.currency || "TZS"} {expense.amount.toLocaleString()}
+                        </div>
+                    )}
+                />
+            </div>
+
+            {/* Compact Payment Form */}
+            <div style={{ padding: 16, background: "#f0f5ff", borderRadius: 8, border: "1px solid #d6e4ff" }}>
+                <Row gutter={[16, 8]} align="middle">
+                    <Col xs={24} sm={6}>
                         <Form.Item
                             label="Payment Method"
                             name="method"
-                            rules={[{ required: true, message: "Please select payment method" }]}
+                            rules={[{ required: true, message: "Required" }]}
                             initialValue="CASH"
+                            style={{ marginBottom: 0 }}
                         >
                             <Select>
                                 <Select.Option value="CASH">Cash</Select.Option>
@@ -191,13 +283,22 @@ export function ProcessPaymentModal({ open, onClose, onSuccess, expense }: Proce
                             </Select>
                         </Form.Item>
                     </Col>
-
-                    {/* If Trip Expense, show Trip info? Maybe in remarks or title is enough. */}
-                    <Col span={16}>
+                    <Col xs={24} sm={6}>
                         <Form.Item
-                            label={paymentMethod === "TRANSFER" ? "Reference Number" : "Simple Remarks"}
+                            label="Payment Date"
+                            name="payment_date"
+                            initialValue={dayjs()}
+                            style={{ marginBottom: 0 }}
+                        >
+                            <DatePicker style={{ width: "100%" }} format="YYYY-MM-DD" />
+                        </Form.Item>
+                    </Col>
+                    <Col xs={24} sm={12}>
+                        <Form.Item
+                            label={paymentMethod === "TRANSFER" ? "Reference Number" : "Remarks (Optional)"}
                             name="reference"
-                            rules={[{ required: paymentMethod === "TRANSFER", message: "Reference is required for transfers" }]}
+                            rules={[{ required: paymentMethod === "TRANSFER", message: "Reference required for transfers" }]}
+                            style={{ marginBottom: 0 }}
                         >
                             <Input placeholder={paymentMethod === "TRANSFER" ? "e.g. Bank Ref / Transaction ID" : "Optional notes"} />
                         </Form.Item>
@@ -206,41 +307,24 @@ export function ProcessPaymentModal({ open, onClose, onSuccess, expense }: Proce
 
                 {/* Conditional Bank Details */}
                 {paymentMethod === "TRANSFER" && (
-                    <Row gutter={[16, 16]}>
-                        <Col span={8}>
-                            <Form.Item label="Bank Name" name="bank_name">
-                                <Input placeholder="Enter Bank Name" />
+                    <Row gutter={[16, 8]} style={{ marginTop: 12 }}>
+                        <Col xs={24} sm={8}>
+                            <Form.Item label="Bank Name" name="bank_name" style={{ marginBottom: 0 }}>
+                                <Input placeholder="Bank Name" />
                             </Form.Item>
                         </Col>
-                        <Col span={8}>
-                            <Form.Item label="Account Name" name="account_name">
-                                <Input placeholder="Enter Account Name" />
+                        <Col xs={24} sm={8}>
+                            <Form.Item label="Account Name" name="account_name" style={{ marginBottom: 0 }}>
+                                <Input placeholder="Account Name" />
                             </Form.Item>
                         </Col>
-                        <Col span={8}>
-                            <Form.Item label="Account No." name="account_no">
-                                <Input placeholder="Enter Account Number" />
+                        <Col xs={24} sm={8}>
+                            <Form.Item label="Account No." name="account_no" style={{ marginBottom: 0 }}>
+                                <Input placeholder="Account Number" />
                             </Form.Item>
                         </Col>
                     </Row>
                 )}
-            </div>
-
-            {/* Items Table */}
-            <div style={{ marginBottom: 16 }}>
-                <Table
-                    dataSource={tableData}
-                    columns={columns}
-                    pagination={false}
-                    size="middle"
-                    bordered
-                    scroll={{ x: 1000 }}
-                    footer={() => (
-                        <div style={{ textAlign: "right", fontWeight: "bold", fontSize: 16 }}>
-                            Total: {expense.currency || "TZS"} {expense.amount.toLocaleString()}
-                        </div>
-                    )}
-                />
             </div>
         </>
     );

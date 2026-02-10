@@ -90,7 +90,7 @@ export default function ExchangeRateSettingsPage() {
           message.error(error.detail || "Update failed");
         }
       } else {
-        const response = await fetch("/api/v1/finance/exchange-rates/", {
+        const response = await fetch("/api/v1/finance/exchange-rates", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           credentials: "include",

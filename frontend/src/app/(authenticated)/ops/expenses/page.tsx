@@ -10,7 +10,6 @@ import {
   message,
   Typography,
   Spin,
-  Tabs,
   Modal,
   Select,
 } from "antd";
@@ -33,6 +32,8 @@ import { ProcessPaymentModal } from "@/components/expenses/ProcessPaymentModal";
 import { ExpenseHistoryModal } from "@/components/expenses/ExpenseHistoryModal";
 import { ExpenseDetailModal } from "@/components/expenses/ExpenseDetailModal";
 import { ExpenseStatusBadge } from "@/components/expenses/ExpenseStatusBadge";
+import { PrintPreviewModal } from "@/components/expenses/PrintPreviewModal";
+import { TripDetailDrawer } from "@/components/trips/TripDetailDrawer";
 import {
   getColumnSearchProps,
   getColumnFilterProps,
@@ -59,13 +60,9 @@ const CATEGORY_FILTERS = [
   { text: "Fuel", value: "Fuel" },
   { text: "Allowance", value: "Allowance" },
   { text: "Maintenance", value: "Maintenance" },
-  { text: "Office", value: "Office" },
   { text: "Border", value: "Border" },
   { text: "Other", value: "Other" },
 ];
-
-const ACTIVE_STATUSES: ExpenseStatus[] = ["Pending Manager", "Pending Finance", "Returned"];
-const HISTORY_STATUSES: ExpenseStatus[] = ["Paid", "Rejected"];
 
 export default function ExpensesPage() {
   const router = useRouter();
@@ -79,11 +76,12 @@ export default function ExpensesPage() {
   const { data: expensesData, isLoading: loading, refetch } = useExpenses(isAuthenticated);
   const { data: tripsData, isLoading: tripsLoading } = useTrips({ limit: 100 }, isAuthenticated);
 
-  // Filter to show only trip expenses (expense_number does NOT start with "EXP")
+  // Filter to show only trip expenses (NOT office expenses)
+  // Office expenses start with "EX" (both old EXP- and new EX- formats)
   const expenses = useMemo(() => {
     const allExpenses = expensesData?.data || [];
     return allExpenses.filter(
-      (e: ExpenseRequestDetailed) => !e.expense_number?.startsWith("EXP")
+      (e: ExpenseRequestDetailed) => !e.expense_number?.startsWith("EX")
     );
   }, [expensesData]);
 
@@ -96,7 +94,6 @@ export default function ExpensesPage() {
   }, [tripsData]);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<string>("active");
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
@@ -117,6 +114,14 @@ export default function ExpensesPage() {
   // Detail Modal State
   const [detailModalOpen, setDetailModalOpen] = useState(false);
   const [detailExpense, setDetailExpense] = useState<ExpenseRequestDetailed | null>(null);
+
+  // Print Preview Modal State
+  const [printModalOpen, setPrintModalOpen] = useState(false);
+  const [printExpenseIds, setPrintExpenseIds] = useState<string[]>([]);
+
+  // Trip Detail Drawer State
+  const [tripDrawerOpen, setTripDrawerOpen] = useState(false);
+  const [selectedTripIdForView, setSelectedTripIdForView] = useState<string | null>(null);
 
   const handleViewDetail = (record: ExpenseRequestDetailed) => {
     setDetailExpense(record);
@@ -144,7 +149,18 @@ export default function ExpensesPage() {
   };
 
   const handlePrint = (id: string) => {
-    window.open(`/finance/vouchers/${id}`, "_blank");
+    setPrintExpenseIds([id]);
+    setPrintModalOpen(true);
+  };
+
+  // Bulk print - open print preview modal with all selected expenses
+  const handleBulkPrint = () => {
+    if (selectedRowKeys.length === 0) {
+      message.warning("Please select expenses to print");
+      return;
+    }
+    setPrintExpenseIds(selectedRowKeys as string[]);
+    setPrintModalOpen(true);
   };
 
   const handleViewHistory = (record: ExpenseRequestDetailed) => {
@@ -152,19 +168,67 @@ export default function ExpensesPage() {
     setHistoryModalOpen(true);
   };
 
-  const filteredExpenses = useMemo(() => {
-    if (activeTab === "active") {
-      return expenses.filter((e) => ACTIVE_STATUSES.includes(e.status));
-    }
-    return expenses.filter((e) => HISTORY_STATUSES.includes(e.status));
-  }, [expenses, activeTab]);
+  const handleViewTrip = (tripId: string) => {
+    setSelectedTripIdForView(tripId);
+    setTripDrawerOpen(true);
+  };
+
+  // Check if print is allowed (after manager approval)
+  const canPrint = (status: ExpenseStatus) => {
+    return ["Pending Finance", "Paid"].includes(status);
+  };
 
   const columns: ColumnsType<ExpenseRequestDetailed> = [
+    {
+      title: "Actions",
+      key: "actions",
+      width: 100,
+      render: (_, record) => (
+        <Space size={4}>
+          <Button
+            type="text"
+            size="small"
+            icon={<HistoryOutlined />}
+            title="View History"
+            onClick={() => handleViewHistory(record)}
+          />
+          {record.trip_id && (
+            <Button
+              type="text"
+              size="small"
+              icon={<EyeOutlined />}
+              title="View Trip"
+              onClick={() => handleViewTrip(record.trip_id!)}
+            />
+          )}
+          {canPrint(record.status) && (
+            <Button
+              type="text"
+              size="small"
+              icon={<PrinterOutlined />}
+              title="Print Voucher"
+              onClick={() => handlePrint(record.id)}
+            />
+          )}
+          {(user?.role === "finance" || user?.role === "admin") &&
+            record.status === "Pending Finance" && (
+              <Button
+                type="primary"
+                size="small"
+                icon={<DollarOutlined />}
+                onClick={() => handlePay(record)}
+              >
+                Pay
+              </Button>
+            )}
+        </Space>
+      ),
+    },
     {
       title: "Expense #",
       dataIndex: "expense_number",
       key: "expense_number",
-      width: 140,
+      width: 180,
       render: (num: string | null, record: ExpenseRequestDetailed) => (
         <a
           onClick={() => handleViewDetail(record)}
@@ -223,56 +287,6 @@ export default function ExpensesPage() {
       render: (status: ExpenseStatus) => <ExpenseStatusBadge status={status} />,
       ...getColumnFilterProps("status", STATUS_FILTERS),
     },
-    {
-      title: "Actions",
-      key: "actions",
-      width: 180,
-      fixed: "right",
-      render: (_, record) => (
-        <div className="row-actions">
-          <Space size="small">
-            <Button
-              type="text"
-              size="small"
-              icon={<HistoryOutlined />}
-              title="View History"
-              onClick={() => handleViewHistory(record)}
-            />
-
-            {record.trip_id && (
-              <Button
-                type="text"
-                size="small"
-                icon={<EyeOutlined />}
-                title="View Trip"
-                onClick={() => router.push(`/ops/trips/${record.trip_id}`)}
-              />
-            )}
-
-            {(user?.role === "finance" || user?.role === "admin") &&
-              record.status === "Pending Finance" && (
-                <Button
-                  type="primary"
-                  size="small"
-                  icon={<DollarOutlined />}
-                  onClick={() => handlePay(record)}
-                >
-                  Pay
-                </Button>
-              )}
-
-            {record.status === "Paid" && (
-              <Button
-                type="default"
-                size="small"
-                icon={<PrinterOutlined />}
-                onClick={() => handlePrint(record.id)}
-              />
-            )}
-          </Space>
-        </div>
-      ),
-    },
   ];
 
   // Make columns resizable
@@ -322,6 +336,14 @@ export default function ExpensesPage() {
               </Title>
             </Space>
             <Space>
+              {selectedRowKeys.length > 0 && (
+                <Button
+                  icon={<PrinterOutlined />}
+                  onClick={handleBulkPrint}
+                >
+                  Print Selected ({selectedRowKeys.length})
+                </Button>
+              )}
               <Button icon={<ReloadOutlined />} onClick={() => refetch()}>
                 Refresh
               </Button>
@@ -335,25 +357,10 @@ export default function ExpensesPage() {
             </Space>
           </div>
 
-          <Tabs
-            activeKey={activeTab}
-            onChange={setActiveTab}
-            items={[
-              {
-                key: "active",
-                label: `Active (${expenses.filter((e) => ACTIVE_STATUSES.includes(e.status)).length})`,
-              },
-              {
-                key: "history",
-                label: `History (${expenses.filter((e) => HISTORY_STATUSES.includes(e.status)).length})`,
-              },
-            ]}
-          />
-
           <Table<ExpenseRequestDetailed>
             columns={resizableColumns}
             components={components}
-            dataSource={filteredExpenses}
+            dataSource={expenses}
             rowKey="id"
             loading={loading}
             sticky={{ offsetHeader: 64 }}
@@ -366,7 +373,7 @@ export default function ExpensesPage() {
             pagination={{
               current: currentPage,
               pageSize,
-              total: filteredExpenses.length,
+              total: expenses.length,
               showTotal: (total) => `Total ${total} expenses`,
               showSizeChanger: true,
               pageSizeOptions: ["10", "20", "50", "100"],
@@ -447,6 +454,24 @@ export default function ExpensesPage() {
           setDetailExpense(null);
         }}
         expense={detailExpense}
+      />
+
+      <PrintPreviewModal
+        open={printModalOpen}
+        onClose={() => {
+          setPrintModalOpen(false);
+          setPrintExpenseIds([]);
+        }}
+        expenseIds={printExpenseIds}
+      />
+
+      <TripDetailDrawer
+        open={tripDrawerOpen}
+        onClose={() => {
+          setTripDrawerOpen(false);
+          setSelectedTripIdForView(null);
+        }}
+        tripId={selectedTripIdForView}
       />
     </div>
   );

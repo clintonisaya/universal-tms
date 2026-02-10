@@ -69,7 +69,7 @@ export default function OfficeExpenseTypesPage() {
   const handleCreate = async (values: OfficeExpenseTypeCreate) => {
     setSubmitting(true);
     try {
-      const response = await fetch("/api/v1/office-expense-types/", {
+      const response = await fetch("/api/v1/office-expense-types", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",

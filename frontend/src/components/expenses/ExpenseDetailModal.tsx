@@ -310,7 +310,7 @@ export function ExpenseDetailModal({ open, onClose, expense }: ExpenseDetailModa
       )}
 
       {/* Timeline */}
-      <Divider orientation={"left" as any} styles={{ content: { margin: 0 } }}>
+      <Divider titlePlacement="left" styles={{ content: { margin: 0 } }}>
         <Text strong>Application Timeline</Text>
       </Divider>
       <Timeline items={getTimelineItems()} />

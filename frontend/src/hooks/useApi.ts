@@ -214,7 +214,7 @@ export function useOfficeExpenseTypes(activeOnly = false) {
 export function useCountries() {
   return useQuery({
     queryKey: queryKeys.countries,
-    queryFn: () => apiFetch<{ data: any[]; count: number }>("/api/v1/countries/"),
+    queryFn: () => apiFetch<{ data: any[]; count: number }>("/api/v1/countries"),
   });
 }
 
@@ -222,7 +222,7 @@ export function useCountries() {
 export function useCities() {
   return useQuery({
     queryKey: queryKeys.cities,
-    queryFn: () => apiFetch<{ data: any[]; count: number }>("/api/v1/cities/"),
+    queryFn: () => apiFetch<{ data: any[]; count: number }>("/api/v1/cities"),
   });
 }
 
@@ -230,7 +230,7 @@ export function useCities() {
 export function useVehicleStatuses() {
   return useQuery({
     queryKey: queryKeys.vehicleStatuses,
-    queryFn: () => apiFetch<{ data: any[]; count: number }>("/api/v1/vehicle-statuses/"),
+    queryFn: () => apiFetch<{ data: any[]; count: number }>("/api/v1/vehicle-statuses"),
   });
 }
 
@@ -238,7 +238,7 @@ export function useVehicleStatuses() {
 export function useCargoTypes() {
   return useQuery({
     queryKey: ["cargoTypes"] as const,
-    queryFn: () => apiFetch<{ data: any[]; count: number }>("/api/v1/cargo-types/"),
+    queryFn: () => apiFetch<{ data: any[]; count: number }>("/api/v1/cargo-types"),
   });
 }
 
@@ -246,7 +246,7 @@ export function useCargoTypes() {
 export function useExchangeRates() {
   return useQuery({
     queryKey: ["exchangeRates"] as const,
-    queryFn: () => apiFetch<{ data: any[]; count: number }>("/api/v1/finance/exchange-rates/"),
+    queryFn: () => apiFetch<{ data: any[]; count: number }>("/api/v1/finance/exchange-rates"),
   });
 }
 

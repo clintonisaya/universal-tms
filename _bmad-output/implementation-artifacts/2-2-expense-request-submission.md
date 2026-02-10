@@ -46,7 +46,7 @@
 ```python
 class ExpenseRequest(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
-    document_number: str = Field(unique=True, index=True) # TRIP-EXP-2026-001
+    document_number: str = Field(unique=True, index=True) # ET512EZD-2026001-001
     trip_id: int | None = Field(foreign_key="trip.id", nullable=True) # Required for Trip Exp
     category: ExpenseCategory # FUEL, ALLOWANCE -> Requires trip_id
     # ...

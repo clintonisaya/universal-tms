@@ -66,7 +66,7 @@ export default function CargoTypesPage() {
   const handleCreate = async (values: CargoTypeCreate) => {
     setSubmitting(true);
     try {
-      const response = await fetch("/api/v1/cargo-types/", {
+      const response = await fetch("/api/v1/cargo-types", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",

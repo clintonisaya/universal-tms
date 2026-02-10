@@ -47,7 +47,10 @@
       "Bash(git add:*)",
       "Bash(git commit -m \"$\\(cat <<''EOF''\nfix: simplify frontend Dockerfile and use Node 20\n\n- Use simpler single-stage Dockerfile\n- Upgrade to Node 20 for Next.js 16 + React 19 compatibility\n- Remove standalone output mode\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
       "Bash(git push:*)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(set -a)",
+      "Bash(source \"C:/Users/IT/Documents/GitHub/edupo-tms/backend/.env\")",
+      "Bash(set +a)"
     ]
   }
 }

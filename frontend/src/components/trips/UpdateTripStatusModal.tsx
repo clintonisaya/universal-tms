@@ -71,8 +71,8 @@ export function UpdateTripStatusModal({
     setLoadingResources(true);
     try {
       const [vsRes, countriesRes] = await Promise.all([
-        fetch("/api/v1/vehicle-statuses/", { credentials: "include" }),
-        fetch("/api/v1/countries/", { credentials: "include" }),
+        fetch("/api/v1/vehicle-statuses", { credentials: "include" }),
+        fetch("/api/v1/countries", { credentials: "include" }),
       ]);
 
       if (vsRes.ok) {

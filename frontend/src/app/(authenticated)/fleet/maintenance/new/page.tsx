@@ -44,8 +44,8 @@ export default function NewMaintenancePage() {
       setResourcesLoading(true);
       try {
         const [trucksRes, trailersRes] = await Promise.all([
-          fetch("/api/v1/trucks/?limit=1000", { credentials: "include" }),
-          fetch("/api/v1/trailers/?limit=1000", { credentials: "include" }),
+          fetch("/api/v1/trucks?limit=1000", { credentials: "include" }),
+          fetch("/api/v1/trailers?limit=1000", { credentials: "include" }),
         ]);
 
         if (trucksRes.ok && trailersRes.ok) {
@@ -84,7 +84,7 @@ export default function NewMaintenancePage() {
         update_trailer_status: values.asset_type === "trailer" ? values.update_status : false,
       };
 
-      const response = await fetch("/api/v1/maintenance/", {
+      const response = await fetch("/api/v1/maintenance", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
