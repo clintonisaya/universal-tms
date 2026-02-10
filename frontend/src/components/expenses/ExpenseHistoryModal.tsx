@@ -200,7 +200,7 @@ export function ExpenseHistoryModal({
       <Divider>Approval Flow</Divider>
 
       <Steps
-        direction="vertical"
+        orientation="vertical"
         size="small"
         current={-1}
         items={items}

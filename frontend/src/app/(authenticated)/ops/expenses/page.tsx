@@ -32,7 +32,7 @@ import { ProcessPaymentModal } from "@/components/expenses/ProcessPaymentModal";
 import { ExpenseHistoryModal } from "@/components/expenses/ExpenseHistoryModal";
 import { ExpenseDetailModal } from "@/components/expenses/ExpenseDetailModal";
 import { ExpenseStatusBadge } from "@/components/expenses/ExpenseStatusBadge";
-import { PrintPreviewModal } from "@/components/expenses/PrintPreviewModal";
+import { TripPaymentPrintLayout } from "@/components/expenses/TripPaymentPrintLayout";
 import { TripDetailDrawer } from "@/components/trips/TripDetailDrawer";
 import {
   getColumnSearchProps,
@@ -456,7 +456,7 @@ export default function ExpensesPage() {
         expense={detailExpense}
       />
 
-      <PrintPreviewModal
+      <TripPaymentPrintLayout
         open={printModalOpen}
         onClose={() => {
           setPrintModalOpen(false);

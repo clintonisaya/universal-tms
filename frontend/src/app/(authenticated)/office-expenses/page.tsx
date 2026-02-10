@@ -27,7 +27,7 @@ import { ProcessPaymentModal } from "@/components/expenses/ProcessPaymentModal";
 import { ExpenseDetailModal } from "@/components/expenses/ExpenseDetailModal";
 import { ExpenseHistoryModal } from "@/components/expenses/ExpenseHistoryModal";
 import { ExpenseStatusBadge } from "@/components/expenses/ExpenseStatusBadge";
-import { PrintPreviewModal } from "@/components/expenses/PrintPreviewModal";
+import { OfficePaymentPrintLayout } from "@/components/expenses/OfficePaymentPrintLayout";
 import {
   getColumnSearchProps,
   getColumnFilterProps,
@@ -343,7 +343,7 @@ export default function OfficeExpensesPage() {
         expense={historyExpense}
       />
 
-      <PrintPreviewModal
+      <OfficePaymentPrintLayout
         open={printModalOpen}
         onClose={() => {
           setPrintModalOpen(false);
