@@ -21,6 +21,9 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Edupo TMS",
   description: "Transport Management System",
+  icons: {
+    icon: "/edupo-logo.png",
+  },
 };
 
 export default function RootLayout({

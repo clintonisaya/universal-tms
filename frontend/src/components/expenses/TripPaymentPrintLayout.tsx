@@ -103,8 +103,8 @@ export function TripPaymentPrintLayout({
               border-bottom: 2px solid #000;
             }
             .logo {
-              width: 80px;
-              height: 80px;
+              width: 100px;
+              height: 100px;
               object-fit: contain;
               flex-shrink: 0;
             }
@@ -406,8 +406,8 @@ export function TripPaymentPrintLayout({
                 position: "relative",
               }}>
                 <img src="/edupo-logo.png" alt="Logo" className="logo" style={{
-                  width: "80px",
-                  height: "80px",
+                  width: "100px",
+                  height: "100px",
                   objectFit: "contain",
                   flexShrink: 0,
                 }} />
