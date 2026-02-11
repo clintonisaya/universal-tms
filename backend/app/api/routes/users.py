@@ -10,6 +10,7 @@ from app.api.deps import (
     SessionDep,
     get_current_active_superuser,
     get_current_admin_user,
+    get_current_manager_or_admin,
 )
 from app.core.config import settings
 from app.core.security import get_password_hash, verify_password
@@ -33,13 +34,17 @@ router = APIRouter(prefix="/users", tags=["users"])
 
 @router.get(
     "",
-    dependencies=[Depends(get_current_admin_user)],
+    dependencies=[Depends(get_current_manager_or_admin)],
     response_model=UsersPublic,
 )
-def read_users(session: SessionDep, skip: int = 0, limit: int = 100) -> Any:
+def read_users(
+    session: SessionDep, current_user: CurrentUser, skip: int = 0, limit: int = 100
+) -> Any:
     """
     Retrieve users.
     """
+    # Optional: Filter so Managers don't see Admins?
+    # For now, let them see everyone, but prevent editing.
     count_statement = select(func.count()).select_from(User)
     count = session.exec(count_statement).one()
 
@@ -51,13 +56,23 @@ def read_users(session: SessionDep, skip: int = 0, limit: int = 100) -> Any:
 
 @router.post(
     "",
-    dependencies=[Depends(get_current_admin_user)],
+    dependencies=[Depends(get_current_manager_or_admin)],
     response_model=UserPublic,
 )
-def create_user(*, session: SessionDep, user_in: UserCreate) -> Any:
+def create_user(
+    *, session: SessionDep, current_user: CurrentUser, user_in: UserCreate
+) -> Any:
     """
     Create new user.
     """
+    # RBAC Check: Managers cannot create Admins or other Managers
+    if current_user.role == UserRole.manager and not current_user.is_superuser:
+        if user_in.role in [UserRole.admin, UserRole.manager]:
+             raise HTTPException(
+                status_code=403,
+                detail="Managers cannot create Admin or Manager accounts",
+            )
+
     user = crud.get_user_by_username(session=session, username=user_in.username)
     if user:
         raise HTTPException(
@@ -165,7 +180,7 @@ def read_user_by_id(
     Get a specific user by id.
     """
     # Check permissions before revealing whether user exists
-    if not current_user.is_superuser and current_user.role != UserRole.admin:
+    if not current_user.is_superuser and current_user.role not in [UserRole.admin, UserRole.manager]:
         if current_user.id != user_id:
             raise HTTPException(
                 status_code=403, detail="The user doesn't have enough privileges"
@@ -178,12 +193,13 @@ def read_user_by_id(
 
 @router.patch(
     "/{user_id}",
-    dependencies=[Depends(get_current_admin_user)],
+    dependencies=[Depends(get_current_manager_or_admin)],
     response_model=UserPublic,
 )
 def update_user(
     *,
     session: SessionDep,
+    current_user: CurrentUser,
     user_id: uuid.UUID,
     user_in: UserUpdate,
 ) -> Any:
@@ -196,6 +212,21 @@ def update_user(
             status_code=404,
             detail="The user with this id does not exist in the system",
         )
+    
+    # RBAC: Managers cannot edit Admins or other Managers
+    if current_user.role == UserRole.manager and not current_user.is_superuser:
+        if db_user.role in [UserRole.admin, UserRole.manager] and db_user.id != current_user.id:
+             raise HTTPException(
+                status_code=403,
+                detail="Managers cannot edit Admin or Manager accounts",
+            )
+        # Prevent elevating role to Admin/Manager
+        if user_in.role and user_in.role in [UserRole.admin, UserRole.manager]:
+             raise HTTPException(
+                status_code=403,
+                detail="Managers cannot promote users to Admin or Manager",
+            )
+
     if user_in.username:
         existing_user = crud.get_user_by_username(session=session, username=user_in.username)
         if existing_user and existing_user.id != user_id:

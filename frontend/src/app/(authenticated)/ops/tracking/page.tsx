@@ -12,8 +12,6 @@ import {
   Input,
   message,
   Typography,
-  Tooltip,
-  Segmented,
   Form,
   Row,
   Col,
@@ -66,11 +64,7 @@ interface TrackingRow {
   driver_name: string | null;
   trailer_plate: string | null;
   
-  // 6. Metrics
-  mileage_km: number;
-  fuel_consumption_liters: number;
-  
-  // 7. Risk
+  // 6. Risk
   risk_level: string;
   
   // Meta
@@ -84,6 +78,8 @@ const STATUS_COLORS: Record<string, string> = {
   Completed: "green",
   Invoiced: "purple",
   // Trip Statuses
+  Waiting: "default",
+  Dispatch: "purple",
   Loading: "gold",
   "In Transit": "cyan",
   "At Border": "orange",
@@ -115,7 +111,6 @@ export default function TrackingPage() {
   const [filteredData, setFilteredData] = useState<TrackingRow[]>([]);
 
   // Filter States
-  const [activeTab, setActiveTab] = useState<string>("All");
   const [searchForm] = Form.useForm();
 
   // Status Update Modal State
@@ -128,33 +123,21 @@ export default function TrackingPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(100);
 
-  // Apply filters when data or tab changes
+  // Apply filters when data changes
   useEffect(() => {
     if (data.length > 0) {
-      applyFilters(data, activeTab, searchForm.getFieldsValue());
+      applySearch(data, searchForm.getFieldsValue());
     }
-  }, [data, activeTab]);
+  }, [data]);
 
-  // Combined Filter Logic
-  const applyFilters = (
+  // Combined Search Logic
+  const applySearch = (
     rawData: TrackingRow[], 
-    tab: string, 
     searchValues: any
   ) => {
     let results = [...rawData];
 
-    // 1. Tab Filter (Trip Status)
-    if (tab !== "All") {
-        results = results.filter(item => {
-            if (tab === "Loading") return item.trip_status === "Loading";
-            if (tab === "Tracking") return ["In Transit", "At Border", "En Route"].includes(item.trip_status);
-            if (tab === "Received") return ["Offloaded", "Completed"].includes(item.trip_status);
-            if (tab === "POD Collected") return item.trip_status === "Waiting for PODs";
-            return true;
-        });
-    }
-
-    // 2. Search Bar Filter
+    // Search Bar Filter
     if (searchValues) {
         const { waybill, trip, truck, trailer, client, driver } = searchValues;
         if (waybill) results = results.filter(r => r.waybill_number.toLowerCase().includes(waybill.toLowerCase()));
@@ -168,18 +151,13 @@ export default function TrackingPage() {
     setFilteredData(results);
   };
 
-  const handleTabChange = (value: string) => {
-    setActiveTab(value);
-    applyFilters(data, value, searchForm.getFieldsValue());
-  };
-
   const handleSearch = (values: any) => {
-    applyFilters(data, activeTab, values);
+    applySearch(data, values);
   };
 
   const handleReset = () => {
       searchForm.resetFields();
-      applyFilters(data, activeTab, {});
+      applySearch(data, {});
   };
 
   // Excel Export
@@ -198,7 +176,6 @@ export default function TrackingPage() {
       { header: "Current Location", key: "current_location", width: 25 },
       { header: "Truck/Trailer", key: "truck_trailer", width: 25 },
       { header: "Driver", key: "driver_name", width: 20 },
-      { header: "Mileage", key: "mileage_km", width: 15 },
       { header: "Risk", key: "risk_level", width: 15 },
     ];
 
@@ -214,7 +191,6 @@ export default function TrackingPage() {
         current_location: row.current_location || "-",
         truck_trailer: `${row.truck_plate || '-'} / ${row.trailer_plate || '-'}`,
         driver_name: row.driver_name || "-",
-        mileage_km: row.mileage_km,
         risk_level: row.risk_level,
       });
     });
@@ -244,7 +220,7 @@ export default function TrackingPage() {
 
   const columns: ColumnsType<TrackingRow> = [
     {
-      title: "Status Plls",
+      title: "Status",
       key: "status",
       width: 140,
       fixed: "left",
@@ -314,17 +290,6 @@ export default function TrackingPage() {
       )
     },
     {
-      title: "Metrics",
-      key: "metrics",
-      width: 120,
-      render: (_, r) => (
-        <Flex vertical gap={0}>
-             <Text>{r.mileage_km} km</Text>
-             <Text type="secondary" style={{ fontSize: 12 }}>{r.fuel_consumption_liters} L</Text>
-        </Flex>
-      )
-    },
-    {
       title: "Risk",
       key: "risk",
       width: 100,
@@ -354,15 +319,6 @@ export default function TrackingPage() {
                     </Button>
                 </Space>
             </div>
-
-            {/* Top Tabs */}
-            <Segmented
-                options={['All', 'Loading', 'Tracking', 'Received', 'POD Collected']}
-                value={activeTab}
-                onChange={handleTabChange}
-                block
-                size="large"
-            />
 
             {/* Custom Search Bar */}
             <Card size="small" style={{ background: '#f5f7fa' }}>

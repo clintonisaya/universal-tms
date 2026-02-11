@@ -16,6 +16,7 @@ export interface User {
   full_name: string | null;
   is_superuser: boolean;
   is_active: boolean;
+  permissions: string[];
 }
 
 interface AuthContextType {

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Modal, Form, Input, Button, message, Typography } from "antd";
+import { Modal, Form, Input, Button, Typography, App } from "antd";
 import { LockOutlined, UserOutlined } from "@ant-design/icons";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -16,6 +16,7 @@ export function SessionExpiredModal({ open, onSuccess }: SessionExpiredModalProp
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
+  const { message } = App.useApp(); // Use the hook instead of static method
 
   const handleLogin = async (values: any) => {
     setLoading(true);

@@ -86,3 +86,14 @@ def get_current_admin_user(current_user: CurrentUser) -> User:
         )
     return current_user
 
+
+def get_current_manager_or_admin(current_user: CurrentUser) -> User:
+    """Validate user has admin OR manager role."""
+    if current_user.is_superuser:
+        return current_user
+    if current_user.role not in [UserRole.admin, UserRole.manager]:
+        raise HTTPException(
+            status_code=403, detail="The user doesn't have enough privileges"
+        )
+    return current_user
+

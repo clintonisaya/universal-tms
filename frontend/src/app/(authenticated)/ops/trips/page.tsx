@@ -8,10 +8,10 @@ import {
   Card,
   Space,
   Tag,
-  message,
   Typography,
   Spin,
   Popconfirm,
+  App,
 } from "antd";
 import {
   PlusOutlined,
@@ -36,6 +36,8 @@ import {
 const { Title } = Typography;
 
 const STATUS_COLORS: Record<TripStatus, string> = {
+  Waiting: "default",
+  Dispatch: "purple",
   Loading: "gold",
   "In Transit": "blue",
   "At Border": "purple",
@@ -51,8 +53,9 @@ const STATUS_FILTERS = Object.keys(STATUS_COLORS).map((status) => ({
   value: status,
 }));
 
-export default function TripsPage() {
+function TripsPageContent() {
   const router = useRouter();
+  const { message } = App.useApp();
   const { user, loading: authLoading } = useAuth();
   const { invalidateTrips } = useInvalidateQueries();
 
@@ -274,5 +277,13 @@ export default function TripsPage() {
         tripId={detailDrawerTripId}
       />
     </div>
+  );
+}
+
+export default function TripsPage() {
+  return (
+    <App>
+      <TripsPageContent />
+    </App>
   );
 }

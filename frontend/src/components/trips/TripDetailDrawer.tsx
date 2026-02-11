@@ -44,6 +44,8 @@ const { Title, Text } = Typography;
 const { TextArea } = Input;
 
 const TRIP_STATUS_COLORS: Record<TripStatus, string> = {
+  Waiting: "default",
+  Dispatch: "purple",
   Loading: "gold",
   "In Transit": "blue",
   "At Border": "purple",

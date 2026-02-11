@@ -51,6 +51,8 @@ router = APIRouter(prefix="/trips", tags=["trips"])
 
 # Status mapping for synchronized truck/trailer status updates
 TRIP_TO_TRUCK_STATUS = {
+    TripStatus.waiting: TruckStatus.waiting,
+    TripStatus.dispatch: TruckStatus.dispatch,
     TripStatus.loading: TruckStatus.loading,
     TripStatus.in_transit: TruckStatus.in_transit,
     TripStatus.at_border: TruckStatus.at_border,
@@ -62,6 +64,8 @@ TRIP_TO_TRUCK_STATUS = {
 }
 
 TRIP_TO_TRAILER_STATUS = {
+    TripStatus.waiting: TrailerStatus.waiting,
+    TripStatus.dispatch: TrailerStatus.dispatch,
     TripStatus.loading: TrailerStatus.loading,
     TripStatus.in_transit: TrailerStatus.in_transit,
     TripStatus.at_border: TrailerStatus.at_border,
@@ -73,6 +77,8 @@ TRIP_TO_TRAILER_STATUS = {
 }
 
 TRIP_TO_WAYBILL_STATUS = {
+    TripStatus.waiting: WaybillStatus.open,
+    TripStatus.dispatch: WaybillStatus.in_progress,
     TripStatus.loading: WaybillStatus.in_progress,
     TripStatus.in_transit: WaybillStatus.in_progress,
     TripStatus.at_border: WaybillStatus.in_progress,
@@ -216,9 +222,9 @@ def create_trip(
     Create a new trip with transactional integrity.
 
     - Validates truck, trailer, and driver availability
-    - Creates trip with status "Loading"
-    - Updates truck status to "Loading"
-    - Updates trailer status to "Loading"
+    - Creates trip with status "Waiting"
+    - Updates truck status to "Waiting"
+    - Updates trailer status to "Waiting"
     - Updates driver status to "Assigned"
     """
     # RBAC: Only admin, manager, and ops can create trips
@@ -254,8 +260,8 @@ def create_trip(
     session.add(trip)
 
     # Update statuses
-    truck.status = TruckStatus.loading
-    trailer.status = TrailerStatus.loading
+    truck.status = TruckStatus.waiting
+    trailer.status = TrailerStatus.waiting
     driver.status = DriverStatus.assigned
     session.add(truck)
     session.add(trailer)
@@ -371,8 +377,14 @@ def update_trip(
         # Handle end_date for completed trips
         if new_status == TripStatus.completed:
             update_dict["end_date"] = datetime.now(timezone.utc)
-        elif new_status == TripStatus.loading:
-            # If moved back to loading, clear end_date
+            # Calculate trip duration from dispatch to return
+            dispatch_dt = update_dict.get("dispatch_date") or trip.dispatch_date
+            return_dt = update_dict.get("arrival_return_date") or trip.arrival_return_date
+            if dispatch_dt and return_dt:
+                delta = return_dt - dispatch_dt
+                update_dict["trip_duration_days"] = delta.days
+        elif new_status == TripStatus.waiting:
+            # If moved back to waiting, clear end_date
             update_dict["end_date"] = None
 
         # Update waybill status if linked

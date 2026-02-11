@@ -38,6 +38,8 @@ import { UpdateTripStatusModal } from "@/components/trips/UpdateTripStatusModal"
 const { Title, Text } = Typography;
 
 const TRIP_STATUS_COLORS: Record<TripStatus, string> = {
+  Waiting: "default",
+  Dispatch: "purple",
   Loading: "gold",
   "In Transit": "blue",
   "At Border": "purple",

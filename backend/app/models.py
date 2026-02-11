@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 from decimal import Decimal
 from enum import Enum
 
-from sqlalchemy import Column, DateTime, JSON, Numeric
+from sqlalchemy import Column, DateTime, JSON, Numeric, Enum as SAEnum
 from sqlmodel import Field, Relationship, SQLModel
 
 
@@ -26,6 +26,7 @@ class UserBase(SQLModel):
     is_superuser: bool = False
     full_name: str | None = Field(default=None, max_length=255)
     role: UserRole = Field(default=UserRole.ops)
+    permissions: list[str] = Field(default=[], sa_column=Column(JSON))
 
 
 # Properties to receive via API on creation
@@ -44,6 +45,7 @@ class UserUpdate(UserBase):
     username: str | None = Field(default=None, min_length=3, max_length=50)  # type: ignore
     password: str | None = Field(default=None, min_length=8, max_length=128)
     role: UserRole | None = Field(default=None)  # type: ignore
+    permissions: list[str] | None = Field(default=None)
 
 
 class UserUpdateMe(SQLModel):
@@ -57,6 +59,7 @@ class UpdatePassword(SQLModel):
 
 # Database model, database table inferred from class name
 class User(UserBase, table=True):
+    __tablename__ = "users"
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     hashed_password: str
     created_at: datetime | None = Field(
@@ -101,7 +104,7 @@ class Item(ItemBase, table=True):
         sa_type=DateTime(timezone=True),  # type: ignore
     )
     owner_id: uuid.UUID = Field(
-        foreign_key="user.id", nullable=False, ondelete="CASCADE"
+        foreign_key="users.id", nullable=False, ondelete="CASCADE"
     )
     owner: User | None = Relationship(back_populates="items")
 
@@ -147,6 +150,8 @@ class NewPassword(SQLModel):
 class TruckStatus(str, Enum):
     """Truck status values - FR-TRUCK-01, extended for Trip workflow"""
     idle = "Idle"
+    waiting = "Waiting"
+    dispatch = "Dispatch"
     loading = "Loading"
     in_transit = "In Transit"
     at_border = "At Border"
@@ -270,6 +275,8 @@ class DriversPublic(SQLModel):
 class TrailerStatus(str, Enum):
     """Trailer status values - FR-TRAILER-01, extended for Trip workflow"""
     idle = "Idle"
+    waiting = "Waiting"
+    dispatch = "Dispatch"
     loading = "Loading"
     in_transit = "In Transit"
     at_border = "At Border"
@@ -409,6 +416,8 @@ class WaybillsPublic(SQLModel):
 
 class TripStatus(str, Enum):
     """Trip status values - Story 2.1"""
+    waiting = "Waiting"
+    dispatch = "Dispatch"
     loading = "Loading"
     in_transit = "In Transit"
     at_border = "At Border"
@@ -428,7 +437,14 @@ class TripBase(SQLModel):
     trip_number: str = Field(index=True, unique=True, description="Trip number (T<Plate>-YYYY<Seq>)")
     waybill_id: uuid.UUID | None = Field(default=None, foreign_key="waybill.id", description="Link to commercial Waybill")
     current_location: str | None = Field(default=None, description="Current location")
-    status: TripStatus = Field(default=TripStatus.loading, description="Current trip status")
+    status: TripStatus = Field(
+        default=TripStatus.waiting,
+        sa_column=Column(
+            SAEnum(TripStatus, values_callable=lambda obj: [e.value for e in obj]),
+            nullable=False
+        ),
+        description="Current trip status"
+    )
 
 
 # Properties to receive on creation
@@ -450,6 +466,13 @@ class TripUpdate(SQLModel):
     waybill_id: uuid.UUID | None = Field(default=None, description="Link to commercial Waybill")
     current_location: str | None = Field(default=None, description="Current location")
     status: TripStatus | None = Field(default=None, description="New status")
+    # Tracking date fields
+    dispatch_date: datetime | None = Field(default=None, description="Date dispatched from yard")
+    arrival_loading_date: datetime | None = Field(default=None, description="Arrival at loading point")
+    loading_date: datetime | None = Field(default=None, description="Loading completed date")
+    arrival_offloading_date: datetime | None = Field(default=None, description="Arrival at offloading point")
+    offloading_date: datetime | None = Field(default=None, description="Offloading completed date")
+    arrival_return_date: datetime | None = Field(default=None, description="Arrival back at yard")
 
 
 # Properties to receive for truck swap
@@ -470,6 +493,14 @@ class Trip(TripBase, table=True):
         default_factory=get_datetime_utc,
         sa_type=DateTime(timezone=True),  # type: ignore
     )
+    # Tracking date fields
+    dispatch_date: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
+    arrival_loading_date: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
+    loading_date: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
+    arrival_offloading_date: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
+    offloading_date: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
+    arrival_return_date: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
+    trip_duration_days: int | None = Field(default=None, description="Days from dispatch to return")
 
     # Relationships
     truck: Truck | None = Relationship()
@@ -484,6 +515,13 @@ class TripPublic(TripBase):
     start_date: datetime | None = None
     end_date: datetime | None = None
     created_at: datetime | None = None
+    dispatch_date: datetime | None = None
+    arrival_loading_date: datetime | None = None
+    loading_date: datetime | None = None
+    arrival_offloading_date: datetime | None = None
+    offloading_date: datetime | None = None
+    arrival_return_date: datetime | None = None
+    trip_duration_days: int | None = None
 
 
 # Trip with nested entities for detailed views
@@ -542,8 +580,8 @@ class ExpenseRequestBase(SQLModel):
     payment_method: PaymentMethod | None = Field(default=None, description="Payment method (CASH or TRANSFER)")
     payment_reference: str | None = Field(default=None, max_length=255, description="Payment reference (required for transfers)")
     payment_date: datetime | None = Field(default=None, sa_type=DateTime(timezone=True), description="Date payment was processed")
-    paid_by_id: uuid.UUID | None = Field(default=None, foreign_key="user.id", description="User who processed the payment")
-    approved_by_id: uuid.UUID | None = Field(default=None, foreign_key="user.id", description="User who approved the expense")
+    paid_by_id: uuid.UUID | None = Field(default=None, foreign_key="users.id", description="User who processed the payment")
+    approved_by_id: uuid.UUID | None = Field(default=None, foreign_key="users.id", description="User who approved the expense")
     approved_at: datetime | None = Field(default=None, sa_type=DateTime(timezone=True), description="Date expense was approved")
     expense_metadata: dict | None = Field(default=None, description="Additional expense metadata (item details, payment info, etc.)")
 
@@ -574,7 +612,7 @@ class ExpenseRequest(ExpenseRequestBase, table=True):
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     amount: Decimal = Field(sa_column=Column(Numeric(12, 2), nullable=False))
     expense_metadata: dict | None = Field(default=None, sa_column=Column(JSON))
-    created_by_id: uuid.UUID = Field(foreign_key="user.id", description="User who created the expense")
+    created_by_id: uuid.UUID = Field(foreign_key="users.id", description="User who created the expense")
     created_at: datetime | None = Field(
         default_factory=get_datetime_utc,
         sa_type=DateTime(timezone=True),  # type: ignore

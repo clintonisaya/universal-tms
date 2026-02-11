@@ -10,6 +10,7 @@ import {
   Form,
   Input,
   Select,
+  Switch,
   Typography,
   Spin,
   Popconfirm,
@@ -18,6 +19,7 @@ import {
   Flex,
   Space,
   Tag,
+  Divider,
 } from "antd";
 import {
   PlusOutlined,
@@ -31,6 +33,7 @@ import {
 import type { ColumnsType } from "antd/es/table";
 import { useAuth } from "@/contexts/AuthContext";
 import { useUsers, useInvalidateQueries } from "@/hooks/useApi";
+import { AVAILABLE_PERMISSIONS, ROLE_PERMISSION_PRESETS } from "@/hooks/usePermissions";
 import BulkActionBar from "@/components/ui/BulkActionBar";
 import {
   getColumnSearchProps,
@@ -39,7 +42,7 @@ import {
   useResizableColumns,
 } from "@/components/ui/tableUtils";
 
-const { Title } = Typography;
+const { Title, Text } = Typography;
 
 interface User {
   id: string;
@@ -48,13 +51,15 @@ interface User {
   role: string;
   is_active: boolean;
   is_superuser: boolean;
+  permissions: string[];
 }
 
 interface UserCreate {
   username: string;
   full_name?: string;
   role: string;
-  password: string;
+  password?: string;
+  permissions?: string[];
 }
 
 const ROLES = ["admin", "manager", "ops", "finance"];
@@ -65,6 +70,103 @@ const STATUS_FILTERS = [
   { text: "Active", value: true },
   { text: "Inactive", value: false },
 ];
+
+// Group permissions by category for the toggle UI
+const PERMISSION_GROUPS = AVAILABLE_PERMISSIONS.reduce<
+  Record<string, { label: string; value: string }[]>
+>((acc, p) => {
+  (acc[p.group] ??= []).push({ label: p.label, value: p.value });
+  return acc;
+}, {});
+
+/** Brand color for active toggles */
+const BRAND_GOLD = "#D4AF37";
+
+/** Grouped toggle switches for permissions – used as a Form control via value/onChange. */
+function PermissionToggles({
+  value = [],
+  onChange,
+}: {
+  value?: string[];
+  onChange?: (v: string[]) => void;
+}) {
+  const toggle = (perm: string, checked: boolean) => {
+    const next = checked
+      ? [...value, perm]
+      : value.filter((p) => p !== perm);
+    onChange?.(next);
+  };
+
+  const toggleGroup = (group: string, checked: boolean) => {
+    const groupPerms = PERMISSION_GROUPS[group].map((p) => p.value);
+    const next = checked
+      ? [...new Set([...value, ...groupPerms])]
+      : value.filter((p) => !groupPerms.includes(p));
+    onChange?.(next);
+  };
+
+  return (
+    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+      {Object.entries(PERMISSION_GROUPS).map(([group, perms]) => {
+        const allOn = perms.every((p) => value.includes(p.value));
+        const someOn = perms.some((p) => value.includes(p.value));
+        return (
+          <div
+            key={group}
+            style={{
+              border: "1px solid #e5e7eb",
+              borderRadius: 10,
+              padding: "14px 16px",
+              background: "#ffffff",
+              boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
+            }}
+          >
+            {/* Group header with master toggle */}
+            <Flex justify="space-between" align="center" style={{ marginBottom: 10, borderBottom: "1px solid #f0f0f0", paddingBottom: 8 }}>
+              <Text strong style={{ fontSize: 12, color: "#6b7280", textTransform: "uppercase", letterSpacing: 1 }}>
+                {group}
+              </Text>
+              <Flex align="center" gap={6}>
+                <Text style={{ fontSize: 11, color: "#9ca3af" }}>{allOn ? "All" : someOn ? "Some" : "None"}</Text>
+                <Switch
+                  size="small"
+                  checked={allOn}
+                  style={
+                    allOn
+                      ? { background: BRAND_GOLD }
+                      : someOn
+                        ? { background: "rgba(212,175,55,0.45)" }
+                        : undefined
+                  }
+                  onChange={(c) => toggleGroup(group, c)}
+                />
+              </Flex>
+            </Flex>
+            {/* Individual permission rows */}
+            <Flex vertical gap={8}>
+              {perms.map((p) => {
+                const isOn = value.includes(p.value);
+                return (
+                  <Flex key={p.value} justify="space-between" align="center">
+                    <Text style={{ fontSize: 13, color: isOn ? "#1f2937" : "#9ca3af" }}>
+                      {p.label}
+                    </Text>
+                    <Switch
+                      size="small"
+                      checked={isOn}
+                      style={isOn ? { background: BRAND_GOLD } : undefined}
+                      onChange={(c) => toggle(p.value, c)}
+                    />
+                  </Flex>
+                );
+              })}
+            </Flex>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 
 // Child component to use App hook
 const UsersContent = () => {
@@ -96,8 +198,9 @@ const UsersContent = () => {
   // Role Access Control
   useEffect(() => {
     if (!authLoading && currentUser) {
-      if (currentUser.role !== "admin" && !currentUser.is_superuser) {
-        message.error("Access denied: Admins only");
+      // Allow admin OR manager
+      if (currentUser.role !== "admin" && currentUser.role !== "manager" && !currentUser.is_superuser) {
+        message.error("Access denied: Admins or Managers only");
         router.push("/dashboard");
       }
     }
@@ -111,9 +214,11 @@ const UsersContent = () => {
           username: editingUser.username,
           full_name: editingUser.full_name,
           role: editingUser.role,
+          permissions: editingUser.permissions || [],
         });
       } else {
         form.resetFields();
+        form.setFieldsValue({ permissions: [] });
       }
     }
   }, [isModalOpen, editingUser, form]);
@@ -270,6 +375,19 @@ const UsersContent = () => {
       ...getColumnFilterProps("role", ROLE_FILTERS),
     },
     {
+      title: "Permissions",
+      dataIndex: "permissions",
+      key: "permissions",
+      width: 150,
+      render: (perms: string[]) => (
+        perms && perms.length > 0 ? (
+          <Tooltip title={perms.join(", ")}>
+            <Tag color="cyan">{perms.length} Permissions</Tag>
+          </Tooltip>
+        ) : <Text type="secondary">-</Text>
+      ),
+    },
+    {
       title: "Status",
       key: "status",
       dataIndex: "is_active",
@@ -378,60 +496,87 @@ const UsersContent = () => {
       </Card>
 
       <Modal
-        title={editingUser ? "Edit User" : "Add User"}
+        title={<span style={{ fontSize: 18, fontWeight: 600, color: "#1f2937" }}>{editingUser ? "Edit User" : "Add User"}</span>}
         open={isModalOpen}
         onCancel={() => setIsModalOpen(false)}
         footer={null}
-        destroyOnHidden={false} // Keep mounted to avoid form connection issues, reset via useEffect
-        forceRender // Ensure form exists
+        width={720}
+        destroyOnHidden={false}
+        forceRender
+        styles={{ body: { background: "#fafafa", padding: "20px 24px" } }}
       >
-        <Form form={form} layout="vertical" onFinish={handleSubmit}>
-          <Form.Item
-            name="full_name"
-            label="Full Name"
-            rules={[{ required: true, message: "Required" }]}
-          >
-            <Input prefix={<UserOutlined />} placeholder="John Doe" />
-          </Form.Item>
-
-          <Form.Item
-            name="username"
-            label="Username / Email"
-            rules={[{ required: true, message: "Required" }]}
-          >
-            <Input placeholder="john@example.com" />
-          </Form.Item>
-
-          <Form.Item
-            name="role"
-            label="Role"
-            rules={[{ required: true, message: "Required" }]}
-          >
-            <Select>
-              {ROLES.map(r => (
-                <Select.Option key={r} value={r}>{r.toUpperCase()}</Select.Option>
-              ))}
-            </Select>
-          </Form.Item>
-
-          {!editingUser && (
+        <Form form={form} layout="vertical" onFinish={handleSubmit} style={{ color: "#1f2937" }}>
+          {/* Row 1: Full Name + Username */}
+          <Flex gap="middle">
             <Form.Item
-              name="password"
-              label="Initial Password"
-              rules={[{ required: true, message: "Required for new users" }]}
+              name="full_name"
+              label={<span style={{ color: "#374151" }}>Full Name</span>}
+              rules={[{ required: true, message: "Required" }]}
+              style={{ flex: 1 }}
             >
-              <Input.Password placeholder="Min 8 characters" />
+              <Input prefix={<UserOutlined />} placeholder="John Doe" />
             </Form.Item>
-          )}
+            <Form.Item
+              name="username"
+              label={<span style={{ color: "#374151" }}>Username / Email</span>}
+              rules={[{ required: true, message: "Required" }]}
+              style={{ flex: 1 }}
+            >
+              <Input placeholder="john@example.com" />
+            </Form.Item>
+          </Flex>
 
-          <Form.Item style={{ textAlign: "right", marginBottom: 0 }}>
-            <Flex justify="flex-end" gap="small">
-              <Button onClick={() => setIsModalOpen(false)}>Cancel</Button>
-              <Button type="primary" htmlType="submit" loading={submitting}>
-                {editingUser ? "Update" : "Create"}
-              </Button>
-            </Flex>
+          {/* Row 2: Role + Password (side-by-side) */}
+          <Flex gap="middle">
+            <Form.Item
+              name="role"
+              label={<span style={{ color: "#374151" }}>Role</span>}
+              rules={[{ required: true, message: "Required" }]}
+              style={{ flex: 1 }}
+            >
+              <Select
+                onChange={(role: string) => {
+                  const preset = ROLE_PERMISSION_PRESETS[role];
+                  if (preset) {
+                    form.setFieldsValue({ permissions: [...preset] });
+                  }
+                }}
+              >
+                {ROLES.map(r => (
+                  <Select.Option key={r} value={r}>{r.toUpperCase()}</Select.Option>
+                ))}
+              </Select>
+            </Form.Item>
+            {!editingUser ? (
+              <Form.Item
+                name="password"
+                label={<span style={{ color: "#374151" }}>Initial Password</span>}
+                rules={[{ required: true, message: "Required for new users" }]}
+                style={{ flex: 1 }}
+              >
+                <Input.Password placeholder="Min 8 characters" />
+              </Form.Item>
+            ) : (
+              <div style={{ flex: 1 }} />
+            )}
+          </Flex>
+
+          {/* Separator + Permissions */}
+          <Divider style={{ borderColor: "#e5e7eb", margin: "8px 0 16px" }}>
+            <Text strong style={{ color: "#6b7280", fontSize: 13, letterSpacing: 0.5 }}>PERMISSIONS</Text>
+          </Divider>
+
+          <Form.Item name="permissions" noStyle>
+            <PermissionToggles />
           </Form.Item>
+
+          {/* Actions */}
+          <Flex justify="flex-end" gap="small" style={{ marginTop: 20 }}>
+            <Button onClick={() => setIsModalOpen(false)}>Cancel</Button>
+            <Button type="primary" htmlType="submit" loading={submitting}>
+              {editingUser ? "Update" : "Create"}
+            </Button>
+          </Flex>
         </Form>
       </Modal>
       <BulkActionBar
