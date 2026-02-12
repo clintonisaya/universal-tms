@@ -584,7 +584,7 @@ class ExpenseRequestBase(SQLModel):
     approved_by_id: uuid.UUID | None = Field(default=None, foreign_key="users.id", description="User who approved the expense")
     approved_at: datetime | None = Field(default=None, sa_type=DateTime(timezone=True), description="Date expense was approved")
     expense_metadata: dict | None = Field(default=None, description="Additional expense metadata (item details, payment info, etc.)")
-    attachments: list[str] = Field(default=[], description="List of URLs for attached receipts/documents")
+    attachments: list[str] | None = Field(default=[], description="List of URLs for attached receipts/documents")
 
 
 # Properties to receive on creation
