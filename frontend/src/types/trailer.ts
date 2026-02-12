@@ -5,7 +5,7 @@
 /** Known built-in trailer statuses. Backend accepts any string (including custom VehicleStatus values). */
 export const TRAILER_STATUSES = ["Idle", "Loading", "In Transit", "At Border", "Offloaded", "Returned", "Waiting for PODs", "Maintenance"] as const;
 export type TrailerStatus = (typeof TRAILER_STATUSES)[number];
-export type TrailerType = "Flatbed" | "Skeleton" | "Box" | "Tanker";
+export type TrailerType = "Flatbed" | "Skeleton" | "Box" | "Tanker" | "Lowbed";
 
 export interface Trailer {
   id: string;

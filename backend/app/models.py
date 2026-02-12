@@ -292,6 +292,7 @@ class TrailerType(str, Enum):
     skeleton = "Skeleton"
     box = "Box"
     tanker = "Tanker"
+    lowbed = "Lowbed"
 
 
 # Shared properties

@@ -57,10 +57,29 @@ def get_waybill_tracking_report(
         # Mock calculations for Mileage/Fuel until real IoT/GPS is integrated
         mileage = 0
         fuel_consumption = 0
+        duration_days = 0
         
-        if trip and trip.status == "In Transit":
-            mileage = 150 # Mock value
-            fuel_consumption = 45.5 # Mock value
+        if trip:
+            if trip.status == "In Transit":
+                mileage = 150 # Mock value
+                fuel_consumption = 45.5 # Mock value
+            
+            # Calculate Duration
+            # Determine Start Date (Dispatch > Start > Created)
+            start_date = trip.dispatch_date or trip.start_date or trip.created_at
+            
+            if start_date:
+                # Determine End Date (Return > End > Now)
+                end_date = trip.arrival_return_date or trip.end_date or datetime.now(timezone.utc)
+                
+                # Ensure aware datetimes for subtraction
+                if start_date.tzinfo is None:
+                    start_date = start_date.replace(tzinfo=timezone.utc)
+                if end_date.tzinfo is None:
+                    end_date = end_date.replace(tzinfo=timezone.utc)
+                    
+                delta = end_date - start_date
+                duration_days = max(1, delta.days + 1)
 
         row = {
             # 1. Status Plls
@@ -93,6 +112,7 @@ def get_waybill_tracking_report(
             # 6. Metrics (Calculated/Mocked)
             "mileage_km": mileage,
             "fuel_consumption_liters": fuel_consumption,
+            "duration_days": duration_days,
             
             # 7. Risk
             "risk_level": waybill.risk_level,
@@ -426,6 +446,27 @@ def get_trip_profitability(
         # Margin %
         margin_pct = (float(net_profit) / float(income) * 100) if income > 0 else 0.0
 
+        # Trip Duration & Profit per Day
+        duration_days = 1
+        
+        # Determine Start Date (Dispatch > Start > Created)
+        start_date = trip.dispatch_date or trip.start_date or trip.created_at
+        
+        if start_date:
+            # Determine End Date (Return > End > Now)
+            end_date = trip.arrival_return_date or trip.end_date or datetime.now(timezone.utc)
+            
+            # Ensure aware datetimes for subtraction
+            if start_date.tzinfo is None:
+                start_date = start_date.replace(tzinfo=timezone.utc)
+            if end_date.tzinfo is None:
+                end_date = end_date.replace(tzinfo=timezone.utc)
+                
+            delta = end_date - start_date
+            duration_days = max(1, delta.days + 1) # +1 to include partial days as 1 full day, or at least 1 day
+        
+        profit_per_day = float(net_profit) / duration_days
+
         profitability_data.append({
             "trip_id": trip_id,
             "trip_number": trip.trip_number,
@@ -437,6 +478,8 @@ def get_trip_profitability(
             "net_profit": float(net_profit),
             "margin_pct": round(margin_pct, 2),
             "start_date": trip.start_date.isoformat() if trip.start_date else None,
+            "profit_per_day": round(profit_per_day, 2),
+            "duration_days": duration_days,
         })
 
     # Sort
@@ -446,6 +489,7 @@ def get_trip_profitability(
         "income": "income",
         "expenses": "expenses",
         "trip_number": "trip_number",
+        "profit_per_day": "profit_per_day",
     }
     sort_field = sort_key_map.get(sort_by, "margin_pct")
     reverse = sort_order.lower() == "desc"
@@ -460,6 +504,7 @@ def get_trip_profitability(
     total_expenses_sum = sum(d["expenses"] for d in profitability_data)
     total_profit = total_income - total_expenses_sum
     avg_margin = (total_profit / total_income * 100) if total_income > 0 else 0.0
+    total_profit_per_day = sum(d["profit_per_day"] for d in profitability_data)
 
     return {
         "data": paginated,
@@ -469,5 +514,6 @@ def get_trip_profitability(
             "total_expenses": total_expenses_sum,
             "total_profit": total_profit,
             "average_margin_pct": round(avg_margin, 2),
+            "total_profit_per_day": round(total_profit_per_day, 2),
         },
     }

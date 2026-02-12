@@ -3,36 +3,74 @@ import { theme } from 'antd';
 
 const themeConfig: ThemeConfig = {
     token: {
-        fontSize: 12, // High density base size
-        colorPrimary: '#D4AF37', // Royal Gold
+        // Typography - Standardizing on 13px as requested
+        fontSize: 13,
+        fontSizeHeading1: 26,
+        fontSizeHeading2: 22,
+        fontSizeHeading3: 18,
+        fontSizeHeading4: 15,
+        fontSizeHeading5: 14, // Slightly larger for emphasis
+        
+        // Brand Colors
+        colorPrimary: '#D4AF37', // Brand Gold
         colorInfo: '#D4AF37',
+        
+        // Neutralizing Text for better readability
+        colorTextBase: '#262626', // Slightly softer black
+        colorTextSecondary: '#595959',
+        
+        // Modernizing Structure
         fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
-        borderRadius: 4, // Professional, sharper corners
-        colorTextBase: '#1F1F1F', // Charcoal for text
+        borderRadius: 6, // 6px is a sweet spot between "boxy" (4px) and "round" (8px)
+        
+        // Spacing - controlling density
+        controlHeight: 34, // Slightly taller than default compact (24/32) for better touch/click targets
     },
     components: {
         Layout: {
             headerBg: '#ffffff',
-            bodyBg: '#f5f7fa', // Soft gray enterprise background
-            siderBg: '#1F1F1F', // Deep Charcoal sidebar
+            bodyBg: '#f8f9fa', // Cleaner, brighter background
+            siderBg: '#1F1F1F',
         },
         Table: {
-            headerBg: '#fafafa',
-            headerColor: '#595959',
-            rowHoverBg: '#FFFDF5', // Very subtle gold tint on hover
-            borderColor: '#e8e8e8',
+            headerBg: '#ffffff', // Clean white headers
+            headerColor: '#8c8c8c', // Muted headers to let data stand out
+            headerSplitColor: '#f0f0f0',
+            rowHoverBg: '#FFFDF5', // Subtle gold tint on hover
+            cellPaddingBlock: 8, // Maintaining density
+            cellPaddingInline: 12,
+            borderColor: '#f0f0f0',
         },
         Card: {
             headerFontSize: 14,
+            headerFontWeight: 600,
+            borderRadiusLG: 8, // Slightly softer cards
         },
         Button: {
             primaryShadow: '0 2px 0 rgba(0, 0, 0, 0.045)',
-            algorithm: true, // Generate proper shades
+            algorithm: true,
+            fontWeight: 500,
+            contentFontSize: 13,
+        },
+        Input: {
+            activeBorderColor: '#D4AF37',
+            hoverBorderColor: '#EAC159',
+        },
+        Select: {
+            colorPrimary: '#D4AF37',
         },
         Typography: {
             fontFamilyCode: '"Fira Code", monospace',
+        },
+        Modal: {
+            headerBg: '#ffffff',
+            titleFontSize: 16,
+        },
+        Tag: {
+             borderRadiusSM: 4,
         }
     },
+    // Keeping compact algorithm for data density, but our token overrides will refine it
     algorithm: theme.compactAlgorithm,
 };
 

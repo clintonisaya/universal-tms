@@ -53,6 +53,7 @@ const TYPE_COLORS: Record<TrailerType, string> = {
   Skeleton: "purple",
   Box: "gold",
   Tanker: "magenta",
+  Lowbed: "volcano",
 };
 
 const TYPE_FILTERS = [
@@ -60,6 +61,7 @@ const TYPE_FILTERS = [
   { text: "Skeleton", value: "Skeleton" },
   { text: "Box", value: "Box" },
   { text: "Tanker", value: "Tanker" },
+  { text: "Lowbed", value: "Lowbed" },
 ];
 
 export default function TrailersPage() {
@@ -354,7 +356,7 @@ export default function TrailersPage() {
               { max: 20, message: "Plate number too long" },
             ]}
           >
-            <Input placeholder="e.g., ZD 4040" />
+            <Input placeholder="e.g., T998 EMQ" />
           </Form.Item>
 
           <Form.Item
@@ -367,6 +369,7 @@ export default function TrailersPage() {
               <Select.Option value="Skeleton">Skeleton</Select.Option>
               <Select.Option value="Box">Box</Select.Option>
               <Select.Option value="Tanker">Tanker</Select.Option>
+              <Select.Option value="Lowbed">Lowbed</Select.Option>
             </Select>
           </Form.Item>
 
@@ -378,7 +381,7 @@ export default function TrailersPage() {
               { max: 100, message: "Make name too long" },
             ]}
           >
-            <Input placeholder="e.g., Hambure" />
+            <Input placeholder="e.g., CIMC" />
           </Form.Item>
 
           <Form.Item name="status" label="Status">
@@ -445,6 +448,7 @@ export default function TrailersPage() {
               <Select.Option value="Skeleton">Skeleton</Select.Option>
               <Select.Option value="Box">Box</Select.Option>
               <Select.Option value="Tanker">Tanker</Select.Option>
+              <Select.Option value="Lowbed">Lowbed</Select.Option>
             </Select>
           </Form.Item>
 

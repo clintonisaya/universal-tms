@@ -97,7 +97,7 @@ export function ExpenseDetailModal({ open, onClose, expense }: ExpenseDetailModa
     items.push({
       color: "green",
       dot: <FileTextOutlined />,
-      children: (
+      content: (
         <div>
           <Text strong>Application Submitted</Text>
           <br />
@@ -114,7 +114,7 @@ export function ExpenseDetailModal({ open, onClose, expense }: ExpenseDetailModa
       items.push({
         color: "green",
         dot: <CheckCircleOutlined />,
-        children: (
+        content: (
           <div>
             <Text strong>Manager Approved</Text>
             <br />
@@ -134,7 +134,7 @@ export function ExpenseDetailModal({ open, onClose, expense }: ExpenseDetailModa
       items.push({
         color: "red",
         dot: <CloseCircleOutlined />,
-        children: (
+        content: (
           <div>
             <Text strong>Manager Rejected</Text>
             {expense.manager_comment && (
@@ -150,7 +150,7 @@ export function ExpenseDetailModal({ open, onClose, expense }: ExpenseDetailModa
       items.push({
         color: "orange",
         dot: <ClockCircleOutlined />,
-        children: (
+        content: (
           <div>
             <Text strong>Returned for Revision</Text>
             {expense.manager_comment && (
@@ -166,7 +166,7 @@ export function ExpenseDetailModal({ open, onClose, expense }: ExpenseDetailModa
       items.push({
         color: "blue",
         dot: <ClockCircleOutlined />,
-        children: (
+        content: (
           <div>
             <Text strong>Awaiting Manager Approval</Text>
           </div>
@@ -179,7 +179,7 @@ export function ExpenseDetailModal({ open, onClose, expense }: ExpenseDetailModa
       items.push({
         color: "green",
         dot: <BankOutlined />,
-        children: (
+        content: (
           <div>
             <Text strong>Payment Processed</Text>
             <br />
@@ -199,7 +199,7 @@ export function ExpenseDetailModal({ open, onClose, expense }: ExpenseDetailModa
       items.push({
         color: "blue",
         dot: <ClockCircleOutlined />,
-        children: (
+        content: (
           <div>
             <Text strong>Awaiting Finance Payment</Text>
           </div>
@@ -367,41 +367,32 @@ export function ExpenseDetailModal({ open, onClose, expense }: ExpenseDetailModa
           {attachmentsLoading ? (
             <div style={{ textAlign: "center", padding: 20 }}><Spin size="small" /></div>
           ) : (
-            <List
-              size="small"
-              dataSource={attachments}
-              renderItem={(item) => (
-                <List.Item
-                  actions={[
-                    item.url ? (
-                      <Button
-                        key="dl"
-                        type="link"
-                        size="small"
-                        icon={<DownloadOutlined />}
-                        href={item.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        View
-                      </Button>
-                    ) : null,
-                  ]}
-                >
-                  <List.Item.Meta
-                    avatar={getFileIcon(item.filename)}
-                    title={
-                      item.url ? (
-                        <a href={item.url} target="_blank" rel="noopener noreferrer">{item.filename}</a>
-                      ) : (
-                        item.filename
-                      )
-                    }
-                  />
-                </List.Item>
-              )}
-              style={{ marginBottom: 16 }}
-            />
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
+              {attachments.map((item) => (
+                <div key={item.key} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', background: '#fafafa', borderRadius: 6, border: '1px solid #f0f0f0' }}>
+                  <Space>
+                    {getFileIcon(item.filename)}
+                    {item.url ? (
+                      <a href={item.url} target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', fontWeight: 500 }}>
+                        {item.filename}
+                      </a>
+                    ) : (
+                      <Text>{item.filename}</Text>
+                    )}
+                  </Space>
+                  {item.url && (
+                    <Button
+                      type="text"
+                      size="small"
+                      icon={<DownloadOutlined />}
+                      href={item.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    />
+                  )}
+                </div>
+              ))}
+            </div>
           )}
         </>
       )}

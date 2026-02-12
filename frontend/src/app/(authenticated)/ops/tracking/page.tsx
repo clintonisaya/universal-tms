@@ -69,6 +69,7 @@ interface TrackingRow {
   
   // Meta
   start_date: string | null;
+  duration_days: number;
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -166,31 +167,25 @@ export default function TrackingPage() {
     const worksheet = workbook.addWorksheet("Control Tower");
 
     worksheet.columns = [
-      { header: "Waybill #", key: "waybill_number", width: 20 },
-      { header: "Trip #", key: "trip_number", width: 20 },
-      { header: "Waybill Status", key: "waybill_status", width: 15 },
-      { header: "Trip Status", key: "trip_status", width: 15 },
-      { header: "Client", key: "client_name", width: 25 },
-      { header: "Cargo", key: "cargo", width: 30 },
-      { header: "Route", key: "route", width: 30 },
-      { header: "Current Location", key: "current_location", width: 25 },
-      { header: "Truck/Trailer", key: "truck_trailer", width: 25 },
-      { header: "Driver", key: "driver_name", width: 20 },
+      { header: "No.", key: "index", width: 8 },
+      { header: "IDs", key: "ids", width: 25 },
+      { header: "Status", key: "status", width: 20 },
+      { header: "Client / Cargo", key: "client_cargo", width: 30 },
+      { header: "Route / Location", key: "route_loc", width: 35 },
+      { header: "Days", key: "duration_days", width: 10 },
+      { header: "Assets", key: "assets", width: 25 },
       { header: "Risk", key: "risk_level", width: 15 },
     ];
 
-    filteredData.forEach((row) => {
+    filteredData.forEach((row, index) => {
       worksheet.addRow({
-        waybill_number: row.waybill_number,
-        trip_number: row.trip_number || "-",
-        waybill_status: row.waybill_status,
-        trip_status: row.trip_status,
-        client_name: row.client_name,
-        cargo: `${row.cargo_description} (${row.cargo_weight}kg)`,
-        route: `${row.origin} -> ${row.destination}`,
-        current_location: row.current_location || "-",
-        truck_trailer: `${row.truck_plate || '-'} / ${row.trailer_plate || '-'}`,
-        driver_name: row.driver_name || "-",
+        index: index + 1,
+        ids: `${row.waybill_number}\n${row.trip_number || '-'}`,
+        status: `${row.waybill_status} / ${row.trip_status}`,
+        client_cargo: `${row.client_name}\n${row.cargo_description} (${row.cargo_weight}kg)`,
+        route_loc: `${row.origin} -> ${row.destination}\n${row.current_location || '-'}`,
+        duration_days: row.duration_days,
+        assets: `${row.truck_plate || '-'} / ${row.trailer_plate || '-'}\n${row.driver_name || '-'}`,
         risk_level: row.risk_level,
       });
     });
@@ -220,35 +215,34 @@ export default function TrackingPage() {
 
   const columns: ColumnsType<TrackingRow> = [
     {
+      title: "Tracking No.",
+      key: "ids",
+      width: 160,
+      align: "left",
+      render: (_, r) => (
+        <Flex vertical gap={0}>
+           <Text strong style={{ color: '#1890ff', cursor: 'pointer' }}>{r.waybill_number}</Text>
+           {r.trip_number ? (
+             <Text style={{ fontSize: 12, color: '#595959' }}>{r.trip_number}</Text>
+           ) : <Text type="secondary" style={{ fontSize: 12 }}>No Trip</Text>}
+        </Flex>
+      )
+    },
+    {
       title: "Status",
       key: "status",
       width: 140,
-      fixed: "left",
       render: (_, r) => (
-        <Flex vertical gap={2}>
+        <Flex vertical gap={2} align="start">
             <Tag color={STATUS_COLORS[r.waybill_status]}>WB: {r.waybill_status}</Tag>
             <Tag color={STATUS_COLORS[r.trip_status]}>Trip: {r.trip_status}</Tag>
         </Flex>
       )
     },
     {
-      title: "IDs",
-      key: "ids",
-      width: 140,
-      fixed: "left",
-      render: (_, r) => (
-        <Flex vertical gap={0}>
-           <Text strong style={{ color: '#1890ff', cursor: 'pointer' }}>{r.waybill_number}</Text>
-           {r.trip_number ? (
-             <Text style={{ fontSize: 12, color: '#1890ff' }}>{r.trip_number}</Text>
-           ) : <Text type="secondary" style={{ fontSize: 12 }}>No Trip</Text>}
-        </Flex>
-      )
-    },
-    {
-      title: "Entity Info",
+      title: "Client / Cargo",
       key: "entity",
-      width: 180,
+      width: 200,
       render: (_, r) => (
         <Flex vertical gap={0}>
             <Text strong>{r.client_name}</Text>
@@ -259,7 +253,7 @@ export default function TrackingPage() {
       )
     },
     {
-      title: "Route Info",
+      title: "Route / Location",
       key: "route",
       width: 250,
       render: (_, r) => (
@@ -278,7 +272,18 @@ export default function TrackingPage() {
       )
     },
     {
-      title: "Asset Info",
+        title: "Days",
+        key: "days",
+        width: 80,
+        align: "center",
+        render: (_, r) => (
+            <Tag color={r.duration_days > 15 ? "red" : r.duration_days > 7 ? "orange" : "green"}>
+                {r.duration_days}d
+            </Tag>
+        )
+    },
+    {
+      title: "Assets",
       key: "assets",
       width: 180,
       render: (_, r) => (

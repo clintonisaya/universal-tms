@@ -12,7 +12,7 @@ import {
   Form,
   Input,
   Select,
-  message,
+  App,
   Typography,
   Spin,
   Popconfirm,
@@ -49,6 +49,7 @@ const STATUS_FILTERS = [
 ];
 
 export default function TrucksPage() {
+  const { message } = App.useApp();
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
   const { data, isLoading, refetch } = useTrucks();
@@ -82,8 +83,8 @@ export default function TrucksPage() {
 
       if (response.ok) {
         message.success("Truck registered successfully");
-        setIsCreateModalOpen(false);
         createForm.resetFields();
+        setIsCreateModalOpen(false);
         invalidateTrucks();
       } else {
         const error = await response.json();
@@ -111,9 +112,9 @@ export default function TrucksPage() {
 
       if (response.ok) {
         message.success("Truck updated successfully");
+        editForm.resetFields();
         setIsEditModalOpen(false);
         setEditingTruck(null);
-        editForm.resetFields();
         invalidateTrucks();
       } else {
         const error = await response.json();
@@ -325,8 +326,8 @@ export default function TrucksPage() {
         title="Register New Truck"
         open={isCreateModalOpen}
         onCancel={() => {
-          setIsCreateModalOpen(false);
           createForm.resetFields();
+          setIsCreateModalOpen(false);
         }}
         footer={null}
         destroyOnHidden
@@ -345,7 +346,7 @@ export default function TrucksPage() {
               { max: 20, message: "Plate number too long" },
             ]}
           >
-            <Input placeholder="e.g., KCB 123A" />
+            <Input placeholder="e.g., T998 EMQ" />
           </Form.Item>
 
           <Form.Item
@@ -356,7 +357,7 @@ export default function TrucksPage() {
               { max: 100, message: "Make name too long" },
             ]}
           >
-            <Input placeholder="e.g., Mercedes" />
+            <Input placeholder="e.g., XCMG " />
           </Form.Item>
 
           <Form.Item
@@ -367,7 +368,7 @@ export default function TrucksPage() {
               { max: 100, message: "Model name too long" },
             ]}
           >
-            <Input placeholder="e.g., Actros" />
+            <Input placeholder="e.g., HANVAN G7" />
           </Form.Item>
 
           <Form.Item name="status" label="Status">
@@ -382,8 +383,8 @@ export default function TrucksPage() {
             <Space>
               <Button
                 onClick={() => {
-                  setIsCreateModalOpen(false);
                   createForm.resetFields();
+                  setIsCreateModalOpen(false);
                 }}
               >
                 Cancel
@@ -401,9 +402,9 @@ export default function TrucksPage() {
         title="Edit Truck"
         open={isEditModalOpen}
         onCancel={() => {
+          editForm.resetFields();
           setIsEditModalOpen(false);
           setEditingTruck(null);
-          editForm.resetFields();
         }}
         footer={null}
         destroyOnHidden
@@ -458,9 +459,9 @@ export default function TrucksPage() {
             <Space>
               <Button
                 onClick={() => {
+                  editForm.resetFields();
                   setIsEditModalOpen(false);
                   setEditingTruck(null);
-                  editForm.resetFields();
                 }}
               >
                 Cancel

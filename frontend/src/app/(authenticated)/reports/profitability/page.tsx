@@ -41,6 +41,7 @@ interface TripProfitability {
   expenses: number;
   net_profit: number;
   margin_pct: number;
+  profit_per_day: number;
   start_date: string | null;
 }
 
@@ -49,6 +50,7 @@ interface ProfitabilitySummary {
   total_expenses: number;
   total_profit: number;
   average_margin_pct: number;
+  total_profit_per_day: number;
 }
 
 interface ProfitabilityResponse {
@@ -217,6 +219,23 @@ export default function TripProfitabilityPage() {
       sorter: true,
     },
     {
+      title: "Profit/Day (TZS)",
+      dataIndex: "profit_per_day",
+      key: "profit_per_day",
+      width: 150,
+      align: "right",
+      render: (val: number) => (
+        <Text
+          style={{
+            color: val >= 0 ? "#52c41a" : "#ff4d4f",
+          }}
+        >
+          {val.toLocaleString()}
+        </Text>
+      ),
+      sorter: true,
+    },
+    {
       title: "Margin %",
       dataIndex: "margin_pct",
       key: "margin_pct",
@@ -291,7 +310,7 @@ export default function TripProfitabilityPage() {
     >
       {/* Summary Cards */}
       <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
-        <Col xs={24} sm={12} lg={6}>
+        <Col xs={24} sm={12} lg={5}>
           <Card>
             <Statistic
               title="Total Revenue"
@@ -301,7 +320,7 @@ export default function TripProfitabilityPage() {
             />
           </Card>
         </Col>
-        <Col xs={24} sm={12} lg={6}>
+        <Col xs={24} sm={12} lg={5}>
           <Card>
             <Statistic
               title="Total Expenses"
@@ -311,7 +330,7 @@ export default function TripProfitabilityPage() {
             />
           </Card>
         </Col>
-        <Col xs={24} sm={12} lg={6}>
+        <Col xs={24} sm={12} lg={5}>
           <Card>
             <Statistic
               title="Total Profit"
@@ -325,10 +344,10 @@ export default function TripProfitabilityPage() {
             />
           </Card>
         </Col>
-        <Col xs={24} sm={12} lg={6}>
+        <Col xs={24} sm={12} lg={4}>
           <Card>
             <Statistic
-              title="Average Margin"
+              title="Avg Margin"
               value={summary?.average_margin_pct || 0}
               suffix="%"
               precision={1}
@@ -340,6 +359,21 @@ export default function TripProfitabilityPage() {
                       : (summary?.average_margin_pct || 0) >= 10
                       ? "#faad14"
                       : "#ff4d4f",
+                }
+              }}
+            />
+          </Card>
+        </Col>
+        <Col xs={24} sm={12} lg={4}>
+          <Card>
+            <Statistic
+              title="Daily Profit"
+              value={summary?.total_profit_per_day || 0}
+              prefix="TZS"
+              precision={0}
+              styles={{
+                content: {
+                  color: (summary?.total_profit_per_day || 0) >= 0 ? "#52c41a" : "#ff4d4f",
                 }
               }}
             />

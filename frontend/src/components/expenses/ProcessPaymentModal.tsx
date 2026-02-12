@@ -11,6 +11,7 @@ import {
     Row,
     Col,
     DatePicker,
+    Space,
     Table,
     Typography,
     Tabs,
@@ -51,12 +52,15 @@ interface AttachmentInfo {
     url: string | null;
 }
 
+// Simplified Icon Logic - Cleaner, uniform look
 function getFileIcon(filename: string) {
     const lower = filename.toLowerCase();
-    if (lower.endsWith(".pdf")) return <FilePdfOutlined style={{ color: "#ff4d4f", fontSize: 20 }} />;
-    if (lower.match(/\.(jpe?g|png|gif|webp)$/)) return <FileImageOutlined style={{ color: "#1890ff", fontSize: 20 }} />;
-    if (lower.match(/\.(docx?)$/)) return <FileWordOutlined style={{ color: "#2f54eb", fontSize: 20 }} />;
-    return <FileUnknownOutlined style={{ fontSize: 20 }} />;
+    const style = { color: "#8c8c8c", fontSize: 18 }; // Uniform grey for less noise
+    
+    if (lower.endsWith(".pdf")) return <FilePdfOutlined style={{ ...style, color: "#ff4d4f" }} />; // Keep PDF red as it's standard
+    if (lower.match(/\.(jpe?g|png|gif|webp)$/)) return <FileImageOutlined style={style} />;
+    if (lower.match(/\.(docx?)$/)) return <FileWordOutlined style={style} />;
+    return <FileUnknownOutlined style={style} />;
 }
 
 export function ProcessPaymentModal({ open, onClose, onSuccess, expense }: ProcessPaymentModalProps) {
@@ -163,7 +167,7 @@ export function ProcessPaymentModal({ open, onClose, onSuccess, expense }: Proce
             dataIndex: "key",
             width: 50,
             align: "center" as const,
-            render: (_: any, __: any, index: number) => index + 1,
+            render: (_: any, __: any, index: number) => <Text type="secondary">{index + 1}</Text>,
         },
         {
             title: "Payment Item",
@@ -172,7 +176,7 @@ export function ProcessPaymentModal({ open, onClose, onSuccess, expense }: Proce
             ellipsis: { showTitle: false },
             render: (text: string) => (
                 <Tooltip placement="topLeft" title={text} styles={{ root: { maxWidth: 400 } }}>
-                    <span style={{ cursor: "pointer" }}>{text || "-"}</span>
+                    <Text strong>{text || "-"}</Text>
                 </Tooltip>
             ),
         },
@@ -180,7 +184,7 @@ export function ProcessPaymentModal({ open, onClose, onSuccess, expense }: Proce
             title: "Category",
             dataIndex: "category",
             width: 100,
-            render: (cat: string) => <Tag color="blue">{cat}</Tag>,
+            render: (cat: string) => <Tag color="default" style={{ borderColor: '#d9d9d9', color: '#595959' }}>{cat}</Tag>,
         },
         {
             title: "Amount",
@@ -188,7 +192,7 @@ export function ProcessPaymentModal({ open, onClose, onSuccess, expense }: Proce
             width: 120,
             align: "right" as const,
             render: (amount: number) => (
-                <Text strong>
+                <Text>
                     {Number(amount).toLocaleString()}
                 </Text>
             ),
@@ -197,11 +201,13 @@ export function ProcessPaymentModal({ open, onClose, onSuccess, expense }: Proce
             title: "Currency",
             dataIndex: "currency",
             width: 80,
+            render: (curr: string) => <Text type="secondary">{curr}</Text>
         },
         {
             title: "Invoice State",
             dataIndex: "invoice_state",
             width: 120,
+            render: (state: string) => <Text style={{ fontSize: 12 }}>{state}</Text>
         },
         {
             title: "Details",
@@ -210,7 +216,7 @@ export function ProcessPaymentModal({ open, onClose, onSuccess, expense }: Proce
             ellipsis: { showTitle: false },
             render: (text: string) => (
                 <Tooltip placement="topLeft" title={text} styles={{ root: { maxWidth: 400 } }}>
-                    <span style={{ cursor: "pointer" }}>{text || "-"}</span>
+                    <span style={{ color: '#8c8c8c', cursor: "pointer" }}>{text || "-"}</span>
                 </Tooltip>
             ),
         },
@@ -218,7 +224,7 @@ export function ProcessPaymentModal({ open, onClose, onSuccess, expense }: Proce
             title: "Ex. Rate",
             dataIndex: "exchange_rate",
             width: 80,
-            render: (rate: number) => rate || "-",
+            render: (rate: number) => rate ? <Text type="secondary">{rate}</Text> : "-",
         },
         {
             title: "Remarks",
@@ -232,67 +238,71 @@ export function ProcessPaymentModal({ open, onClose, onSuccess, expense }: Proce
         },
     ];
 
-    // Expense Summary Section
+    // Expense Summary Section - Cleaner, Lighter
     const ExpenseSummary = (
-        <div style={{ marginBottom: 20, padding: 16, background: "#fafafa", borderRadius: 8, border: "1px solid #e8e8e8" }}>
+        <div style={{ marginBottom: 24, padding: "16px 24px", background: "#ffffff", borderRadius: 8, border: "1px solid #f0f0f0" }}>
             <Descriptions
-                title={<Text strong><FileTextOutlined style={{ marginRight: 8 }} />Expense Details</Text>}
-                bordered
+                title={<Text strong style={{ fontSize: 15 }}>Expense Details</Text>}
                 size="small"
                 column={{ xs: 1, sm: 2, md: 3 }}
+                styles={{ label: { color: '#8c8c8c' } }} // Muted labels
             >
                 <Descriptions.Item label="Expense Number">
-                    <Text strong style={{ color: "#1890ff" }}>{expense.expense_number || "N/A"}</Text>
-                </Descriptions.Item>
-                <Descriptions.Item label="Category">
-                    <Tag color="blue">{expense.category}</Tag>
+                    <Text copyable style={{ color: "#D4AF37", fontWeight: 600 }}>{expense.expense_number || "N/A"}</Text>
                 </Descriptions.Item>
                 <Descriptions.Item label="Status">
-                    <Tag color="gold">{expense.status}</Tag>
+                    <Tag color="gold" bordered={false}>{expense.status}</Tag>
                 </Descriptions.Item>
-                <Descriptions.Item label={<><UserOutlined /> Initiated By</>}>
-                    <Text strong>{expense.created_by?.full_name || expense.created_by?.username || "Unknown"}</Text>
-                    <br />
-                    <Text type="secondary" style={{ fontSize: 12 }}>
-                        {expense.created_at ? dayjs(expense.created_at).format("YYYY-MM-DD HH:mm") : ""}
+                <Descriptions.Item label="Amount">
+                    <Text strong style={{ fontSize: 16 }}>
+                        {expense.currency || "TZS"} {expense.amount.toLocaleString()}
                     </Text>
                 </Descriptions.Item>
-                <Descriptions.Item label={<><CheckCircleOutlined /> Approved By</>}>
+                
+                <Descriptions.Item label="Initiated By">
+                    <Space size={4}>
+                        <UserOutlined style={{ color: '#bfbfbf' }} />
+                        <Text>{expense.created_by?.full_name || expense.created_by?.username || "Unknown"}</Text>
+                        <Text type="secondary" style={{ fontSize: 11, marginLeft: 4 }}>
+                            {expense.created_at ? dayjs(expense.created_at).format("MMM D, HH:mm") : ""}
+                        </Text>
+                    </Space>
+                </Descriptions.Item>
+                
+                <Descriptions.Item label="Approved By">
                     {expense.approved_by ? (
-                        <>
-                            <Text strong style={{ color: "#52c41a" }}>
+                        <Space size={4}>
+                            <CheckCircleOutlined style={{ color: '#52c41a' }} />
+                            <Text>
                                 {expense.approved_by.full_name || expense.approved_by.username}
                             </Text>
-                            <br />
-                            <Text type="secondary" style={{ fontSize: 12 }}>
-                                {expense.approved_at ? dayjs(expense.approved_at).format("YYYY-MM-DD HH:mm") : ""}
+                            <Text type="secondary" style={{ fontSize: 11, marginLeft: 4 }}>
+                                {expense.approved_at ? dayjs(expense.approved_at).format("MMM D, HH:mm") : ""}
                             </Text>
-                        </>
+                        </Space>
                     ) : (
                         <Text type="secondary">-</Text>
                     )}
                 </Descriptions.Item>
-                <Descriptions.Item label="Amount">
-                    <Text strong style={{ fontSize: 16, color: "#52c41a" }}>
-                        {expense.currency || "TZS"} {expense.amount.toLocaleString()}
-                    </Text>
-                </Descriptions.Item>
+
                 {isTripExpense && (
-                    <Descriptions.Item label={<><CarOutlined /> Trip</>}>
-                        <Text strong>{tripNumber || expense.trip_id}</Text>
+                    <Descriptions.Item label="Trip">
+                        <Space>
+                            <CarOutlined style={{ color: '#bfbfbf' }} />
+                            <Text>{tripNumber || expense.trip_id}</Text>
+                        </Space>
                     </Descriptions.Item>
                 )}
+                
                 <Descriptions.Item label="Description" span={isTripExpense ? 2 : 3}>
-                    <Paragraph
-                        style={{ margin: 0, maxWidth: 500 }}
-                        ellipsis={{ rows: 2, expandable: true, symbol: "more" }}
-                    >
-                        {expense.description || "-"}
-                    </Paragraph>
+                    <Text type="secondary">{expense.description || "-"}</Text>
                 </Descriptions.Item>
+                
                 {expense.manager_comment && (
                     <Descriptions.Item label="Manager Comment" span={3}>
-                        <Text type="warning">{expense.manager_comment}</Text>
+                        <div style={{ padding: '8px 12px', background: '#fffbe6', border: '1px solid #ffe58f', borderRadius: 4, width: '100%' }}>
+                             <Text type="warning">{expense.manager_comment}</Text>
+                        </div>
                     </Descriptions.Item>
                 )}
             </Descriptions>
