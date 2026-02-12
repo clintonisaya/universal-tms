@@ -10,19 +10,19 @@ const themeConfig: ThemeConfig = {
         fontSizeHeading3: 18,
         fontSizeHeading4: 15,
         fontSizeHeading5: 14, // Slightly larger for emphasis
-        
+
         // Brand Colors
         colorPrimary: '#D4AF37', // Brand Gold
         colorInfo: '#D4AF37',
-        
+
         // Neutralizing Text for better readability
         colorTextBase: '#262626', // Slightly softer black
         colorTextSecondary: '#595959',
-        
+
         // Modernizing Structure
         fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
         borderRadius: 6, // 6px is a sweet spot between "boxy" (4px) and "round" (8px)
-        
+
         // Spacing - controlling density
         controlHeight: 34, // Slightly taller than default compact (24/32) for better touch/click targets
     },
@@ -43,7 +43,7 @@ const themeConfig: ThemeConfig = {
         },
         Card: {
             headerFontSize: 14,
-            headerFontWeight: 600,
+
             borderRadiusLG: 8, // Slightly softer cards
         },
         Button: {
@@ -67,7 +67,7 @@ const themeConfig: ThemeConfig = {
             titleFontSize: 16,
         },
         Tag: {
-             borderRadiusSM: 4,
+            borderRadiusSM: 4,
         }
     },
     // Keeping compact algorithm for data density, but our token overrides will refine it
