@@ -62,6 +62,7 @@ export interface ExpenseRequest {
   approved_by_id?: string | null;
   approved_at?: string | null;
   expense_metadata?: ExpenseMetadata | null;
+  attachments?: string[];
   created_by_id: string;
   created_at: string | null;
   updated_at: string | null;

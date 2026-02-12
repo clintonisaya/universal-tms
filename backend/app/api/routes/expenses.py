@@ -6,12 +6,13 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, UploadFile, File
 from sqlmodel import func, select
 from sqlalchemy.orm import selectinload
 
 from app.api.deps import CurrentUser, SessionDep
 from app.core.socket import sio
+from app.core.storage import storage
 from app.models import (
     ExpenseCategory,
     ExpensePayment,
@@ -542,6 +543,157 @@ async def process_payment(
     })
 
     return expense
+
+
+@router.post("/{id}/attachment", response_model=ExpenseRequestPublic)
+async def upload_attachment(
+    *,
+    session: SessionDep,
+    current_user: CurrentUser,
+    id: uuid.UUID,
+    file: UploadFile = File(...),
+) -> Any:
+    """
+    Upload an attachment for an expense request.
+    
+    - Validates expense exists and user can modify it
+    - Generates unique filename to prevent overwrites
+    - Uploads to Cloudflare R2
+    - Updates attachment_url in database
+    """
+    expense = session.get(ExpenseRequest, id)
+    if not expense:
+        raise HTTPException(status_code=404, detail="Expense not found")
+
+    # Check if associated trip is closed (Completed/Cancelled)
+    if expense.trip_id:
+        check_trip_not_closed(session, expense.trip_id)
+
+    # Check permissions (same as modify)
+    if not can_modify_expense(expense, current_user):
+        raise HTTPException(
+            status_code=403,
+            detail="Can only add attachments when status is 'Pending Manager' and you are the creator"
+        )
+    
+    # Generate unique filename: expense_id/uuid_filename (prevents overwrites)
+    unique_id = uuid.uuid4().hex[:8]
+    clean_filename = file.filename.replace(" ", "_") if file.filename else "attachment"
+    object_name = f"expenses/{expense.id}/{unique_id}_{clean_filename}"
+
+    # Validate file size (max 3MB)
+    content = await file.read()
+    max_size = 3 * 1024 * 1024  # 3MB
+    if len(content) > max_size:
+        raise HTTPException(status_code=400, detail="File size exceeds 3MB limit")
+
+    # Validate file type
+    allowed_types = [
+        "application/pdf",
+        "image/jpeg", "image/png", "image/gif", "image/webp",
+        "application/msword",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    ]
+    if file.content_type and file.content_type not in allowed_types:
+        raise HTTPException(
+            status_code=400,
+            detail=f"File type '{file.content_type}' not allowed. Supported: PDF, images, Word documents."
+        )
+
+    # Upload to R2
+    uploaded_key = storage.upload_file(content, object_name, file.content_type)
+    
+    if not uploaded_key:
+        raise HTTPException(status_code=500, detail="Failed to upload file to storage")
+        
+    # Construct URL (assuming public access or using R2 dev URL)
+    # For private buckets, we might want to store the key and generate presigned URLs on read.
+    # Here we store the key as the URL reference or the full public URL if configured.
+    # Given the requirements, I'll store the key/path.
+    
+    # Append to attachments list (create new list to trigger change detection)
+    current_attachments = list(expense.attachments) if expense.attachments else []
+    current_attachments.append(uploaded_key)
+    expense.attachments = current_attachments
+    
+    expense.updated_at = datetime.now(timezone.utc)
+    
+    session.add(expense)
+    session.commit()
+    session.refresh(expense)
+    
+    return expense
+
+
+@router.get("/{id}/attachments")
+def get_attachment_urls(
+    *,
+    session: SessionDep,
+    current_user: CurrentUser,
+    id: uuid.UUID,
+) -> Any:
+    """
+    Get presigned URLs for all attachments of an expense.
+    Returns a list of objects with key, filename, and url.
+    """
+    expense = session.get(ExpenseRequest, id)
+    if not expense:
+        raise HTTPException(status_code=404, detail="Expense not found")
+
+    if not can_view_expense(expense, current_user):
+        raise HTTPException(status_code=403, detail="Not authorized to view this expense")
+
+    attachments = expense.attachments or []
+    result = []
+    for key in attachments:
+        url = storage.get_presigned_url(key, expiration=3600)
+        # Extract readable filename from the key
+        filename = key.split("/")[-1] if "/" in key else key
+        # Remove timestamp prefix (YYYYMMDDHHmmss_)
+        if len(filename) > 15 and filename[14] == "_":
+            filename = filename[15:]
+        result.append({"key": key, "filename": filename, "url": url})
+
+    return result
+
+
+@router.delete("/{id}/attachment")
+def delete_attachment(
+    *,
+    session: SessionDep,
+    current_user: CurrentUser,
+    id: uuid.UUID,
+    key: str = Query(..., description="Object key of the attachment to delete"),
+) -> Message:
+    """
+    Delete a specific attachment from an expense.
+    Removes from R2 storage and updates the database.
+    """
+    expense = session.get(ExpenseRequest, id)
+    if not expense:
+        raise HTTPException(status_code=404, detail="Expense not found")
+
+    if not can_modify_expense(expense, current_user):
+        raise HTTPException(
+            status_code=403,
+            detail="Can only remove attachments when status is 'Pending Manager' and you are the creator"
+        )
+
+    current_attachments = list(expense.attachments) if expense.attachments else []
+    if key not in current_attachments:
+        raise HTTPException(status_code=404, detail="Attachment not found")
+
+    # Delete from R2
+    storage.delete_file(key)
+
+    # Remove from database
+    current_attachments.remove(key)
+    expense.attachments = current_attachments
+    expense.updated_at = datetime.now(timezone.utc)
+    session.add(expense)
+    session.commit()
+
+    return Message(message="Attachment deleted successfully")
 
 
 @router.delete("/{id}")

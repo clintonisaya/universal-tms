@@ -10,7 +10,7 @@ import {
   Modal,
   Form,
   Input,
-  message,
+  App,
   Typography,
   Spin,
   Popconfirm,
@@ -45,6 +45,7 @@ const { TextArea } = Input;
 export default function OfficeExpenseTypesPage() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
+  const { message } = App.useApp();
   
   // TanStack Query
   const { data, isLoading: loading, refetch } = useOfficeExpenseTypes(false); // Fetch all (active and inactive)

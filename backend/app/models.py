@@ -584,6 +584,7 @@ class ExpenseRequestBase(SQLModel):
     approved_by_id: uuid.UUID | None = Field(default=None, foreign_key="users.id", description="User who approved the expense")
     approved_at: datetime | None = Field(default=None, sa_type=DateTime(timezone=True), description="Date expense was approved")
     expense_metadata: dict | None = Field(default=None, description="Additional expense metadata (item details, payment info, etc.)")
+    attachments: list[str] = Field(default=[], description="List of URLs for attached receipts/documents")
 
 
 # Properties to receive on creation
@@ -612,6 +613,7 @@ class ExpenseRequest(ExpenseRequestBase, table=True):
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     amount: Decimal = Field(sa_column=Column(Numeric(12, 2), nullable=False))
     expense_metadata: dict | None = Field(default=None, sa_column=Column(JSON))
+    attachments: list[str] = Field(default=[], sa_column=Column(JSON))
     created_by_id: uuid.UUID = Field(foreign_key="users.id", description="User who created the expense")
     created_at: datetime | None = Field(
         default_factory=get_datetime_utc,

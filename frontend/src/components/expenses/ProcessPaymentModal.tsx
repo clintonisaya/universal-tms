@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
     Modal,
     Form,
@@ -17,8 +17,22 @@ import {
     Tooltip,
     Descriptions,
     Tag,
+    List,
+    Spin,
+    Empty,
 } from "antd";
-import { UserOutlined, FileTextOutlined, CarOutlined, CheckCircleOutlined } from "@ant-design/icons";
+import {
+    UserOutlined,
+    FileTextOutlined,
+    CarOutlined,
+    CheckCircleOutlined,
+    PaperClipOutlined,
+    DownloadOutlined,
+    FilePdfOutlined,
+    FileImageOutlined,
+    FileWordOutlined,
+    FileUnknownOutlined,
+} from "@ant-design/icons";
 import type { ExpenseRequestDetailed } from "@/types/expense";
 import dayjs from "dayjs";
 
@@ -31,13 +45,56 @@ interface ProcessPaymentModalProps {
     expense: ExpenseRequestDetailed | null;
 }
 
+interface AttachmentInfo {
+    key: string;
+    filename: string;
+    url: string | null;
+}
+
+function getFileIcon(filename: string) {
+    const lower = filename.toLowerCase();
+    if (lower.endsWith(".pdf")) return <FilePdfOutlined style={{ color: "#ff4d4f", fontSize: 20 }} />;
+    if (lower.match(/\.(jpe?g|png|gif|webp)$/)) return <FileImageOutlined style={{ color: "#1890ff", fontSize: 20 }} />;
+    if (lower.match(/\.(docx?)$/)) return <FileWordOutlined style={{ color: "#2f54eb", fontSize: 20 }} />;
+    return <FileUnknownOutlined style={{ fontSize: 20 }} />;
+}
+
 export function ProcessPaymentModal({ open, onClose, onSuccess, expense }: ProcessPaymentModalProps) {
     const { message } = App.useApp();
     const [form] = Form.useForm();
     const [submitting, setSubmitting] = useState(false);
+    const [attachments, setAttachments] = useState<AttachmentInfo[]>([]);
+    const [attachmentsLoading, setAttachmentsLoading] = useState(false);
 
     // Watch Payment Method for conditional fields
     const paymentMethod = Form.useWatch("method", form);
+
+    // Fetch attachment presigned URLs when modal opens
+    useEffect(() => {
+        if (open && expense?.id && expense.attachments && expense.attachments.length > 0) {
+            const fetchAttachments = async () => {
+                setAttachmentsLoading(true);
+                try {
+                    const response = await fetch(`/api/v1/expenses/${expense.id}/attachments`, {
+                        credentials: "include",
+                    });
+                    if (response.ok) {
+                        const data = await response.json();
+                        setAttachments(data);
+                    } else {
+                        setAttachments([]);
+                    }
+                } catch {
+                    setAttachments([]);
+                } finally {
+                    setAttachmentsLoading(false);
+                }
+            };
+            fetchAttachments();
+        } else {
+            setAttachments([]);
+        }
+    }, [open, expense?.id, expense?.attachments]);
 
     // Return early but still render the Modal shell to keep form connected
     if (!expense) {
@@ -114,7 +171,7 @@ export function ProcessPaymentModal({ open, onClose, onSuccess, expense }: Proce
             width: 200,
             ellipsis: { showTitle: false },
             render: (text: string) => (
-                <Tooltip placement="topLeft" title={text} overlayStyle={{ maxWidth: 400 }}>
+                <Tooltip placement="topLeft" title={text} styles={{ root: { maxWidth: 400 } }}>
                     <span style={{ cursor: "pointer" }}>{text || "-"}</span>
                 </Tooltip>
             ),
@@ -152,7 +209,7 @@ export function ProcessPaymentModal({ open, onClose, onSuccess, expense }: Proce
             width: 180,
             ellipsis: { showTitle: false },
             render: (text: string) => (
-                <Tooltip placement="topLeft" title={text} overlayStyle={{ maxWidth: 400 }}>
+                <Tooltip placement="topLeft" title={text} styles={{ root: { maxWidth: 400 } }}>
                     <span style={{ cursor: "pointer" }}>{text || "-"}</span>
                 </Tooltip>
             ),
@@ -168,7 +225,7 @@ export function ProcessPaymentModal({ open, onClose, onSuccess, expense }: Proce
             dataIndex: "remarks",
             ellipsis: { showTitle: false },
             render: (text: string) => text ? (
-                <Tooltip placement="topLeft" title={text} overlayStyle={{ maxWidth: 400 }}>
+                <Tooltip placement="topLeft" title={text} styles={{ root: { maxWidth: 400 } }}>
                     <span style={{ cursor: "pointer" }}>{text}</span>
                 </Tooltip>
             ) : "-",
@@ -380,10 +437,60 @@ export function ProcessPaymentModal({ open, onClose, onSuccess, expense }: Proce
                         },
                         {
                             key: "2",
-                            label: "Attachment Manage",
+                            label: (
+                                <span>
+                                    <PaperClipOutlined /> Attachments
+                                    {expense.attachments && expense.attachments.length > 0 && (
+                                        <Tag color="blue" style={{ marginLeft: 6 }}>{expense.attachments.length}</Tag>
+                                    )}
+                                </span>
+                            ),
                             children: (
-                                <div style={{ padding: 20, textAlign: "center" }}>
-                                    Attachment upload functionality coming soon.
+                                <div style={{ padding: 20 }}>
+                                    {attachmentsLoading ? (
+                                        <div style={{ textAlign: "center", padding: 40 }}>
+                                            <Spin tip="Loading attachments..." />
+                                        </div>
+                                    ) : attachments.length === 0 ? (
+                                        <Empty description="No attachments" />
+                                    ) : (
+                                        <List
+                                            dataSource={attachments}
+                                            renderItem={(item) => (
+                                                <List.Item
+                                                    actions={[
+                                                        item.url ? (
+                                                            <Button
+                                                                key="download"
+                                                                type="link"
+                                                                icon={<DownloadOutlined />}
+                                                                href={item.url}
+                                                                target="_blank"
+                                                                rel="noopener noreferrer"
+                                                            >
+                                                                Download
+                                                            </Button>
+                                                        ) : (
+                                                            <Text key="unavailable" type="secondary">Unavailable</Text>
+                                                        ),
+                                                    ]}
+                                                >
+                                                    <List.Item.Meta
+                                                        avatar={getFileIcon(item.filename)}
+                                                        title={
+                                                            item.url ? (
+                                                                <a href={item.url} target="_blank" rel="noopener noreferrer">
+                                                                    {item.filename}
+                                                                </a>
+                                                            ) : (
+                                                                item.filename
+                                                            )
+                                                        }
+                                                    />
+                                                </List.Item>
+                                            )}
+                                        />
+                                    )}
                                 </div>
                             ),
                         },
