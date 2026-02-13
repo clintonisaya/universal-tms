@@ -458,7 +458,15 @@ export function TripPaymentPrintLayout({
                   </tr>
                   <tr>
                     <td className="label" style={{ width: "35%", fontWeight: 600, background: "#f9f9f9", padding: "6px 10px", border: "1px solid #ccc" }}>Payment Method</td>
-                    <td className="value" style={{ padding: "6px 10px", border: "1px solid #ccc" }}>{expense.payment_method || "Cash"}</td>
+                    <td className="value" style={{ padding: "6px 10px", border: "1px solid #ccc" }}>{expense.payment_method || expense.expense_metadata?.payment_method || "Cash"}</td>
+                  </tr>
+                  <tr>
+                    <td className="label" style={{ width: "35%", fontWeight: 600, background: "#f9f9f9", padding: "6px 10px", border: "1px solid #ccc" }}>Bank Account</td>
+                    <td className="value" style={{ padding: "6px 10px", border: "1px solid #ccc" }}>
+                      {expense.expense_metadata?.bank_details ?
+                        `${expense.expense_metadata.bank_details.bank_name || '-'} - ${expense.expense_metadata.bank_details.account_name || '-'} - ${expense.expense_metadata.bank_details.account_no || '-'}`
+                        : "-"}
+                    </td>
                   </tr>
                   <tr>
                     <td className="label" style={{ width: "35%", fontWeight: 600, background: "#f9f9f9", padding: "6px 10px", border: "1px solid #ccc" }}>Route</td>
@@ -466,44 +474,6 @@ export function TripPaymentPrintLayout({
                   </tr>
                 </tbody>
               </table>
-
-              {/* Bank Details - Show only for Transfer */}
-              {expense.payment_method === "TRANSFER" && (
-                <>
-                  <div className="section-title" style={{
-                    fontSize: "10pt",
-                    fontWeight: "bold",
-                    textTransform: "uppercase",
-                    background: "#f0f0f0",
-                    padding: "5px 10px",
-                    margin: "15px 0 10px 0",
-                    borderLeft: "3px solid #333",
-                  }}>
-                    Bank Details
-                  </div>
-                  <div className="bank-details" style={{
-                    border: "2px solid #333",
-                    padding: "12px",
-                    margin: "0 0 15px 0",
-                    background: "#fafafa",
-                  }}>
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "10px" }}>
-                      <div>
-                        <label style={{ display: "block", fontSize: "9pt", color: "#666" }}>Bank Name</label>
-                        <span style={{ fontWeight: 600 }}>{expense.expense_metadata?.bank_details?.bank_name || "-"}</span>
-                      </div>
-                      <div>
-                        <label style={{ display: "block", fontSize: "9pt", color: "#666" }}>Account Name</label>
-                        <span style={{ fontWeight: 600 }}>{expense.expense_metadata?.bank_details?.account_name || "-"}</span>
-                      </div>
-                      <div>
-                        <label style={{ display: "block", fontSize: "9pt", color: "#666" }}>Account Number</label>
-                        <span style={{ fontWeight: 600 }}>{expense.expense_metadata?.bank_details?.account_no || "-"}</span>
-                      </div>
-                    </div>
-                  </div>
-                </>
-              )}
 
               {/* Remarks */}
               <div className="section-title" style={{

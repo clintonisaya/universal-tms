@@ -527,6 +527,22 @@ async def process_payment(
     expense.payment_reference = payment_in.reference
     expense.payment_date = datetime.now(timezone.utc)
     expense.paid_by_id = current_user.id
+    
+    # Update bank details in metadata if provided (for any payment method)
+    if payment_in.bank_name or payment_in.account_name or payment_in.account_no:
+        current_metadata = dict(expense.expense_metadata) if expense.expense_metadata else {}
+        bank_details = current_metadata.get("bank_details", {})
+
+        if payment_in.bank_name:
+            bank_details["bank_name"] = payment_in.bank_name
+        if payment_in.account_name:
+            bank_details["account_name"] = payment_in.account_name
+        if payment_in.account_no:
+            bank_details["account_no"] = payment_in.account_no
+
+        current_metadata["bank_details"] = bank_details
+        expense.expense_metadata = current_metadata
+
     expense.updated_at = datetime.now(timezone.utc)
 
     session.add(expense)

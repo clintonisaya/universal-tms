@@ -663,6 +663,9 @@ class ExpensePayment(SQLModel):
     """Schema for processing a payment - Story 2.4"""
     method: PaymentMethod = Field(description="Payment method: CASH or TRANSFER")
     reference: str | None = Field(default=None, max_length=255, description="Reference number (required for TRANSFER)")
+    bank_name: str | None = Field(default=None, max_length=255, description="Bank name")
+    account_name: str | None = Field(default=None, max_length=255, description="Account holder name")
+    account_no: str | None = Field(default=None, max_length=100, description="Bank account number")
 
 
 # ============================================================================

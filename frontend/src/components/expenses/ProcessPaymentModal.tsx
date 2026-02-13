@@ -244,7 +244,7 @@ export function ProcessPaymentModal({ open, onClose, onSuccess, expense }: Proce
             <Descriptions
                 title={<Text strong style={{ fontSize: 15 }}>Expense Details</Text>}
                 size="small"
-                column={{ xs: 1, sm: 2, md: 3 }}
+                column={3}
                 styles={{ label: { color: '#8c8c8c' } }} // Muted labels
             >
                 <Descriptions.Item label="Expense Number">
@@ -341,7 +341,7 @@ export function ProcessPaymentModal({ open, onClose, onSuccess, expense }: Proce
                             label="Payment Method"
                             name="method"
                             rules={[{ required: true, message: "Required" }]}
-                            initialValue="CASH"
+                            initialValue={expense.expense_metadata?.payment_method?.toUpperCase() === "TRANSFER" ? "TRANSFER" : "CASH"}
                             style={{ marginBottom: 0 }}
                         >
                             <Select>
@@ -372,26 +372,24 @@ export function ProcessPaymentModal({ open, onClose, onSuccess, expense }: Proce
                     </Col>
                 </Row>
 
-                {/* Conditional Bank Details */}
-                {paymentMethod === "TRANSFER" && (
-                    <Row gutter={[16, 8]} style={{ marginTop: 12 }}>
-                        <Col xs={24} sm={8}>
-                            <Form.Item label="Bank Name" name="bank_name" style={{ marginBottom: 0 }}>
-                                <Input placeholder="Bank Name" />
-                            </Form.Item>
-                        </Col>
-                        <Col xs={24} sm={8}>
-                            <Form.Item label="Account Name" name="account_name" style={{ marginBottom: 0 }}>
-                                <Input placeholder="Account Name" />
-                            </Form.Item>
-                        </Col>
-                        <Col xs={24} sm={8}>
-                            <Form.Item label="Account No." name="account_no" style={{ marginBottom: 0 }}>
-                                <Input placeholder="Account Number" />
-                            </Form.Item>
-                        </Col>
-                    </Row>
-                )}
+                {/* Bank Details */}
+                <Row gutter={[16, 8]} style={{ marginTop: 12 }}>
+                    <Col xs={24} sm={8}>
+                        <Form.Item label="Bank Name" name="bank_name" initialValue={expense.expense_metadata?.bank_details?.bank_name} style={{ marginBottom: 0 }}>
+                            <Input placeholder="Bank Name" />
+                        </Form.Item>
+                    </Col>
+                    <Col xs={24} sm={8}>
+                        <Form.Item label="Account Name" name="account_name" initialValue={expense.expense_metadata?.bank_details?.account_name} style={{ marginBottom: 0 }}>
+                            <Input placeholder="Account Name" />
+                        </Form.Item>
+                    </Col>
+                    <Col xs={24} sm={8}>
+                        <Form.Item label="Account No." name="account_no" initialValue={expense.expense_metadata?.bank_details?.account_no} style={{ marginBottom: 0 }}>
+                            <Input placeholder="Account Number" />
+                        </Form.Item>
+                    </Col>
+                </Row>
             </div>
         </>
     );
@@ -420,6 +418,7 @@ export function ProcessPaymentModal({ open, onClose, onSuccess, expense }: Proce
             title={modalTitle}
             open={open}
             width={1100}
+            destroyOnHidden
             style={{ top: 20 }}
             styles={{ body: { maxHeight: "calc(100vh - 200px)", overflowY: "auto" } }}
             onCancel={() => {
@@ -434,7 +433,6 @@ export function ProcessPaymentModal({ open, onClose, onSuccess, expense }: Proce
                     Confirm Payment
                 </Button>,
             ]}
-            forceRender
         >
             <Form form={form} layout="vertical" onFinish={handleFinish}>
                 <Tabs
