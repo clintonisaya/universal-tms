@@ -1024,6 +1024,7 @@ class TripExpenseTypesPublic(SQLModel):
 
 class OfficeExpenseTypeBase(SQLModel):
     name: str = Field(unique=True, index=True, min_length=1, max_length=255, description="Office expense type name")
+    category: str = Field(min_length=1, max_length=100, description="Expense category (e.g., Office, Salary, Tax)")
     description: str | None = Field(default=None, max_length=500, description="Description")
     is_active: bool = Field(default=True, description="Whether this expense type is active")
 
@@ -1034,6 +1035,7 @@ class OfficeExpenseTypeCreate(OfficeExpenseTypeBase):
 
 class OfficeExpenseTypeUpdate(SQLModel):
     name: str | None = Field(default=None, min_length=1, max_length=255)
+    category: str | None = Field(default=None, min_length=1, max_length=100)
     description: str | None = Field(default=None, max_length=500)
     is_active: bool | None = Field(default=None)
 
@@ -1042,6 +1044,7 @@ class OfficeExpenseType(OfficeExpenseTypeBase, table=True):
     __tablename__ = "office_expense_type"
 
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    category: str = Field(index=True, max_length=100)
     created_at: datetime | None = Field(
         default_factory=get_datetime_utc,
         sa_type=DateTime(timezone=True),

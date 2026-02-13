@@ -59,7 +59,9 @@
       "Bash(git commit -m \"$\\(cat <<''EOF''\nfix: remove invalid Divider orientation prop breaking production build\n\nCo-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>\nEOF\n\\)\")",
       "Bash(dir:*)",
       "Bash(timeout:*)",
-      "Bash(git commit -m \"$\\(cat <<''EOF''\nfix: Show bank details for all payment methods and pre-fill from metadata\n\nBank details were hidden when payment method was Cash and the payment\nform didn''t pre-populate existing bank info from expense metadata.\n\nCo-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>\nEOF\n\\)\")"
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nfix: Show bank details for all payment methods and pre-fill from metadata\n\nBank details were hidden when payment method was Cash and the payment\nform didn''t pre-populate existing bank info from expense metadata.\n\nCo-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(set PYTHONPATH=C:UsersITDocumentsGitHubedupo-tmsbackend:*)",
+      "Bash(set:*)"
     ]
   }
 }

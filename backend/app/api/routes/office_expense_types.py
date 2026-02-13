@@ -27,10 +27,12 @@ def read_office_expense_types(
     current_user: CurrentUser,
     skip: int = 0,
     limit: int = 200,
+    category: str | None = None,
     active_only: bool = True,
 ) -> Any:
     """
     Retrieve all office expense types.
+    - Filter by category if provided
     - Filter by is_active if active_only=True (default)
     """
     query = select(OfficeExpenseType)
@@ -38,13 +40,31 @@ def read_office_expense_types(
     if active_only:
         query = query.where(OfficeExpenseType.is_active == True)
 
+    if category:
+        query = query.where(OfficeExpenseType.category == category)
+
     count_query = select(func.count()).select_from(query.subquery())
     count = session.exec(count_query).one()
 
-    statement = query.order_by(OfficeExpenseType.name).offset(skip).limit(limit)
+    statement = query.order_by(OfficeExpenseType.category, OfficeExpenseType.name).offset(skip).limit(limit)
     expense_types = session.exec(statement).all()
 
     return OfficeExpenseTypesPublic(data=expense_types, count=count)
+
+
+@router.get("/categories", response_model=list[str])
+def read_categories(
+    session: SessionDep,
+    current_user: CurrentUser,
+) -> Any:
+    """Get list of unique categories."""
+    statement = (
+        select(OfficeExpenseType.category)
+        .distinct()
+        .order_by(OfficeExpenseType.category)
+    )
+    categories = session.exec(statement).all()
+    return categories
 
 
 @router.get("/{id}", response_model=OfficeExpenseTypePublic)
@@ -144,23 +164,149 @@ def seed_office_expense_types(
     current_user: CurrentUser,
 ) -> Any:
     """
-    Seed the database with standard office expense types.
+    Seed the database with standard office expense types from office-cost.txt.
+    Only creates entries that don't already exist.
     """
     seed_data = [
-        "Office Rent",
-        "Electricity",
-        "Water Bill",
-        "Internet",
-        "Stationery",
-        "Staff Welfare",
-        "Cleaning",
-        "Security",
-        "Kitchen Supplies",
-        "Repair & Maintenance",
+        # Assets
+        ("Assets", "Assets"),
+
+        # Bond
+        ("CB11", "Bond"),
+        ("IM8", "Bond"),
+        ("CB6", "Bond"),
+        ("CB4", "Bond"),
+        ("CB3", "Bond"),
+
+        # Certificate
+        ("Certificate", "Certificate"),
+        ("ID", "Certificate"),
+
+        # Client Treatment Fee
+        ("Client Treatment Fee", "Client Treatment Fee"),
+
+        # Company License
+        ("Other Company License", "Company License"),
+        ("Transporter Of Goods", "Company License"),
+        ("Goverment Chemist Laboratory Authority", "Company License"),
+        ("DRC Carrier License", "Company License"),
+        ("Zambia Carrier License", "Company License"),
+        ("Business License-Logidtics", "Company License"),
+        ("Tax Clearance", "Company License"),
+        ("Goods In Transit(GIT)", "Company License"),
+        ("Transporter Association (TATOA)", "Company License"),
+        ("Business Licence-Trailers", "Company License"),
+
+        # Construction
+        ("Yard Maintenance", "Construction"),
+        ("Construction", "Construction"),
+
+        # Equipment Rental
+        ("Equipment Others", "Equipment Rental"),
+        ("Equipment Tips", "Equipment Rental"),
+        ("Equipment Maintainance", "Equipment Rental"),
+        ("Equipment Driver Allowance", "Equipment Rental"),
+        ("Equipment Fuel", "Equipment Rental"),
+
+        # Facilitation
+        ("Facilitation", "Facilitation"),
+
+        # Financial Expenses
+        ("Loan", "Financial Expenses"),
+        ("Bank Service Fees", "Financial Expenses"),
+        ("Interest", "Financial Expenses"),
+
+        # Office
+        ("Dog Expenses", "Office"),
+        ("Generator Fuel", "Office"),
+        ("Labour Charges", "Office"),
+        ("Other Office Payments", "Office"),
+        ("Visa/Work Permit", "Office"),
+        ("ID/Photos", "Office"),
+        ("Telephone And Internet", "Office"),
+        ("Consulatancy Fee", "Office"),
+        ("Express Fee", "Office"),
+        ("IT Services", "Office"),
+        ("Office Supplies And Stationery", "Office"),
+
+        # Office Vehicles
+        ("Other Vehicle Expenses", "Office Vehicles"),
+        ("Maintainance", "Office Vehicles"),
+        ("Office Vehicles-Fuel", "Office Vehicles"),
+
+        # One Time Payment
+        ("Covid Certificate ( New Driver Go Into DRC From Zambia)", "One Time Payment"),
+        ("Vehicle Stamp Duty", "One Time Payment"),
+        ("First Pass The Mutaka Scanner", "One Time Payment"),
+
+        # Passport
+        ("Passport", "Passport"),
+
+        # Recurring Payment
+        ("Other Licences", "Recurring Payment"),
+        ("Safety Stickers", "Recurring Payment"),
+        ("Vehicle Inspection Report", "Recurring Payment"),
+        ("LATRA", "Recurring Payment"),
+        ("COMESA", "Recurring Payment"),
+        ("C28", "Recurring Payment"),
+        ("C40", "Recurring Payment"),
+
+        # Rent
+        ("TPA Service Fee", "Rent"),
+        ("Apartment Rent", "Rent"),
+        ("Truck Yard Rent", "Rent"),
+        ("TPA Rent", "Rent"),
+        ("Electricity Charges", "Rent"),
+
+        # Salary
+        ("Salary", "Salary"),
+        ("WCF", "Salary"),
+        ("Wages", "Salary"),
+        ("Project Bonus", "Salary"),
+        ("Staff Welfare", "Salary"),
+        ("City Transportation Fee", "Salary"),
+        ("NSSF", "Salary"),
+        ("NHIF", "Salary"),
+
+        # Tax
+        ("Other Tax", "Tax"),
+        ("Withholding Tax", "Tax"),
+        ("SDL", "Tax"),
+        ("VAT", "Tax"),
+        ("Stamp Duty", "Tax"),
+        ("PAYE", "Tax"),
+        ("Cooperate Tax", "Tax"),
+
+        # Transportation Costs
+        ("Bonus", "Transportation Costs"),
+        ("Driver Deduction", "Transportation Costs"),
+        ("Transportation Costs-Others", "Transportation Costs"),
+        ("Transportation Costs-Tips", "Transportation Costs"),
+        ("Parking Fee", "Transportation Costs"),
+        ("Bond", "Transportation Costs"),
+        ("CNPR Tax", "Transportation Costs"),
+        ("Council", "Transportation Costs"),
+        ("Agency Fee", "Transportation Costs"),
+        ("Port Fee", "Transportation Costs"),
+        ("Toll Gates", "Transportation Costs"),
+        ("Road Toll", "Transportation Costs"),
+        ("Cargo Charges", "Transportation Costs"),
+        ("Driver Allowance", "Transportation Costs"),
+        ("Fuel", "Transportation Costs"),
+
+        # Travel And Accomodation
+        ("Travel And Accomodation", "Travel And Accomodation"),
+
+        # Vehicle Purchase
+        ("Trailer Maintenance Fee", "Vehicle Purchase"),
+        ("Vehicle Purchase-Tips", "Vehicle Purchase"),
+        ("Clearance Fee", "Vehicle Purchase"),
+        ("Duty", "Vehicle Purchase"),
+        ("Vehicle Price", "Vehicle Purchase"),
     ]
 
     created_count = 0
-    for name in seed_data:
+    for name, category in seed_data:
         existing = session.exec(
             select(OfficeExpenseType).where(
                 func.lower(OfficeExpenseType.name) == name.lower()
@@ -168,7 +314,7 @@ def seed_office_expense_types(
         ).first()
 
         if not existing:
-            expense_type = OfficeExpenseType(name=name, is_active=True)
+            expense_type = OfficeExpenseType(name=name, category=category, is_active=True)
             session.add(expense_type)
             created_count += 1
 
