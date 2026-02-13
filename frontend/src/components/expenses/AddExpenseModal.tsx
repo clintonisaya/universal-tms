@@ -218,10 +218,26 @@ export function AddExpenseModal({
       }));
   }, [tripExpenseTypes, isTripExpense]);
 
-  // Flat office expense options
-  const officeExpenseOptions = useMemo(() => {
-    return officeExpenseTypes.map(t => ({ label: t.name, value: t.id }));
-  }, [officeExpenseTypes]);
+  // Group office expense types by category for the dropdown
+  const groupedOfficeExpenseOptions = useMemo(() => {
+    if (isTripExpense) return [];
+
+    const grouped: Record<string, OfficeExpenseType[]> = {};
+    officeExpenseTypes.forEach(type => {
+      const cat = type.category || "Other";
+      if (!grouped[cat]) {
+        grouped[cat] = [];
+      }
+      grouped[cat].push(type);
+    });
+
+    return Object.entries(grouped)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([category, types]) => ({
+        label: category,
+        options: types.map(t => ({ label: t.name, value: t.id }))
+      }));
+  }, [officeExpenseTypes, isTripExpense]);
 
   const handleAddRow = () => {
     const newData: ExpenseItem = {
@@ -422,7 +438,7 @@ export function AddExpenseModal({
           optionFilterProp="label"
           value={text}
           onChange={(val) => handleItemChange(record.key, "expense_type_id", val)}
-          options={isTripExpense ? groupedTripExpenseOptions : officeExpenseOptions as any}
+          options={isTripExpense ? groupedTripExpenseOptions : groupedOfficeExpenseOptions as any}
           loading={expenseTypesLoading}
         />
       ),

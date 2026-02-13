@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
   Table,
@@ -10,6 +10,7 @@ import {
   Modal,
   Form,
   Input,
+  Select,
   App,
   Typography,
   Spin,
@@ -46,7 +47,7 @@ export default function OfficeExpenseTypesPage() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
   const { message } = App.useApp();
-  
+
   // TanStack Query
   const { data, isLoading: loading, refetch } = useOfficeExpenseTypes(false); // Fetch all (active and inactive)
   const { invalidateOfficeExpenseTypes } = useInvalidateQueries();
@@ -63,9 +64,33 @@ export default function OfficeExpenseTypesPage() {
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
+  const [categories, setCategories] = useState<string[]>([]);
 
   const [createForm] = Form.useForm<OfficeExpenseTypeCreate>();
   const [editForm] = Form.useForm<OfficeExpenseTypeUpdate>();
+
+  // Fetch categories for the select dropdown
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const response = await fetch("/api/v1/office-expense-types/categories", {
+          credentials: "include",
+        });
+        if (response.ok) {
+          const data = await response.json();
+          setCategories(data);
+        }
+      } catch {
+        // fallback: extract from loaded data
+      }
+    };
+    fetchCategories();
+  }, [data]);
+
+  // Build unique categories from loaded data as fallback
+  const categoryOptions = categories.length > 0
+    ? categories
+    : [...new Set(expenseTypes.map(t => t.category).filter(Boolean))].sort();
 
   const handleCreate = async (values: OfficeExpenseTypeCreate) => {
     setSubmitting(true);
@@ -144,6 +169,7 @@ export default function OfficeExpenseTypesPage() {
     setEditingType(expenseType);
     editForm.setFieldsValue({
       name: expenseType.name,
+      category: expenseType.category,
       description: expenseType.description || undefined,
       is_active: expenseType.is_active,
     });
@@ -161,6 +187,17 @@ export default function OfficeExpenseTypesPage() {
         <div style={{ fontWeight: 600 }}>{text}</div>
       ),
       ...getColumnSearchProps("name"),
+    },
+    {
+      title: "Category",
+      dataIndex: "category",
+      key: "category",
+      width: 180,
+      sorter: (a, b) => a.category.localeCompare(b.category),
+      ...getColumnFilterProps(
+        "category",
+        categoryOptions.map(c => ({ text: c, value: c }))
+      ),
     },
     {
       title: "Description",
@@ -327,6 +364,22 @@ export default function OfficeExpenseTypesPage() {
           </Form.Item>
 
           <Form.Item
+            name="category"
+            label="Category"
+            rules={[
+              { required: true, message: "Please select or enter a category" },
+              { max: 100, message: "Category too long" },
+            ]}
+          >
+            <Select
+              showSearch
+              allowClear
+              placeholder="Select or type a category"
+              options={categoryOptions.map(c => ({ label: c, value: c }))}
+            />
+          </Form.Item>
+
+          <Form.Item
             name="description"
             label="Description"
             rules={[{ max: 500, message: "Description too long" }]}
@@ -385,6 +438,22 @@ export default function OfficeExpenseTypesPage() {
             ]}
           >
             <Input placeholder="e.g., Office Rent" />
+          </Form.Item>
+
+          <Form.Item
+            name="category"
+            label="Category"
+            rules={[
+              { required: true, message: "Please select or enter a category" },
+              { max: 100, message: "Category too long" },
+            ]}
+          >
+            <Select
+              showSearch
+              allowClear
+              placeholder="Select or type a category"
+              options={categoryOptions.map(c => ({ label: c, value: c }))}
+            />
           </Form.Item>
 
           <Form.Item
