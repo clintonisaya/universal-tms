@@ -54,28 +54,43 @@ development_status:
   epic-2: in-progress
   2-1-trip-creation-dispatch: review
   2-2-expense-request-submission: done
-  2-3-manager-approval-workflow: ready-for-dev
-  2-4-finance-payment-processing: ready-for-dev
-  2-5-voucher-printing: ready-for-dev
-  2-6-real-time-status-dashboard: in-progress
-  2-10-waybill-tracking.md: ready-for-dev
-  2-11-admin-settings: ready-for-dev
+  2-3-manager-approval-workflow: review
+  2-4-finance-payment-processing: review
+  2-5-voucher-printing: review
+  2-6-real-time-status-dashboard: review
+  2-7-waybill-management: review
+  2-8-transport-master-data: review
+  2-9-location-autocomplete-integration: review
+  2-10-waybill-tracking.md: review
+  2-11-admin-settings: review
   2-12-mass-operations: backlog
-  2-13-manual-location-update: ready-for-dev
-  2-14-multi-currency: ready-for-dev
-  2-15-expense-audit: ready-for-dev
-  2-16-sticky-pagination: ready-for-dev
-  2-17-tripexpense-id-format: ready-for-dev
-  2-18-standardize-tables: in-progress
+  2-13-manual-location-update: review
+  2-14-multi-currency: review
+  2-15-expense-audit: review
+  2-16-sticky-pagination: review
+  2-17-tripexpense-id-format: review
+  2-18-standardize-tables: review
   2-19-trip-expense-types: review
   2-20-expense-status-display: review
   2-21-expense-payment-application: review
   2-22-office-expense-types: review
+  2-22-financial-reports: review
+  2-23-unified-payment-process-form: review
+  2-24-dynamic-permissions: review
   epic-2-retrospective: optional
 
   # Epic 3: Maintenance & Office Overheads
   epic-3: in-progress
-  3-1-maintenance-event-logging: ready-for-dev
-  3-2-office-expense-management: ready-for-dev
-  3-3-asset-health-history: ready-for-dev
+  3-1-maintenance-event-logging: review
+  3-2-office-expense-management: review
+  3-3-asset-health-history: review
   epic-3-retrospective: optional
+
+  # Epic 4: Dashboard & User Experience
+  epic-4: in-progress
+  4-1-dashboard-functionality: review
+  4-2-dashboard-todo-lists: review
+  4-3-notification-center: review
+  4-4-adjustable-columns: review
+  4-5-client-settings: review
+  epic-4-retrospective: optional
