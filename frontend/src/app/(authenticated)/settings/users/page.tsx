@@ -62,7 +62,7 @@ interface UserCreate {
   permissions?: string[];
 }
 
-const ROLES = ["admin", "manager", "ops", "finance"];
+const ROLES = [ "manager", "ops", "finance"];
 
 const ROLE_FILTERS = ROLES.map((r) => ({ text: r.toUpperCase(), value: r }));
 
