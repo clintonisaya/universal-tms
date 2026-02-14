@@ -173,7 +173,7 @@ def get_financial_pulse(
     Returns:
     - daily_trend: Daily Net Profit for the last 30 days
     - monthly_stats: Income vs Expenses for current month
-    - expense_breakdown: Expenses by category (PAID only)
+    - expense_breakdown: Expenses by category (Approved + Paid)
 
     All values normalized to TZS (Base Currency).
     """
@@ -208,18 +208,19 @@ def get_financial_pulse(
     )
     revenue_rows = session.exec(revenue_stmt).all()
 
-    # Daily Expenses (PAID only)
-    # Use payment_date if available, otherwise fall back to created_at
+    # Daily Expenses (Approved: Pending Finance + Paid)
+    # Use approved_at > payment_date > created_at for the date
+    approved_statuses = [ExpenseStatus.pending_finance.value, ExpenseStatus.paid.value]
     expense_stmt = (
         select(
-            func.coalesce(func.date(ExpenseRequest.payment_date), func.date(ExpenseRequest.created_at)).label("date"),
+            func.coalesce(func.date(ExpenseRequest.approved_at), func.date(ExpenseRequest.payment_date), func.date(ExpenseRequest.created_at)).label("date"),
             ExpenseRequest.amount,
             ExpenseRequest.currency,
             ExpenseRequest.exchange_rate,
         )
-        .where(ExpenseRequest.status == ExpenseStatus.paid.value)
+        .where(ExpenseRequest.status.in_(approved_statuses))
         .where(
-            func.coalesce(ExpenseRequest.payment_date, ExpenseRequest.created_at) >= thirty_days_ago
+            func.coalesce(ExpenseRequest.approved_at, ExpenseRequest.payment_date, ExpenseRequest.created_at) >= thirty_days_ago
         )
     )
     expense_rows = session.exec(expense_stmt).all()
@@ -280,17 +281,16 @@ def get_financial_pulse(
     for row in monthly_revenue_rows:
         total_monthly_income += normalize_to_tzs(Decimal(str(row.agreed_rate)), row.currency, None, default_rate)
 
-    # Monthly Expenses (PAID only)
-    # Use payment_date if available, otherwise fall back to created_at
+    # Monthly Expenses (Approved: Pending Finance + Paid)
     monthly_expense_stmt = (
         select(
             ExpenseRequest.amount,
             ExpenseRequest.currency,
             ExpenseRequest.exchange_rate,
         )
-        .where(ExpenseRequest.status == ExpenseStatus.paid.value)
+        .where(ExpenseRequest.status.in_(approved_statuses))
         .where(
-            func.coalesce(ExpenseRequest.payment_date, ExpenseRequest.created_at) >= current_month_start
+            func.coalesce(ExpenseRequest.approved_at, ExpenseRequest.payment_date, ExpenseRequest.created_at) >= current_month_start
         )
     )
     monthly_expense_rows = session.exec(monthly_expense_stmt).all()
@@ -307,10 +307,9 @@ def get_financial_pulse(
     }
 
     # ============================================================
-    # 3. EXPENSE BREAKDOWN BY CATEGORY (PAID only)
+    # 3. EXPENSE BREAKDOWN BY CATEGORY (Approved: Pending Finance + Paid)
     # ============================================================
 
-    # Use payment_date if available, otherwise fall back to created_at
     expense_breakdown_stmt = (
         select(
             ExpenseRequest.category,
@@ -318,9 +317,9 @@ def get_financial_pulse(
             ExpenseRequest.currency,
             ExpenseRequest.exchange_rate,
         )
-        .where(ExpenseRequest.status == ExpenseStatus.paid.value)
+        .where(ExpenseRequest.status.in_(approved_statuses))
         .where(
-            func.coalesce(ExpenseRequest.payment_date, ExpenseRequest.created_at) >= current_month_start
+            func.coalesce(ExpenseRequest.approved_at, ExpenseRequest.payment_date, ExpenseRequest.created_at) >= current_month_start
         )
     )
     breakdown_rows = session.exec(expense_breakdown_stmt).all()
@@ -353,10 +352,10 @@ def get_financial_pulse(
         .join(Waybill, Waybill.id == Trip.waybill_id)
     ).one()
 
-    total_paid_expenses = session.exec(
+    total_approved_expenses = session.exec(
         select(func.count())
         .select_from(ExpenseRequest)
-        .where(ExpenseRequest.status == ExpenseStatus.paid.value)
+        .where(ExpenseRequest.status.in_(approved_statuses))
     ).one()
 
     return {
@@ -365,7 +364,7 @@ def get_financial_pulse(
         "expense_breakdown": expense_breakdown,
         "_debug": {
             "total_trips_with_waybills": total_trips_with_waybills,
-            "total_paid_expenses": total_paid_expenses,
+            "total_approved_expenses": total_approved_expenses,
             "revenue_rows_count": len(revenue_rows),
             "expense_rows_count": len(expense_rows),
             "default_exchange_rate": float(default_rate),
@@ -388,7 +387,7 @@ def get_trip_profitability(
     Returns trips with:
     - Trip Number, Route Name, Client
     - Income (Waybill Amount)
-    - Total Expenses (Sum of PAID Trip Expenses)
+    - Total Expenses (Sum of Approved + Paid Trip Expenses)
     - Net Profit (Income - Expenses)
     - Margin % ((Net Profit / Income) * 100)
 
@@ -404,7 +403,8 @@ def get_trip_profitability(
     )
     trip_rows = session.exec(trips_stmt).all()
 
-    # Get all paid expenses grouped by trip
+    # Get all approved expenses grouped by trip (Pending Finance + Paid)
+    approved_statuses = [ExpenseStatus.pending_finance.value, ExpenseStatus.paid.value]
     expense_stmt = (
         select(
             ExpenseRequest.trip_id,
@@ -412,7 +412,7 @@ def get_trip_profitability(
             ExpenseRequest.currency,
             ExpenseRequest.exchange_rate,
         )
-        .where(ExpenseRequest.status == ExpenseStatus.paid.value)
+        .where(ExpenseRequest.status.in_(approved_statuses))
         .where(ExpenseRequest.trip_id.isnot(None))
     )
     expense_rows = session.exec(expense_stmt).all()
@@ -437,7 +437,7 @@ def get_trip_profitability(
             default_rate
         )
 
-        # Total paid expenses for this trip
+        # Total approved expenses for this trip
         expenses = trip_expenses.get(trip_id, Decimal("0"))
 
         # Net Profit
