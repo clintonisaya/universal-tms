@@ -249,9 +249,17 @@ function DashboardContent() {
           <Col xs={24} sm={12} lg={6} xl={4}>
             <MetricCard
               title="Pending Approvals"
-              value={stats?.pending_approvals ?? 0}
+              value={
+                role === "manager"
+                  ? (stats?.pending_manager ?? 0)
+                  : (stats?.pending_approvals ?? 0)
+              }
               status={
-                (stats?.pending_approvals ?? 0) > 0 ? "active" : "normal"
+                (role === "manager"
+                  ? (stats?.pending_manager ?? 0)
+                  : (stats?.pending_approvals ?? 0)) > 0
+                  ? "active"
+                  : "normal"
               }
               loading={loading}
               onClick={() => router.push("/dashboard/tasks")}
