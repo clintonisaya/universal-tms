@@ -4,7 +4,7 @@ import type { NextRequest } from "next/server";
 // Routes that don't require authentication
 const PUBLIC_PATHS = ["/login", "/api"];
 
-export function proxy(request: NextRequest) {
+export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Check if the path is public
@@ -14,26 +14,26 @@ export function proxy(request: NextRequest) {
 
   // Check if user has access_token cookie and it's not empty
   const tokenCookie = request.cookies.get("access_token");
-  const hasValidToken = tokenCookie && tokenCookie.value && tokenCookie.value.length > 10;
+  const hasToken =
+    tokenCookie && tokenCookie.value && tokenCookie.value.length > 10;
 
   // Root path - redirect based on auth status
   if (pathname === "/") {
-    if (hasValidToken) {
+    if (hasToken) {
       return NextResponse.redirect(new URL("/dashboard", request.url));
     } else {
       return NextResponse.redirect(new URL("/login", request.url));
     }
   }
 
-  // If user is authenticated and trying to access login page, redirect to dashboard
-  if (hasValidToken && pathname === "/login") {
+  // If user has token and trying to access login page, redirect to dashboard
+  if (hasToken && pathname === "/login") {
     return NextResponse.redirect(new URL("/dashboard", request.url));
   }
 
-  // If user is not authenticated and trying to access protected route, redirect to login
-  if (!hasValidToken && !isPublicPath) {
+  // If user has no token and trying to access protected route, redirect to login
+  if (!hasToken && !isPublicPath) {
     const loginUrl = new URL("/login", request.url);
-    // Store the original URL to redirect back after login
     loginUrl.searchParams.set("callbackUrl", pathname);
     return NextResponse.redirect(loginUrl);
   }
