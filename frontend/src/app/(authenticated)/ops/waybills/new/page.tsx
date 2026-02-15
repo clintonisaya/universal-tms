@@ -25,7 +25,7 @@ const { Option } = Select;
 
 export default function NewWaybillPage() {
   const router = useRouter();
-  const { user, loading: authLoading } = useAuth();
+  const { user } = useAuth();
   const [form] = Form.useForm<WaybillCreate>();
   const [submitting, setSubmitting] = useState(false);
   const [locations, setLocations] = useState<any[]>([]);
@@ -34,10 +34,10 @@ export default function NewWaybillPage() {
   const [loadingResources, setLoadingResources] = useState(false);
 
   useEffect(() => {
-    if (!authLoading && user) {
+    if (user) {
       fetchResources();
     }
-  }, [authLoading, user]);
+  }, [user]);
 
   const fetchResources = async () => {
     setLoadingResources(true);
@@ -90,8 +90,6 @@ export default function NewWaybillPage() {
       setSubmitting(false);
     }
   };
-
-  if (authLoading) return null;
 
   return (
     <div

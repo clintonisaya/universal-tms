@@ -9,7 +9,6 @@ import {
   Space,
   message,
   Typography,
-  Spin,
   Modal,
   Select,
 } from "antd";
@@ -66,11 +65,11 @@ const CATEGORY_FILTERS = [
 
 export default function ExpensesPage() {
   const router = useRouter();
-  const { user, loading: authLoading } = useAuth();
+  const { user } = useAuth();
   const { invalidateExpenses } = useInvalidateQueries();
 
   // Only fetch when user is authenticated
-  const isAuthenticated = !!user && !authLoading;
+  const isAuthenticated = !!user;
 
   // TanStack Query for expenses and trips data
   const { data: expensesData, isLoading: loading, refetch } = useExpenses(isAuthenticated);
@@ -291,21 +290,6 @@ export default function ExpensesPage() {
 
   // Make columns resizable
   const { resizableColumns, components } = useResizableColumns(columns);
-
-  if (authLoading) {
-    return (
-      <div
-        style={{
-          minHeight: "100vh",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
-        <Spin size="large" />
-      </div>
-    );
-  }
 
   return (
     <div

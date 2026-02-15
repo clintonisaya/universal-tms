@@ -11,7 +11,6 @@ import {
   Modal,
   Input,
   Typography,
-  Spin,
   App,
 } from "antd";
 import {
@@ -74,7 +73,7 @@ const STATUS_FILTERS = STATUS_OPTIONS.map((o) => ({
 
 function ApprovalPageContent() {
   const router = useRouter();
-  const { user, loading: authLoading } = useAuth();
+  const { user } = useAuth();
   const { message } = App.useApp();
   const [expenses, setExpenses] = useState<ExpenseRequest[]>([]);
   const [loading, setLoading] = useState(true);
@@ -127,10 +126,10 @@ function ApprovalPageContent() {
   }, [router, statusFilter, categoryFilter, message]);
 
   useEffect(() => {
-    if (!authLoading && user) {
+    if (user) {
       fetchExpenses();
     }
-  }, [authLoading, user, fetchExpenses]);
+  }, [user, fetchExpenses]);
 
   const handleBulkAction = async (status: string, actionComment?: string) => {
     if (selectedRowKeys.length === 0) {
@@ -320,21 +319,6 @@ function ApprovalPageContent() {
 
   // Make columns resizable
   const { resizableColumns, components } = useResizableColumns(columns);
-
-  if (authLoading) {
-    return (
-      <div
-        style={{
-          minHeight: "100vh",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
-        <Spin size="large" />
-      </div>
-    );
-  }
 
   return (
     <div style={{ minHeight: "100vh", background: "#f0f2f5", padding: "24px" }}>

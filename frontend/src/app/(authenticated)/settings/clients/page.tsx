@@ -12,7 +12,6 @@ import {
   Input,
   message,
   Typography,
-  Spin,
   Popconfirm,
 } from "antd";
 import {
@@ -39,7 +38,7 @@ const { Title } = Typography;
 
 export default function ClientsPage() {
   const router = useRouter();
-  const { user, loading: authLoading } = useAuth();
+  const { user } = useAuth();
   
   // TanStack Query for clients data
   const { data, isLoading: loading, refetch } = useClients();
@@ -199,21 +198,6 @@ export default function ClientsPage() {
       ),
     },
   ];
-
-  if (authLoading) {
-    return (
-      <div
-        style={{
-          minHeight: "100vh",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
-        <Spin size="large" />
-      </div>
-    );
-  }
 
   return (
     <div style={{ padding: "24px" }}>

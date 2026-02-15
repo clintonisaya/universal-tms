@@ -98,7 +98,7 @@ function buildToastMessage(taskType: TaskType | undefined, data: TaskSocketEvent
 function DashboardContent() {
   const router = useRouter();
   const socket = useSocket();
-  const { user, loading: authLoading } = useAuth();
+  const { user } = useAuth();
   const { message: msg } = App.useApp();
   const role = user?.role;
   const { addNotification } = useNotifications(user?.id);
@@ -106,7 +106,7 @@ function DashboardContent() {
   const { invalidateTodoCount, invalidateDashboard } = useInvalidateQueries();
 
   // Only fetch when user is authenticated
-  const isAuthenticated = !!user && !authLoading;
+  const isAuthenticated = !!user;
 
   // TanStack Query hooks for data fetching with stale-while-revalidate
   const { data: statsData, isLoading: statsLoading } = useDashboardStats(isAuthenticated);
@@ -114,8 +114,8 @@ function DashboardContent() {
   const { data: todoData, isLoading: todoCountLoading } = useTodoCount(isAuthenticated);
   const { data: pulseData, isLoading: financialLoading } = useFinancialPulse(isAuthenticated);
 
-  // Show loading while auth is checking or while data is loading
-  const loading = authLoading || statsLoading;
+  // Show loading while data is loading
+  const loading = statsLoading;
 
   // Derive values from query data
   const stats = statsData || null;
@@ -219,14 +219,14 @@ function DashboardContent() {
   // Build utilization data from trucks_by_status for the chart
   const utilizationData = stats
     ? [
-        {
-          name: "Fleet",
-          Idle: stats.trucks_idle,
-          Transit: stats.trucks_in_transit,
-          Border: stats.trucks_at_border,
-          Maintenance: stats.trucks_maintenance,
-        },
-      ]
+      {
+        name: "Fleet",
+        Idle: stats.trucks_idle,
+        Transit: stats.trucks_in_transit,
+        Border: stats.trucks_at_border,
+        Maintenance: stats.trucks_maintenance,
+      },
+    ]
     : [];
 
   return (

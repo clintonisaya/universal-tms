@@ -14,7 +14,6 @@ import {
   Select,
   message,
   Typography,
-  Spin,
   Popconfirm,
 } from "antd";
 import { PlusOutlined, ReloadOutlined, ArrowLeftOutlined, EditOutlined, DeleteOutlined } from "@ant-design/icons";
@@ -66,7 +65,7 @@ const TYPE_FILTERS = [
 
 export default function TrailersPage() {
   const router = useRouter();
-  const { user, loading: authLoading } = useAuth();
+  const { user } = useAuth();
   const { data, isLoading, refetch } = useTrailers();
   const { invalidateTrailers } = useInvalidateQueries();
 
@@ -244,21 +243,6 @@ export default function TrailersPage() {
 
   // Make columns resizable
   const { resizableColumns, components } = useResizableColumns(columns);
-
-  if (authLoading) {
-    return (
-      <div
-        style={{
-          minHeight: "100vh",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
-        <Spin size="large" />
-      </div>
-    );
-  }
 
   return (
     <div

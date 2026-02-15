@@ -14,7 +14,6 @@ import {
   Tag,
   message,
   Typography,
-  Spin,
   Popconfirm,
   Flex,
 } from "antd";
@@ -61,7 +60,7 @@ type TreeNode = CategoryNode | ExpenseTypeNode;
 
 export default function TripExpenseTypesPage() {
   const router = useRouter();
-  const { user, loading: authLoading } = useAuth();
+  const { user } = useAuth();
   
   // TanStack Query for expense types
   const { data: queryData, isLoading: loading, refetch } = useTripExpenseTypes();
@@ -361,21 +360,6 @@ export default function TripExpenseTypesPage() {
 
   // Make columns resizable
   const { resizableColumns, components } = useResizableColumns(columns);
-
-  if (authLoading) {
-    return (
-      <div
-        style={{
-          minHeight: "100vh",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
-        <Spin size="large" />
-      </div>
-    );
-  }
 
   return (
     <div>

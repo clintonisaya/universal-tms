@@ -188,14 +188,46 @@ def read_trips(
     skip: int = 0,
     limit: int = 100,
 ) -> Any:
-    """Retrieve all trips."""
+    """Retrieve all trips with waybill enrichment (Story 4.6)."""
     count_statement = select(func.count()).select_from(Trip)
     count = session.exec(count_statement).one()
     statement = (
         select(Trip).order_by(Trip.created_at.desc()).offset(skip).limit(limit)
     )
     trips = session.exec(statement).all()
-    return TripsPublic(data=trips, count=count)
+
+    # Enrich trips with waybill data and location_update_time
+    enriched: list[dict] = []
+    # Batch-fetch waybills for trips that have waybill_id
+    waybill_ids = [t.waybill_id for t in trips if t.waybill_id]
+    waybill_map: dict[uuid.UUID, Waybill] = {}
+    if waybill_ids:
+        wbs = session.exec(select(Waybill).where(Waybill.id.in_(waybill_ids))).all()
+        waybill_map = {wb.id: wb for wb in wbs}
+
+    for trip in trips:
+        trip_data = TripPublic.model_validate(trip)
+        # Waybill enrichment
+        if trip.waybill_id and trip.waybill_id in waybill_map:
+            wb = waybill_map[trip.waybill_id]
+            trip_data.waybill_rate = wb.agreed_rate
+            trip_data.waybill_currency = wb.currency
+            trip_data.waybill_risk_level = wb.risk_level
+        # Location update time: most recent non-null tracking date
+        tracking_dates = [
+            d for d in (
+                trip.dispatch_date,
+                trip.arrival_loading_date,
+                trip.loading_date,
+                trip.arrival_offloading_date,
+                trip.offloading_date,
+                trip.arrival_return_date,
+            ) if d is not None
+        ]
+        trip_data.location_update_time = max(tracking_dates) if tracking_dates else trip.start_date
+        enriched.append(trip_data)
+
+    return TripsPublic(data=enriched, count=count)
 
 
 @router.get("/{id}", response_model=TripPublicDetailed)

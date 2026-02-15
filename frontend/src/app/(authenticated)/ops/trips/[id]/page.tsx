@@ -62,7 +62,7 @@ export default function TripDetailPage() {
   const router = useRouter();
   const params = useParams();
   const tripId = params.id as string;
-  const { user, loading: authLoading } = useAuth();
+  const { user } = useAuth();
 
   const [trip, setTrip] = useState<TripDetailed | null>(null);
   const [expenses, setExpenses] = useState<ExpenseRequest[]>([]);
@@ -117,11 +117,11 @@ export default function TripDetailPage() {
   }, [tripId, router]);
 
   useEffect(() => {
-    if (!authLoading && user && tripId) {
+    if (user && tripId) {
       fetchTrip();
       fetchExpenses();
     }
-  }, [authLoading, user, tripId, fetchTrip, fetchExpenses]);
+  }, [user, tripId, fetchTrip, fetchExpenses]);
 
   const handleDeleteExpense = async (expense: ExpenseRequest) => {
     try {
@@ -205,7 +205,7 @@ export default function TripDetailPage() {
 
   const totalExpenses = expenses.reduce((sum, e) => sum + e.amount, 0);
 
-  if (authLoading || loading) {
+  if (loading) {
     return (
       <div
         style={{

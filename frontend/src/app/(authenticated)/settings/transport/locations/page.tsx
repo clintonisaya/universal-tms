@@ -12,7 +12,6 @@ import {
   Input,
   message,
   Typography,
-  Spin,
   Popconfirm,
   InputNumber,
   Tag,
@@ -44,7 +43,7 @@ const { Title } = Typography;
 
 export default function LocationsPage() {
   const router = useRouter();
-  const { user, loading: authLoading } = useAuth();
+  const { user } = useAuth();
   
   // TanStack Query for locations data
   const { data: countriesData, isLoading: countriesLoading, refetch: refetchCountries } = useCountries();
@@ -286,21 +285,6 @@ export default function LocationsPage() {
 
   // Make columns resizable
   const { resizableColumns, components } = useResizableColumns(columns);
-
-  if (authLoading) {
-    return (
-      <div
-        style={{
-          minHeight: "100vh",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
-        <Spin size="large" />
-      </div>
-    );
-  }
 
   return (
     <div>

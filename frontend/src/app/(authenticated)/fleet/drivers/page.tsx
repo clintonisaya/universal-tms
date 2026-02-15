@@ -14,7 +14,6 @@ import {
   Select,
   message,
   Typography,
-  Spin,
   Popconfirm,
   DatePicker,
 } from "antd";
@@ -61,7 +60,7 @@ const STATUS_FILTERS = [
 
 export default function DriversPage() {
   const router = useRouter();
-  const { user, loading: authLoading } = useAuth();
+  const { user } = useAuth();
   const { data, isLoading, refetch } = useDrivers();
   const { invalidateDrivers } = useInvalidateQueries();
 
@@ -266,21 +265,6 @@ export default function DriversPage() {
 
   // Make columns resizable
   const { resizableColumns, components } = useResizableColumns(columns);
-
-  if (authLoading) {
-    return (
-      <div
-        style={{
-          minHeight: "100vh",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
-        <Spin size="large" />
-      </div>
-    );
-  }
 
   return (
     <div

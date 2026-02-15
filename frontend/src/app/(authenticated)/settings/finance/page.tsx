@@ -9,7 +9,6 @@ import {
   Space,
   message,
   Typography,
-  Spin,
   Modal,
   Form,
   InputNumber,
@@ -37,7 +36,7 @@ const MONTHS = [
 
 export default function ExchangeRateSettingsPage() {
   const router = useRouter();
-  const { user, loading: authLoading } = useAuth();
+  const { user } = useAuth();
   
   // TanStack Query
   const { data, isLoading: loading, refetch } = useExchangeRates();
@@ -186,14 +185,6 @@ export default function ExchangeRateSettingsPage() {
 
   // Make columns resizable
   const { resizableColumns, components } = useResizableColumns(columns);
-
-  if (authLoading) {
-    return (
-      <div style={{ display: "flex", justifyContent: "center", marginTop: 50 }}>
-        <Spin size="large" />
-      </div>
-    );
-  }
 
   return (
     <div style={{ padding: "24px", minHeight: "100vh", background: "#f0f2f5" }}>

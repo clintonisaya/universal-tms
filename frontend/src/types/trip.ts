@@ -39,6 +39,11 @@ export interface Trip {
   offloading_date: string | null;
   arrival_return_date: string | null;
   trip_duration_days: number | null;
+  // Waybill enrichment fields (Story 4.6)
+  waybill_rate: number | null;
+  waybill_currency: string | null;
+  waybill_risk_level: string | null;
+  location_update_time: string | null;
 }
 
 export interface TripDetailed extends Trip {

@@ -14,7 +14,6 @@ import {
   message,
   Typography,
   Space,
-  Spin,
   Radio,
   Row,
   Col,
@@ -31,7 +30,7 @@ const { TextArea } = Input;
 
 export default function NewMaintenancePage() {
   const router = useRouter();
-  const { user, loading: authLoading } = useAuth();
+  const { user } = useAuth();
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
   const [trucks, setTrucks] = useState<Truck[]>([]);
@@ -63,10 +62,10 @@ export default function NewMaintenancePage() {
       }
     };
 
-    if (!authLoading && user) {
+    if (user) {
       fetchResources();
     }
-  }, [authLoading, user]);
+  }, [user]);
 
   const onFinish = async (values: any) => {
     setLoading(true);
@@ -106,10 +105,6 @@ export default function NewMaintenancePage() {
       setLoading(false);
     }
   };
-
-  if (authLoading) {
-    return <div style={{ display: "flex", justifyContent: "center", marginTop: 50 }}><Spin size="large" /></div>;
-  }
 
   return (
     <div style={{ padding: "24px", minHeight: "100vh", background: "#f0f2f5" }}>

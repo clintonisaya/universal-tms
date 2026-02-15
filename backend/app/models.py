@@ -523,6 +523,11 @@ class TripPublic(TripBase):
     offloading_date: datetime | None = None
     arrival_return_date: datetime | None = None
     trip_duration_days: int | None = None
+    # Enrichment fields from waybill join (Story 4.6)
+    waybill_rate: Decimal | None = None
+    waybill_currency: str | None = None
+    waybill_risk_level: str | None = None
+    location_update_time: datetime | None = None
 
 
 # Trip with nested entities for detailed views

@@ -45,7 +45,7 @@ interface Driver {
 function NewTripForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { user, loading: authLoading } = useAuth();
+  const { user } = useAuth();
   const [form] = Form.useForm();
   
   const [trucks, setTrucks] = useState<Truck[]>([]);
@@ -55,10 +55,10 @@ function NewTripForm() {
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    if (!authLoading && user) {
+    if (user) {
       fetchResources();
     }
-  }, [authLoading, user]);
+  }, [user]);
 
   useEffect(() => {
     const waybillId = searchParams.get("waybill_id");
@@ -124,8 +124,6 @@ function NewTripForm() {
       setSubmitting(false);
     }
   };
-
-  if (authLoading) return null;
 
   return (
     <div

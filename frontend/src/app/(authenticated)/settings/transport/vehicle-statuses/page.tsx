@@ -14,7 +14,6 @@ import {
   Switch,
   message,
   Typography,
-  Spin,
   Popconfirm,
 } from "antd";
 import {
@@ -49,7 +48,7 @@ const STATUS_FILTERS = [
 
 export default function VehicleStatusesPage() {
   const router = useRouter();
-  const { user, loading: authLoading } = useAuth();
+  const { user } = useAuth();
   
   // TanStack Query for vehicle statuses
   const { data, isLoading: loading, refetch } = useVehicleStatuses();
@@ -217,21 +216,6 @@ export default function VehicleStatusesPage() {
 
   // Make columns resizable
   const { resizableColumns, components } = useResizableColumns(columns);
-
-  if (authLoading) {
-    return (
-      <div
-        style={{
-          minHeight: "100vh",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
-        <Spin size="large" />
-      </div>
-    );
-  }
 
   return (
     <div>

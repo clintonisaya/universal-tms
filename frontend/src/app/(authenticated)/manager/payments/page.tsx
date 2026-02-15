@@ -11,7 +11,6 @@ import {
   Modal,
   Statistic,
   Typography,
-  Spin,
 } from "antd";
 import {
   DollarOutlined,
@@ -58,7 +57,7 @@ interface PaymentFormValues {
 
 export default function FinancePaymentsPage() {
   const router = useRouter();
-  const { user, loading: authLoading } = useAuth();
+  const { user } = useAuth();
   const [expenses, setExpenses] = useState<ExpenseRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [totalCount, setTotalCount] = useState(0);
@@ -105,10 +104,10 @@ export default function FinancePaymentsPage() {
   }, [router]);
 
   useEffect(() => {
-    if (!authLoading && user) {
+    if (user) {
       fetchExpenses();
     }
-  }, [authLoading, user, fetchExpenses]);
+  }, [user, fetchExpenses]);
 
   const openPaymentModal = (expense: ExpenseRequest) => {
     setSelectedExpense(expense as ExpenseRequestDetailed);
@@ -203,21 +202,6 @@ export default function FinancePaymentsPage() {
 
   // Make columns resizable
   const { resizableColumns, components } = useResizableColumns(columns);
-
-  if (authLoading) {
-    return (
-      <div
-        style={{
-          minHeight: "100vh",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
-        <Spin size="large" />
-      </div>
-    );
-  }
 
   return (
     <div style={{ minHeight: "100vh", background: "#f0f2f5", padding: "24px" }}>

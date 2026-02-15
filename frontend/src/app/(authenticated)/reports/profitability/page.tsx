@@ -9,7 +9,6 @@ import {
   Space,
   message,
   Typography,
-  Spin,
   Tag,
   Statistic,
   Row,
@@ -72,7 +71,7 @@ const STATUS_COLORS: Record<string, string> = {
 
 export default function TripProfitabilityPage() {
   const router = useRouter();
-  const { user, loading: authLoading } = useAuth();
+  const { user } = useAuth();
   const [data, setData] = useState<TripProfitability[]>([]);
   const [summary, setSummary] = useState<ProfitabilitySummary | null>(null);
   const [loading, setLoading] = useState(true);
@@ -110,10 +109,10 @@ export default function TripProfitabilityPage() {
   }, [router, currentPage, pageSize, sortBy, sortOrder]);
 
   useEffect(() => {
-    if (!authLoading && user) {
+    if (user) {
       fetchData();
     }
-  }, [authLoading, user, fetchData]);
+  }, [user, fetchData]);
 
   const handleTableChange = (pagination: any, _filters: any, sorter: any) => {
     setCurrentPage(pagination.current);
@@ -284,21 +283,6 @@ export default function TripProfitabilityPage() {
 
   // Make columns resizable
   const { resizableColumns, components } = useResizableColumns(columns);
-
-  if (authLoading) {
-    return (
-      <div
-        style={{
-          minHeight: "100vh",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
-        <Spin size="large" />
-      </div>
-    );
-  }
 
   return (
     <div

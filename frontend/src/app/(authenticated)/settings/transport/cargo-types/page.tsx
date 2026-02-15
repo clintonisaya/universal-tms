@@ -12,7 +12,6 @@ import {
   Input,
   message,
   Typography,
-  Spin,
   Popconfirm,
 } from "antd";
 import {
@@ -41,7 +40,7 @@ const { TextArea } = Input;
 
 export default function CargoTypesPage() {
   const router = useRouter();
-  const { user, loading: authLoading } = useAuth();
+  const { user } = useAuth();
   
   // TanStack Query
   const { data, isLoading: loading, refetch } = useCargoTypes();
@@ -197,21 +196,6 @@ export default function CargoTypesPage() {
 
   // Make columns resizable
   const { resizableColumns, components } = useResizableColumns(columns);
-
-  if (authLoading) {
-    return (
-      <div
-        style={{
-          minHeight: "100vh",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
-        <Spin size="large" />
-      </div>
-    );
-  }
 
   return (
     <div>

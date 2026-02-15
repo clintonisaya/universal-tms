@@ -50,7 +50,7 @@ export default function TruckDetailPage() {
   const router = useRouter();
   const params = useParams();
   const truckId = params.id as string;
-  const { user, loading: authLoading } = useAuth();
+  const { user } = useAuth();
 
   const [truck, setTruck] = useState<Truck | null>(null);
   const [maintenanceEvents, setMaintenanceEvents] = useState<
@@ -113,11 +113,11 @@ export default function TruckDetailPage() {
   }, [truckId, router]);
 
   useEffect(() => {
-    if (!authLoading && user && truckId) {
+    if (user && truckId) {
       fetchTruck();
       fetchMaintenanceHistory();
     }
-  }, [authLoading, user, truckId, fetchTruck, fetchMaintenanceHistory]);
+  }, [user, truckId, fetchTruck, fetchMaintenanceHistory]);
 
   const maintenanceColumns: ColumnsType<MaintenanceEvent> = [
     {
@@ -172,7 +172,7 @@ export default function TruckDetailPage() {
     },
   ];
 
-  if (authLoading || loading) {
+  if (loading) {
     return (
       <div
         style={{

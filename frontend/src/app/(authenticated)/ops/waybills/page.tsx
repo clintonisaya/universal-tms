@@ -11,7 +11,6 @@ import {
   Tag,
   message,
   Typography,
-  Spin,
   Popconfirm,
 } from "antd";
 import {
@@ -51,11 +50,11 @@ const STATUS_FILTERS = Object.keys(STATUS_COLORS).map((status) => ({
 
 export default function WaybillsPage() {
   const router = useRouter();
-  const { user, loading: authLoading } = useAuth();
+  const { user } = useAuth();
   const { invalidateWaybills } = useInvalidateQueries();
 
   // Only fetch when user is authenticated
-  const isAuthenticated = !!user && !authLoading;
+  const isAuthenticated = !!user;
 
   // TanStack Query for waybills data
   const { data, isLoading: loading, refetch } = useWaybills(isAuthenticated);
@@ -198,21 +197,6 @@ export default function WaybillsPage() {
 
   // Make columns resizable
   const { resizableColumns, components } = useResizableColumns(columns);
-
-  if (authLoading) {
-    return (
-      <div
-        style={{
-          minHeight: "100vh",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
-        <Spin size="large" />
-      </div>
-    );
-  }
 
   return (
     <div

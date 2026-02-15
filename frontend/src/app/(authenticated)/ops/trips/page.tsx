@@ -9,7 +9,7 @@ import {
   Space,
   Tag,
   Typography,
-  Spin,
+  Tooltip,
   Popconfirm,
   App,
 } from "antd";
@@ -33,7 +33,37 @@ import {
   useResizableColumns,
 } from "@/components/ui/tableUtils";
 
-const { Title } = Typography;
+const { Title, Text } = Typography;
+
+function getRiskColor(risk: string | null | undefined): string {
+  switch (risk) {
+    case "High": return "red";
+    case "Medium": return "orange";
+    case "Low": return "green";
+    default: return "default";
+  }
+}
+
+function formatCurrency(rate: number | null | undefined, currency: string | null | undefined): string {
+  if (rate == null) return "-";
+  const symbol = currency === "TZS" ? "TZS" : "USD";
+  return `${symbol} ${Number(rate).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
+function formatRelativeTime(dateStr: string | null | undefined): string {
+  if (!dateStr) return "-";
+  const date = new Date(dateStr);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffMins = Math.floor(diffMs / 60000);
+  if (diffMins < 1) return "Just now";
+  if (diffMins < 60) return `${diffMins}m ago`;
+  const diffHours = Math.floor(diffMins / 60);
+  if (diffHours < 24) return `${diffHours}h ago`;
+  const diffDays = Math.floor(diffHours / 24);
+  if (diffDays < 30) return `${diffDays}d ago`;
+  return date.toLocaleDateString();
+}
 
 const STATUS_COLORS: Record<TripStatus, string> = {
   Waiting: "default",
@@ -56,16 +86,18 @@ const STATUS_FILTERS = Object.keys(STATUS_COLORS).map((status) => ({
 function TripsPageContent() {
   const router = useRouter();
   const { message } = App.useApp();
-  const { user, loading: authLoading } = useAuth();
+  const { user } = useAuth();
   const { invalidateTrips } = useInvalidateQueries();
 
   // Only fetch when user is authenticated
-  const isAuthenticated = !!user && !authLoading;
+  const isAuthenticated = !!user;
 
   // TanStack Query for trips data
   const { data, isLoading: loading, refetch } = useTrips(undefined, isAuthenticated);
   const trips = data?.data || [];
   const totalCount = data?.count || 0;
+
+  const showFinancialData = user?.role === "admin" || user?.role === "manager";
 
   const [createDrawerOpen, setCreateDrawerOpen] = useState(false);
   const [detailDrawerTripId, setDetailDrawerTripId] = useState<string | null>(null);
@@ -97,7 +129,7 @@ function TripsPageContent() {
       title: "Trip Number",
       dataIndex: "trip_number",
       key: "trip_number",
-      width: 150,
+      width: 140,
       sorter: (a, b) => (a.trip_number || "").localeCompare(b.trip_number || ""),
       render: (text: string, record: Trip) => (
         <Button
@@ -124,7 +156,7 @@ function TripsPageContent() {
       title: "Start Date",
       dataIndex: "start_date",
       key: "start_date",
-      width: 120,
+      width: 100,
       render: (date: string | null) => date ? new Date(date).toLocaleDateString() : "-",
       sorter: (a, b) => (a.start_date || "").localeCompare(b.start_date || ""),
     },
@@ -132,7 +164,7 @@ function TripsPageContent() {
       title: "End Date",
       dataIndex: "end_date",
       key: "end_date",
-      width: 120,
+      width: 100,
       render: (date: string | null) => date ? new Date(date).toLocaleDateString() : "-",
       sorter: (a, b) => (a.end_date || "").localeCompare(b.end_date || ""),
     },
@@ -140,16 +172,55 @@ function TripsPageContent() {
       title: "Status",
       dataIndex: "status",
       key: "status",
-      width: 130,
+      width: 120,
       render: (status: TripStatus) => (
         <Tag color={STATUS_COLORS[status]}>{status}</Tag>
       ),
       ...getColumnFilterProps("status", STATUS_FILTERS),
     },
+    ...(showFinancialData
+      ? [
+          {
+            title: "Rate",
+            dataIndex: "waybill_rate",
+            key: "rate",
+            width: 120,
+            render: (_: unknown, record: Trip) =>
+              record.waybill_rate != null ? (
+                <Text>{formatCurrency(record.waybill_rate, record.waybill_currency)}</Text>
+              ) : (
+                <Text type="secondary">-</Text>
+              ),
+          } as ColumnsType<Trip>[number],
+        ]
+      : []),
+    {
+      title: "Last Updated",
+      dataIndex: "location_update_time",
+      key: "location_update_time",
+      width: 100,
+      render: (date: string | null) => (
+        <Tooltip title={date ? new Date(date).toLocaleString() : undefined}>
+          <Text type="secondary" style={{ fontSize: 12 }}>
+            {formatRelativeTime(date)}
+          </Text>
+        </Tooltip>
+      ),
+      sorter: (a, b) =>
+        (a.location_update_time || "").localeCompare(b.location_update_time || ""),
+    },
+    {
+      title: "Risk",
+      dataIndex: "waybill_risk_level",
+      key: "risk",
+      width: 70,
+      render: (risk: string | null) =>
+        risk ? <Tag color={getRiskColor(risk)}>{risk}</Tag> : <Text type="secondary">-</Text>,
+    },
     {
       title: "Actions",
       key: "actions",
-      width: 100,
+      width: 80,
       fixed: "right",
       render: (_, record) => (
         <div className="row-actions">
@@ -178,21 +249,6 @@ function TripsPageContent() {
 
   // Make columns resizable
   const { resizableColumns, components } = useResizableColumns(columns);
-
-  if (authLoading) {
-    return (
-      <div
-        style={{
-          minHeight: "100vh",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
-        <Spin size="large" />
-      </div>
-    );
-  }
 
   return (
     <div

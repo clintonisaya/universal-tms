@@ -12,7 +12,6 @@ import {
   Select,
   Switch,
   Typography,
-  Spin,
   Popconfirm,
   Tooltip,
   App,
@@ -171,7 +170,7 @@ function PermissionToggles({
 // Child component to use App hook
 const UsersContent = () => {
   const router = useRouter();
-  const { user: currentUser, loading: authLoading } = useAuth();
+  const { user: currentUser } = useAuth();
   const { message } = App.useApp();
   const { invalidateUsers } = useInvalidateQueries();
 
@@ -197,14 +196,14 @@ const UsersContent = () => {
 
   // Role Access Control
   useEffect(() => {
-    if (!authLoading && currentUser) {
+    if (currentUser) {
       // Allow admin OR manager
       if (currentUser.role !== "admin" && currentUser.role !== "manager" && !currentUser.is_superuser) {
         message.error("Access denied: Admins or Managers only");
         router.push("/dashboard");
       }
     }
-  }, [authLoading, currentUser, router, message]);
+  }, [currentUser, router, message]);
 
   // Handle Form population when modal opens or user changes
   useEffect(() => {
@@ -441,7 +440,6 @@ const UsersContent = () => {
   // Make columns resizable
   const { resizableColumns, components } = useResizableColumns(columns);
 
-  if (authLoading) return <Spin size="large" />;
 
   return (
     <div>

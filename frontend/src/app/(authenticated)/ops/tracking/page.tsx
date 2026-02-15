@@ -99,11 +99,11 @@ const RISK_COLORS: Record<string, string> = {
 
 export default function TrackingPage() {
   const router = useRouter();
-  const { user, loading: authLoading } = useAuth();
+  const { user } = useAuth();
   const { invalidateTracking } = useInvalidateQueries();
 
   // Only fetch when user is authenticated
-  const isAuthenticated = !!user && !authLoading;
+  const isAuthenticated = !!user;
 
   // TanStack Query for tracking data
   const { data: rawData, isLoading: loading, refetch } = useTracking(isAuthenticated);
@@ -301,8 +301,6 @@ export default function TrackingPage() {
       render: (_, r) => <Tag color={RISK_COLORS[r.risk_level]}>{r.risk_level}</Tag>
     }
   ];
-
-  if (authLoading) return null; // Or spinner
 
   return (
     <div>

@@ -13,7 +13,6 @@ import {
   Select,
   App,
   Typography,
-  Spin,
   Popconfirm,
   Tag,
   Switch,
@@ -45,7 +44,7 @@ const { TextArea } = Input;
 
 export default function OfficeExpenseTypesPage() {
   const router = useRouter();
-  const { user, loading: authLoading } = useAuth();
+  const { user } = useAuth();
   const { message } = App.useApp();
 
   // TanStack Query
@@ -254,21 +253,6 @@ export default function OfficeExpenseTypesPage() {
 
   // Make columns resizable
   const { resizableColumns, components } = useResizableColumns(columns);
-
-  if (authLoading) {
-    return (
-      <div
-        style={{
-          minHeight: "100vh",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
-        <Spin size="large" />
-      </div>
-    );
-  }
 
   return (
     <div>
