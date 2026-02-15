@@ -178,6 +178,21 @@ function TripsPageContent() {
       ),
       ...getColumnFilterProps("status", STATUS_FILTERS),
     },
+        {
+      title: "Last Updated",
+      dataIndex: "location_update_time",
+      key: "location_update_time",
+      width: 100,
+      render: (date: string | null) => (
+        <Tooltip title={date ? new Date(date).toLocaleString() : undefined}>
+          <Text type="secondary" style={{ fontSize: 12 }}>
+            {formatRelativeTime(date)}
+          </Text>
+        </Tooltip>
+      ),
+      sorter: (a, b) =>
+        (a.location_update_time || "").localeCompare(b.location_update_time || ""),
+    }, 
     ...(showFinancialData
       ? [
           {
@@ -194,21 +209,7 @@ function TripsPageContent() {
           } as ColumnsType<Trip>[number],
         ]
       : []),
-    {
-      title: "Last Updated",
-      dataIndex: "location_update_time",
-      key: "location_update_time",
-      width: 100,
-      render: (date: string | null) => (
-        <Tooltip title={date ? new Date(date).toLocaleString() : undefined}>
-          <Text type="secondary" style={{ fontSize: 12 }}>
-            {formatRelativeTime(date)}
-          </Text>
-        </Tooltip>
-      ),
-      sorter: (a, b) =>
-        (a.location_update_time || "").localeCompare(b.location_update_time || ""),
-    },
+
     {
       title: "Risk",
       dataIndex: "waybill_risk_level",
