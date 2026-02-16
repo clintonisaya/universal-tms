@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import {
   Modal,
   Form,
@@ -14,7 +14,6 @@ import {
   Table,
   Typography,
   Tabs,
-  InputNumber,
   List,
   Spin,
   Empty,
@@ -40,10 +39,11 @@ interface AttachmentInfo {
 
 function getFileIcon(filename: string) {
   const lower = filename.toLowerCase();
-  if (lower.endsWith(".pdf")) return <FilePdfOutlined style={{ color: "#ff4d4f", fontSize: 20 }} />;
-  if (lower.match(/\.(jpe?g|png|gif|webp)$/)) return <FileImageOutlined style={{ color: "#1890ff", fontSize: 20 }} />;
-  if (lower.match(/\.(docx?)$/)) return <FileWordOutlined style={{ color: "#2f54eb", fontSize: 20 }} />;
-  return <FileUnknownOutlined style={{ fontSize: 20 }} />;
+  const style = { color: "#8c8c8c", fontSize: 18 };
+  if (lower.endsWith(".pdf")) return <FilePdfOutlined style={{ ...style, color: "#ff4d4f" }} />;
+  if (lower.match(/\.(jpe?g|png|gif|webp)$/)) return <FileImageOutlined style={style} />;
+  if (lower.match(/\.(docx?)$/)) return <FileWordOutlined style={style} />;
+  return <FileUnknownOutlined style={style} />;
 }
 
 const { Text } = Typography;
@@ -99,6 +99,9 @@ export function PaymentModal({ open, onClose, onSuccess, expense }: PaymentModal
     );
   }
 
+  const isTripExpense = !!expense.trip_id;
+  const tripNumber = expense.trip?.trip_number;
+
   const handleFinish = async (values: any) => {
     setSubmitting(true);
     try {
@@ -112,6 +115,7 @@ export function PaymentModal({ open, onClose, onSuccess, expense }: PaymentModal
           bank_name: values.bank_name,
           account_name: values.account_name,
           account_no: values.account_no,
+          payment_date: values.payment_date?.toISOString(),
         }),
       });
 
@@ -131,6 +135,15 @@ export function PaymentModal({ open, onClose, onSuccess, expense }: PaymentModal
     }
   };
 
+  // Helpers
+  const formatDate = (dateStr: string | null | undefined) => {
+    if (!dateStr) return "-";
+    const d = new Date(dateStr);
+    return d.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
+  };
+  const formatCurrency = (amount: number, currency: string = "TZS") =>
+    `${currency} ${amount.toLocaleString("en-US", { minimumFractionDigits: 2 })}`;
+
   // Table data for the expense item
   const tableData = [
     {
@@ -148,8 +161,9 @@ export function PaymentModal({ open, onClose, onSuccess, expense }: PaymentModal
     {
       title: "No.",
       dataIndex: "key",
-      width: 60,
+      width: 50,
       align: "center" as const,
+      render: (_: any, __: any, index: number) => <Text type="secondary">{index + 1}</Text>,
     },
     {
       title: "Payment Item",
@@ -168,7 +182,7 @@ export function PaymentModal({ open, onClose, onSuccess, expense }: PaymentModal
       align: "right" as const,
       render: (amount: number, record: any) => (
         <Text strong>
-          {record.currency} {amount.toLocaleString()}
+          {record.currency} {amount.toLocaleString("en-US")}
         </Text>
       ),
     },
@@ -192,28 +206,112 @@ export function PaymentModal({ open, onClose, onSuccess, expense }: PaymentModal
   // Basic Info Tab Content
   const BasicInfoTab = (
     <>
-      {/* Header Grid */}
+      {/* Header Grid - matching ExpenseReviewModal pattern */}
       <div style={{ marginBottom: 24, padding: 16, background: "#f5f5f5", borderRadius: 8 }}>
         <Row gutter={[16, 16]}>
           <Col span={8}>
-            <Form.Item label="Company">
-              <Input value="EDUPO COMPANY LIMITED" readOnly />
-            </Form.Item>
+            <div style={{ marginBottom: 4 }}>
+              <Text type="secondary" style={{ fontSize: 12 }}>Company</Text>
+            </div>
+            <Input value="EDUPO COMPANY LIMITED" readOnly />
           </Col>
           <Col span={8}>
-            <Form.Item label="Payment Date" name="payment_date">
-              <DatePicker style={{ width: "100%" }} defaultValue={dayjs()} />
-            </Form.Item>
+            <div style={{ marginBottom: 4 }}>
+              <Text type="secondary" style={{ fontSize: 12 }}>Application Date</Text>
+            </div>
+            <Input value={formatDate(expense.expense_metadata?.application_date || expense.created_at)} readOnly />
           </Col>
           <Col span={8}>
-            <Form.Item label="Payment Amount">
-              <Input
-                value={`${expense.currency || "TZS"} ${expense.amount.toLocaleString()}`}
-                readOnly
-                style={{ fontWeight: "bold" }}
-              />
-            </Form.Item>
+            <div style={{ marginBottom: 4 }}>
+              <Text type="secondary" style={{ fontSize: 12 }}>Total Amount</Text>
+            </div>
+            <Input value={formatCurrency(expense.amount, expense.currency)} readOnly style={{ fontWeight: "bold" }} />
           </Col>
+          <Col span={8}>
+            <div style={{ marginBottom: 4 }}>
+              <Text type="secondary" style={{ fontSize: 12 }}>Requester</Text>
+            </div>
+            <Input value={expense.created_by?.full_name || expense.created_by?.username || "Unknown"} readOnly />
+          </Col>
+          <Col span={8}>
+            <div style={{ marginBottom: 4 }}>
+              <Text type="secondary" style={{ fontSize: 12 }}>Expense Number</Text>
+            </div>
+            <Input value={expense.expense_number || "-"} readOnly />
+          </Col>
+          <Col span={8}>
+            <div style={{ marginBottom: 4 }}>
+              <Text type="secondary" style={{ fontSize: 12 }}>Status</Text>
+            </div>
+            <Input value={expense.status} readOnly />
+          </Col>
+          {isTripExpense && (
+            <Col span={8}>
+              <div style={{ marginBottom: 4 }}>
+                <Text type="secondary" style={{ fontSize: 12 }}>Trip</Text>
+              </div>
+              <Input value={tripNumber || expense.trip_id || "-"} readOnly />
+            </Col>
+          )}
+          <Col span={isTripExpense ? 16 : 16}>
+            <div style={{ marginBottom: 4 }}>
+              <Text type="secondary" style={{ fontSize: 12 }}>Description / Remarks</Text>
+            </div>
+            <Input value={expense.expense_metadata?.remarks || expense.description || "-"} readOnly />
+          </Col>
+        </Row>
+
+        {/* Approved by info */}
+        {expense.approved_by && (
+          <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
+            <Col span={8}>
+              <div style={{ marginBottom: 4 }}>
+                <Text type="secondary" style={{ fontSize: 12 }}>Approved By</Text>
+              </div>
+              <Input value={expense.approved_by.full_name || expense.approved_by.username} readOnly />
+            </Col>
+            <Col span={8}>
+              <div style={{ marginBottom: 4 }}>
+                <Text type="secondary" style={{ fontSize: 12 }}>Approved At</Text>
+              </div>
+              <Input value={formatDate(expense.approved_at)} readOnly />
+            </Col>
+          </Row>
+        )}
+
+        {/* Manager comment */}
+        {expense.manager_comment && (
+          <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
+            <Col span={24}>
+              <div style={{ marginBottom: 4 }}>
+                <Text type="secondary" style={{ fontSize: 12 }}>Manager Comment</Text>
+              </div>
+              <Input value={expense.manager_comment} readOnly style={{ color: "#d4b106" }} />
+            </Col>
+          </Row>
+        )}
+      </div>
+
+      {/* Items Table */}
+      <div style={{ marginBottom: 16 }}>
+        <Table
+          dataSource={tableData}
+          columns={columns}
+          pagination={false}
+          size="small"
+          bordered
+          scroll={{ x: 900 }}
+          footer={() => (
+            <div style={{ textAlign: "right", fontWeight: "bold", fontSize: 16 }}>
+              Total: {formatCurrency(expense.amount, expense.currency)}
+            </div>
+          )}
+        />
+      </div>
+
+      {/* Payment Form */}
+      <div style={{ padding: 16, background: "#f0f5ff", borderRadius: 8, border: "1px solid #d6e4ff" }}>
+        <Row gutter={[16, 16]}>
           <Col span={8}>
             <Form.Item
               label="Payment Method"
@@ -228,18 +326,22 @@ export function PaymentModal({ open, onClose, onSuccess, expense }: PaymentModal
             </Form.Item>
           </Col>
           <Col span={8}>
-            <Form.Item label="Payee">
-              <Input value={expense.created_by?.full_name || "Unknown"} readOnly />
+            <Form.Item label="Payment Date" name="payment_date">
+              <DatePicker style={{ width: "100%" }} defaultValue={dayjs()} />
             </Form.Item>
           </Col>
           <Col span={8}>
-            <Form.Item label="Expense Number">
-              <Input value={expense.expense_number || "-"} readOnly />
+            <Form.Item
+              label={paymentMethod === "TRANSFER" ? "Reference Number" : "Remarks (Optional)"}
+              name="reference"
+              rules={[{ required: paymentMethod === "TRANSFER", message: "Reference required for transfers" }]}
+            >
+              <Input placeholder={paymentMethod === "TRANSFER" ? "e.g. Bank Ref / Transaction ID" : "Optional notes"} />
             </Form.Item>
           </Col>
         </Row>
 
-        {/* Conditional Bank Details / Reference */}
+        {/* Conditional Bank Details */}
         {paymentMethod === "TRANSFER" && (
           <Row gutter={[16, 16]}>
             <Col span={8}>
@@ -257,34 +359,8 @@ export function PaymentModal({ open, onClose, onSuccess, expense }: PaymentModal
                 <Input placeholder="Enter Account Number" />
               </Form.Item>
             </Col>
-            <Col span={24}>
-              <Form.Item
-                label="Reference Number"
-                name="reference"
-                rules={[{ required: true, message: "Reference is required for transfers" }]}
-              >
-                <Input placeholder="e.g. QXJ123456 or M-Pesa Transaction ID" />
-              </Form.Item>
-            </Col>
           </Row>
         )}
-      </div>
-
-      {/* Items Table */}
-      <div style={{ marginBottom: 16 }}>
-        <Table
-          dataSource={tableData}
-          columns={columns}
-          pagination={false}
-          size="middle"
-          bordered
-          scroll={{ x: 900 }}
-          footer={() => (
-            <div style={{ textAlign: "right", fontWeight: "bold", fontSize: 16 }}>
-              Total: {expense.currency || "TZS"} {expense.amount.toLocaleString()}
-            </div>
-          )}
-        />
       </div>
     </>
   );
@@ -298,7 +374,7 @@ export function PaymentModal({ open, onClose, onSuccess, expense }: PaymentModal
         </span>
       }
       open={open}
-      width={1000}
+      width={1100}
       style={{ top: 20 }}
       styles={{ body: { maxHeight: "calc(100vh - 200px)", overflowY: "auto" } }}
       onCancel={() => {
@@ -313,7 +389,7 @@ export function PaymentModal({ open, onClose, onSuccess, expense }: PaymentModal
           Confirm Payment
         </Button>,
       ]}
-      forceRender
+      destroyOnHidden
     >
       <Form form={form} layout="vertical" onFinish={handleFinish}>
         <Tabs

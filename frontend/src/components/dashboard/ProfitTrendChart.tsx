@@ -73,7 +73,7 @@ export function ProfitTrendChart({ data, loading }: ProfitTrendChartProps) {
                   : name === "revenue"
                   ? "Revenue"
                   : "Expenses";
-              return [`TZS ${Number(value).toLocaleString()}`, label];
+              return [`TZS ${Number(value).toLocaleString("en-US")}`, label];
             }}
             labelFormatter={(label) => `Date: ${label}`}
             contentStyle={{ borderRadius: 8 }}

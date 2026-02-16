@@ -88,7 +88,7 @@ def get_my_tasks(
                 # Skip expenses for closed trips
                 if is_expense_trip_closed(exp):
                     continue
-                tasks.append(_expense_to_task(exp, "payment_processing", ["pay"]))
+                tasks.append(_expense_to_task(exp, "payment_processing", ["pay", "return"]))
 
     if role in (UserRole.ops, UserRole.admin):
         # Ops sees only returned expenses they created (rejected expenses are final, no action needed)
@@ -111,7 +111,7 @@ def get_my_tasks(
                 # Skip expenses for closed trips
                 if is_expense_trip_closed(exp):
                     continue
-                tasks.append(_expense_to_task(exp, "expense_correction", ["edit"]))
+                tasks.append(_expense_to_task(exp, "expense_correction", ["submit", "reject"]))
 
     # Apply task_type filter (already handled above via skip logic)
     if task_type:

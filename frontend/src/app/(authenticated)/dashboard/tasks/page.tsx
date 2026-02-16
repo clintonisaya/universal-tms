@@ -8,8 +8,6 @@ import {
   Flex,
   Space,
   Select,
-  Modal,
-  Input,
   App,
   Empty,
   Typography,
@@ -19,24 +17,18 @@ import {
 } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import {
-  CheckCircleOutlined,
-  CloseCircleOutlined,
-  UndoOutlined,
-  DollarOutlined,
-  EditOutlined,
+  PlayCircleOutlined,
   SmileOutlined,
   ArrowLeftOutlined,
   ReloadOutlined,
 } from "@ant-design/icons";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
-import { ExpenseDetailModal } from "@/components/expenses/ExpenseDetailModal";
-import { EditExpenseModal } from "@/components/expenses/EditExpenseModal";
+import { ExpenseReviewModal } from "@/components/expenses/ExpenseReviewModal";
 import { ProcessPaymentModal } from "@/components/expenses/ProcessPaymentModal";
 import type { ExpenseRequestDetailed } from "@/types/expense";
 
 const { Text, Title } = Typography;
-const { TextArea } = Input;
 
 interface TodoTask {
   id: string;
@@ -54,6 +46,7 @@ interface TodoTask {
   created_at: string;
   actions: string[];
 }
+
 
 const TASK_TYPE_LABELS: Record<string, { label: string; color: string }> = {
   expense_approval: { label: "Expense Approval", color: "gold" },
@@ -89,25 +82,15 @@ function TasksContent() {
   const [sortBy, setSortBy] = useState<string>("date");
   const [sortOrder, setSortOrder] = useState<string>("desc");
 
-  // Action modal state
-  const [actionModalVisible, setActionModalVisible] = useState(false);
-  const [actionType, setActionType] = useState<string>("");
-  const [actionTaskId, setActionTaskId] = useState<string>("");
-  const [actionComment, setActionComment] = useState("");
-  const [processing, setProcessing] = useState(false);
+  // Review modal state
+  const [reviewModalVisible, setReviewModalVisible] = useState(false);
+  const [reviewExpense, setReviewExpense] = useState<ExpenseRequestDetailed | null>(null);
+  const [reviewActions, setReviewActions] = useState<string[]>([]);
+  const [loadingExpense, setLoadingExpense] = useState(false);
 
   // Payment modal state
   const [payModalVisible, setPayModalVisible] = useState(false);
   const [payExpense, setPayExpense] = useState<ExpenseRequestDetailed | null>(null);
-
-  // Expense detail modal state
-  const [detailModalVisible, setDetailModalVisible] = useState(false);
-  const [selectedExpense, setSelectedExpense] = useState<ExpenseRequestDetailed | null>(null);
-  const [loadingExpense, setLoadingExpense] = useState(false);
-
-  // Edit expense modal state
-  const [editModalVisible, setEditModalVisible] = useState(false);
-  const [editExpense, setEditExpense] = useState<ExpenseRequestDetailed | null>(null);
 
   const highlightTaskId = searchParams.get("highlight");
 
@@ -143,7 +126,6 @@ function TasksContent() {
   useEffect(() => {
     if (!highlightTaskId || tasks.length === 0) return;
 
-    // Small delay to let the table render
     const scrollTimer = setTimeout(() => {
       const row = document.getElementById(`task-row-${highlightTaskId}`);
       if (row) {
@@ -162,130 +144,41 @@ function TasksContent() {
     };
   }, [highlightTaskId, tasks]);
 
-  // --- Action handlers ---
-
-  const handleViewExpense = async (expenseId: string) => {
+  // --- Open Review Modal ---
+  const openReviewModal = async (task: TodoTask) => {
     setLoadingExpense(true);
+    setReviewActions(task.actions);
+    setReviewModalVisible(true);
     try {
-      const response = await fetch(`/api/v1/expenses/${expenseId}`, {
+      const response = await fetch(`/api/v1/expenses/${task.id}`, {
         credentials: "include",
       });
       if (response.ok) {
         const data = await response.json();
-        setSelectedExpense(data);
-        setDetailModalVisible(true);
+        setReviewExpense(data);
       } else {
         message.error("Failed to load expense details");
+        setReviewModalVisible(false);
       }
     } catch {
       message.error("Network error");
+      setReviewModalVisible(false);
     } finally {
       setLoadingExpense(false);
     }
   };
 
-  const handleApprove = async (taskId: string) => {
-    setProcessing(true);
-    try {
-      const response = await fetch("/api/v1/expenses/batch", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({
-          ids: [taskId],
-          status: "Pending Finance",
-        }),
-      });
-      if (response.ok) {
-        message.success("Expense approved");
-        setTasks((prev) => prev.filter((t) => t.id !== taskId));
-      } else {
-        const err = await response.json();
-        message.error(err.detail || "Failed to approve");
-      }
-    } catch {
-      message.error("Network error");
-    } finally {
-      setProcessing(false);
-    }
+  // Called after approve/reject/return from within the review modal
+  const handleActionComplete = () => {
+    setReviewModalVisible(false);
+    setReviewExpense(null);
+    fetchTasks();
   };
 
-  const openActionModal = (taskId: string, type: string) => {
-    setActionTaskId(taskId);
-    setActionType(type);
-    setActionComment("");
-    setActionModalVisible(true);
-  };
-
-  const handleRejectOrReturn = async () => {
-    if (!actionComment.trim()) {
-      message.warning("Please provide a reason");
-      return;
-    }
-    setProcessing(true);
-    try {
-      const statusMap: Record<string, string> = {
-        reject: "Rejected",
-        return: "Returned",
-      };
-      const response = await fetch("/api/v1/expenses/batch", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({
-          ids: [actionTaskId],
-          status: statusMap[actionType],
-          comment: actionComment,
-        }),
-      });
-      if (response.ok) {
-        message.success(`Expense ${actionType}ed`);
-        setTasks((prev) => prev.filter((t) => t.id !== actionTaskId));
-        setActionModalVisible(false);
-      } else {
-        const err = await response.json();
-        message.error(err.detail || `Failed to ${actionType}`);
-      }
-    } catch {
-      message.error("Network error");
-    } finally {
-      setProcessing(false);
-    }
-  };
-
-  const openPayModal = async (taskId: string) => {
-    try {
-      const response = await fetch(`/api/v1/expenses/${taskId}`, {
-        credentials: "include",
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setPayExpense(data);
-        setPayModalVisible(true);
-      } else {
-        message.error("Failed to load expense details");
-      }
-    } catch {
-      message.error("Network error");
-    }
-  };
-
-  const handleEdit = async (taskId: string) => {
-    // Fetch expense details and open edit modal
-    try {
-      const response = await fetch(`/api/v1/expenses/${taskId}`, {
-        credentials: "include",
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setEditExpense(data);
-        setEditModalVisible(true);
-      } else {
-        message.error("Failed to load expense details");
-      }
-    } catch {
-      message.error("Network error");
-    }
+  // Pay action — opens ProcessPaymentModal on top
+  const handlePay = (expense: ExpenseRequestDetailed) => {
+    setPayExpense(expense);
+    setPayModalVisible(true);
   };
 
   // --- Table columns ---
@@ -295,7 +188,7 @@ function TasksContent() {
       title: "Type",
       dataIndex: "task_type",
       key: "task_type",
-      width: 160,
+      width: 140,
       render: (type: string) => {
         const info = TASK_TYPE_LABELS[type] || { label: type, color: "default" };
         return <Tag color={info.color}>{info.label}</Tag>;
@@ -305,12 +198,12 @@ function TasksContent() {
       title: "Expense #",
       dataIndex: "expense_number",
       key: "expense_number",
-      width: 200,
+      width: 140,
       render: (num: string, record: TodoTask) => (
         <Text
           strong
           style={{ color: "#1890ff", cursor: "pointer" }}
-          onClick={() => handleViewExpense(record.id)}
+          onClick={() => openReviewModal(record)}
         >
           {num || "-"}
         </Text>
@@ -320,45 +213,27 @@ function TasksContent() {
       title: "Requester",
       dataIndex: "requester",
       key: "requester",
-      width: 140,
+      width: 130,
       ellipsis: true,
     },
     {
       title: "Details",
       key: "details",
+      ellipsis: true,
       render: (_: unknown, record: TodoTask) => (
-        <div>
-          <div>
-            <Text strong>{record.expense_type}</Text>
-            {record.description && (
-              <Text type="secondary" style={{ marginLeft: 4 }}>| {record.description}</Text>
-            )}
-          </div>
-          {record.trip_number && (
-            <div>
-              <Text type="secondary" style={{ fontSize: 12 }}>
-                Trip: {record.trip_number}
-              </Text>
-            </div>
-          )}
-          {record.manager_comment && (
-            <div>
-              <Text type="warning" style={{ fontSize: 12 }}>
-                Note: {record.manager_comment}
-              </Text>
-            </div>
-          )}
-        </div>
+        <Text ellipsis>
+          {record.expense_type}{record.description ? ` | ${record.description}` : ""}{record.trip_number ? ` — Trip: ${record.trip_number}` : ""}
+        </Text>
       ),
     },
     {
       title: "Amount",
       key: "amount",
-      width: 150,
+      width: 200,
       align: "right",
       render: (_: unknown, record: TodoTask) => (
         <Text strong>
-          {record.currency} {record.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+          {record.currency} {Number(record.amount).toLocaleString("en-US", { minimumFractionDigits: 2 })}
         </Text>
       ),
       sorter: (a, b) => a.amount - b.amount,
@@ -367,7 +242,7 @@ function TasksContent() {
       title: "Date",
       dataIndex: "created_at",
       key: "created_at",
-      width: 120,
+      width: 100,
       render: (date: string) => (
         <Tooltip title={date ? new Date(date).toLocaleString() : ""}>
           <Text type="secondary">{formatTimeAgo(date)}</Text>
@@ -376,65 +251,19 @@ function TasksContent() {
       sorter: (a, b) => (a.created_at || "").localeCompare(b.created_at || ""),
     },
     {
-      title: "Actions",
+      title: "",
       key: "actions",
-      width: 280,
+      width: 140,
       fixed: "right",
       render: (_: unknown, record: TodoTask) => (
-        <Space size="small">
-          {record.actions.includes("approve") && (
-            <Button
-              type="primary"
-              size="small"
-              icon={<CheckCircleOutlined />}
-              onClick={() => handleApprove(record.id)}
-              loading={processing}
-              style={{ background: "#52c41a", borderColor: "#52c41a" }}
-            >
-              Approve
-            </Button>
-          )}
-          {record.actions.includes("reject") && (
-            <Button
-              danger
-              size="small"
-              icon={<CloseCircleOutlined />}
-              onClick={() => openActionModal(record.id, "reject")}
-            >
-              Reject
-            </Button>
-          )}
-          {record.actions.includes("return") && (
-            <Button
-              size="small"
-              icon={<UndoOutlined />}
-              onClick={() => openActionModal(record.id, "return")}
-              style={{ color: "#fa8c16", borderColor: "#fa8c16" }}
-            >
-              Return
-            </Button>
-          )}
-          {record.actions.includes("pay") && (
-            <Button
-              type="primary"
-              size="small"
-              icon={<DollarOutlined />}
-              onClick={() => openPayModal(record.id)}
-            >
-              Pay
-            </Button>
-          )}
-          {record.actions.includes("edit") && (
-            <Button
-              size="small"
-              icon={<EditOutlined />}
-              onClick={() => handleEdit(record.id)}
-              style={{ color: "#faad14", borderColor: "#faad14" }}
-            >
-              Fix
-            </Button>
-          )}
-        </Space>
+        <Button
+          type="primary"
+          size="small"
+          icon={<PlayCircleOutlined />}
+          onClick={() => openReviewModal(record)}
+        >
+          Review
+        </Button>
       ),
     },
   ];
@@ -521,8 +350,9 @@ function TasksContent() {
               dataSource={tasks}
               rowKey="id"
               loading={loading}
+              size="small"
               pagination={{ pageSize: 20 }}
-              scroll={{ x: 1000 }}
+              scroll={{ x: 900 }}
               onRow={(record) => ({
                 id: `task-row-${record.id}`,
               })}
@@ -531,28 +361,21 @@ function TasksContent() {
         </Flex>
       </Card>
 
-      {/* Reject / Return comment modal */}
-      <Modal
-        title={`${actionType === "reject" ? "Reject" : "Return"} Expense`}
-        open={actionModalVisible}
-        onOk={handleRejectOrReturn}
-        onCancel={() => setActionModalVisible(false)}
-        confirmLoading={processing}
-        okText={`Confirm ${actionType === "reject" ? "Rejection" : "Return"}`}
-        okButtonProps={{ danger: actionType === "reject" }}
-      >
-        <Flex vertical gap="small" style={{ width: "100%" }}>
-          <Text>Please provide a reason:</Text>
-          <TextArea
-            rows={4}
-            value={actionComment}
-            onChange={(e) => setActionComment(e.target.value)}
-            placeholder="e.g. Missing receipt, Duplicate entry..."
-          />
-        </Flex>
-      </Modal>
+      {/* Unified Expense Review Modal */}
+      <ExpenseReviewModal
+        open={reviewModalVisible}
+        onClose={() => {
+          setReviewModalVisible(false);
+          setReviewExpense(null);
+        }}
+        expense={reviewExpense}
+        actions={reviewActions}
+        loading={loadingExpense}
+        onActionComplete={handleActionComplete}
+        onPay={handlePay}
+      />
 
-      {/* Payment modal */}
+      {/* Payment modal (opens on top of review modal when Pay is clicked) */}
       <ProcessPaymentModal
         open={payModalVisible}
         onClose={() => {
@@ -560,35 +383,15 @@ function TasksContent() {
           setPayExpense(null);
         }}
         onSuccess={() => {
+          setPayModalVisible(false);
+          setPayExpense(null);
+          setReviewModalVisible(false);
+          setReviewExpense(null);
           fetchTasks();
         }}
         expense={payExpense}
       />
 
-      {/* Expense Detail Modal */}
-      <ExpenseDetailModal
-        open={detailModalVisible}
-        onClose={() => {
-          setDetailModalVisible(false);
-          setSelectedExpense(null);
-        }}
-        expense={selectedExpense}
-      />
-
-      {/* Edit Expense Modal */}
-      <EditExpenseModal
-        open={editModalVisible}
-        onClose={() => {
-          setEditModalVisible(false);
-          setEditExpense(null);
-        }}
-        onSuccess={() => {
-          fetchTasks();
-          setEditModalVisible(false);
-          setEditExpense(null);
-        }}
-        expense={editExpense}
-      />
     </div>
   );
 }

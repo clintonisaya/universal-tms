@@ -384,17 +384,7 @@ export default function TripExpenseTypesPage() {
               </Title>
             </Space>
             <Space>
-              <Popconfirm
-                title="Seed Standard Data"
-                description="This will add standard expense types. Existing entries will not be affected."
-                onConfirm={handleSeedData}
-                okText="Seed Data"
-                cancelText="Cancel"
-              >
-                <Button icon={<DatabaseOutlined />} loading={seeding}>
-                  Seed Data
-                </Button>
-              </Popconfirm>
+              
               <Button icon={<ReloadOutlined />} onClick={() => refetch()}>
                 Refresh
               </Button>

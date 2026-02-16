@@ -16,6 +16,8 @@ import {
   MenuUnfoldOutlined,
   CrownOutlined,
   BarChartOutlined,
+  AuditOutlined,
+  BankOutlined,
 } from "@ant-design/icons";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePermissions } from "@/hooks/usePermissions";
@@ -73,6 +75,24 @@ const allMenuItems: PermissionMenuItem[] = [
     requires: ["office-expenses:view"],
   },
   {
+    key: "manager",
+    icon: <AuditOutlined />,
+    label: "Manager",
+    children: [
+      { key: "/manager/approvals", label: "Approvals", requires: ["expenses:approve"] },
+    ],
+  },
+  {
+    key: "finance",
+    icon: <BankOutlined />,
+    label: "Finance",
+    children: [
+      { key: "/manager/payments", label: "Payments", requires: ["expenses:pay"] },
+      { key: "/finance/vouchers/bulk", label: "Vouchers", requires: ["expenses:pay"] },
+      { key: "/settings/finance", label: "Exchange Rates", requires: ["settings:exchange-rates"] },
+    ],
+  },
+  {
     key: "reports",
     icon: <BarChartOutlined />,
     label: "Reports",
@@ -87,7 +107,6 @@ const allMenuItems: PermissionMenuItem[] = [
     children: [
       { key: "/settings/users", label: "Users", requires: ["users:manage"] },
       { key: "/settings/clients", label: "Clients", requires: ["settings:clients"] },
-      { key: "/settings/finance", label: "Exchange Rates", requires: ["settings:exchange-rates"] },
       { key: "/settings/finance/office-expense-types", label: "Office Expense Types", requires: ["settings:office-expense-types"] },
       { key: "/settings/trip-expenses", label: "Trip Expense Types", requires: ["settings:trip-expense-types"] },
       { key: "/settings/transport/locations", label: "Locations", requires: ["settings:locations"] },
@@ -193,6 +212,10 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
       "/ops/trips",
       "/ops/expenses",
       "/office-expenses",
+      "/manager/approvals",
+      "/manager/payments",
+      "/finance/vouchers/bulk",
+      "/finance/vouchers",
       "/settings/clients",
       "/settings/finance",
       "/settings/finance/office-expense-types",
@@ -217,6 +240,8 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
     // Always keep sections open if we are inside them
     if (pathname.startsWith("/fleet")) return ["fleet"];
     if (pathname.startsWith("/ops")) return ["operations"];
+    if (pathname.startsWith("/manager")) return ["manager"];
+    if (pathname.startsWith("/finance")) return ["finance"];
     if (pathname.startsWith("/reports")) return ["reports"];
     if (pathname.startsWith("/settings")) return ["settings"];
 
@@ -239,7 +264,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
           top: 0,
           left: 0,
         }}
-        width={260}
+        width={200}
         trigger={null}
       >
         <div style={{

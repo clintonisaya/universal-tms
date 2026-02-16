@@ -17,6 +17,7 @@ import {
   Spin,
 } from "antd";
 import { SaveOutlined } from "@ant-design/icons";
+import { amountInputProps } from "@/lib/utils";
 import type { WaybillCreate } from "@/types/waybill";
 
 const { Title } = Typography;
@@ -180,6 +181,7 @@ export function CreateWaybillDrawer({
                 style={{ width: "100%" }}
                 min={0}
                 placeholder="e.g. 30000"
+                {...amountInputProps}
               />
             </Form.Item>
           </div>
@@ -256,6 +258,7 @@ export function CreateWaybillDrawer({
                 min={0}
                 precision={2}
                 placeholder="e.g. 3500.00"
+                {...amountInputProps}
               />
             </Form.Item>
             <Form.Item

@@ -148,7 +148,7 @@ export default function TruckDetailPage() {
       render: (_, record) => {
         const amount = record.expense?.amount;
         return amount != null
-          ? `TZS ${Number(amount).toLocaleString()}`
+          ? `TZS ${Number(amount).toLocaleString("en-US")}`
           : "-";
       },
       align: "right",

@@ -103,7 +103,7 @@ export default function VoucherPage() {
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <span style={{ fontSize: "16px", fontWeight: "bold" }}>AMOUNT PAID:</span>
             <span style={{ fontSize: "20px", fontWeight: "bold" }}>
-              {expense.currency || "TZS"} {Number(expense.amount).toLocaleString()}
+              {expense.currency || "TZS"} {Number(expense.amount).toLocaleString("en-US")}
             </span>
           </div>
         </div>

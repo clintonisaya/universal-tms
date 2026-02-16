@@ -55,7 +55,7 @@ const formatDate = (dateString: string | null | undefined) => {
 };
 
 const formatCurrency = (amount: number, currency: string = "TZS") => {
-  return `${currency} ${amount.toLocaleString()}`;
+  return `${currency} ${Number(amount).toLocaleString("en-US")}`;
 };
 
 export function ExpenseDetailModal({ open, onClose, expense }: ExpenseDetailModalProps) {

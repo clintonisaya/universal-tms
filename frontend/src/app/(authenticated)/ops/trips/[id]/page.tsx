@@ -163,7 +163,7 @@ export default function TripDetailPage() {
       key: "amount",
       render: (amount: number, record: any) => {
         const cur = record.currency || "TZS";
-        return `${cur} ${Number(amount).toLocaleString()}`;
+        return `${cur} ${Number(amount).toLocaleString("en-US")}`;
       },
       align: "right",
     },
@@ -334,7 +334,7 @@ export default function TripDetailPage() {
                       <Space>
                         <Text strong>Total Expenses:</Text>
                         <Text>
-                          TZS {Number(totalExpenses).toLocaleString()}
+                          TZS {Number(totalExpenses).toLocaleString("en-US")}
                         </Text>
                       </Space>
                       <Space>

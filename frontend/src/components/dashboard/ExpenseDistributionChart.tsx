@@ -108,7 +108,7 @@ export function ExpenseDistributionChart({ data, loading }: ExpenseDistributionC
               </Pie>
               <Tooltip
                 formatter={(value: any, name: any) => [
-                  `TZS ${Number(value).toLocaleString()}`,
+                  `TZS ${Number(value).toLocaleString("en-US")}`,
                   name,
                 ]}
                 contentStyle={{ borderRadius: 8 }}
@@ -136,7 +136,7 @@ export function ExpenseDistributionChart({ data, loading }: ExpenseDistributionC
           >
             <span style={{ color: "#8c8c8c", fontSize: 12 }}>Total: </span>
             <span style={{ fontWeight: 600, color: "#262626" }}>
-              TZS {totalExpenses.toLocaleString()}
+              TZS {totalExpenses.toLocaleString("en-US")}
             </span>
           </div>
         </>

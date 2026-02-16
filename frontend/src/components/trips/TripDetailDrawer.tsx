@@ -299,7 +299,7 @@ export function TripDetailDrawer({ open, onClose, tripId }: TripDetailDrawerProp
       key: "amount",
       render: (amount: number, record: any) => {
         const cur = record.currency || "TZS";
-        return `${cur} ${Number(amount).toLocaleString()}`;
+        return `${cur} ${Number(amount).toLocaleString("en-US")}`;
       },
       align: "right",
     },
@@ -475,7 +475,7 @@ export function TripDetailDrawer({ open, onClose, tripId }: TripDetailDrawerProp
                       <Space>
                         <Text strong>Total Expenses:</Text>
                         <Text>
-                          TZS {Number(totalExpenses).toLocaleString()}
+                          TZS {Number(totalExpenses).toLocaleString("en-US")}
                         </Text>
                       </Space>
                       <Space>
@@ -577,7 +577,7 @@ export function TripDetailDrawer({ open, onClose, tripId }: TripDetailDrawerProp
           <div style={{ marginBottom: 16 }}>
             <Text type="secondary">Amount: </Text>
             <Text strong>
-              {paymentExpense.currency || "TZS"} {Number(paymentExpense.amount).toLocaleString()}
+              {paymentExpense.currency || "TZS"} {Number(paymentExpense.amount).toLocaleString("en-US")}
             </Text>
           </div>
         )}

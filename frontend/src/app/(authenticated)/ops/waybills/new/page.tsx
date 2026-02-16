@@ -18,6 +18,7 @@ import {
 } from "antd";
 import { ArrowLeftOutlined, SaveOutlined } from "@ant-design/icons";
 import { useAuth } from "@/contexts/AuthContext";
+import { amountInputProps } from "@/lib/utils";
 import type { WaybillCreate } from "@/types/waybill";
 
 const { Title, Text } = Typography;
@@ -166,11 +167,11 @@ export default function NewWaybillPage() {
                   rules={[{ required: true, message: "Please enter weight" }]}
                 >
                   <InputNumber
-                    style={{ width: "100%" }}
-                    min={0}
-                    placeholder="e.g. 30000"
-                  />
-                </Form.Item>
+                                    style={{ width: "100%" }}
+                                    min={0}
+                                    placeholder="e.g. 30000"
+                                    {...amountInputProps}
+                                  />                </Form.Item>
                 <Form.Item
                   name="risk_level"
                   label="Risk Level"
@@ -242,12 +243,12 @@ export default function NewWaybillPage() {
                   rules={[{ required: true, message: "Please enter rate" }]}
                 >
                   <InputNumber
-                    style={{ width: "100%" }}
-                    min={0}
-                    precision={2}
-                    placeholder="e.g. 3500.00"
-                  />
-                </Form.Item>
+                                    style={{ width: "100%" }}
+                                    min={0}
+                                    precision={2}
+                                    placeholder="e.g. 3500.00"
+                                    {...amountInputProps}
+                                  />                </Form.Item>
                 <Form.Item
                   name="currency"
                   label="Currency"

@@ -83,7 +83,7 @@ interface TaskSocketEvent {
 function buildToastMessage(taskType: TaskType | undefined, data: TaskSocketEvent): string {
   switch (taskType) {
     case "expense_approval":
-      return `${data.requester || "Someone"} submitted ${data.expense_type || "an"} expense${data.amount ? ` (${data.amount.toLocaleString()} ${data.currency || "TZS"})` : ""}`;
+      return `${data.requester || "Someone"} submitted ${data.expense_type || "an"} expense${data.amount ? ` (${Number(data.amount).toLocaleString("en-US")} ${data.currency || "TZS"})` : ""}`;
     case "payment_processing": {
       const c = data.count ?? 1;
       return `${c} expense${c > 1 ? "s" : ""} ready for payment`;
@@ -306,7 +306,7 @@ function DashboardContent() {
           </Col>
         )}
 
-        {/* Active Drivers: admin, manager, ops */}
+        {/* Idle Drivers: admin, manager, ops */}
         {canSee(role, ["ops"]) && (
           <Col xs={24} sm={12} lg={6} xl={4}>
             <MetricCard

@@ -47,7 +47,7 @@ function getRiskColor(risk: string | null | undefined): string {
 function formatCurrency(rate: number | null | undefined, currency: string | null | undefined): string {
   if (rate == null) return "-";
   const symbol = currency === "TZS" ? "TZS" : "USD";
-  return `${symbol} ${Number(rate).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  return `${symbol} ${Number(rate).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 function formatRelativeTime(dateStr: string | null | undefined): string {

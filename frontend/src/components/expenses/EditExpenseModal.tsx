@@ -25,6 +25,7 @@ import {
   App,
 } from "antd";
 import type { UploadFile } from "antd/es/upload/interface";
+import { amountInputProps } from "@/lib/utils";
 import {
   UploadOutlined,
   DeleteOutlined,
@@ -470,14 +471,14 @@ export function EditExpenseModal({
       dataIndex: "amount",
       width: 140,
       render: (text: number, record: ExpenseItem) => (
-        <InputNumber
-          style={{ width: "100%" }}
-          min={0}
-          value={text}
-          formatter={(value) => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
-          parser={(value) => value?.replace(/,/g, '') as unknown as number}
-          onChange={(val) => handleItemChange(record.key, "amount", val)}
-        />
+        // in columns:
+<InputNumber
+  style={{ width: "100%" }}
+  min={0}
+  value={text}
+  onChange={(val) => handleItemChange(record.key, "amount", val)}
+  {...amountInputProps}
+/>
       ),
     },
     {
@@ -605,7 +606,7 @@ export function EditExpenseModal({
                       <Col span={8}>
                         <Form.Item label="Application Amount">
                           <Input
-                            value={items.length > 0 && totalAmount > 0 ? `${items[0]?.currency || 'TZS'} ${totalAmount.toLocaleString()}` : '-'}
+                            value={items.length > 0 && totalAmount > 0 ? `${items[0]?.currency || 'TZS'} ${totalAmount.toLocaleString("en-US")}` : '-'}
                             readOnly
                             style={{ fontWeight: 'bold' }}
                           />
@@ -660,7 +661,7 @@ export function EditExpenseModal({
                       scroll={{ x: 1000 }}
                       footer={() => (
                         <div style={{ textAlign: 'right', fontWeight: 'bold', fontSize: 16 }}>
-                          Total: {items[0]?.currency || 'TZS'} {totalAmount > 0 ? totalAmount.toLocaleString() : '-'}
+                          Total: {items[0]?.currency || 'TZS'} {totalAmount > 0 ? totalAmount.toLocaleString("en-US") : '-'}
                         </div>
                       )}
                     />

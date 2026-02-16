@@ -13,7 +13,6 @@ import {
 import {
   ReloadOutlined,
   PlusOutlined,
-  DollarOutlined,
   PrinterOutlined,
   HistoryOutlined,
 } from "@ant-design/icons";
@@ -22,8 +21,8 @@ import type { ExpenseRequestDetailed, ExpenseStatus } from "@/types/expense";
 import { useAuth } from "@/contexts/AuthContext";
 import { useExpenses, useInvalidateQueries } from "@/hooks/useApi";
 import { AddExpenseModal } from "@/components/expenses/AddExpenseModal";
-import { ProcessPaymentModal } from "@/components/expenses/ProcessPaymentModal";
-import { ExpenseDetailModal } from "@/components/expenses/ExpenseDetailModal";
+
+import { ExpenseReviewModal } from "@/components/expenses/ExpenseReviewModal";
 import { ExpenseHistoryModal } from "@/components/expenses/ExpenseHistoryModal";
 import { ExpenseStatusBadge } from "@/components/expenses/ExpenseStatusBadge";
 import { OfficePaymentPrintLayout } from "@/components/expenses/OfficePaymentPrintLayout";
@@ -74,8 +73,6 @@ export default function OfficeExpensesPage() {
   const [pageSize, setPageSize] = useState(20);
 
   // Payment Modal State
-  const [paymentModalOpen, setPaymentModalOpen] = useState(false);
-  const [selectedExpense, setSelectedExpense] = useState<ExpenseRequestDetailed | null>(null);
 
   // Detail Modal State
   const [detailModalOpen, setDetailModalOpen] = useState(false);
@@ -92,11 +89,6 @@ export default function OfficeExpensesPage() {
   const handleViewDetail = (record: ExpenseRequestDetailed) => {
     setDetailExpense(record);
     setDetailModalOpen(true);
-  };
-
-  const handlePay = (record: ExpenseRequestDetailed) => {
-    setSelectedExpense(record);
-    setPaymentModalOpen(true);
   };
 
   const handlePrint = (id: string) => {
@@ -147,17 +139,6 @@ export default function OfficeExpensesPage() {
               onClick={() => handlePrint(record.id)}
             />
           )}
-          {(user?.role === "finance" || user?.role === "admin") &&
-            record.status === "Pending Finance" && (
-              <Button
-                type="primary"
-                size="small"
-                icon={<DollarOutlined />}
-                onClick={() => handlePay(record)}
-              >
-                Pay
-              </Button>
-            )}
         </Space>
       ),
     },
@@ -206,7 +187,7 @@ export default function OfficeExpensesPage() {
         const cur = record.currency || "TZS";
         return (
           <div style={{ fontWeight: 600 }}>
-            {cur} {Number(amount).toLocaleString()}
+            {cur} {Number(amount).toLocaleString("en-US")}
           </div>
         );
       },
@@ -302,14 +283,7 @@ export default function OfficeExpensesPage() {
         onSuccess={() => invalidateExpenses()}
       />
 
-      <ProcessPaymentModal
-        open={paymentModalOpen}
-        onClose={() => setPaymentModalOpen(false)}
-        onSuccess={() => invalidateExpenses()}
-        expense={selectedExpense}
-      />
-
-      <ExpenseDetailModal
+      <ExpenseReviewModal
         open={detailModalOpen}
         onClose={() => {
           setDetailModalOpen(false);

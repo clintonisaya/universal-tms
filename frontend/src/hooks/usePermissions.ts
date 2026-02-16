@@ -20,19 +20,21 @@ export const AVAILABLE_PERMISSIONS = [
   { label: "Delete Trips", value: "trips:delete", group: "Operations" },
   // Operations – Tracking
   { label: "View Tracking", value: "tracking:view", group: "Operations" },
-  // Finance – Expenses
-  { label: "View Expenses", value: "expenses:view", group: "Finance" },
-  { label: "Create Expenses", value: "expenses:create", group: "Finance" },
-  { label: "Approve Expenses", value: "expenses:approve", group: "Finance" },
+  // Expenses
+  { label: "View Expenses", value: "expenses:view", group: "Expenses" },
+  { label: "Create Expenses", value: "expenses:create", group: "Expenses" },
+  // Office Expenses
+  { label: "View Office Expenses", value: "office-expenses:view", group: "Expenses" },
+  { label: "Create Office Expenses", value: "office-expenses:create", group: "Expenses" },
+  // Manager
+  { label: "Approve Expenses", value: "expenses:approve", group: "Manager" },
+  // Finance
   { label: "Pay Expenses", value: "expenses:pay", group: "Finance" },
-  // Finance – Office Expenses
-  { label: "View Office Expenses", value: "office-expenses:view", group: "Finance" },
-  { label: "Create Office Expenses", value: "office-expenses:create", group: "Finance" },
+  { label: "Exchange Rates", value: "settings:exchange-rates", group: "Finance" },
   // Reports
   { label: "View Reports", value: "reports:view", group: "Reports" },
   // Settings – granular per feature
   { label: "Clients", value: "settings:clients", group: "Settings" },
-  { label: "Exchange Rates", value: "settings:exchange-rates", group: "Settings" },
   { label: "Office Expense Types", value: "settings:office-expense-types", group: "Settings" },
   { label: "Trip Expense Types", value: "settings:trip-expense-types", group: "Settings" },
   { label: "Locations", value: "settings:locations", group: "Settings" },
@@ -56,9 +58,9 @@ const groupPerms = (group: string) =>
 export const ROLE_PERMISSION_PRESETS: Record<string, string[]> = {
   ops: [...groupPerms("Fleet"), ...groupPerms("Operations")],
   finance: [
-    ...groupPerms("Finance").filter((p) => p !== "expenses:approve"),
+    ...groupPerms("Expenses"),
+    ...groupPerms("Finance"),
     "reports:view",
-    "settings:exchange-rates",
     "settings:office-expense-types",
     "settings:trip-expense-types",
   ],

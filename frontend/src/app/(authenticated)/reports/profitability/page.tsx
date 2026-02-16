@@ -180,7 +180,7 @@ export default function TripProfitabilityPage() {
       align: "right",
       render: (val: number) => (
         <Text style={{ color: "#52c41a", fontWeight: 500 }}>
-          {val.toLocaleString()}
+          {val.toLocaleString("en-US")}
         </Text>
       ),
       sorter: true,
@@ -193,7 +193,7 @@ export default function TripProfitabilityPage() {
       align: "right",
       render: (val: number) => (
         <Text style={{ color: "#ff4d4f", fontWeight: 500 }}>
-          {val.toLocaleString()}
+          {val.toLocaleString("en-US")}
         </Text>
       ),
       sorter: true,
@@ -212,7 +212,7 @@ export default function TripProfitabilityPage() {
           }}
         >
           {val >= 0 ? "+" : ""}
-          {val.toLocaleString()}
+          {val.toLocaleString("en-US")}
         </Text>
       ),
       sorter: true,
@@ -229,7 +229,7 @@ export default function TripProfitabilityPage() {
             color: val >= 0 ? "#52c41a" : "#ff4d4f",
           }}
         >
-          {val.toLocaleString()}
+          {val.toLocaleString("en-US")}
         </Text>
       ),
       sorter: true,

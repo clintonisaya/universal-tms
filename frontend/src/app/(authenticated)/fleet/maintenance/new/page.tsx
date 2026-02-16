@@ -20,6 +20,7 @@ import {
 } from "antd";
 import { ArrowLeftOutlined, SaveOutlined } from "@ant-design/icons";
 import { useAuth } from "@/contexts/AuthContext";
+import { amountInputProps } from "@/lib/utils";
 import type { Truck, TrucksResponse } from "@/types/truck";
 import type { Trailer, TrailersResponse } from "@/types/trailer";
 import type { MaintenanceEventCreate } from "@/types/maintenance";
@@ -198,6 +199,7 @@ export default function NewMaintenancePage() {
                       step={0.01}
                       precision={2}
                       placeholder="0.00"
+                      {...amountInputProps}
                     />
                   </Form.Item>
                 </Col>

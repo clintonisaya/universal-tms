@@ -21,6 +21,7 @@ import {
   EditOutlined,
   DeleteOutlined,
 } from "@ant-design/icons";
+import { amountInputProps } from "@/lib/utils";
 import type { ColumnsType } from "antd/es/table";
 import type { ExchangeRate, ExchangeRateCreate } from "@/types/finance";
 import { useAuth } from "@/contexts/AuthContext";
@@ -304,6 +305,7 @@ export default function ExchangeRateSettingsPage() {
               min={1}
               precision={2}
               placeholder="e.g. 2600.00"
+              {...amountInputProps}
             />
           </Form.Item>
           <Form.Item style={{ textAlign: "right", marginBottom: 0 }}>

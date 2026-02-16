@@ -8,20 +8,16 @@ import {
   Card,
   Space,
   Select,
-  Modal,
-  Input,
   Typography,
   App,
 } from "antd";
 import {
-  CheckCircleOutlined,
-  CloseCircleOutlined,
-  RollbackOutlined,
+  PlayCircleOutlined,
   ReloadOutlined,
   ArrowLeftOutlined,
 } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
-import type { ExpenseRequest, ExpenseStatus, ExpenseCategory } from "@/types/expense";
+import type { ExpenseRequest, ExpenseStatus, ExpenseCategory, ExpenseRequestDetailed } from "@/types/expense";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   getColumnSearchProps,
@@ -30,19 +26,9 @@ import {
   useResizableColumns,
 } from "@/components/ui/tableUtils";
 import { ExpenseStatusBadge } from "@/components/expenses/ExpenseStatusBadge";
-import { ExpenseDetailModal } from "@/components/expenses/ExpenseDetailModal";
-import type { ExpenseRequestDetailed } from "@/types/expense";
+import { ExpenseReviewModal } from "@/components/expenses/ExpenseReviewModal";
 
-const { TextArea } = Input;
 const { Title, Text } = Typography;
-
-const STATUS_COLORS: Record<ExpenseStatus, string> = {
-  "Pending Manager": "orange",
-  "Pending Finance": "blue",
-  Paid: "green",
-  Rejected: "red",
-  Returned: "purple",
-};
 
 const CATEGORY_OPTIONS: { label: string; value: ExpenseCategory }[] = [
   { label: "Fuel", value: "Fuel" },
@@ -79,23 +65,15 @@ function ApprovalPageContent() {
   const [loading, setLoading] = useState(true);
   const [totalCount, setTotalCount] = useState(0);
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
-  const [modalVisible, setModalVisible] = useState(false);
-  const [actionType, setActionType] = useState<"Returned" | "Rejected" | null>(null);
-  const [comment, setComment] = useState("");
-  const [processing, setProcessing] = useState(false);
   const [statusFilter, setStatusFilter] = useState<ExpenseStatus>("Pending Manager");
   const [categoryFilter, setCategoryFilter] = useState<ExpenseCategory | "">("");
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
 
-  // Detail Modal State
-  const [detailModalOpen, setDetailModalOpen] = useState(false);
-  const [detailExpense, setDetailExpense] = useState<ExpenseRequestDetailed | null>(null);
-
-  const handleViewDetail = (record: ExpenseRequest) => {
-    setDetailExpense(record as ExpenseRequestDetailed);
-    setDetailModalOpen(true);
-  };
+  // Review Modal State
+  const [reviewModalOpen, setReviewModalOpen] = useState(false);
+  const [reviewExpense, setReviewExpense] = useState<ExpenseRequestDetailed | null>(null);
+  const [loadingExpense, setLoadingExpense] = useState(false);
 
   const fetchExpenses = useCallback(async () => {
     setLoading(true);
@@ -131,80 +109,41 @@ function ApprovalPageContent() {
     }
   }, [user, fetchExpenses]);
 
-  const handleBulkAction = async (status: string, actionComment?: string) => {
-    if (selectedRowKeys.length === 0) {
-      message.warning("Please select items first");
-      return;
-    }
-
-    setProcessing(true);
+  const openReviewModal = async (record: ExpenseRequest) => {
+    setLoadingExpense(true);
+    setReviewModalOpen(true);
     try {
-      const response = await fetch("/api/v1/expenses/batch", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+      const response = await fetch(`/api/v1/expenses/${record.id}`, {
         credentials: "include",
-        body: JSON.stringify({
-          ids: selectedRowKeys,
-          status: status,
-          comment: actionComment,
-        }),
       });
-
       if (response.ok) {
-        message.success(`Successfully set ${selectedRowKeys.length} items to ${status}`);
-        setSelectedRowKeys([]);
-        setModalVisible(false);
-        setComment("");
-        fetchExpenses();
+        const data = await response.json();
+        setReviewExpense(data);
       } else {
-        const error = await response.json();
-        message.error(error.detail || "Operation failed");
+        message.error("Failed to load expense details");
+        setReviewModalOpen(false);
       }
     } catch {
       message.error("Network error");
+      setReviewModalOpen(false);
     } finally {
-      setProcessing(false);
+      setLoadingExpense(false);
     }
   };
 
-  const handleSingleApprove = async (id: string) => {
-    setProcessing(true);
-    try {
-      const response = await fetch("/api/v1/expenses/batch", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({
-          ids: [id],
-          status: "Pending Finance",
-        }),
-      });
-
-      if (response.ok) {
-        message.success("Expense approved successfully");
-        fetchExpenses();
-      } else {
-        const error = await response.json();
-        message.error(error.detail || "Operation failed");
-      }
-    } catch {
-      message.error("Network error");
-    } finally {
-      setProcessing(false);
-    }
+  const handleActionComplete = () => {
+    setReviewModalOpen(false);
+    setReviewExpense(null);
+    fetchExpenses();
   };
 
-  const openCommentModal = (type: "Returned" | "Rejected", overrideId?: string) => {
-    const ids = overrideId ? [overrideId] : selectedRowKeys;
-    if (ids.length === 0) {
-      message.warning("Please select items first");
-      return;
+  // Determine actions based on the expense status
+  const getActions = (): string[] => {
+    if (!reviewExpense) return [];
+    if (reviewExpense.status === "Pending Manager") {
+      return ["approve", "reject", "return"];
     }
-    if (overrideId) {
-      setSelectedRowKeys([overrideId]);
-    }
-    setActionType(type);
-    setModalVisible(true);
+    return [];
   };
 
   const columns: ColumnsType<ExpenseRequest> = [
@@ -215,7 +154,7 @@ function ApprovalPageContent() {
       width: 140,
       render: (num: string | null, record: ExpenseRequest) => (
         <a
-          onClick={() => handleViewDetail(record)}
+          onClick={() => openReviewModal(record)}
           style={{ fontWeight: 600, color: "#1890ff", cursor: "pointer" }}
         >
           {num || record.id?.slice(0, 8).toUpperCase()}
@@ -255,7 +194,7 @@ function ApprovalPageContent() {
         const cur = record.currency || "TZS";
         return (
           <div style={{ fontWeight: 600 }}>
-            {cur} {Number(amount).toLocaleString()}
+            {cur} {Number(amount).toLocaleString("en-US")}
           </div>
         );
       },
@@ -278,42 +217,21 @@ function ApprovalPageContent() {
       render: (comment: string | null) => comment || "-",
     },
     {
-      title: "Actions",
+      title: "",
       key: "actions",
-      width: 120,
+      width: 90,
       fixed: "right",
-      render: (_, record) => (
-        <div className="row-actions">
-          {record.status === "Pending Manager" && (
-            <Space size="small">
-              <Button
-                type="text"
-                size="small"
-                icon={<CheckCircleOutlined />}
-                style={{ color: "#52c41a" }}
-                onClick={() => handleSingleApprove(record.id)}
-                title="Approve"
-              />
-              <Button
-                type="text"
-                size="small"
-                danger
-                icon={<RollbackOutlined />}
-                onClick={() => openCommentModal("Returned", record.id)}
-                title="Return"
-              />
-              <Button
-                type="text"
-                size="small"
-                danger
-                icon={<CloseCircleOutlined />}
-                onClick={() => openCommentModal("Rejected", record.id)}
-                title="Reject"
-              />
-            </Space>
-          )}
-        </div>
-      ),
+      render: (_, record) =>
+        record.status === "Pending Manager" ? (
+          <Button
+            type="primary"
+            size="small"
+            icon={<PlayCircleOutlined />}
+            onClick={() => openReviewModal(record)}
+          >
+            Review
+          </Button>
+        ) : null,
     },
   ];
 
@@ -368,52 +286,6 @@ function ApprovalPageContent() {
             </Space>
           </div>
 
-          {/* Bulk action bar */}
-          {selectedRowKeys.length > 0 && (
-            <div
-              style={{
-                background: "#e6f4ff",
-                padding: "8px 16px",
-                borderRadius: 6,
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-              }}
-            >
-              <Text>
-                Selected <strong>{selectedRowKeys.length}</strong> items{" "}
-                <a onClick={() => setSelectedRowKeys([])}>Clear</a>
-              </Text>
-              <Space>
-                <Button
-                  type="primary"
-                  icon={<CheckCircleOutlined />}
-                  onClick={() => handleBulkAction("Pending Finance")}
-                  loading={processing}
-                >
-                  Approve
-                </Button>
-                <Button
-                  danger
-                  icon={<RollbackOutlined />}
-                  onClick={() => openCommentModal("Returned")}
-                  loading={processing}
-                >
-                  Return
-                </Button>
-                <Button
-                  danger
-                  type="dashed"
-                  icon={<CloseCircleOutlined />}
-                  onClick={() => openCommentModal("Rejected")}
-                  loading={processing}
-                >
-                  Reject
-                </Button>
-              </Space>
-            </div>
-          )}
-
           {/* Table */}
           <Table<ExpenseRequest>
             columns={resizableColumns}
@@ -444,38 +316,17 @@ function ApprovalPageContent() {
         </Space>
       </Card>
 
-      {/* Comment Modal for Return/Reject */}
-      <Modal
-        title={`${actionType} Request`}
-        open={modalVisible}
-        onOk={() => handleBulkAction(actionType!, comment)}
-        onCancel={() => {
-          setModalVisible(false);
-          setComment("");
-        }}
-        confirmLoading={processing}
-        okText={`Confirm ${actionType}`}
-        okButtonProps={{ danger: true }}
-      >
-        <Space orientation="vertical" style={{ width: "100%" }}>
-          <Text>Please provide a reason for this action:</Text>
-          <TextArea
-            rows={4}
-            value={comment}
-            onChange={(e) => setComment(e.target.value)}
-            placeholder="e.g. Missing receipt, Duplicate entry..."
-          />
-        </Space>
-      </Modal>
-
-      {/* Expense Detail Modal */}
-      <ExpenseDetailModal
-        open={detailModalOpen}
+      {/* Expense Review Modal with approve/reject/return actions */}
+      <ExpenseReviewModal
+        open={reviewModalOpen}
         onClose={() => {
-          setDetailModalOpen(false);
-          setDetailExpense(null);
+          setReviewModalOpen(false);
+          setReviewExpense(null);
         }}
-        expense={detailExpense}
+        expense={reviewExpense}
+        actions={getActions()}
+        loading={loadingExpense}
+        onActionComplete={handleActionComplete}
       />
     </div>
   );

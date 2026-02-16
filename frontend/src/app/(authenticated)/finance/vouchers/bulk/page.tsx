@@ -208,7 +208,7 @@ export default function BulkVoucherPage() {
                 </span>
                 <span style={{ fontSize: "20px", fontWeight: "bold" }}>
                   {expense.currency || "TZS"}{" "}
-                  {Number(expense.amount).toLocaleString()}
+                  {Number(expense.amount).toLocaleString("en-US")}
                 </span>
               </div>
             </div>

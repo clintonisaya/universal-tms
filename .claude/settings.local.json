@@ -62,7 +62,10 @@
       "Bash(git commit -m \"$\\(cat <<''EOF''\nfix: Show bank details for all payment methods and pre-fill from metadata\n\nBank details were hidden when payment method was Cash and the payment\nform didn''t pre-populate existing bank info from expense metadata.\n\nCo-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>\nEOF\n\\)\")",
       "Bash(set PYTHONPATH=C:UsersITDocumentsGitHubedupo-tmsbackend:*)",
       "Bash(set:*)",
-      "Bash(del \"C:\\\\Users\\\\IT\\\\Documents\\\\GitHub\\\\edupo-tms\\\\frontend\\\\src\\\\proxy.ts\")"
+      "Bash(del \"C:\\\\Users\\\\IT\\\\Documents\\\\GitHub\\\\edupo-tms\\\\frontend\\\\src\\\\proxy.ts\")",
+      "Bash(test:*)",
+      "Bash(cmd /c \"cd /d C:\\\\Users\\\\IT\\\\Documents\\\\GitHub\\\\edupo-tms\\\\frontend && npx next build\")",
+      "Bash(powershell -Command:*)"
     ]
   }
 }

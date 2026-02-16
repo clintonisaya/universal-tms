@@ -18,6 +18,7 @@ import {
   Col,
 } from "antd";
 import { SaveOutlined } from "@ant-design/icons";
+import { amountInputProps } from "@/lib/utils";
 import type { Truck, TrucksResponse } from "@/types/truck";
 import type { Trailer, TrailersResponse } from "@/types/trailer";
 import type { MaintenanceEventCreate } from "@/types/maintenance";
@@ -217,6 +218,7 @@ export function CreateMaintenanceDrawer({
                   step={0.01}
                   precision={2}
                   placeholder="0.00"
+                  {...amountInputProps}
                 />
               </Form.Item>
             </Col>

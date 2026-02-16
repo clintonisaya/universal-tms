@@ -7,18 +7,17 @@ import {
   Button,
   Card,
   Space,
-  message,
-  Modal,
   Statistic,
   Typography,
+  App,
 } from "antd";
 import {
-  DollarOutlined,
+  PlayCircleOutlined,
   ReloadOutlined,
   ArrowLeftOutlined,
 } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
-import type { ExpenseRequest, PaymentMethod } from "@/types/expense";
+import type { ExpenseRequest, ExpenseStatus, ExpenseRequestDetailed } from "@/types/expense";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   getColumnSearchProps,
@@ -27,19 +26,10 @@ import {
   useResizableColumns,
 } from "@/components/ui/tableUtils";
 import { ExpenseStatusBadge } from "@/components/expenses/ExpenseStatusBadge";
-import { ExpenseDetailModal } from "@/components/expenses/ExpenseDetailModal";
+import { ExpenseReviewModal } from "@/components/expenses/ExpenseReviewModal";
 import { ProcessPaymentModal } from "@/components/expenses/ProcessPaymentModal";
-import type { ExpenseStatus, ExpenseRequestDetailed } from "@/types/expense";
 
 const { Title, Text } = Typography;
-
-const STATUS_COLORS: Record<string, string> = {
-  "Pending Manager": "orange",
-  "Pending Finance": "blue",
-  Paid: "green",
-  Rejected: "red",
-  Returned: "purple",
-};
 
 const CATEGORY_FILTERS = [
   { text: "Fuel", value: "Fuel" },
@@ -50,31 +40,25 @@ const CATEGORY_FILTERS = [
   { text: "Other", value: "Other" },
 ];
 
-interface PaymentFormValues {
-  method: PaymentMethod;
-  reference?: string;
-}
-
-export default function FinancePaymentsPage() {
+function PaymentsPageContent() {
   const router = useRouter();
   const { user } = useAuth();
+  const { message } = App.useApp();
   const [expenses, setExpenses] = useState<ExpenseRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [totalCount, setTotalCount] = useState(0);
-  const [modalVisible, setModalVisible] = useState(false);
-  const [selectedExpense, setSelectedExpense] = useState<ExpenseRequestDetailed | null>(null);
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
 
-  // Detail Modal State
-  const [detailModalOpen, setDetailModalOpen] = useState(false);
-  const [detailExpense, setDetailExpense] = useState<ExpenseRequestDetailed | null>(null);
+  // Review Modal State
+  const [reviewModalOpen, setReviewModalOpen] = useState(false);
+  const [reviewExpense, setReviewExpense] = useState<ExpenseRequestDetailed | null>(null);
+  const [loadingExpense, setLoadingExpense] = useState(false);
 
-  const handleViewDetail = (record: ExpenseRequest) => {
-    setDetailExpense(record as ExpenseRequestDetailed);
-    setDetailModalOpen(true);
-  };
+  // Payment Modal State
+  const [payModalOpen, setPayModalOpen] = useState(false);
+  const [payExpense, setPayExpense] = useState<ExpenseRequestDetailed | null>(null);
 
   const fetchExpenses = useCallback(async () => {
     setLoading(true);
@@ -101,7 +85,7 @@ export default function FinancePaymentsPage() {
     } finally {
       setLoading(false);
     }
-  }, [router]);
+  }, [router, message]);
 
   useEffect(() => {
     if (user) {
@@ -109,12 +93,39 @@ export default function FinancePaymentsPage() {
     }
   }, [user, fetchExpenses]);
 
-  const openPaymentModal = (expense: ExpenseRequest) => {
-    setSelectedExpense(expense as ExpenseRequestDetailed);
-    setModalVisible(true);
+  const openReviewModal = async (record: ExpenseRequest) => {
+    setLoadingExpense(true);
+    setReviewModalOpen(true);
+    try {
+      const response = await fetch(`/api/v1/expenses/${record.id}`, {
+        credentials: "include",
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setReviewExpense(data);
+      } else {
+        message.error("Failed to load expense details");
+        setReviewModalOpen(false);
+      }
+    } catch {
+      message.error("Network error");
+      setReviewModalOpen(false);
+    } finally {
+      setLoadingExpense(false);
+    }
   };
 
+  const handleActionComplete = () => {
+    setReviewModalOpen(false);
+    setReviewExpense(null);
+    fetchExpenses();
+  };
 
+  // Pay action — opens ProcessPaymentModal on top of review modal
+  const handlePay = (expense: ExpenseRequestDetailed) => {
+    setPayExpense(expense);
+    setPayModalOpen(true);
+  };
 
   const totalPending = expenses.reduce((sum, e) => sum + Number(e.amount), 0);
 
@@ -126,7 +137,7 @@ export default function FinancePaymentsPage() {
       width: 140,
       render: (num: string | null, record: ExpenseRequest) => (
         <a
-          onClick={() => handleViewDetail(record)}
+          onClick={() => openReviewModal(record)}
           style={{ fontWeight: 600, color: "#1890ff", cursor: "pointer" }}
         >
           {num || record.id?.slice(0, 8).toUpperCase()}
@@ -167,7 +178,7 @@ export default function FinancePaymentsPage() {
         const cur = record.currency || "TZS";
         return (
           <div style={{ fontWeight: 600 }}>
-            {cur} {Number(amount).toLocaleString()}
+            {cur} {Number(amount).toLocaleString("en-US")}
           </div>
         );
       },
@@ -181,21 +192,19 @@ export default function FinancePaymentsPage() {
       render: (status: ExpenseStatus) => <ExpenseStatusBadge status={status} />,
     },
     {
-      title: "Actions",
+      title: "",
       key: "actions",
-      width: 100,
+      width: 90,
       fixed: "right",
       render: (_, record) => (
-        <div className="row-actions">
-          <Button
-            type="primary"
-            icon={<DollarOutlined />}
-            size="small"
-            onClick={() => openPaymentModal(record)}
-          >
-            Pay
-          </Button>
-        </div>
+        <Button
+          type="primary"
+          size="small"
+          icon={<PlayCircleOutlined />}
+          onClick={() => openReviewModal(record)}
+        >
+          Review
+        </Button>
       ),
     },
   ];
@@ -272,28 +281,44 @@ export default function FinancePaymentsPage() {
         </Space>
       </Card>
 
-      {/* Payment Modal */}
-      <ProcessPaymentModal
-        open={modalVisible}
+      {/* Expense Review Modal with pay + return actions */}
+      <ExpenseReviewModal
+        open={reviewModalOpen}
         onClose={() => {
-          setModalVisible(false);
-          setSelectedExpense(null);
+          setReviewModalOpen(false);
+          setReviewExpense(null);
         }}
-        onSuccess={() => {
-          fetchExpenses();
-        }}
-        expense={selectedExpense}
+        expense={reviewExpense}
+        actions={["pay", "return"]}
+        loading={loadingExpense}
+        onActionComplete={handleActionComplete}
+        onPay={handlePay}
       />
 
-      {/* Expense Detail Modal */}
-      <ExpenseDetailModal
-        open={detailModalOpen}
+      {/* Payment modal (opens on top of review modal when Pay is clicked) */}
+      <ProcessPaymentModal
+        open={payModalOpen}
         onClose={() => {
-          setDetailModalOpen(false);
-          setDetailExpense(null);
+          setPayModalOpen(false);
+          setPayExpense(null);
         }}
-        expense={detailExpense}
+        onSuccess={() => {
+          setPayModalOpen(false);
+          setPayExpense(null);
+          setReviewModalOpen(false);
+          setReviewExpense(null);
+          fetchExpenses();
+        }}
+        expense={payExpense}
       />
     </div>
+  );
+}
+
+export default function FinancePaymentsPage() {
+  return (
+    <App>
+      <PaymentsPageContent />
+    </App>
   );
 }

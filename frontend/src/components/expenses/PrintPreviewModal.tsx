@@ -286,7 +286,7 @@ export function PrintPreviewModal({
                 >
                   <span className="amount-label" style={{ fontSize: "16px", fontWeight: "bold" }}>AMOUNT PAID:</span>
                   <span className="amount-value" style={{ fontSize: "20px", fontWeight: "bold" }}>
-                    {expense.currency || "TZS"} {Number(expense.amount).toLocaleString()}
+                    {expense.currency || "TZS"} {Number(expense.amount).toLocaleString("en-US")}
                   </span>
                 </div>
 

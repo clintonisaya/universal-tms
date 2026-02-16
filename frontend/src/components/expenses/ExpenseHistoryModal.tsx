@@ -66,7 +66,7 @@ export function ExpenseHistoryModal({
 
   const formatAmount = (amount: number, cur?: string) => {
     const currency = cur || "TZS";
-    return `${currency} ${Number(amount).toLocaleString()}`;
+    return `${currency} ${Number(amount).toLocaleString("en-US")}`;
   };
 
   const items = [
@@ -74,7 +74,7 @@ export function ExpenseHistoryModal({
       title: "Initiated",
       status: getStepStatus(expense.status, 0),
       icon: <UserOutlined />,
-      description: (
+      content: (
         <Space orientation="vertical" size={2}>
           <Text>
             Created by{" "}
@@ -103,7 +103,7 @@ export function ExpenseHistoryModal({
         ) : (
           <CheckCircleOutlined />
         ),
-      description: (
+      content: (
         <Space orientation="vertical" size={2}>
           {expense.approved_by ? (
             <>
@@ -141,7 +141,7 @@ export function ExpenseHistoryModal({
       title: "Finance Payment",
       status: getStepStatus(expense.status, 2),
       icon: <DollarOutlined />,
-      description: (
+      content: (
         <Space orientation="vertical" size={2}>
           {expense.paid_by ? (
             <>

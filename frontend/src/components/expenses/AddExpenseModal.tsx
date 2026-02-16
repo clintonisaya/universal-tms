@@ -20,6 +20,7 @@ import {
   Upload,
 } from "antd";
 import type { UploadFile } from "antd/es/upload/interface";
+import { amountInputProps } from "@/lib/utils";
 import {
   PlusOutlined,
   DeleteOutlined,
@@ -448,14 +449,14 @@ export function AddExpenseModal({
       dataIndex: "amount",
       width: 140,
       render: (text: number, record: ExpenseItem) => (
-        <InputNumber
-          style={{ width: "100%" }}
-          min={0}
-          value={text}
-          formatter={(value) => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
-          parser={(value) => value?.replace(/,/g, '') as unknown as number}
-          onChange={(val) => handleItemChange(record.key, "amount", val)}
-        />
+        // in columns:
+<InputNumber
+  style={{ width: "100%" }}
+  min={0}
+  value={text}
+  onChange={(val) => handleItemChange(record.key, "amount", val)}
+  {...amountInputProps}
+/>
       ),
     },
     {
@@ -565,7 +566,7 @@ export function AddExpenseModal({
           <Col span={8}>
             <Form.Item label="Application Amount">
               <Input
-                value={totalAmount > 0 ? `${items[0]?.currency || 'TZS'} ${totalAmount.toLocaleString()}` : '-'}
+                value={totalAmount > 0 ? `${items[0]?.currency || 'TZS'} ${totalAmount.toLocaleString("en-US")}` : '-'}
                 readOnly
                 style={{ fontWeight: 'bold' }}
               />
@@ -624,7 +625,7 @@ export function AddExpenseModal({
           scroll={{ x: 1100 }}
           footer={() => (
             <div style={{ textAlign: 'right', fontWeight: 'bold', fontSize: 16 }}>
-              Total: {items[0]?.currency || 'TZS'} {totalAmount > 0 ? totalAmount.toLocaleString() : '-'}
+              Total: {items[0]?.currency || 'TZS'} {totalAmount > 0 ? totalAmount.toLocaleString("en-US") : '-'}
             </div>
           )}
         />

@@ -75,9 +75,10 @@ def get_dashboard_stats(
         select(func.count()).select_from(Driver)
     ).one()
 
+    # Count only idle/available drivers (not assigned to any trip)
     active_drivers = session.exec(
         select(func.count()).select_from(Driver)
-        .where(Driver.status != DriverStatus.inactive)
+        .where(Driver.status == DriverStatus.active)
     ).one()
 
     # --- Expenses / Approvals ---

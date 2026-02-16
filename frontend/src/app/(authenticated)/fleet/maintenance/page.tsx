@@ -84,7 +84,7 @@ export default function MaintenancePage() {
       render: (_, record) => {
         const amount = record.expense?.amount;
         if (amount == null) return "-";
-        return `TZS ${Number(amount).toLocaleString()}`;
+        return `TZS ${Number(amount).toLocaleString("en-US")}`;
       },
       sorter: (a, b) => (a.expense?.amount || 0) - (b.expense?.amount || 0),
     },

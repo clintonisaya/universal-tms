@@ -247,7 +247,7 @@ export default function TrackingPage() {
         <Flex vertical gap={0}>
             <Text strong>{r.client_name}</Text>
             <Text type="secondary" style={{ fontSize: 12 }}>
-                {r.cargo_type} • {r.cargo_weight.toLocaleString()}kg
+                {r.cargo_type} • {r.cargo_weight.toLocaleString("en-US")}kg
             </Text>
         </Flex>
       )

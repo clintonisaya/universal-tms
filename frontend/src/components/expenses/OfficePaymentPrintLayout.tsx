@@ -522,7 +522,7 @@ export function OfficePaymentPrintLayout({
                     <td style={{ padding: "8px 6px", border: "1px solid #ddd", fontSize: "10pt" }}>{expense.expense_metadata?.item_name || expense.category}</td>
                     <td style={{ padding: "8px 6px", border: "1px solid #ddd", fontSize: "10pt" }}>{expense.expense_metadata?.invoice_state || "-"}</td>
                     <td style={{ padding: "8px 6px", border: "1px solid #ddd", fontSize: "10pt", textAlign: "right", fontFamily: "monospace" }}>
-                      {Number(expense.amount).toLocaleString()}
+                      {Number(expense.amount).toLocaleString("en-US")}
                     </td>
                     <td style={{ padding: "8px 6px", border: "1px solid #ddd", fontSize: "10pt" }}>{expense.currency || "TZS"}</td>
                     <td style={{ padding: "8px 6px", border: "1px solid #ddd", fontSize: "10pt" }}>{expense.expense_metadata?.item_details || expense.description}</td>
@@ -532,7 +532,7 @@ export function OfficePaymentPrintLayout({
                       TOTAL
                     </td>
                     <td style={{ padding: "8px 6px", border: "1px solid #ddd", fontSize: "11pt", fontWeight: "bold", background: "#e8e8e8", borderTop: "2px solid #333", textAlign: "right", fontFamily: "monospace" }}>
-                      {Number(expense.amount).toLocaleString()}
+                      {Number(expense.amount).toLocaleString("en-US")}
                     </td>
                     <td style={{ padding: "8px 6px", border: "1px solid #ddd", fontSize: "11pt", fontWeight: "bold", background: "#e8e8e8", borderTop: "2px solid #333" }}>
                       {expense.currency || "TZS"}
