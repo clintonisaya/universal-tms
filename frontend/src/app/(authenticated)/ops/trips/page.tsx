@@ -68,6 +68,7 @@ function formatRelativeTime(dateStr: string | null | undefined): string {
 const STATUS_COLORS: Record<TripStatus, string> = {
   Waiting: "default",
   Dispatch: "purple",
+  "Wait to Load": "lime",
   Loading: "gold",
   "In Transit": "blue",
   "At Border": "purple",

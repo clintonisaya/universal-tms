@@ -25,7 +25,6 @@ import {
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { ExpenseReviewModal } from "@/components/expenses/ExpenseReviewModal";
-import { ProcessPaymentModal } from "@/components/expenses/ProcessPaymentModal";
 import type { ExpenseRequestDetailed } from "@/types/expense";
 
 const { Text, Title } = Typography;
@@ -87,10 +86,6 @@ function TasksContent() {
   const [reviewExpense, setReviewExpense] = useState<ExpenseRequestDetailed | null>(null);
   const [reviewActions, setReviewActions] = useState<string[]>([]);
   const [loadingExpense, setLoadingExpense] = useState(false);
-
-  // Payment modal state
-  const [payModalVisible, setPayModalVisible] = useState(false);
-  const [payExpense, setPayExpense] = useState<ExpenseRequestDetailed | null>(null);
 
   const highlightTaskId = searchParams.get("highlight");
 
@@ -173,12 +168,6 @@ function TasksContent() {
     setReviewModalVisible(false);
     setReviewExpense(null);
     fetchTasks();
-  };
-
-  // Pay action — opens ProcessPaymentModal on top
-  const handlePay = (expense: ExpenseRequestDetailed) => {
-    setPayExpense(expense);
-    setPayModalVisible(true);
   };
 
   // --- Table columns ---
@@ -372,24 +361,6 @@ function TasksContent() {
         actions={reviewActions}
         loading={loadingExpense}
         onActionComplete={handleActionComplete}
-        onPay={handlePay}
-      />
-
-      {/* Payment modal (opens on top of review modal when Pay is clicked) */}
-      <ProcessPaymentModal
-        open={payModalVisible}
-        onClose={() => {
-          setPayModalVisible(false);
-          setPayExpense(null);
-        }}
-        onSuccess={() => {
-          setPayModalVisible(false);
-          setPayExpense(null);
-          setReviewModalVisible(false);
-          setReviewExpense(null);
-          fetchTasks();
-        }}
-        expense={payExpense}
       />
 
     </div>

@@ -131,6 +131,7 @@ def get_dashboard_stats(
         )
         .join(Waybill, Waybill.id == Trip.waybill_id)
         .where(Trip.status.in_([
+            TripStatus.wait_to_load.value,
             TripStatus.loading.value,
             TripStatus.in_transit.value,
             TripStatus.at_border.value,

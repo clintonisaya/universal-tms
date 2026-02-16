@@ -48,7 +48,7 @@ interface DashboardStats {
 }
 
 interface FinancialPulseData {
-  daily_trend: Array<{ date: string; profit: number; revenue: number; expense: number }>;
+  quarterly_trend: Array<{ quarter: string; label: string; profit: number; revenue: number; expense: number }>;
   monthly_stats: {
     income: number;
     expenses: number;
@@ -341,10 +341,10 @@ function DashboardContent() {
             Financial Pulse
           </Title>
           <Row gutter={[16, 16]}>
-            {/* Daily Profit Trend Chart */}
+            {/* Quarterly Profit Trend Chart */}
             <Col xs={24} lg={12}>
               <ProfitTrendChart
-                data={financialPulse?.daily_trend || []}
+                data={financialPulse?.quarterly_trend || []}
                 loading={financialLoading}
               />
             </Col>

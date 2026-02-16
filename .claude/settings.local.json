@@ -65,7 +65,8 @@
       "Bash(del \"C:\\\\Users\\\\IT\\\\Documents\\\\GitHub\\\\edupo-tms\\\\frontend\\\\src\\\\proxy.ts\")",
       "Bash(test:*)",
       "Bash(cmd /c \"cd /d C:\\\\Users\\\\IT\\\\Documents\\\\GitHub\\\\edupo-tms\\\\frontend && npx next build\")",
-      "Bash(powershell -Command:*)"
+      "Bash(powershell -Command:*)",
+      "Bash(docker restart:*)"
     ]
   }
 }

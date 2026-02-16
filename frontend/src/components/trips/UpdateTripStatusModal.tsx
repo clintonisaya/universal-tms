@@ -29,6 +29,7 @@ const { Text } = Typography;
 
 const TRIP_STATUSES: TripStatus[] = [
   "Dispatch",
+  "Wait to Load",
   "Loading",
   "In Transit",
   "At Border",
@@ -45,6 +46,7 @@ const CLOSED_STATUSES: TripStatus[] = ["Completed", "Cancelled"];
 const STATUS_ORDER: TripStatus[] = [
   "Waiting",
   "Dispatch",
+  "Wait to Load",
   "Loading",
   "In Transit",
   "At Border",
@@ -70,8 +72,10 @@ function getStatusDate(trip: Trip | null, status: TripStatus): string | null {
       return trip.created_at;
     case "Dispatch":
       return trip.dispatch_date;
+    case "Wait to Load":
+      return trip.arrival_loading_date;
     case "Loading":
-      return trip.loading_date;
+      return trip.loading_end_date;
     case "Offloaded":
       return trip.offloading_date;
     case "Returned":
@@ -132,9 +136,12 @@ export function UpdateTripStatusModal({
         if (selectedStatus === "Dispatch" && tripData.dispatch_date) {
             fields.dispatch_date = dayjs(tripData.dispatch_date);
         }
+        if (selectedStatus === "Wait to Load" && tripData.arrival_loading_date) {
+            fields.arrival_loading_date = dayjs(tripData.arrival_loading_date);
+        }
         if (selectedStatus === "Loading") {
-            if (tripData.arrival_loading_date) fields.arrival_loading_date = dayjs(tripData.arrival_loading_date);
-            if (tripData.loading_date) fields.loading_date = dayjs(tripData.loading_date);
+            if (tripData.loading_start_date) fields.loading_start_date = dayjs(tripData.loading_start_date);
+            if (tripData.loading_end_date) fields.loading_end_date = dayjs(tripData.loading_end_date);
         }
         if (selectedStatus === "Offloaded") {
              if (tripData.arrival_offloading_date) fields.arrival_offloading_date = dayjs(tripData.arrival_offloading_date);
@@ -205,8 +212,11 @@ export function UpdateTripStatusModal({
       if (values.arrival_loading_date) {
         payload.arrival_loading_date = values.arrival_loading_date.toISOString();
       }
-      if (values.loading_date) {
-        payload.loading_date = values.loading_date.toISOString();
+      if (values.loading_start_date) {
+        payload.loading_start_date = values.loading_start_date.toISOString();
+      }
+      if (values.loading_end_date) {
+        payload.loading_end_date = values.loading_end_date.toISOString();
       }
       if (values.arrival_offloading_date) {
         payload.arrival_offloading_date = values.arrival_offloading_date.toISOString();
@@ -254,15 +264,15 @@ export function UpdateTripStatusModal({
 
       // Show extra date details for statuses with multiple dates
       let extraDates = "";
-      if (status === "Loading" && tripData.arrival_loading_date) {
-        extraDates = `Arrival: ${formatDate(tripData.arrival_loading_date)}`;
+      if (status === "Loading" && tripData.loading_start_date) {
+        extraDates = `Started: ${formatDate(tripData.loading_start_date)}`;
       }
       if (status === "Offloaded" && tripData.arrival_offloading_date) {
         extraDates = `Arrival: ${formatDate(tripData.arrival_offloading_date)}`;
       }
 
       items.push({
-        dot: isCompleted ? (
+        icon: isCompleted ? (
           <CheckCircleOutlined style={{ fontSize: 14, color: "#52c41a" }} />
         ) : (
           <ClockCircleOutlined style={{ fontSize: 14, color: "#faad14" }} />
@@ -382,33 +392,49 @@ export function UpdateTripStatusModal({
           </Form.Item>
         )}
 
-        {/* Loading Dates */}
+        {/* Wait to Load — Arrival at Loading Point */}
+        {selectedStatus === "Wait to Load" && (
+          <Form.Item
+            name="arrival_loading_date"
+            label="Arrival at Loading Point"
+            rules={[{ required: true, message: "Please enter arrival date" }]}
+          >
+            <DatePicker
+              showTime
+              format="DD/MM/YYYY HH:mm"
+              style={{ width: "100%" }}
+              placeholder="Date arrived at loading point"
+            />
+          </Form.Item>
+        )}
+
+        {/* Loading Dates — Start and End */}
         {selectedStatus === "Loading" && (
           <Row gutter={12}>
             <Col span={12}>
               <Form.Item
-                name="arrival_loading_date"
-                label="Arrival at Loading"
+                name="loading_start_date"
+                label="Loading Start Date"
                 rules={[{ required: true, message: "Required" }]}
               >
                 <DatePicker
                   showTime
                   format="DD/MM/YYYY HH:mm"
                   style={{ width: "100%" }}
-                  placeholder="Arrival date"
+                  placeholder="Loading started"
                 />
               </Form.Item>
             </Col>
             <Col span={12}>
               <Form.Item
-                name="loading_date"
-                label="Loading Date"
+                name="loading_end_date"
+                label="Loading End Date"
               >
                 <DatePicker
                   showTime
                   format="DD/MM/YYYY HH:mm"
                   style={{ width: "100%" }}
-                  placeholder="Loading date"
+                  placeholder="Loading completed"
                 />
               </Form.Item>
             </Col>

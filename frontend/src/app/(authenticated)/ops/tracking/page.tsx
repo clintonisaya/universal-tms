@@ -81,6 +81,7 @@ const STATUS_COLORS: Record<string, string> = {
   // Trip Statuses
   Waiting: "default",
   Dispatch: "purple",
+  "Wait to Load": "lime",
   Loading: "gold",
   "In Transit": "cyan",
   "At Border": "orange",

@@ -2,8 +2,8 @@
 
 import { Card, Typography } from "antd";
 import {
-  LineChart,
-  Line,
+  BarChart,
+  Bar,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -15,7 +15,8 @@ import {
 const { Title } = Typography;
 
 interface DataPoint {
-  date: string;
+  quarter: string;
+  label: string;
   profit: number;
   revenue?: number;
   expense?: number;
@@ -37,27 +38,19 @@ export function ProfitTrendChart({ data, loading }: ProfitTrendChartProps) {
     return value.toFixed(0);
   };
 
-  // Format date to show only day (e.g., "15")
-  const formatDate = (dateStr: string) => {
-    const date = new Date(dateStr);
-    return date.getDate().toString();
-  };
-
   return (
-    <Card loading={loading} title="Daily Profit Trend (Last 30 Days)" style={{ height: "100%" }}>
+    <Card loading={loading} title={`Quarterly Profit Trend — ${new Date().getFullYear()}`} style={{ height: "100%" }}>
       <ResponsiveContainer width="100%" height={300}>
-        <LineChart
+        <BarChart
           data={data}
           margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
         >
           <CartesianGrid strokeDasharray="3 3" vertical={false} />
           <XAxis
-            dataKey="date"
+            dataKey="label"
             axisLine={false}
             tickLine={false}
-            tick={{ fontSize: 10, fill: "#8c8c8c" }}
-            tickFormatter={formatDate}
-            interval="preserveStartEnd"
+            tick={{ fontSize: 12, fill: "#8c8c8c" }}
           />
           <YAxis
             axisLine={false}
@@ -75,13 +68,11 @@ export function ProfitTrendChart({ data, loading }: ProfitTrendChartProps) {
                   : "Expenses";
               return [`TZS ${Number(value).toLocaleString("en-US")}`, label];
             }}
-            labelFormatter={(label) => `Date: ${label}`}
             contentStyle={{ borderRadius: 8 }}
           />
           <Legend
             verticalAlign="top"
             height={36}
-            iconType="line"
             formatter={(value) => {
               const labels: Record<string, string> = {
                 profit: "Net Profit",
@@ -91,37 +82,10 @@ export function ProfitTrendChart({ data, loading }: ProfitTrendChartProps) {
               return labels[value] || value;
             }}
           />
-          <Line
-            type="monotone"
-            dataKey="profit"
-            stroke="#1890ff"
-            strokeWidth={2}
-            dot={false}
-            activeDot={{ r: 5 }}
-          />
-          {data.some((d) => d.revenue !== undefined) && (
-            <Line
-              type="monotone"
-              dataKey="revenue"
-              stroke="#52c41a"
-              strokeWidth={2}
-              strokeDasharray="5 5"
-              dot={false}
-              activeDot={{ r: 4 }}
-            />
-          )}
-          {data.some((d) => d.expense !== undefined) && (
-            <Line
-              type="monotone"
-              dataKey="expense"
-              stroke="#ff4d4f"
-              strokeWidth={2}
-              strokeDasharray="5 5"
-              dot={false}
-              activeDot={{ r: 4 }}
-            />
-          )}
-        </LineChart>
+          <Bar dataKey="revenue" fill="#52c41a" radius={[4, 4, 0, 0]} />
+          <Bar dataKey="expense" fill="#ff4d4f" radius={[4, 4, 0, 0]} />
+          <Bar dataKey="profit" fill="#1890ff" radius={[4, 4, 0, 0]} />
+        </BarChart>
       </ResponsiveContainer>
     </Card>
   );

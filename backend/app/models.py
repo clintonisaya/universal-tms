@@ -152,6 +152,7 @@ class TruckStatus(str, Enum):
     idle = "Idle"
     waiting = "Waiting"
     dispatch = "Dispatch"
+    wait_to_load = "Wait to Load"
     loading = "Loading"
     in_transit = "In Transit"
     at_border = "At Border"
@@ -277,6 +278,7 @@ class TrailerStatus(str, Enum):
     idle = "Idle"
     waiting = "Waiting"
     dispatch = "Dispatch"
+    wait_to_load = "Wait to Load"
     loading = "Loading"
     in_transit = "In Transit"
     at_border = "At Border"
@@ -419,6 +421,7 @@ class TripStatus(str, Enum):
     """Trip status values - Story 2.1"""
     waiting = "Waiting"
     dispatch = "Dispatch"
+    wait_to_load = "Wait to Load"
     loading = "Loading"
     in_transit = "In Transit"
     at_border = "At Border"
@@ -469,8 +472,9 @@ class TripUpdate(SQLModel):
     status: TripStatus | None = Field(default=None, description="New status")
     # Tracking date fields
     dispatch_date: datetime | None = Field(default=None, description="Date dispatched from yard")
-    arrival_loading_date: datetime | None = Field(default=None, description="Arrival at loading point")
-    loading_date: datetime | None = Field(default=None, description="Loading completed date")
+    arrival_loading_date: datetime | None = Field(default=None, description="Arrival at loading point (Wait to Load)")
+    loading_start_date: datetime | None = Field(default=None, description="Loading started date")
+    loading_end_date: datetime | None = Field(default=None, description="Loading completed date")
     arrival_offloading_date: datetime | None = Field(default=None, description="Arrival at offloading point")
     offloading_date: datetime | None = Field(default=None, description="Offloading completed date")
     arrival_return_date: datetime | None = Field(default=None, description="Arrival back at yard")
@@ -497,7 +501,8 @@ class Trip(TripBase, table=True):
     # Tracking date fields
     dispatch_date: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
     arrival_loading_date: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
-    loading_date: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
+    loading_start_date: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
+    loading_end_date: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
     arrival_offloading_date: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
     offloading_date: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
     arrival_return_date: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
@@ -518,7 +523,8 @@ class TripPublic(TripBase):
     created_at: datetime | None = None
     dispatch_date: datetime | None = None
     arrival_loading_date: datetime | None = None
-    loading_date: datetime | None = None
+    loading_start_date: datetime | None = None
+    loading_end_date: datetime | None = None
     arrival_offloading_date: datetime | None = None
     offloading_date: datetime | None = None
     arrival_return_date: datetime | None = None

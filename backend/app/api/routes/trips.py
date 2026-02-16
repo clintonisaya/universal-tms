@@ -53,6 +53,7 @@ router = APIRouter(prefix="/trips", tags=["trips"])
 TRIP_TO_TRUCK_STATUS = {
     TripStatus.waiting: TruckStatus.waiting,
     TripStatus.dispatch: TruckStatus.dispatch,
+    TripStatus.wait_to_load: TruckStatus.wait_to_load,
     TripStatus.loading: TruckStatus.loading,
     TripStatus.in_transit: TruckStatus.in_transit,
     TripStatus.at_border: TruckStatus.at_border,
@@ -66,6 +67,7 @@ TRIP_TO_TRUCK_STATUS = {
 TRIP_TO_TRAILER_STATUS = {
     TripStatus.waiting: TrailerStatus.waiting,
     TripStatus.dispatch: TrailerStatus.dispatch,
+    TripStatus.wait_to_load: TrailerStatus.wait_to_load,
     TripStatus.loading: TrailerStatus.loading,
     TripStatus.in_transit: TrailerStatus.in_transit,
     TripStatus.at_border: TrailerStatus.at_border,
@@ -79,6 +81,7 @@ TRIP_TO_TRAILER_STATUS = {
 TRIP_TO_WAYBILL_STATUS = {
     TripStatus.waiting: WaybillStatus.open,
     TripStatus.dispatch: WaybillStatus.in_progress,
+    TripStatus.wait_to_load: WaybillStatus.in_progress,
     TripStatus.loading: WaybillStatus.in_progress,
     TripStatus.in_transit: WaybillStatus.in_progress,
     TripStatus.at_border: WaybillStatus.in_progress,
@@ -218,7 +221,8 @@ def read_trips(
             d for d in (
                 trip.dispatch_date,
                 trip.arrival_loading_date,
-                trip.loading_date,
+                trip.loading_start_date,
+                trip.loading_end_date,
                 trip.arrival_offloading_date,
                 trip.offloading_date,
                 trip.arrival_return_date,
@@ -405,6 +409,12 @@ def update_trip(
             elif new_status in (TripStatus.completed, TripStatus.cancelled):
                 driver.status = DriverStatus.active
                 session.add(driver)
+
+        # Set start_date from dispatch_date when trip is dispatched
+        if new_status == TripStatus.dispatch:
+            dispatch_dt = update_dict.get("dispatch_date")
+            if dispatch_dt:
+                update_dict["start_date"] = dispatch_dt
 
         # Handle end_date for completed trips
         if new_status == TripStatus.completed:

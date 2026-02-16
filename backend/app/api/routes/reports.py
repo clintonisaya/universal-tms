@@ -171,23 +171,32 @@ def get_financial_pulse(
     Financial Pulse Dashboard Data - Story 2.22
 
     Returns:
-    - daily_trend: Daily Net Profit for the last 30 days
+    - quarterly_trend: Monthly Net Profit for the last 3 months (quarterly view)
     - monthly_stats: Income vs Expenses for current month
     - expense_breakdown: Expenses by category (Approved + Paid)
 
     All values normalized to TZS (Base Currency).
     """
     now = datetime.now(timezone.utc)
-    thirty_days_ago = now - timedelta(days=30)
+    current_year = now.year
+    year_start = datetime(current_year, 1, 1, tzinfo=timezone.utc)
     current_month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
 
     default_rate = get_current_exchange_rate(session)
 
+    # Quarter definitions: Q1=Jan-Mar, Q2=Apr-Jun, Q3=Jul-Sep, Q4=Oct-Dec
+    quarters = [
+        {"label": "Q1", "months": [1, 2, 3]},
+        {"label": "Q2", "months": [4, 5, 6]},
+        {"label": "Q3", "months": [7, 8, 9]},
+        {"label": "Q4", "months": [10, 11, 12]},
+    ]
+
     # ============================================================
-    # 1. DAILY PROFIT TREND (Last 30 Days)
+    # 1. QUARTERLY PROFIT TREND (4 quarters of current year)
     # ============================================================
 
-    # Daily Revenue from Waybills linked to active/completed Trips
+    # Revenue from Waybills linked to active/completed Trips (current year)
     revenue_stmt = (
         select(
             func.date(Trip.created_at).label("date"),
@@ -195,8 +204,9 @@ def get_financial_pulse(
             Waybill.currency,
         )
         .join(Waybill, Waybill.id == Trip.waybill_id)
-        .where(Trip.created_at >= thirty_days_ago)
+        .where(Trip.created_at >= year_start)
         .where(Trip.status.in_([
+            TripStatus.wait_to_load.value,
             TripStatus.loading.value,
             TripStatus.in_transit.value,
             TripStatus.at_border.value,
@@ -208,8 +218,7 @@ def get_financial_pulse(
     )
     revenue_rows = session.exec(revenue_stmt).all()
 
-    # Daily Expenses (Approved: Pending Finance + Paid)
-    # Use approved_at > payment_date > created_at for the date
+    # Expenses (Approved: Pending Finance + Paid) for current year
     approved_statuses = [ExpenseStatus.pending_finance.value, ExpenseStatus.paid.value]
     expense_stmt = (
         select(
@@ -220,34 +229,40 @@ def get_financial_pulse(
         )
         .where(ExpenseRequest.status.in_(approved_statuses))
         .where(
-            func.coalesce(ExpenseRequest.approved_at, ExpenseRequest.payment_date, ExpenseRequest.created_at) >= thirty_days_ago
+            func.coalesce(ExpenseRequest.approved_at, ExpenseRequest.payment_date, ExpenseRequest.created_at) >= year_start
         )
     )
     expense_rows = session.exec(expense_stmt).all()
 
-    # Aggregate by date
-    daily_revenue: dict[str, Decimal] = {}
+    # Helper to get quarter index (0-3) from month
+    def get_quarter(month: int) -> int:
+        return (month - 1) // 3
+
+    # Aggregate by quarter
+    quarter_revenue = [Decimal("0")] * 4
     for row in revenue_rows:
-        d_str = str(row.date)
+        month = int(str(row.date)[5:7])
+        qi = get_quarter(month)
         rate_tzs = normalize_to_tzs(Decimal(str(row.agreed_rate)), row.currency, None, default_rate)
-        daily_revenue[d_str] = daily_revenue.get(d_str, Decimal("0")) + rate_tzs
+        quarter_revenue[qi] += rate_tzs
 
-    daily_expense: dict[str, Decimal] = {}
+    quarter_expense = [Decimal("0")] * 4
     for row in expense_rows:
-        d_str = str(row.date)
+        month = int(str(row.date)[5:7])
+        qi = get_quarter(month)
         amt_tzs = normalize_to_tzs(row.amount, row.currency, row.exchange_rate, default_rate)
-        daily_expense[d_str] = daily_expense.get(d_str, Decimal("0")) + amt_tzs
+        quarter_expense[qi] += amt_tzs
 
-    # Build daily trend with all dates in range
-    daily_trend = []
-    for i in range(30):
-        d = (thirty_days_ago + timedelta(days=i)).date()
-        d_str = str(d)
-        revenue = daily_revenue.get(d_str, Decimal("0"))
-        expense = daily_expense.get(d_str, Decimal("0"))
+    # Build quarterly trend (all 4 quarters)
+    quarterly_trend = []
+    for i, q in enumerate(quarters):
+        revenue = quarter_revenue[i]
+        expense = quarter_expense[i]
         profit = revenue - expense
-        daily_trend.append({
-            "date": d_str,
+        month_names = "-".join([datetime(current_year, m, 1).strftime("%b") for m in q["months"]])
+        quarterly_trend.append({
+            "quarter": q["label"],
+            "label": f"{q['label']} ({month_names})",
             "profit": float(profit),
             "revenue": float(revenue),
             "expense": float(expense),
@@ -266,6 +281,7 @@ def get_financial_pulse(
         .join(Trip, Waybill.id == Trip.waybill_id)
         .where(Trip.created_at >= current_month_start)
         .where(Trip.status.in_([
+            TripStatus.wait_to_load.value,
             TripStatus.loading.value,
             TripStatus.in_transit.value,
             TripStatus.at_border.value,
@@ -359,7 +375,7 @@ def get_financial_pulse(
     ).one()
 
     return {
-        "daily_trend": daily_trend,
+        "quarterly_trend": quarterly_trend,
         "monthly_stats": monthly_stats,
         "expense_breakdown": expense_breakdown,
         "_debug": {

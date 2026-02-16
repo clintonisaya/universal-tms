@@ -9,6 +9,7 @@ import type { Truck } from "./truck";
 export type TripStatus =
   | "Waiting"
   | "Dispatch"
+  | "Wait to Load"
   | "Loading"
   | "In Transit"
   | "At Border"
@@ -34,7 +35,8 @@ export interface Trip {
   created_at: string | null;
   dispatch_date: string | null;
   arrival_loading_date: string | null;
-  loading_date: string | null;
+  loading_start_date: string | null;
+  loading_end_date: string | null;
   arrival_offloading_date: string | null;
   offloading_date: string | null;
   arrival_return_date: string | null;
@@ -71,7 +73,8 @@ export interface TripUpdate {
   current_location?: string | null;
   dispatch_date?: string | null;
   arrival_loading_date?: string | null;
-  loading_date?: string | null;
+  loading_start_date?: string | null;
+  loading_end_date?: string | null;
   arrival_offloading_date?: string | null;
   offloading_date?: string | null;
   arrival_return_date?: string | null;

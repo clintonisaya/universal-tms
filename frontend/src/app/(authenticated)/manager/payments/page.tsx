@@ -27,7 +27,6 @@ import {
 } from "@/components/ui/tableUtils";
 import { ExpenseStatusBadge } from "@/components/expenses/ExpenseStatusBadge";
 import { ExpenseReviewModal } from "@/components/expenses/ExpenseReviewModal";
-import { ProcessPaymentModal } from "@/components/expenses/ProcessPaymentModal";
 
 const { Title, Text } = Typography;
 
@@ -55,10 +54,6 @@ function PaymentsPageContent() {
   const [reviewModalOpen, setReviewModalOpen] = useState(false);
   const [reviewExpense, setReviewExpense] = useState<ExpenseRequestDetailed | null>(null);
   const [loadingExpense, setLoadingExpense] = useState(false);
-
-  // Payment Modal State
-  const [payModalOpen, setPayModalOpen] = useState(false);
-  const [payExpense, setPayExpense] = useState<ExpenseRequestDetailed | null>(null);
 
   const fetchExpenses = useCallback(async () => {
     setLoading(true);
@@ -119,12 +114,6 @@ function PaymentsPageContent() {
     setReviewModalOpen(false);
     setReviewExpense(null);
     fetchExpenses();
-  };
-
-  // Pay action — opens ProcessPaymentModal on top of review modal
-  const handlePay = (expense: ExpenseRequestDetailed) => {
-    setPayExpense(expense);
-    setPayModalOpen(true);
   };
 
   const totalPending = expenses.reduce((sum, e) => sum + Number(e.amount), 0);
@@ -281,7 +270,7 @@ function PaymentsPageContent() {
         </Space>
       </Card>
 
-      {/* Expense Review Modal with pay + return actions */}
+      {/* Expense Review Modal with inline payment form + return action */}
       <ExpenseReviewModal
         open={reviewModalOpen}
         onClose={() => {
@@ -292,24 +281,6 @@ function PaymentsPageContent() {
         actions={["pay", "return"]}
         loading={loadingExpense}
         onActionComplete={handleActionComplete}
-        onPay={handlePay}
-      />
-
-      {/* Payment modal (opens on top of review modal when Pay is clicked) */}
-      <ProcessPaymentModal
-        open={payModalOpen}
-        onClose={() => {
-          setPayModalOpen(false);
-          setPayExpense(null);
-        }}
-        onSuccess={() => {
-          setPayModalOpen(false);
-          setPayExpense(null);
-          setReviewModalOpen(false);
-          setReviewExpense(null);
-          fetchExpenses();
-        }}
-        expense={payExpense}
       />
     </div>
   );

@@ -21,7 +21,10 @@ import {
   Alert,
   Descriptions,
   Tooltip,
+  DatePicker,
+  Form,
 } from "antd";
+import dayjs from "dayjs";
 import { amountInputProps, fmtAmount, fmtCurrency } from "@/lib/utils";
 import {
   CheckCircleOutlined,
@@ -59,6 +62,7 @@ interface ExpenseReviewModalProps {
   expense: ExpenseRequestDetailed | null;
   actions?: string[];
   onActionComplete?: () => void;
+  /** @deprecated Use onActionComplete instead — payment is now handled inline */
   onPay?: (expense: ExpenseRequestDetailed) => void;
   loading?: boolean;
 }
@@ -139,6 +143,10 @@ export function ExpenseReviewModal({
   const [attachments, setAttachments] = useState<AttachmentInfo[]>([]);
   const [attachmentsLoading, setAttachmentsLoading] = useState(false);
 
+  // Inline payment form
+  const [paymentForm] = Form.useForm();
+  const paymentMethodValue = Form.useWatch("method", paymentForm);
+
   // Editable state for returned expenses
   const [editItem, setEditItem] = useState<EditableItem | null>(null);
   const [editHeader, setEditHeader] = useState<EditableHeader | null>(null);
@@ -155,8 +163,9 @@ export function ExpenseReviewModal({
   useEffect(() => {
     if (open) {
       setComment("");
+      paymentForm.resetFields();
     }
-  }, [open, expense?.id]);
+  }, [open, expense?.id, paymentForm]);
 
   // Initialize editable state from expense data
   useEffect(() => {
@@ -478,7 +487,41 @@ export function ExpenseReviewModal({
   };
 
   const handlePay = () => {
+    // Legacy callback for backwards compat — prefer inline payment
     if (expense && onPay) onPay(expense);
+  };
+
+  const handleConfirmPayment = async (values: any) => {
+    if (!expense) return;
+    setProcessing(true);
+    try {
+      const response = await fetch(`/api/v1/expenses/${expense.id}/payment`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          method: values.method,
+          reference: values.reference,
+          bank_name: values.bank_name,
+          account_name: values.account_name,
+          account_no: values.account_no,
+          payment_date: values.payment_date?.toISOString(),
+        }),
+      });
+      if (response.ok) {
+        message.success("Payment processed successfully");
+        paymentForm.resetFields();
+        onClose();
+        onActionComplete?.();
+      } else {
+        const err = await response.json();
+        message.error(err.detail || "Payment failed");
+      }
+    } catch {
+      message.error("Network error");
+    } finally {
+      setProcessing(false);
+    }
   };
 
   // --- Tab Content ---
@@ -1135,7 +1178,159 @@ export function ExpenseReviewModal({
             ]}
           />
 
-          {hasActions && (
+          {/* Inline Payment Form — shown when finance has "pay" action */}
+          {showPay && (
+            <Form form={paymentForm} layout="vertical" onFinish={handleConfirmPayment}>
+              <div
+                style={{
+                  marginTop: 16,
+                  padding: 16,
+                  background: "#fafafa",
+                  borderRadius: 8,
+                  border: "1px solid #f0f0f0",
+                }}
+              >
+                <Text strong style={{ display: "block", marginBottom: 12 }}>
+                  Payment Details
+                </Text>
+                <Row gutter={[16, 12]}>
+                  <Col xs={24} sm={6}>
+                    <Form.Item
+                      label="Payment Method"
+                      name="method"
+                      rules={[{ required: true, message: "Required" }]}
+                      initialValue={
+                        meta?.payment_method?.toUpperCase() === "TRANSFER"
+                          ? "TRANSFER"
+                          : "CASH"
+                      }
+                      style={{ marginBottom: 0 }}
+                    >
+                      <Select>
+                        <Select.Option value="CASH">Cash</Select.Option>
+                        <Select.Option value="TRANSFER">Transfer</Select.Option>
+                      </Select>
+                    </Form.Item>
+                  </Col>
+                  <Col xs={24} sm={6}>
+                    <Form.Item
+                      label="Payment Date"
+                      name="payment_date"
+                      initialValue={dayjs()}
+                      style={{ marginBottom: 0 }}
+                    >
+                      <DatePicker style={{ width: "100%" }} format="YYYY-MM-DD" />
+                    </Form.Item>
+                  </Col>
+                  <Col xs={24} sm={12}>
+                    <Form.Item
+                      label={
+                        paymentMethodValue === "TRANSFER"
+                          ? "Reference Number"
+                          : "Remarks (Optional)"
+                      }
+                      name="reference"
+                      rules={[
+                        {
+                          required: paymentMethodValue === "TRANSFER",
+                          message: "Reference required for transfers",
+                        },
+                      ]}
+                      style={{ marginBottom: 0 }}
+                    >
+                      <Input
+                        placeholder={
+                          paymentMethodValue === "TRANSFER"
+                            ? "e.g. Bank Ref / Transaction ID"
+                            : "Optional notes"
+                        }
+                      />
+                    </Form.Item>
+                  </Col>
+                </Row>
+
+                <Row gutter={[16, 12]} style={{ marginTop: 12 }}>
+                  <Col xs={24} sm={8}>
+                    <Form.Item
+                      label="Bank Name"
+                      name="bank_name"
+                      initialValue={bankDetails?.bank_name}
+                      style={{ marginBottom: 0 }}
+                    >
+                      <Input placeholder="Bank Name" />
+                    </Form.Item>
+                  </Col>
+                  <Col xs={24} sm={8}>
+                    <Form.Item
+                      label="Account Name"
+                      name="account_name"
+                      initialValue={bankDetails?.account_name}
+                      style={{ marginBottom: 0 }}
+                    >
+                      <Input placeholder="Account Name" />
+                    </Form.Item>
+                  </Col>
+                  <Col xs={24} sm={8}>
+                    <Form.Item
+                      label="Account No."
+                      name="account_no"
+                      initialValue={bankDetails?.account_no}
+                      style={{ marginBottom: 0 }}
+                    >
+                      <Input placeholder="Account Number" />
+                    </Form.Item>
+                  </Col>
+                </Row>
+
+                {/* Comment for return */}
+                <div style={{ marginTop: 12 }}>
+                  <Text type="secondary" style={{ fontSize: 12 }}>
+                    Comment (required for return)
+                  </Text>
+                  <TextArea
+                    rows={2}
+                    value={comment}
+                    onChange={(e) => setComment(e.target.value)}
+                    placeholder="Add a comment..."
+                    style={{ marginTop: 4 }}
+                  />
+                </div>
+
+                {/* Action Buttons — centered */}
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "center",
+                    marginTop: 16,
+                    gap: 12,
+                  }}
+                >
+                  {showReturn && (
+                    <Button
+                      icon={<UndoOutlined />}
+                      onClick={() => handleRejectOrReturn("return")}
+                      loading={processing}
+                      style={{ color: "#fa8c16", borderColor: "#fa8c16" }}
+                    >
+                      Return
+                    </Button>
+                  )}
+                  <Button
+                    type="primary"
+                    icon={<DollarOutlined />}
+                    loading={processing}
+                    onClick={paymentForm.submit}
+                    size="large"
+                  >
+                    Confirm Payment
+                  </Button>
+                </div>
+              </div>
+            </Form>
+          )}
+
+          {/* Standard action panel — for non-payment actions (approve, reject, return, submit) */}
+          {hasActions && !showPay && (
             <div
               style={{
                 marginTop: 16,
@@ -1199,15 +1394,6 @@ export function ExpenseReviewModal({
                       style={{ color: "#fa8c16", borderColor: "#fa8c16" }}
                     >
                       Return
-                    </Button>
-                  )}
-                  {showPay && (
-                    <Button
-                      type="primary"
-                      icon={<DollarOutlined />}
-                      onClick={handlePay}
-                    >
-                      Pay
                     </Button>
                   )}
                   {showSubmit && (
