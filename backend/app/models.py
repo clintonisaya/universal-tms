@@ -490,8 +490,8 @@ class Trip(TripBase, table=True):
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     pod_documents: list[str] = Field(default=[], sa_column=Column(JSON))
     start_date: datetime | None = Field(
-        default_factory=get_datetime_utc,
-        sa_type=DateTime(timezone=True),  # type: ignore
+        default=None,
+        sa_type=DateTime(timezone=True),
     )
     end_date: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
     created_at: datetime | None = Field(

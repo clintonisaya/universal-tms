@@ -60,6 +60,10 @@ def upgrade():
     """)
     op.execute("UPDATE trip SET status = 'Wait to Load' WHERE status = 'Loading'")
 
+    # 5. Set start_date = dispatch_date for all trips that have been dispatched
+    #    Previously start_date was auto-set to created_at; now it should reflect dispatch
+    op.execute("UPDATE trip SET start_date = dispatch_date WHERE dispatch_date IS NOT NULL")
+
 
 def downgrade():
     # Remove loading_start_date
