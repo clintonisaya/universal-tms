@@ -19,12 +19,14 @@ import {
   ArrowLeftOutlined,
   DeleteOutlined,
   RocketOutlined,
+  EditOutlined,
 } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
 import type { Waybill, WaybillStatus } from "@/types/waybill";
 import { useAuth } from "@/contexts/AuthContext";
 import { useWaybills, useInvalidateQueries } from "@/hooks/useApi";
 import { CreateWaybillDrawer } from "@/components/waybills/CreateWaybillDrawer";
+import { EditWaybillDrawer } from "@/components/waybills/EditWaybillDrawer";
 import { WaybillDetailDrawer } from "@/components/waybills/WaybillDetailDrawer";
 import { CreateTripDrawer } from "@/components/trips/CreateTripDrawer";
 import {
@@ -62,6 +64,8 @@ export default function WaybillsPage() {
   const totalCount = data?.count || 0;
 
   const [createDrawerOpen, setCreateDrawerOpen] = useState(false);
+  const [editDrawerOpen, setEditDrawerOpen] = useState(false);
+  const [editWaybillId, setEditWaybillId] = useState<string | null>(null);
   const [detailDrawerOpen, setDetailDrawerOpen] = useState(false);
   const [detailWaybillId, setDetailWaybillId] = useState<string | null>(null);
   const [tripDrawerOpen, setTripDrawerOpen] = useState(false);
@@ -164,7 +168,7 @@ export default function WaybillsPage() {
     {
       title: "Actions",
       key: "actions",
-      width: 130,
+      width: 160,
       fixed: "right",
       render: (_, record) => (
         <div className="row-actions">
@@ -179,6 +183,14 @@ export default function WaybillsPage() {
                 Dispatch
               </Button>
             )}
+            <Button
+              size="small"
+              icon={<EditOutlined />}
+              onClick={() => {
+                setEditWaybillId(record.id);
+                setEditDrawerOpen(true);
+              }}
+            />
             <Popconfirm
               title="Delete waybill"
               description="Are you sure you want to delete this waybill?"
@@ -273,6 +285,16 @@ export default function WaybillsPage() {
         open={createDrawerOpen}
         onClose={() => setCreateDrawerOpen(false)}
         onSuccess={() => invalidateWaybills()}
+      />
+
+      <EditWaybillDrawer
+        open={editDrawerOpen}
+        onClose={() => {
+          setEditDrawerOpen(false);
+          setEditWaybillId(null);
+        }}
+        onSuccess={() => invalidateWaybills()}
+        waybillId={editWaybillId}
       />
 
       <WaybillDetailDrawer

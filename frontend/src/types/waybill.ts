@@ -46,6 +46,7 @@ export interface WaybillUpdate {
   agreed_rate?: number;
   currency?: string;
   risk_level?: string;
+  border_ids?: string[] | null;
 }
 
 export interface WaybillsResponse {

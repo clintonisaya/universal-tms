@@ -66,7 +66,24 @@
       "Bash(test:*)",
       "Bash(cmd /c \"cd /d C:\\\\Users\\\\IT\\\\Documents\\\\GitHub\\\\edupo-tms\\\\frontend && npx next build\")",
       "Bash(powershell -Command:*)",
-      "Bash(docker restart:*)"
+      "Bash(docker restart:*)",
+      "Bash(git commit:*)",
+      "Bash(git -C \"C:\\\\Users\\\\IT\\\\Documents\\\\GitHub\\\\edupo-tms\" log --oneline -10)",
+      "Bash(git -C \"C:\\\\Users\\\\IT\\\\Documents\\\\GitHub\\\\edupo-tms\" ls-files)",
+      "Bash(git config:*)",
+      "Bash(bash -c:*)",
+      "Bash(git ls-tree:*)",
+      "Bash(bash --version)",
+      "Bash(echo:*)",
+      "Bash(python3:*)",
+      "Bash(where:*)",
+      "Bash(C:UsersITAppDataLocalProgramsPythonPython313python.exe -c \"import ast; ast.parse\\(open\\(''C:/Users/IT/Documents/GitHub/edupo-tms/backend/app/api/routes/reports.py''\\).read\\(\\)\\); print\\(''reports OK''\\)\")",
+      "Bash(\"/c/Users/IT/AppData/Local/Programs/Python/Python313/python.exe\" -c \"import ast; ast.parse\\(open\\(''/c/Users/IT/Documents/GitHub/edupo-tms/backend/app/api/routes/reports.py''\\).read\\(\\)\\); print\\(''reports OK''\\)\")",
+      "Bash(\"/c/Users/IT/AppData/Local/Programs/Python/Python313/python.exe\" -c \"import ast; ast.parse\\(open\\(''C:\\\\\\\\Users\\\\\\\\IT\\\\\\\\Documents\\\\\\\\GitHub\\\\\\\\edupo-tms\\\\\\\\backend\\\\\\\\app\\\\\\\\api\\\\\\\\routes\\\\\\\\reports.py''\\).read\\(\\)\\); print\\(''reports OK''\\)\")",
+      "Bash(\"/c/Users/IT/AppData/Local/Programs/Python/Python313/python.exe\" -c \"import ast; ast.parse\\(open\\(''app/api/routes/reports.py''\\).read\\(\\)\\); print\\(''OK''\\)\")",
+      "Bash(\"/c/Users/IT/AppData/Local/Programs/Python/Python313/python.exe\" -c \"import ast; ast.parse\\(open\\(''app/api/routes/trips.py''\\).read\\(\\)\\); print\\(''trips OK''\\); ast.parse\\(open\\(''app/api/routes/border_posts.py''\\).read\\(\\)\\); print\\(''border_posts OK''\\); ast.parse\\(open\\(''app/api/routes/waybills.py''\\).read\\(\\)\\); print\\(''waybills OK''\\)\")",
+      "Bash(\"/c/Users/IT/AppData/Local/Programs/Python/Python313/python.exe\" -c \"import ast; ast.parse\\(open\\(''app/models.py''\\).read\\(\\)\\); print\\(''models OK''\\)\")",
+      "Bash(\"/c/Users/IT/AppData/Local/Programs/Python/Python313/python.exe\" -c \"import ast; ast.parse\\(open\\(''app/alembic/versions/f5g6h7i8j9k0_add_border_crossing_tables.py''\\).read\\(\\)\\); print\\(''migration OK''\\)\")"
     ]
   }
 }
