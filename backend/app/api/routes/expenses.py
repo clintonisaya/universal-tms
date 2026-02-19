@@ -104,9 +104,9 @@ def can_view_expense(expense: ExpenseRequest, user: Any) -> bool:
     # Admins and managers can view all
     if user.role in [UserRole.admin, UserRole.manager]:
         return True
-    # Finance can view expenses pending their approval or already paid
+    # Finance can view all expenses (full visibility for processing and tracking)
     if user.role == UserRole.finance:
-        return expense.status in [ExpenseStatus.pending_finance, ExpenseStatus.paid]
+        return True
     # Ops can only view their own
     return expense.created_by_id == user.id
 
