@@ -22,8 +22,9 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
 
     const socketInstance = io(socketUrl, {
       path: "/socket.io/",
-      transports: ["websocket", "polling"], // Allow polling fallback
+      transports: ["polling", "websocket"], // Start with polling, upgrade to WebSocket
       reconnectionAttempts: 5,
+      reconnectionDelay: 2000,
     });
 
     socketInstance.on("connect", () => {
