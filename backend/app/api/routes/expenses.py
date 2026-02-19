@@ -214,8 +214,15 @@ def read_expenses(
 
     # Apply role-based filtering
     if current_user.role == UserRole.ops:
-        # Ops can only see their own expenses
-        query = query.where(ExpenseRequest.created_by_id == current_user.id)
+        # Trip expenses: all ops users see all (shared visibility across the team)
+        # Office expenses: each ops user sees only their own
+        from sqlalchemy import or_
+        query = query.where(
+            or_(
+                ExpenseRequest.trip_id.isnot(None),          # any trip expense → visible to all ops
+                ExpenseRequest.created_by_id == current_user.id,  # own office expenses
+            )
+        )
     # Finance, Manager, Admin can see all expense records regardless of status
 
     # Count total matching records
