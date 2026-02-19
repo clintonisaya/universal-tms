@@ -135,7 +135,7 @@ def get_dashboard_stats(
             TripStatus.loading.value,
             TripStatus.in_transit.value,
             TripStatus.at_border.value,
-            TripStatus.offloaded.value,
+            TripStatus.offloading.value,
             TripStatus.returned.value,
             TripStatus.waiting_for_pods.value,
             TripStatus.completed.value,
