@@ -79,6 +79,7 @@ STATUS_TRANSITIONS = {
     },
     ExpenseStatus.returned: {
         UserRole.ops: [ExpenseStatus.pending_manager],  # Resubmit after correction
+        UserRole.finance: [ExpenseStatus.pending_manager],  # Finance can resubmit their own returned expenses
         UserRole.manager: [ExpenseStatus.pending_manager],
         UserRole.admin: [ExpenseStatus.pending_manager],
     },
