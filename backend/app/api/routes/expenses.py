@@ -437,6 +437,10 @@ async def update_expense(
                 detail=f"Not authorized to change status from '{current_status.value}' to '{new_status.value}'"
             )
         update_dict["status"] = new_status.value
+        # Record approver when manager moves expense to Pending Finance
+        if new_status == ExpenseStatus.pending_finance:
+            update_dict["approved_by_id"] = str(current_user.id)
+            update_dict["approved_at"] = datetime.now(timezone.utc)
 
     # For non-status updates, check modify permission
     non_status_updates = {k: v for k, v in update_dict.items() if k != "status"}

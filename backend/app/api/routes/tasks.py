@@ -91,10 +91,13 @@ def get_my_tasks(
                 tasks.append(_expense_to_task(exp, "payment_processing", ["pay", "return"]))
 
     if role == UserRole.finance:
-        # Finance also tracks returned expenses — items returned for correction, awaiting resubmission
+        # Finance tracks returned expenses that previously reached finance level.
+        # approved_by_id is only set when manager approves (pending_manager → pending_finance),
+        # so approved_by_id IS NOT NULL means the expense was returned BY finance, not by manager.
         returned_query = (
             select(ExpenseRequest)
             .where(ExpenseRequest.status == ExpenseStatus.returned)
+            .where(ExpenseRequest.approved_by_id.isnot(None))
             .options(
                 selectinload(ExpenseRequest.created_by),
                 selectinload(ExpenseRequest.trip),
