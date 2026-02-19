@@ -523,6 +523,10 @@ class Trip(TripBase, table=True):
         default_factory=get_datetime_utc,
         sa_type=DateTime(timezone=True),  # type: ignore
     )
+    updated_at: datetime | None = Field(
+        default_factory=get_datetime_utc,
+        sa_type=DateTime(timezone=True),  # type: ignore
+    )
     # Tracking date fields
     dispatch_date: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
     arrival_loading_date: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
@@ -551,6 +555,7 @@ class TripPublic(TripBase):
     start_date: datetime | None = None
     end_date: datetime | None = None
     created_at: datetime | None = None
+    updated_at: datetime | None = None
     dispatch_date: datetime | None = None
     arrival_loading_date: datetime | None = None
     loading_start_date: datetime | None = None

@@ -268,22 +268,8 @@ def read_trips(
             trip_data.waybill_rate = wb.agreed_rate
             trip_data.waybill_currency = wb.currency
             trip_data.waybill_risk_level = wb.risk_level
-        # Location update time: most recent non-null tracking date (go + return leg)
-        tracking_dates = [
-            d for d in (
-                trip.dispatch_date,
-                trip.arrival_loading_date,
-                trip.loading_start_date,
-                trip.loading_end_date,
-                trip.arrival_offloading_date,
-                trip.offloading_date,
-                trip.arrival_loading_return_date,
-                trip.loading_return_start_date,
-                trip.loading_return_end_date,
-                trip.arrival_return_date,
-            ) if d is not None
-        ]
-        trip_data.location_update_time = max(tracking_dates) if tracking_dates else trip.start_date
+        # Location update time: when the trip record was last touched by a user
+        trip_data.location_update_time = trip.updated_at or trip.created_at
         enriched.append(trip_data)
 
     return TripsPublic(data=enriched, count=count)
@@ -512,6 +498,9 @@ def update_trip(
         elif new_status == TripStatus.waiting:
             # If moved back to waiting, clear end_date
             update_dict["end_date"] = None
+
+        # Always stamp the system update time so "Last Updated" is precise
+        update_dict["updated_at"] = datetime.now(timezone.utc)
 
         # Story 2.25: Update go waybill status (dual waybill sync)
         if trip.waybill_id and new_status in TRIP_TO_GO_WAYBILL_STATUS:
