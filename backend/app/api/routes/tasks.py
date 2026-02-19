@@ -41,8 +41,8 @@ def get_my_tasks(
     Aggregate all pending tasks for the current user based on their role.
 
     - Manager/Admin: Expenses with status 'Pending Manager'
-    - Finance: Expenses with status 'Pending Finance' + 'Returned' (tracking)
-    - Ops: Expenses they created with status 'Returned' or 'Rejected'
+    - Finance: Expenses with status 'Pending Finance' + 'Returned from finance level' (tracking) + own returned expenses (correction)
+    - Ops/Finance: Their own expenses with status 'Returned' (for correction/resubmission)
     """
     tasks: list[dict[str, Any]] = []
 
@@ -110,8 +110,8 @@ def get_my_tasks(
                     continue
                 tasks.append(_expense_to_task(exp, "payment_processing", []))
 
-    if role in (UserRole.ops, UserRole.admin):
-        # Ops sees only returned expenses they created (rejected expenses are final, no action needed)
+    if role in (UserRole.ops, UserRole.finance, UserRole.admin):
+        # Ops/Finance see returned expenses they created so they can correct and resubmit
         query = (
             select(ExpenseRequest)
             .where(

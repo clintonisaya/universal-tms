@@ -266,7 +266,7 @@ function TasksContent() {
     ...(user?.role === "finance" || user?.role === "admin"
       ? [{ value: "payment_processing", label: "Payment Processing" }]
       : []),
-    ...(user?.role === "ops" || user?.role === "admin"
+    ...(user?.role === "ops" || user?.role === "finance" || user?.role === "admin"
       ? [{ value: "expense_correction", label: "Expense Correction" }]
       : []),
   ];
