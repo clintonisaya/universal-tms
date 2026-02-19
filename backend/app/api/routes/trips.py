@@ -490,22 +490,25 @@ def update_trip(
         # Auto-record dispatch_return_date when entering Dispatch (Return)
         if new_status == TripStatus.dispatch_return:
             if "dispatch_return_date" not in update_dict:
-                update_dict["dispatch_return_date"] = datetime.now(timezone.utc)
+                today = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+                update_dict["dispatch_return_date"] = today
 
         # Auto-record arrival_return_date when entering Offloading (Return)
         if new_status == TripStatus.offloading_return:
             if "arrival_return_date" not in update_dict:
-                update_dict["arrival_return_date"] = datetime.now(timezone.utc)
+                today = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+                update_dict["arrival_return_date"] = today
 
         # Handle end_date for completed trips
         if new_status == TripStatus.completed:
             update_dict["end_date"] = datetime.now(timezone.utc)
-            # Calculate trip duration from dispatch to return
+            # Calculate trip duration from dispatch to return (date-only diff)
             dispatch_dt = update_dict.get("dispatch_date") or trip.dispatch_date
             return_dt = update_dict.get("arrival_return_date") or trip.arrival_return_date
             if dispatch_dt and return_dt:
-                delta = return_dt - dispatch_dt
-                update_dict["trip_duration_days"] = delta.days
+                dispatch_date = dispatch_dt.date() if hasattr(dispatch_dt, "date") else dispatch_dt
+                return_date = return_dt.date() if hasattr(return_dt, "date") else return_dt
+                update_dict["trip_duration_days"] = (return_date - dispatch_date).days
         elif new_status == TripStatus.waiting:
             # If moved back to waiting, clear end_date
             update_dict["end_date"] = None

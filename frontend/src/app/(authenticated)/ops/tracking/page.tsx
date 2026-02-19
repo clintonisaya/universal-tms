@@ -391,7 +391,7 @@ export default function TrackingPage() {
     worksheet.views = [{ state: "frozen", ySplit: 1 }];
 
     const fmtDate = (d: string | null | undefined) =>
-      d ? new Date(d).toLocaleString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "-";
+      d ? new Date(d).toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric" }) : "-";
 
     filteredData.forEach((row, index) => {
       const borderData: Record<string, string> = {};

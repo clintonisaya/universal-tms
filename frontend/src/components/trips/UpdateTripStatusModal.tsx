@@ -106,7 +106,7 @@ function getStatusDate(trip: Trip | null, status: TripStatus): string | null {
 
 function formatDate(dateStr: string | null | undefined): string {
   if (!dateStr) return "-";
-  return dayjs(dateStr).format("DD/MM/YYYY HH:mm");
+  return dayjs(dateStr).format("DD/MM/YYYY");
 }
 
 export function UpdateTripStatusModal({
@@ -305,7 +305,7 @@ export function UpdateTripStatusModal({
         const crossingPayload: any = { direction };
         dateFields.forEach((f) => {
           const val = values[`border_${f}`];
-          if (val) crossingPayload[f] = val.toISOString();
+          if (val) crossingPayload[f] = val.format("YYYY-MM-DD");
         });
         await fetch(`/api/v1/trips/${tripId}/border-crossings/${nextBorder.id}`, {
           method: "PUT",
@@ -333,37 +333,37 @@ export function UpdateTripStatusModal({
 
       // Add date fields based on selected status
       if (values.dispatch_date) {
-        payload.dispatch_date = values.dispatch_date.toISOString();
+        payload.dispatch_date = values.dispatch_date.format("YYYY-MM-DD");
       }
       if (values.arrival_loading_date) {
-        payload.arrival_loading_date = values.arrival_loading_date.toISOString();
+        payload.arrival_loading_date = values.arrival_loading_date.format("YYYY-MM-DD");
       }
       if (values.loading_start_date) {
-        payload.loading_start_date = values.loading_start_date.toISOString();
+        payload.loading_start_date = values.loading_start_date.format("YYYY-MM-DD");
       }
       if (values.loading_end_date) {
-        payload.loading_end_date = values.loading_end_date.toISOString();
+        payload.loading_end_date = values.loading_end_date.format("YYYY-MM-DD");
       }
       if (values.arrival_offloading_date) {
-        payload.arrival_offloading_date = values.arrival_offloading_date.toISOString();
+        payload.arrival_offloading_date = values.arrival_offloading_date.format("YYYY-MM-DD");
       }
       if (values.offloading_date) {
-        payload.offloading_date = values.offloading_date.toISOString();
+        payload.offloading_date = values.offloading_date.format("YYYY-MM-DD");
       }
       if (values.arrival_return_date) {
-        payload.arrival_return_date = values.arrival_return_date.toISOString();
+        payload.arrival_return_date = values.arrival_return_date.format("YYYY-MM-DD");
       }
       if (values.dispatch_return_date) {
-        payload.dispatch_return_date = values.dispatch_return_date.toISOString();
+        payload.dispatch_return_date = values.dispatch_return_date.format("YYYY-MM-DD");
       }
       if (values.arrival_loading_return_date) {
-        payload.arrival_loading_return_date = values.arrival_loading_return_date.toISOString();
+        payload.arrival_loading_return_date = values.arrival_loading_return_date.format("YYYY-MM-DD");
       }
       if (values.loading_return_start_date) {
-        payload.loading_return_start_date = values.loading_return_start_date.toISOString();
+        payload.loading_return_start_date = values.loading_return_start_date.format("YYYY-MM-DD");
       }
       if (values.loading_return_end_date) {
-        payload.loading_return_end_date = values.loading_return_end_date.toISOString();
+        payload.loading_return_end_date = values.loading_return_end_date.format("YYYY-MM-DD");
       }
 
       const response = await fetch(`/api/v1/trips/${tripId}`, {
@@ -445,7 +445,7 @@ export function UpdateTripStatusModal({
 
     let overall: string | null = null;
     if (dispatch) {
-      const end = returnDate || new Date().toISOString();
+      const end = returnDate || new Date().format("YYYY-MM-DD");
       const days = dayjs(end).diff(dayjs(dispatch), "day");
       overall = `${days}d overall`;
     } else if (tripData.trip_duration_days != null) {
@@ -454,7 +454,7 @@ export function UpdateTripStatusModal({
 
     let returnLeg: string | null = null;
     if (dispatchReturn && tripData.return_waybill_id) {
-      const end = returnDate || new Date().toISOString();
+      const end = returnDate || new Date().format("YYYY-MM-DD");
       const days = dayjs(end).diff(dayjs(dispatchReturn), "day");
       returnLeg = `${days}d return`;
     }
@@ -557,7 +557,7 @@ export function UpdateTripStatusModal({
                       name="border_arrived_side_a_at"
                       label={`Arrived at ${selectedStatus === "At Border" ? nextBorder.side_a_name : nextBorder.side_b_name}`}
                     >
-                      <DatePicker showTime format="DD/MM/YYYY HH:mm" style={{ width: "100%" }} />
+                      <DatePicker format="DD/MM/YYYY" style={{ width: "100%" }} />
                     </Form.Item>
                   </Col>
                   <Col span={12}>
@@ -565,7 +565,7 @@ export function UpdateTripStatusModal({
                       name="border_documents_submitted_side_a_at"
                       label={`Documents Submitted at ${selectedStatus === "At Border" ? nextBorder.side_a_name : nextBorder.side_b_name}`}
                     >
-                      <DatePicker showTime format="DD/MM/YYYY HH:mm" style={{ width: "100%" }} />
+                      <DatePicker format="DD/MM/YYYY" style={{ width: "100%" }} />
                     </Form.Item>
                   </Col>
                   <Col span={12}>
@@ -573,7 +573,7 @@ export function UpdateTripStatusModal({
                       name="border_documents_cleared_side_a_at"
                       label={`Documents Cleared at ${selectedStatus === "At Border" ? nextBorder.side_a_name : nextBorder.side_b_name}`}
                     >
-                      <DatePicker showTime format="DD/MM/YYYY HH:mm" style={{ width: "100%" }} />
+                      <DatePicker format="DD/MM/YYYY" style={{ width: "100%" }} />
                     </Form.Item>
                   </Col>
                 </Row>
@@ -586,7 +586,7 @@ export function UpdateTripStatusModal({
                       name="border_arrived_side_b_at"
                       label={`Arrived at ${selectedStatus === "At Border" ? nextBorder.side_b_name : nextBorder.side_a_name} (= Departed ${selectedStatus === "At Border" ? nextBorder.side_a_name : nextBorder.side_b_name})`}
                     >
-                      <DatePicker showTime format="DD/MM/YYYY HH:mm" style={{ width: "100%" }} />
+                      <DatePicker format="DD/MM/YYYY" style={{ width: "100%" }} />
                     </Form.Item>
                   </Col>
                   <Col span={12}>
@@ -594,7 +594,7 @@ export function UpdateTripStatusModal({
                       name="border_documents_submitted_side_b_at"
                       label={`Documents Submitted at ${selectedStatus === "At Border" ? nextBorder.side_b_name : nextBorder.side_a_name}`}
                     >
-                      <DatePicker showTime format="DD/MM/YYYY HH:mm" style={{ width: "100%" }} />
+                      <DatePicker format="DD/MM/YYYY" style={{ width: "100%" }} />
                     </Form.Item>
                   </Col>
                   <Col span={12}>
@@ -602,12 +602,12 @@ export function UpdateTripStatusModal({
                       name="border_documents_cleared_side_b_at"
                       label={`Documents Cleared at ${selectedStatus === "At Border" ? nextBorder.side_b_name : nextBorder.side_a_name}`}
                     >
-                      <DatePicker showTime format="DD/MM/YYYY HH:mm" style={{ width: "100%" }} />
+                      <DatePicker format="DD/MM/YYYY" style={{ width: "100%" }} />
                     </Form.Item>
                   </Col>
                   <Col span={12}>
                     <Form.Item name="border_departed_border_at" label="Departed Border Zone">
-                      <DatePicker showTime format="DD/MM/YYYY HH:mm" style={{ width: "100%" }} />
+                      <DatePicker format="DD/MM/YYYY" style={{ width: "100%" }} />
                     </Form.Item>
                   </Col>
                 </Row>
@@ -631,8 +631,7 @@ export function UpdateTripStatusModal({
             rules={[{ required: true, message: "Please enter dispatch date" }]}
           >
             <DatePicker
-              showTime
-              format="DD/MM/YYYY HH:mm"
+              format="DD/MM/YYYY"
               style={{ width: "100%" }}
               placeholder="Select dispatch date"
             />
@@ -647,8 +646,7 @@ export function UpdateTripStatusModal({
             rules={[{ required: true, message: "Please enter arrival date" }]}
           >
             <DatePicker
-              showTime
-              format="DD/MM/YYYY HH:mm"
+              format="DD/MM/YYYY"
               style={{ width: "100%" }}
               placeholder="Date arrived at loading point"
             />
@@ -665,8 +663,7 @@ export function UpdateTripStatusModal({
                 rules={[{ required: true, message: "Required" }]}
               >
                 <DatePicker
-                  showTime
-                  format="DD/MM/YYYY HH:mm"
+                  format="DD/MM/YYYY"
                   style={{ width: "100%" }}
                   placeholder="Loading started"
                 />
@@ -678,8 +675,7 @@ export function UpdateTripStatusModal({
                 label="Loading End Date"
               >
                 <DatePicker
-                  showTime
-                  format="DD/MM/YYYY HH:mm"
+                  format="DD/MM/YYYY"
                   style={{ width: "100%" }}
                   placeholder="Loading completed"
                 />
@@ -698,8 +694,7 @@ export function UpdateTripStatusModal({
                 rules={[{ required: true, message: "Required" }]}
               >
                 <DatePicker
-                  showTime
-                  format="DD/MM/YYYY HH:mm"
+                  format="DD/MM/YYYY"
                   style={{ width: "100%" }}
                   placeholder="Arrival date"
                 />
@@ -711,8 +706,7 @@ export function UpdateTripStatusModal({
                 label="Offloading Date"
               >
                 <DatePicker
-                  showTime
-                  format="DD/MM/YYYY HH:mm"
+                  format="DD/MM/YYYY"
                   style={{ width: "100%" }}
                   placeholder="Offloading date"
                 />
@@ -729,8 +723,7 @@ export function UpdateTripStatusModal({
             rules={[{ required: true, message: "Please enter return date" }]}
           >
             <DatePicker
-              showTime
-              format="DD/MM/YYYY HH:mm"
+              format="DD/MM/YYYY"
               style={{ width: "100%" }}
               placeholder="Date truck returned to yard"
             />
@@ -745,8 +738,7 @@ export function UpdateTripStatusModal({
             rules={[{ required: true, message: "Please enter return dispatch date" }]}
           >
             <DatePicker
-              showTime
-              format="DD/MM/YYYY HH:mm"
+              format="DD/MM/YYYY"
               style={{ width: "100%" }}
               placeholder="Date dispatched for return journey"
             />
@@ -761,8 +753,7 @@ export function UpdateTripStatusModal({
             rules={[{ required: true, message: "Please enter arrival date" }]}
           >
             <DatePicker
-              showTime
-              format="DD/MM/YYYY HH:mm"
+              format="DD/MM/YYYY"
               style={{ width: "100%" }}
               placeholder="Date arrived back at origin for offloading"
             />
@@ -777,8 +768,7 @@ export function UpdateTripStatusModal({
             rules={[{ required: true, message: "Please enter arrival date" }]}
           >
             <DatePicker
-              showTime
-              format="DD/MM/YYYY HH:mm"
+              format="DD/MM/YYYY"
               style={{ width: "100%" }}
               placeholder="Date arrived at return loading point"
             />
@@ -795,8 +785,7 @@ export function UpdateTripStatusModal({
                 rules={[{ required: true, message: "Required" }]}
               >
                 <DatePicker
-                  showTime
-                  format="DD/MM/YYYY HH:mm"
+                  format="DD/MM/YYYY"
                   style={{ width: "100%" }}
                   placeholder="Return loading started"
                 />
@@ -805,8 +794,7 @@ export function UpdateTripStatusModal({
             <Col span={12}>
               <Form.Item name="loading_return_end_date" label="Return Loading End">
                 <DatePicker
-                  showTime
-                  format="DD/MM/YYYY HH:mm"
+                  format="DD/MM/YYYY"
                   style={{ width: "100%" }}
                   placeholder="Return loading completed"
                 />
@@ -819,8 +807,7 @@ export function UpdateTripStatusModal({
         {selectedStatus === "In Transit (Return)" && (
           <Form.Item name="loading_return_end_date" label="Return Loading Completed">
             <DatePicker
-              showTime
-              format="DD/MM/YYYY HH:mm"
+              format="DD/MM/YYYY"
               style={{ width: "100%" }}
               placeholder="Return loading completed"
             />
