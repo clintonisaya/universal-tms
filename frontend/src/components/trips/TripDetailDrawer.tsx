@@ -560,7 +560,7 @@ export function TripDetailDrawer({ open, onClose, tripId }: TripDetailDrawerProp
                 key: "details",
                 label: "Details",
                 children: (
-                  <Space direction="vertical" size="middle" style={{ width: "100%" }}>
+                  <Space orientation="vertical" size="middle" style={{ width: "100%" }}>
                     <Descriptions bordered column={2} size="small">
                       <Descriptions.Item label="Route">
                         {trip.route_name}
@@ -684,7 +684,7 @@ export function TripDetailDrawer({ open, onClose, tripId }: TripDetailDrawerProp
                       const getDocUrl = (d: PodDocument) =>
                         typeof d === "string" ? d : d.url;
                       return (
-                        <Space direction="vertical" size="small" style={{ width: "100%" }}>
+                        <Space orientation="vertical" size="small" style={{ width: "100%" }}>
                           {goPods.length > 0 && (
                             <div>
                               <Text strong>Go PODs</Text>
@@ -771,7 +771,7 @@ export function TripDetailDrawer({ open, onClose, tripId }: TripDetailDrawerProp
                 key: "border-crossings",
                 label: `Border Crossings${borderCrossings.length > 0 ? ` (${borderCrossings.length})` : ""}`,
                 children: (
-                  <Space direction="vertical" size="middle" style={{ width: "100%" }}>
+                  <Space orientation="vertical" size="middle" style={{ width: "100%" }}>
                     {loadingCrossings ? (
                       <div style={{ textAlign: "center", padding: 24 }}>
                         <Spin />
@@ -882,7 +882,7 @@ export function TripDetailDrawer({ open, onClose, tripId }: TripDetailDrawerProp
         okButtonProps={{ disabled: !selectedReturnWaybillId }}
         width={700}
       >
-        <Space direction="vertical" style={{ width: "100%" }}>
+        <Space orientation="vertical" style={{ width: "100%" }}>
           <Text type="secondary">
             Select an open waybill to attach as the return leg for this trip.
           </Text>
@@ -934,14 +934,14 @@ export function TripDetailDrawer({ open, onClose, tripId }: TripDetailDrawerProp
         okButtonProps={{ danger: true }}
         confirmLoading={cancelling}
       >
-        <Space direction="vertical" style={{ width: "100%" }}>
+        <Space orientation="vertical" style={{ width: "100%" }}>
           <Text>
             Are you sure you want to cancel this trip?
           </Text>
           {trip?.return_waybill_id ? (
             <>
               <Text type="secondary">This trip has 2 waybills. Select which to reset to Open:</Text>
-              <Space direction="vertical">
+              <Space orientation="vertical">
                 <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
                   <input
                     type="checkbox"

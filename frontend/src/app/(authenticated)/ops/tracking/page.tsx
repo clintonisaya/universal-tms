@@ -317,8 +317,6 @@ export default function TrackingPage() {
       { header: "Driver Phone", key: "driver_phone", width: 16 },
       // Truck block
       { header: "Truck Plate", key: "truck_plate", width: 14 },
-      { header: "Truck Make", key: "truck_make", width: 16 },
-      { header: "Truck Model", key: "truck_model", width: 16 },
       // Trailer block
       { header: "Trailer Plate", key: "trailer_plate", width: 14 },
       { header: "Trailer Type", key: "trailer_type", width: 14 },
@@ -391,8 +389,6 @@ export default function TrackingPage() {
         driver_passport: (row as any).driver_passport || "-",
         driver_phone: (row as any).driver_phone || "-",
         truck_plate: row.truck_plate || "-",
-        truck_make: (row as any).truck_make || "-",
-        truck_model: (row as any).truck_model || "-",
         trailer_plate: row.trailer_plate || "-",
         trailer_type: (row as any).trailer_type || "-",
         dispatch_date: fmtDate((row as any).dispatch_date),

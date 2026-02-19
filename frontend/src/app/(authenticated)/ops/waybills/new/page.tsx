@@ -142,7 +142,7 @@ export default function NewWaybillPage() {
       }}
     >
       <div style={{ maxWidth: 800, margin: "0 auto" }}>
-        <Space direction="vertical" size="large" style={{ width: "100%" }}>
+        <Space orientation="vertical" size="large" style={{ width: "100%" }}>
           <div style={{ display: "flex", alignItems: "center" }}>
             <Button
               icon={<ArrowLeftOutlined />}

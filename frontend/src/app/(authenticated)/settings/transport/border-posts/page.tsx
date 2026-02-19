@@ -241,7 +241,7 @@ export default function BorderPostsPage() {
   return (
     <div>
       <Card>
-        <Space direction="vertical" size="middle" style={{ width: "100%" }}>
+        <Space orientation="vertical" size="middle" style={{ width: "100%" }}>
           <div
             style={{
               display: "flex",
