@@ -265,26 +265,45 @@ export default function TrackingPage() {
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet("Control Tower");
 
-    // Determine max border crossings in dataset for dynamic columns
-    const maxBorders = filteredData.reduce(
-      (max, row) => Math.max(max, (row.border_crossings || []).length),
+    // Determine max go and return border crossings separately for dynamic columns
+    type ColDef = Partial<ExcelJS.Column>;
+
+    const maxGoBorders = filteredData.reduce(
+      (max, row) => Math.max(max, (row.border_crossings || []).filter((bc: any) => bc.direction === "go").length),
+      0
+    );
+    const maxReturnBorders = filteredData.reduce(
+      (max, row) => Math.max(max, (row.border_crossings || []).filter((bc: any) => bc.direction === "return").length),
       0
     );
 
-    type ColDef = Partial<ExcelJS.Column>;
-    const borderCrossingCols: ColDef[] = [];
-    for (let i = 0; i < maxBorders; i++) {
+    const goBorderCols: ColDef[] = [];
+    for (let i = 0; i < maxGoBorders; i++) {
       const n = i + 1;
-      borderCrossingCols.push(
-        { header: `Border ${n} Name`, key: `bc${n}_name`, width: 22 },
-        { header: `Border ${n} Direction`, key: `bc${n}_dir`, width: 14 },
-        { header: `Border ${n} Arrived Side A`, key: `bc${n}_arr_a`, width: 20 },
-        { header: `Border ${n} Docs Submitted A`, key: `bc${n}_sub_a`, width: 20 },
-        { header: `Border ${n} Docs Cleared A`, key: `bc${n}_clr_a`, width: 20 },
-        { header: `Border ${n} Arrived Side B`, key: `bc${n}_arr_b`, width: 20 },
-        { header: `Border ${n} Docs Submitted B`, key: `bc${n}_sub_b`, width: 20 },
-        { header: `Border ${n} Docs Cleared B`, key: `bc${n}_clr_b`, width: 20 },
-        { header: `Border ${n} Departed Zone`, key: `bc${n}_dep`, width: 20 }
+      goBorderCols.push(
+        { header: `Border ${n} Name`, key: `bcG${n}_name`, width: 22 },
+        { header: `Border ${n} Arrived Side A`, key: `bcG${n}_arr_a`, width: 20 },
+        { header: `Border ${n} Docs Submitted A`, key: `bcG${n}_sub_a`, width: 20 },
+        { header: `Border ${n} Docs Cleared A`, key: `bcG${n}_clr_a`, width: 20 },
+        { header: `Border ${n} Arrived Side B`, key: `bcG${n}_arr_b`, width: 20 },
+        { header: `Border ${n} Docs Submitted B`, key: `bcG${n}_sub_b`, width: 20 },
+        { header: `Border ${n} Docs Cleared B`, key: `bcG${n}_clr_b`, width: 20 },
+        { header: `Border ${n} Departed Zone`, key: `bcG${n}_dep`, width: 20 }
+      );
+    }
+
+    const returnBorderCols: ColDef[] = [];
+    for (let i = 0; i < maxReturnBorders; i++) {
+      const n = i + 1;
+      returnBorderCols.push(
+        { header: `Return Border ${n} Name`, key: `bcR${n}_name`, width: 22 },
+        { header: `Return Border ${n} Arrived Side A`, key: `bcR${n}_arr_a`, width: 20 },
+        { header: `Return Border ${n} Docs Submitted A`, key: `bcR${n}_sub_a`, width: 20 },
+        { header: `Return Border ${n} Docs Cleared A`, key: `bcR${n}_clr_a`, width: 20 },
+        { header: `Return Border ${n} Arrived Side B`, key: `bcR${n}_arr_b`, width: 20 },
+        { header: `Return Border ${n} Docs Submitted B`, key: `bcR${n}_sub_b`, width: 20 },
+        { header: `Return Border ${n} Docs Cleared B`, key: `bcR${n}_clr_b`, width: 20 },
+        { header: `Return Border ${n} Departed Zone`, key: `bcR${n}_dep`, width: 20 }
       );
     }
 
@@ -325,20 +344,22 @@ export default function TrackingPage() {
       { header: "Arrival at Loading", key: "arrival_loading_date", width: 20 },
       { header: "Loading Start", key: "loading_start_date", width: 20 },
       { header: "Loading End", key: "loading_end_date", width: 20 },
+      // Go border crossings (happen between loading and offloading)
+      ...goBorderCols,
       { header: "Arrival at Offloading", key: "arrival_offloading_date", width: 22 },
       { header: "Offloading Date", key: "offloading_date", width: 20 },
       { header: "Return Dispatch Date", key: "dispatch_return_date", width: 20 },
       { header: "Return Arrival at Loading", key: "arrival_loading_return_date", width: 24 },
       { header: "Return Loading Start", key: "loading_return_start_date", width: 20 },
       { header: "Return Loading End", key: "loading_return_end_date", width: 20 },
+      // Return border crossings (happen between return loading and return offloading)
+      ...returnBorderCols,
       { header: "Arrival at Return Destination", key: "arrival_return_date", width: 26 },
       // Duration
       { header: "Days (Overall)", key: "duration_days", width: 14 },
       { header: "Days (Return Leg)", key: "return_duration_days", width: 16 },
       // Location
       { header: "Current Location", key: "current_location", width: 25 },
-      // Border crossings (dynamic)
-      ...borderCrossingCols,
     ] as Partial<ExcelJS.Column>[];
 
     // Bold header row + freeze
@@ -350,18 +371,31 @@ export default function TrackingPage() {
 
     filteredData.forEach((row, index) => {
       const borderData: Record<string, string> = {};
-      (row.border_crossings || []).forEach((bc: any, i: number) => {
+      const goCrossings = (row.border_crossings || []).filter((bc: any) => bc.direction === "go");
+      const returnCrossings = (row.border_crossings || []).filter((bc: any) => bc.direction === "return");
+
+      goCrossings.forEach((bc: any, i: number) => {
         const n = i + 1;
-        const isGo = bc.direction === "go";
-        borderData[`bc${n}_name`] = bc.border_display_name || "-";
-        borderData[`bc${n}_dir`] = isGo ? `Go (${bc.side_a_name}→${bc.side_b_name})` : `Return (${bc.side_b_name}→${bc.side_a_name})`;
-        borderData[`bc${n}_arr_a`] = fmtDate(bc.arrived_side_a_at);
-        borderData[`bc${n}_sub_a`] = fmtDate(bc.documents_submitted_side_a_at);
-        borderData[`bc${n}_clr_a`] = fmtDate(bc.documents_cleared_side_a_at);
-        borderData[`bc${n}_arr_b`] = fmtDate(bc.arrived_side_b_at);
-        borderData[`bc${n}_sub_b`] = fmtDate(bc.documents_submitted_side_b_at);
-        borderData[`bc${n}_clr_b`] = fmtDate(bc.documents_cleared_side_b_at);
-        borderData[`bc${n}_dep`] = fmtDate(bc.departed_border_at);
+        borderData[`bcG${n}_name`] = bc.border_display_name || "-";
+        borderData[`bcG${n}_arr_a`] = fmtDate(bc.arrived_side_a_at);
+        borderData[`bcG${n}_sub_a`] = fmtDate(bc.documents_submitted_side_a_at);
+        borderData[`bcG${n}_clr_a`] = fmtDate(bc.documents_cleared_side_a_at);
+        borderData[`bcG${n}_arr_b`] = fmtDate(bc.arrived_side_b_at);
+        borderData[`bcG${n}_sub_b`] = fmtDate(bc.documents_submitted_side_b_at);
+        borderData[`bcG${n}_clr_b`] = fmtDate(bc.documents_cleared_side_b_at);
+        borderData[`bcG${n}_dep`] = fmtDate(bc.departed_border_at);
+      });
+
+      returnCrossings.forEach((bc: any, i: number) => {
+        const n = i + 1;
+        borderData[`bcR${n}_name`] = bc.border_display_name || "-";
+        borderData[`bcR${n}_arr_a`] = fmtDate(bc.arrived_side_a_at);
+        borderData[`bcR${n}_sub_a`] = fmtDate(bc.documents_submitted_side_a_at);
+        borderData[`bcR${n}_clr_a`] = fmtDate(bc.documents_cleared_side_a_at);
+        borderData[`bcR${n}_arr_b`] = fmtDate(bc.arrived_side_b_at);
+        borderData[`bcR${n}_sub_b`] = fmtDate(bc.documents_submitted_side_b_at);
+        borderData[`bcR${n}_clr_b`] = fmtDate(bc.documents_cleared_side_b_at);
+        borderData[`bcR${n}_dep`] = fmtDate(bc.departed_border_at);
       });
 
       const excelRow = worksheet.addRow({
