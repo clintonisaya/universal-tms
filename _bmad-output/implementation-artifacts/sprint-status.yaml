@@ -98,3 +98,8 @@ development_status:
   4-6-dashboard-recent-trips-enhancement: ready-for-dev
   4-7-expense-review-action-modal: ready-for-dev
   epic-4-retrospective: optional
+
+  # Epic 5: Speed & Functionality Quick Fixes
+  epic-5: in-progress
+  5-2-eliminate-auth-loading-flash: review
+  epic-5-retrospective: optional

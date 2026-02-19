@@ -187,7 +187,7 @@ function TasksContent() {
       title: "Expense #",
       dataIndex: "expense_number",
       key: "expense_number",
-      width: 140,
+      width: 200,
       render: (num: string, record: TodoTask) => (
         <Text
           strong
