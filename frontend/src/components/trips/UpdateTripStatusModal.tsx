@@ -445,7 +445,7 @@ export function UpdateTripStatusModal({
 
     let overall: string | null = null;
     if (dispatch) {
-      const end = returnDate || new Date().format("YYYY-MM-DD");
+      const end = returnDate || dayjs().format("YYYY-MM-DD");
       const days = dayjs(end).diff(dayjs(dispatch), "day");
       overall = `${days}d overall`;
     } else if (tripData.trip_duration_days != null) {
@@ -454,7 +454,7 @@ export function UpdateTripStatusModal({
 
     let returnLeg: string | null = null;
     if (dispatchReturn && tripData.return_waybill_id) {
-      const end = returnDate || new Date().format("YYYY-MM-DD");
+      const end = returnDate || dayjs().format("YYYY-MM-DD");
       const days = dayjs(end).diff(dayjs(dispatchReturn), "day");
       returnLeg = `${days}d return`;
     }
