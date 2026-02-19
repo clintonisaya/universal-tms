@@ -277,6 +277,14 @@ export default function TrackingPage() {
       0
     );
 
+    // Helper: days between two ISO date strings (1 decimal)
+    const calcDays = (start: string | null | undefined, end: string | null | undefined): number | string => {
+      if (!start || !end) return "-";
+      const diff = new Date(end).getTime() - new Date(start).getTime();
+      if (isNaN(diff) || diff < 0) return "-";
+      return Math.round(diff / (1000 * 60 * 60 * 24 * 10)) / 10;
+    };
+
     const goBorderCols: ColDef[] = [];
     for (let i = 0; i < maxGoBorders; i++) {
       const n = i + 1;
@@ -305,6 +313,18 @@ export default function TrackingPage() {
         { header: `Return Border ${n} Docs Cleared B`, key: `bcR${n}_clr_b`, width: 20 },
         { header: `Return Border ${n} Departed Zone`, key: `bcR${n}_dep`, width: 20 }
       );
+    }
+
+    // Dynamic days-per-border columns (placed in the Days section)
+    const daysBorderGoCols: ColDef[] = [];
+    for (let i = 0; i < maxGoBorders; i++) {
+      const n = i + 1;
+      daysBorderGoCols.push({ header: `Days at Border ${n}`, key: `days_bcG${n}`, width: 16 });
+    }
+    const daysBorderReturnCols: ColDef[] = [];
+    for (let i = 0; i < maxReturnBorders; i++) {
+      const n = i + 1;
+      daysBorderReturnCols.push({ header: `Days at Return Border ${n}`, key: `days_bcR${n}`, width: 20 });
     }
 
     worksheet.columns = [
@@ -358,6 +378,10 @@ export default function TrackingPage() {
       // Duration
       { header: "Days (Overall)", key: "duration_days", width: 14 },
       { header: "Days (Return Leg)", key: "return_duration_days", width: 16 },
+      { header: "Days at Loading", key: "days_loading", width: 16 },
+      { header: "Days at Loading (Return)", key: "days_loading_return", width: 22 },
+      ...daysBorderGoCols,
+      ...daysBorderReturnCols,
       // Location
       { header: "Current Location", key: "current_location", width: 25 },
     ] as Partial<ExcelJS.Column>[];
@@ -384,6 +408,7 @@ export default function TrackingPage() {
         borderData[`bcG${n}_sub_b`] = fmtDate(bc.documents_submitted_side_b_at);
         borderData[`bcG${n}_clr_b`] = fmtDate(bc.documents_cleared_side_b_at);
         borderData[`bcG${n}_dep`] = fmtDate(bc.departed_border_at);
+        (borderData as any)[`days_bcG${n}`] = calcDays(bc.arrived_side_a_at, bc.departed_border_at);
       });
 
       returnCrossings.forEach((bc: any, i: number) => {
@@ -396,6 +421,7 @@ export default function TrackingPage() {
         borderData[`bcR${n}_sub_b`] = fmtDate(bc.documents_submitted_side_b_at);
         borderData[`bcR${n}_clr_b`] = fmtDate(bc.documents_cleared_side_b_at);
         borderData[`bcR${n}_dep`] = fmtDate(bc.departed_border_at);
+        (borderData as any)[`days_bcR${n}`] = calcDays(bc.arrived_side_a_at, bc.departed_border_at);
       });
 
       const excelRow = worksheet.addRow({
@@ -438,6 +464,8 @@ export default function TrackingPage() {
         arrival_return_date: fmtDate((row as any).arrival_return_date),
         duration_days: row.duration_days,
         return_duration_days: row.return_duration_days || 0,
+        days_loading: calcDays(row.arrival_loading_date, row.loading_end_date),
+        days_loading_return: calcDays(row.arrival_loading_return_date, row.loading_return_end_date),
         current_location: row.current_location || "-",
         ...borderData,
       });
