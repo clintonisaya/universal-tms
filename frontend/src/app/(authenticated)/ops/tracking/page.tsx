@@ -15,6 +15,7 @@ import {
   Form,
   Row,
   Col,
+  Tooltip,
 } from "antd";
 import {
   ReloadOutlined,
@@ -25,9 +26,11 @@ import {
   UserOutlined,
   FileTextOutlined,
   EnvironmentOutlined,
+  SwapOutlined,
 } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
 import ExcelJS from "exceljs";
+import { uniqBy } from "lodash";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTracking, useInvalidateQueries } from "@/hooks/useApi";
 import { UpdateTripStatusModal } from "@/components/trips/UpdateTripStatusModal";
@@ -35,41 +38,92 @@ import { getStandardRowSelection } from "@/components/ui/tableUtils";
 
 const { Title, Text } = Typography;
 
-// --- Types for Flattened Report Data (Updated for Rich View) ---
+// --- Types for Flattened Report Data (Trip-centric: one row per trip) ---
 interface TrackingRow {
-  // 1. Status Plls
-  waybill_status: string;
+  // Unique row key
+  row_id: string;
+
+  // 1. Status
+  waybill_status: string | null;
   trip_status: string;
-  
+
   // 2. IDs
-  waybill_id: string;
-  waybill_number: string;
+  waybill_id: string | null;
+  waybill_number: string | null;
   trip_id: string | null;
   trip_number: string | null;
-  
-  // 3. Entity Info
-  client_name: string;
+
+  // 3. Go Waybill Info
+  client_name: string | null;
   cargo_type: string | null;
   cargo_weight: number;
   cargo_description: string;
-  
-  // 4. Route Info
+
+  // 4. Return Waybill Info
+  return_waybill_id: string | null;
+  return_waybill_number: string | null;
+  return_waybill_status: string | null;
+  return_client_name: string | null;
+  return_cargo_type: string | null;
+  return_cargo_weight: number | null;
+
+  // 5. Route Info
   origin: string;
   destination: string;
   current_location: string | null;
   border_location: string | null;
-  
-  // 5. Asset Info
+
+  // 6. Asset Info — extended (Story 2.26)
   truck_plate: string | null;
+  truck_make: string | null;
+  truck_model: string | null;
   driver_name: string | null;
+  driver_license: string | null;
+  driver_passport: string | null;
+  driver_phone: string | null;
   trailer_plate: string | null;
-  
-  // 6. Risk
+  trailer_type: string | null;
+
+  // 7. Risk
   risk_level: string;
-  
+
   // Meta
   start_date: string | null;
   duration_days: number;
+  return_duration_days: number;
+
+  // Tracking dates (Story 2.26)
+  dispatch_date: string | null;
+  arrival_loading_date: string | null;
+  loading_start_date: string | null;
+  loading_end_date: string | null;
+  arrival_offloading_date: string | null;
+  offloading_date: string | null;
+  dispatch_return_date: string | null;
+  arrival_loading_return_date: string | null;
+  loading_return_start_date: string | null;
+  loading_return_end_date: string | null;
+  arrival_return_date: string | null;
+
+  // Border crossings (Story 2.26)
+  border_crossings: Array<{
+    border_display_name: string;
+    side_a_name: string;
+    side_b_name: string;
+    direction: string;
+    arrived_side_a_at: string | null;
+    documents_submitted_side_a_at: string | null;
+    documents_cleared_side_a_at: string | null;
+    arrived_side_b_at: string | null;
+    documents_submitted_side_b_at: string | null;
+    documents_cleared_side_b_at: string | null;
+    departed_border_at: string | null;
+  }>;
+
+  // Return waybill extended (Story 2.26)
+  return_origin: string | null;
+  return_destination: string | null;
+  return_cargo_description: string | null;
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -85,7 +139,14 @@ const STATUS_COLORS: Record<string, string> = {
   Loading: "gold",
   "In Transit": "cyan",
   "At Border": "orange",
-  Offloaded: "lime",
+  Offloading: "lime",
+  // Return leg statuses (Story 2.25)
+  "Dispatch (Return)": "purple",
+  "Wait to Load (Return)": "lime",
+  "Loading (Return)": "gold",
+  "In Transit (Return)": "cyan",
+  "At Border (Return)": "orange",
+  "Offloading (Return)": "lime",
   Returned: "geekblue",
   "Waiting for PODs": "volcano",
   Cancelled: "red",
@@ -93,9 +154,9 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 const RISK_COLORS: Record<string, string> = {
-    Low: "success",
-    Medium: "warning",
-    High: "error",
+  Low: "success",
+  Medium: "warning",
+  High: "error",
 };
 
 export default function TrackingPage() {
@@ -103,16 +164,12 @@ export default function TrackingPage() {
   const { user } = useAuth();
   const { invalidateTracking } = useInvalidateQueries();
 
-  // Only fetch when user is authenticated
   const isAuthenticated = !!user;
 
-  // TanStack Query for tracking data
   const { data: rawData, isLoading: loading, refetch } = useTracking(isAuthenticated);
   const data = rawData || [];
 
   const [filteredData, setFilteredData] = useState<TrackingRow[]>([]);
-
-  // Filter States
   const [searchForm] = Form.useForm();
 
   // Status Update Modal State
@@ -133,21 +190,40 @@ export default function TrackingPage() {
   }, [data]);
 
   // Combined Search Logic
-  const applySearch = (
-    rawData: TrackingRow[], 
-    searchValues: any
-  ) => {
-    let results = [...rawData];
+  const applySearch = (rawData: TrackingRow[], searchValues: any) => {
+    // Ensure uniqueness based on row_id to prevent key errors
+    let results = uniqBy(rawData, "row_id");
 
-    // Search Bar Filter
     if (searchValues) {
-        const { waybill, trip, truck, trailer, client, driver } = searchValues;
-        if (waybill) results = results.filter(r => r.waybill_number.toLowerCase().includes(waybill.toLowerCase()));
-        if (trip) results = results.filter(r => r.trip_number?.toLowerCase().includes(trip.toLowerCase()));
-        if (truck) results = results.filter(r => r.truck_plate?.toLowerCase().includes(truck.toLowerCase()));
-        if (trailer) results = results.filter(r => r.trailer_plate?.toLowerCase().includes(trailer.toLowerCase()));
-        if (client) results = results.filter(r => r.client_name.toLowerCase().includes(client.toLowerCase()));
-        if (driver) results = results.filter(r => r.driver_name?.toLowerCase().includes(driver.toLowerCase()));
+      const { waybill, trip, truck, trailer, client, driver } = searchValues;
+      if (waybill)
+        results = results.filter(
+          (r) =>
+            r.waybill_number?.toLowerCase().includes(waybill.toLowerCase()) ||
+            r.return_waybill_number?.toLowerCase().includes(waybill.toLowerCase())
+        );
+      if (trip)
+        results = results.filter((r) =>
+          r.trip_number?.toLowerCase().includes(trip.toLowerCase())
+        );
+      if (truck)
+        results = results.filter((r) =>
+          r.truck_plate?.toLowerCase().includes(truck.toLowerCase())
+        );
+      if (trailer)
+        results = results.filter((r) =>
+          r.trailer_plate?.toLowerCase().includes(trailer.toLowerCase())
+        );
+      if (client)
+        results = results.filter(
+          (r) =>
+            r.client_name?.toLowerCase().includes(client.toLowerCase()) ||
+            r.return_client_name?.toLowerCase().includes(client.toLowerCase())
+        );
+      if (driver)
+        results = results.filter((r) =>
+          r.driver_name?.toLowerCase().includes(driver.toLowerCase())
+        );
     }
 
     setFilteredData(results);
@@ -158,8 +234,30 @@ export default function TrackingPage() {
   };
 
   const handleReset = () => {
-      searchForm.resetFields();
-      applySearch(data, {});
+    searchForm.resetFields();
+    applySearch(data, {});
+  };
+
+  // Row colour by trip status (Story 2.26)
+  const STATUS_ROW_COLORS: Record<string, string> = {
+    "In Transit": "D9F2DC",
+    "In Transit (Return)": "D9F2DC",
+    "Offloading": "D9F2DC",
+    "Offloading (Return)": "D9F2DC",
+    "Loading": "FFF3CD",
+    "Loading (Return)": "FFF3CD",
+    "Wait to Load": "FFF3CD",
+    "Wait to Load (Return)": "FFF3CD",
+    "Dispatch": "FFF3CD",
+    "Dispatch (Return)": "FFF3CD",
+    "At Border": "FFE0B2",
+    "At Border (Return)": "FFE0B2",
+    "Not Dispatched": "DDEEFF",
+    "Waiting": "DDEEFF",
+    "Returned": "EDE7F6",
+    "Waiting for PODs": "EDE7F6",
+    "Cancelled": "FFCDD2",
+    "Completed": "F5F5F5",
   };
 
   // Excel Export
@@ -167,32 +265,168 @@ export default function TrackingPage() {
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet("Control Tower");
 
+    // Determine max border crossings in dataset for dynamic columns
+    const maxBorders = filteredData.reduce(
+      (max, row) => Math.max(max, (row.border_crossings || []).length),
+      0
+    );
+
+    type ColDef = Partial<ExcelJS.Column>;
+    const borderCrossingCols: ColDef[] = [];
+    for (let i = 0; i < maxBorders; i++) {
+      const n = i + 1;
+      borderCrossingCols.push(
+        { header: `Border ${n} Name`, key: `bc${n}_name`, width: 22 },
+        { header: `Border ${n} Direction`, key: `bc${n}_dir`, width: 14 },
+        { header: `Border ${n} Arrived Side A`, key: `bc${n}_arr_a`, width: 20 },
+        { header: `Border ${n} Docs Submitted A`, key: `bc${n}_sub_a`, width: 20 },
+        { header: `Border ${n} Docs Cleared A`, key: `bc${n}_clr_a`, width: 20 },
+        { header: `Border ${n} Arrived Side B`, key: `bc${n}_arr_b`, width: 20 },
+        { header: `Border ${n} Docs Submitted B`, key: `bc${n}_sub_b`, width: 20 },
+        { header: `Border ${n} Docs Cleared B`, key: `bc${n}_clr_b`, width: 20 },
+        { header: `Border ${n} Departed Zone`, key: `bc${n}_dep`, width: 20 }
+      );
+    }
+
     worksheet.columns = [
       { header: "No.", key: "index", width: 8 },
-      { header: "IDs", key: "ids", width: 25 },
-      { header: "Status", key: "status", width: 20 },
-      { header: "Client / Cargo", key: "client_cargo", width: 30 },
-      { header: "Route / Location", key: "route_loc", width: 35 },
-      { header: "Days", key: "duration_days", width: 10 },
-      { header: "Assets", key: "assets", width: 25 },
-      { header: "Risk", key: "risk_level", width: 15 },
-    ];
+      { header: "Trip #", key: "trip_number", width: 20 },
+      { header: "Trip Status", key: "trip_status", width: 22 },
+      // Go Waybill block
+      { header: "Go Waybill #", key: "waybill_number", width: 20 },
+      { header: "Go WB Status", key: "waybill_status", width: 15 },
+      { header: "Client (Go)", key: "client_name", width: 25 },
+      { header: "Origin", key: "origin", width: 25 },
+      { header: "Destination", key: "destination", width: 25 },
+      { header: "Cargo Type (Go)", key: "cargo_type", width: 20 },
+      { header: "Cargo Weight (Go) kg", key: "cargo_weight", width: 18 },
+      { header: "Cargo Description (Go)", key: "cargo_description", width: 30 },
+      { header: "Risk", key: "risk_level", width: 10 },
+      // Return Waybill block
+      { header: "Return Waybill #", key: "return_waybill_number", width: 20 },
+      { header: "Return WB Status", key: "return_waybill_status", width: 18 },
+      { header: "Client (Return)", key: "return_client_name", width: 25 },
+      { header: "Return Origin", key: "return_origin", width: 25 },
+      { header: "Return Destination", key: "return_destination", width: 25 },
+      { header: "Cargo Type (Return)", key: "return_cargo_type", width: 20 },
+      { header: "Cargo Weight (Return) kg", key: "return_cargo_weight", width: 22 },
+      // Driver block
+      { header: "Driver Name", key: "driver_name", width: 22 },
+      { header: "Driver Licence", key: "driver_license", width: 18 },
+      { header: "Driver Passport", key: "driver_passport", width: 18 },
+      { header: "Driver Phone", key: "driver_phone", width: 16 },
+      // Truck block
+      { header: "Truck Plate", key: "truck_plate", width: 14 },
+      { header: "Truck Make", key: "truck_make", width: 16 },
+      { header: "Truck Model", key: "truck_model", width: 16 },
+      // Trailer block
+      { header: "Trailer Plate", key: "trailer_plate", width: 14 },
+      { header: "Trailer Type", key: "trailer_type", width: 14 },
+      // Tracking dates
+      { header: "Dispatch Date", key: "dispatch_date", width: 20 },
+      { header: "Arrival at Loading", key: "arrival_loading_date", width: 20 },
+      { header: "Loading Start", key: "loading_start_date", width: 20 },
+      { header: "Loading End", key: "loading_end_date", width: 20 },
+      { header: "Arrival at Offloading", key: "arrival_offloading_date", width: 22 },
+      { header: "Offloading Date", key: "offloading_date", width: 20 },
+      { header: "Return Dispatch Date", key: "dispatch_return_date", width: 20 },
+      { header: "Return Arrival at Loading", key: "arrival_loading_return_date", width: 24 },
+      { header: "Return Loading Start", key: "loading_return_start_date", width: 20 },
+      { header: "Return Loading End", key: "loading_return_end_date", width: 20 },
+      { header: "Arrival at Return Destination", key: "arrival_return_date", width: 26 },
+      // Duration
+      { header: "Days (Overall)", key: "duration_days", width: 14 },
+      { header: "Days (Return Leg)", key: "return_duration_days", width: 16 },
+      // Location
+      { header: "Current Location", key: "current_location", width: 25 },
+      // Border crossings (dynamic)
+      ...borderCrossingCols,
+    ] as Partial<ExcelJS.Column>[];
+
+    // Bold header row + freeze
+    worksheet.getRow(1).font = { bold: true };
+    worksheet.views = [{ state: "frozen", ySplit: 1 }];
+
+    const fmtDate = (d: string | null | undefined) =>
+      d ? new Date(d).toLocaleString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "-";
 
     filteredData.forEach((row, index) => {
-      worksheet.addRow({
+      const borderData: Record<string, string> = {};
+      (row.border_crossings || []).forEach((bc: any, i: number) => {
+        const n = i + 1;
+        const isGo = bc.direction === "go";
+        borderData[`bc${n}_name`] = bc.border_display_name || "-";
+        borderData[`bc${n}_dir`] = isGo ? `Go (${bc.side_a_name}→${bc.side_b_name})` : `Return (${bc.side_b_name}→${bc.side_a_name})`;
+        borderData[`bc${n}_arr_a`] = fmtDate(bc.arrived_side_a_at);
+        borderData[`bc${n}_sub_a`] = fmtDate(bc.documents_submitted_side_a_at);
+        borderData[`bc${n}_clr_a`] = fmtDate(bc.documents_cleared_side_a_at);
+        borderData[`bc${n}_arr_b`] = fmtDate(bc.arrived_side_b_at);
+        borderData[`bc${n}_sub_b`] = fmtDate(bc.documents_submitted_side_b_at);
+        borderData[`bc${n}_clr_b`] = fmtDate(bc.documents_cleared_side_b_at);
+        borderData[`bc${n}_dep`] = fmtDate(bc.departed_border_at);
+      });
+
+      const excelRow = worksheet.addRow({
         index: index + 1,
-        ids: `${row.waybill_number}\n${row.trip_number || '-'}`,
-        status: `${row.waybill_status} / ${row.trip_status}`,
-        client_cargo: `${row.client_name}\n${row.cargo_description} (${row.cargo_weight}kg)`,
-        route_loc: `${row.origin} -> ${row.destination}\n${row.current_location || '-'}`,
-        duration_days: row.duration_days,
-        assets: `${row.truck_plate || '-'} / ${row.trailer_plate || '-'}\n${row.driver_name || '-'}`,
+        trip_number: row.trip_number || "-",
+        trip_status: row.trip_status,
+        waybill_number: row.waybill_number || "-",
+        waybill_status: row.waybill_status || "-",
+        client_name: row.client_name || "-",
+        origin: (row as any).origin || "-",
+        destination: (row as any).destination || "-",
+        cargo_type: row.cargo_type || "-",
+        cargo_weight: row.cargo_weight || 0,
+        cargo_description: (row as any).cargo_description || "-",
         risk_level: row.risk_level,
+        return_waybill_number: row.return_waybill_number || "-",
+        return_waybill_status: row.return_waybill_status || "-",
+        return_client_name: row.return_client_name || "-",
+        return_origin: (row as any).return_origin || "-",
+        return_destination: (row as any).return_destination || "-",
+        return_cargo_type: row.return_cargo_type || "-",
+        return_cargo_weight: row.return_cargo_weight ?? "-",
+        driver_name: row.driver_name || "-",
+        driver_license: (row as any).driver_license || "-",
+        driver_passport: (row as any).driver_passport || "-",
+        driver_phone: (row as any).driver_phone || "-",
+        truck_plate: row.truck_plate || "-",
+        truck_make: (row as any).truck_make || "-",
+        truck_model: (row as any).truck_model || "-",
+        trailer_plate: row.trailer_plate || "-",
+        trailer_type: (row as any).trailer_type || "-",
+        dispatch_date: fmtDate((row as any).dispatch_date),
+        arrival_loading_date: fmtDate((row as any).arrival_loading_date),
+        loading_start_date: fmtDate((row as any).loading_start_date),
+        loading_end_date: fmtDate((row as any).loading_end_date),
+        arrival_offloading_date: fmtDate((row as any).arrival_offloading_date),
+        offloading_date: fmtDate((row as any).offloading_date),
+        dispatch_return_date: fmtDate((row as any).dispatch_return_date),
+        arrival_loading_return_date: fmtDate((row as any).arrival_loading_return_date),
+        loading_return_start_date: fmtDate((row as any).loading_return_start_date),
+        loading_return_end_date: fmtDate((row as any).loading_return_end_date),
+        arrival_return_date: fmtDate((row as any).arrival_return_date),
+        duration_days: row.duration_days,
+        return_duration_days: row.return_duration_days || 0,
+        current_location: row.current_location || "-",
+        ...borderData,
+      });
+
+      // Apply row colour fill by trip status
+      const statusColor = STATUS_ROW_COLORS[row.trip_status] ?? "FFFFFF";
+      excelRow.eachCell({ includeEmpty: true }, (cell) => {
+        cell.fill = {
+          type: "pattern",
+          pattern: "solid",
+          fgColor: { argb: `FF${statusColor}` },
+        };
       });
     });
 
     const buffer = await workbook.xlsx.writeBuffer();
-    const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+    const blob = new Blob([buffer], {
+      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    });
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
@@ -203,13 +437,14 @@ export default function TrackingPage() {
 
   const openStatusModal = (record: TrackingRow) => {
     if (!record.trip_id) {
-        message.info("No trip assigned to this waybill yet.");
-        return;
+      message.info("No trip assigned to this waybill yet.");
+      return;
     }
     setSelectedTripId(record.trip_id);
     setInitialStatusValues({
-        status: record.trip_status,
-        current_location: record.current_location,
+      status: record.trip_status,
+      current_location: record.current_location,
+      return_waybill_id: record.return_waybill_id,
     });
     setIsStatusModalOpen(true);
   };
@@ -218,40 +453,84 @@ export default function TrackingPage() {
     {
       title: "Tracking No.",
       key: "ids",
-      width: 160,
+      width: 180,
       align: "left",
       render: (_, r) => (
-        <Flex vertical gap={0}>
-           <Text strong style={{ color: '#1890ff', cursor: 'pointer' }}>{r.waybill_number}</Text>
-           {r.trip_number ? (
-             <Text style={{ fontSize: 12, color: '#595959' }}>{r.trip_number}</Text>
-           ) : <Text type="secondary" style={{ fontSize: 12 }}>No Trip</Text>}
+        <Flex vertical gap={2}>
+          {/* Go waybill */}
+          {r.waybill_number ? (
+            <Text strong style={{ color: "#1890ff", fontSize: 13 }}>
+              {r.waybill_number}
+            </Text>
+          ) : null}
+          {/* Return waybill (green, with icon) */}
+          {r.return_waybill_number && (
+            <Tooltip title="Return Waybill">
+              <Text style={{ color: "#52c41a", fontSize: 12 }}>
+                <SwapOutlined style={{ marginRight: 3 }} />
+                {r.return_waybill_number}
+              </Text>
+            </Tooltip>
+          )}
+          {/* Trip number */}
+          {r.trip_number ? (
+            <Text style={{ fontSize: 11, color: "#595959" }}>{r.trip_number}</Text>
+          ) : (
+            <Text type="secondary" style={{ fontSize: 11 }}>
+              No Trip
+            </Text>
+          )}
         </Flex>
-      )
+      ),
     },
     {
       title: "Status",
       key: "status",
-      width: 140,
+      width: 170,
       render: (_, r) => (
         <Flex vertical gap={2} align="start">
-            <Tag color={STATUS_COLORS[r.waybill_status]}>WB: {r.waybill_status}</Tag>
-            <Tag color={STATUS_COLORS[r.trip_status]}>Trip: {r.trip_status}</Tag>
+          {r.waybill_status && (
+            <Tag color={STATUS_COLORS[r.waybill_status]} style={{ fontSize: 11 }}>
+              Go: {r.waybill_status}
+            </Tag>
+          )}
+          {r.return_waybill_status && (
+            <Tag color={STATUS_COLORS[r.return_waybill_status]} style={{ fontSize: 11 }}>
+              Ret: {r.return_waybill_status}
+            </Tag>
+          )}
+          <Tag color={STATUS_COLORS[r.trip_status]} style={{ fontSize: 11 }}>
+            Trip: {r.trip_status}
+          </Tag>
         </Flex>
-      )
+      ),
     },
     {
       title: "Client / Cargo",
       key: "entity",
-      width: 200,
+      width: 210,
       render: (_, r) => (
         <Flex vertical gap={0}>
-            <Text strong>{r.client_name}</Text>
-            <Text type="secondary" style={{ fontSize: 12 }}>
-                {r.cargo_type} • {r.cargo_weight.toLocaleString("en-US")}kg
+          <Text strong style={{ fontSize: 13 }}>
+            {r.client_name || "-"}
+          </Text>
+          {/* Return client if different */}
+          {r.return_client_name && r.return_client_name !== r.client_name && (
+            <Text style={{ fontSize: 11, color: "#52c41a" }}>
+              <SwapOutlined style={{ marginRight: 3 }} />
+              {r.return_client_name}
             </Text>
+          )}
+          <Text type="secondary" style={{ fontSize: 11 }}>
+            {r.cargo_type} • {r.cargo_weight?.toLocaleString("en-US") || 0}kg
+          </Text>
+          {r.return_cargo_weight && (
+            <Text type="secondary" style={{ fontSize: 11 }}>
+              Ret: {r.return_cargo_type} • {r.return_cargo_weight?.toLocaleString("en-US")}kg
+            </Text>
+          )}
         </Flex>
-      )
+      ),
     },
     {
       title: "Route / Location",
@@ -259,29 +538,40 @@ export default function TrackingPage() {
       width: 250,
       render: (_, r) => (
         <Flex vertical gap={0}>
-             <Space separator={<Text type="secondary">→</Text>}>
-                <Text>{r.origin}</Text>
-                <Text>{r.destination}</Text>
-             </Space>
-             <div onClick={() => openStatusModal(r)} style={{ cursor: 'pointer' }}>
-                <EnvironmentOutlined style={{ marginRight: 4, color: '#fa8c16' }} />
-                <Text type="secondary" underline>
-                    {r.current_location || "Update Loc"}
-                </Text>
-             </div>
+          <Space separator={<Text type="secondary">→</Text>}>
+            <Text>{r.origin}</Text>
+            <Text>{r.destination}</Text>
+          </Space>
+          <div onClick={() => openStatusModal(r)} style={{ cursor: "pointer" }}>
+            <EnvironmentOutlined style={{ marginRight: 4, color: "#fa8c16" }} />
+            <Text type="secondary" underline>
+              {r.current_location || "Update Loc"}
+            </Text>
+          </div>
         </Flex>
-      )
+      ),
     },
     {
-        title: "Days",
-        key: "days",
-        width: 80,
-        align: "center",
-        render: (_, r) => (
+      title: "Days",
+      key: "days",
+      width: 90,
+      align: "center",
+      render: (_, r) => (
+        <Flex vertical gap={2} align="center">
+          <Tooltip title="Overall trip duration">
             <Tag color={r.duration_days > 15 ? "red" : r.duration_days > 7 ? "orange" : "green"}>
-                {r.duration_days}d
+              {r.duration_days}d
             </Tag>
-        )
+          </Tooltip>
+          {r.return_duration_days > 0 && (
+            <Tooltip title="Return leg duration">
+              <Tag color="geekblue" style={{ fontSize: 10 }}>
+                Ret: {r.return_duration_days}d
+              </Tag>
+            </Tooltip>
+          )}
+        </Flex>
+      ),
     },
     {
       title: "Assets",
@@ -289,124 +579,133 @@ export default function TrackingPage() {
       width: 180,
       render: (_, r) => (
         <Flex vertical gap={0}>
-             <Text><CarOutlined /> {r.truck_plate || "-"}</Text>
-             <Text type="secondary" style={{ fontSize: 12 }}>TL: {r.trailer_plate || "-"}</Text>
-             <Text type="secondary" style={{ fontSize: 12 }}><UserOutlined /> {r.driver_name || "-"}</Text>
+          <Text>
+            <CarOutlined /> {r.truck_plate || "-"}
+          </Text>
+          <Text type="secondary" style={{ fontSize: 12 }}>
+            TL: {r.trailer_plate || "-"}
+          </Text>
+          <Text type="secondary" style={{ fontSize: 12 }}>
+            <UserOutlined /> {r.driver_name || "-"}
+          </Text>
         </Flex>
-      )
+      ),
     },
     {
       title: "Risk",
       key: "risk",
-      width: 100,
-      render: (_, r) => <Tag color={RISK_COLORS[r.risk_level]}>{r.risk_level}</Tag>
-    }
+      width: 80,
+      render: (_, r) => <Tag color={RISK_COLORS[r.risk_level]}>{r.risk_level}</Tag>,
+    },
   ];
 
   return (
     <div>
-      <Card styles={{ body: { padding: '12px 24px' } }}>
-          <Flex vertical gap="middle" style={{ width: "100%" }}>
-            
-            {/* Header */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <Space>
-                    <Button icon={<ArrowLeftOutlined />} onClick={() => router.push("/dashboard")}>
-                        Back
-                    </Button>
-                    <Title level={3} style={{ margin: 0 }}>Control Tower</Title>
-                </Space>
-                <Space>
-                    <Button icon={<ReloadOutlined />} onClick={() => refetch()}>Refresh</Button>
-                    <Button type="primary" icon={<DownloadOutlined />} onClick={handleExport}>
-                        Export Excel
-                    </Button>
-                </Space>
-            </div>
+      <Card styles={{ body: { padding: "12px 24px" } }}>
+        <Flex vertical gap="middle" style={{ width: "100%" }}>
+          {/* Header */}
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <Space>
+              <Button icon={<ArrowLeftOutlined />} onClick={() => router.push("/dashboard")}>
+                Back
+              </Button>
+              <Title level={3} style={{ margin: 0 }}>
+                Control Tower
+              </Title>
+            </Space>
+            <Space>
+              <Button icon={<ReloadOutlined />} onClick={() => refetch()}>
+                Refresh
+              </Button>
+              <Button type="primary" icon={<DownloadOutlined />} onClick={handleExport}>
+                Export Excel
+              </Button>
+            </Space>
+          </div>
 
-            {/* Custom Search Bar */}
-            <Card size="small" style={{ background: '#f5f7fa' }}>
-                <Form form={searchForm} onFinish={handleSearch} layout="vertical">
-                    <Row gutter={16}>
-                        <Col span={4}>
-                            <Form.Item name="waybill" style={{ marginBottom: 0 }}>
-                                <Input prefix={<FileTextOutlined />} placeholder="Search Waybill #" />
-                            </Form.Item>
-                        </Col>
-                        <Col span={4}>
-                            <Form.Item name="trip" style={{ marginBottom: 0 }}>
-                                <Input prefix={<CarOutlined />} placeholder="Search Trip #" />
-                            </Form.Item>
-                        </Col>
-                        <Col span={4}>
-                            <Form.Item name="truck" style={{ marginBottom: 0 }}>
-                                <Input prefix={<CarOutlined />} placeholder="Truck Plate" />
-                            </Form.Item>
-                        </Col>
-                         <Col span={4}>
-                            <Form.Item name="client" style={{ marginBottom: 0 }}>
-                                <Input prefix={<UserOutlined />} placeholder="Client Name" />
-                            </Form.Item>
-                        </Col>
-                        <Col span={4}>
-                            <Form.Item name="driver" style={{ marginBottom: 0 }}>
-                                <Input prefix={<UserOutlined />} placeholder="Driver Name" />
-                            </Form.Item>
-                        </Col>
-                        <Col span={4} style={{ textAlign: 'right' }}>
-                             <Space>
-                                <Button onClick={handleReset}>Reset</Button>
-                                <Button type="primary" htmlType="submit" icon={<SearchOutlined />}>
-                                    Query
-                                </Button>
-                             </Space>
-                        </Col>
-                    </Row>
-                </Form>
-            </Card>
+          {/* Custom Search Bar */}
+          <Card size="small" style={{ background: "#f5f7fa" }}>
+            <Form form={searchForm} onFinish={handleSearch} layout="vertical">
+              <Row gutter={16}>
+                <Col span={4}>
+                  <Form.Item name="waybill" style={{ marginBottom: 0 }}>
+                    <Input prefix={<FileTextOutlined />} placeholder="Search Waybill #" />
+                  </Form.Item>
+                </Col>
+                <Col span={4}>
+                  <Form.Item name="trip" style={{ marginBottom: 0 }}>
+                    <Input prefix={<CarOutlined />} placeholder="Search Trip #" />
+                  </Form.Item>
+                </Col>
+                <Col span={4}>
+                  <Form.Item name="truck" style={{ marginBottom: 0 }}>
+                    <Input prefix={<CarOutlined />} placeholder="Truck Plate" />
+                  </Form.Item>
+                </Col>
+                <Col span={4}>
+                  <Form.Item name="client" style={{ marginBottom: 0 }}>
+                    <Input prefix={<UserOutlined />} placeholder="Client Name" />
+                  </Form.Item>
+                </Col>
+                <Col span={4}>
+                  <Form.Item name="driver" style={{ marginBottom: 0 }}>
+                    <Input prefix={<UserOutlined />} placeholder="Driver Name" />
+                  </Form.Item>
+                </Col>
+                <Col span={4} style={{ textAlign: "right" }}>
+                  <Space>
+                    <Button onClick={handleReset}>Reset</Button>
+                    <Button type="primary" htmlType="submit" icon={<SearchOutlined />}>
+                      Query
+                    </Button>
+                  </Space>
+                </Col>
+              </Row>
+            </Form>
+          </Card>
 
-            {/* Rich Grid Table */}
-            <Table<TrackingRow>
-                columns={columns}
-                dataSource={filteredData}
-                rowKey="waybill_id"
-                loading={loading}
-                scroll={{ x: 1300 }}
-                sticky={{ offsetHeader: 64 }}
-                size="small"
-                rowSelection={getStandardRowSelection(
-                  currentPage,
-                  pageSize,
-                  selectedRowKeys,
-                  setSelectedRowKeys
-                )}
-                pagination={{
-                    current: currentPage,
-                    pageSize: pageSize,
-                    total: filteredData.length,
-                    showTotal: (total) => `Total ${total} loads`,
-                    showSizeChanger: true,
-                    pageSizeOptions: ['50', '100', '200'],
-                    onChange: (page, size) => {
-                      setCurrentPage(page);
-                      setPageSize(size);
-                    },
-                }}
-            />
-          </Flex>
+          {/* Trip-centric Tracking Table */}
+          <Table<TrackingRow>
+            columns={columns}
+            dataSource={filteredData}
+            rowKey="row_id"
+            loading={loading}
+            scroll={{ x: 1300 }}
+            sticky={{ offsetHeader: 64 }}
+            size="small"
+            rowSelection={getStandardRowSelection(
+              currentPage,
+              pageSize,
+              selectedRowKeys,
+              setSelectedRowKeys
+            )}
+            pagination={{
+              current: currentPage,
+              pageSize: pageSize,
+              total: filteredData.length,
+              showTotal: (total) => `Total ${total} loads`,
+              showSizeChanger: true,
+              pageSizeOptions: ["50", "100", "200"],
+              onChange: (page, size) => {
+                setCurrentPage(page);
+                setPageSize(size);
+              },
+            }}
+          />
+        </Flex>
       </Card>
 
-      {/* Re-use Status Update Modal */}
+      {/* Status Update Modal */}
       {selectedTripId && (
         <UpdateTripStatusModal
-            open={isStatusModalOpen}
-            onClose={() => {
-                setIsStatusModalOpen(false);
-                setSelectedTripId(null);
-            }}
-            onSuccess={() => invalidateTracking()}
-            tripId={selectedTripId}
-            initialValues={initialStatusValues}
+          open={isStatusModalOpen}
+          onClose={() => {
+            setIsStatusModalOpen(false);
+            setSelectedTripId(null);
+          }}
+          onSuccess={() => invalidateTracking()}
+          tripId={selectedTripId}
+          initialValues={initialStatusValues}
         />
       )}
     </div>

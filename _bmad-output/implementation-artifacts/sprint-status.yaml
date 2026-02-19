@@ -77,6 +77,8 @@ development_status:
   2-22-financial-reports: review
   2-23-unified-payment-process-form: review
   2-24-dynamic-permissions: review
+  2-25-return-waybill-trip-linkage: review
+  2-26-border-crossing-tracking: review
   epic-2-retrospective: optional
 
   # Epic 3: Maintenance & Office Overheads

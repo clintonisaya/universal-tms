@@ -44,7 +44,13 @@ const TRIP_STATUS_COLORS: Record<TripStatus, string> = {
   Loading: "gold",
   "In Transit": "blue",
   "At Border": "purple",
-  Offloaded: "cyan",
+  Offloading: "cyan",
+  "Dispatch (Return)": "purple",
+  "Wait to Load (Return)": "lime",
+  "Loading (Return)": "gold",
+  "In Transit (Return)": "blue",
+  "At Border (Return)": "purple",
+  "Offloading (Return)": "cyan",
   Returned: "geekblue",
   "Waiting for PODs": "orange",
   Completed: "green",
@@ -395,6 +401,7 @@ export default function TripDetailPage() {
         initialValues={{
           status: trip.status,
           current_location: trip.current_location,
+          return_waybill_id: trip.return_waybill_id,
         }}
       />
     </div>

@@ -43,6 +43,9 @@ export const queryKeys = {
   countries: ["countries"] as const,
   cities: ["cities"] as const,
   vehicleStatuses: ["vehicleStatuses"] as const,
+  borderPosts: ["borderPosts"] as const,
+  tripBorderCrossings: (tripId: string) => ["tripBorderCrossings", tripId] as const,
+  nextBorder: (tripId: string, direction: string) => ["nextBorder", tripId, direction] as const,
 };
 
 // Trucks
@@ -250,6 +253,33 @@ export function useExchangeRates() {
   });
 }
 
+// Border Posts
+export function useBorderPosts(activeOnly = false, enabled = true) {
+  return useQuery({
+    queryKey: [...queryKeys.borderPosts, activeOnly] as const,
+    queryFn: () => apiFetch<{ data: any[]; count: number }>(`/api/v1/border-posts?active_only=${activeOnly}&limit=500`),
+    enabled,
+  });
+}
+
+// Trip Border Crossings (for detail drawer and status modal pre-fill)
+export function useTripBorderCrossings(tripId: string | null) {
+  return useQuery({
+    queryKey: queryKeys.tripBorderCrossings(tripId ?? ""),
+    queryFn: () => apiFetch<any[]>(`/api/v1/trips/${tripId}/border-crossings`),
+    enabled: !!tripId,
+  });
+}
+
+// Next uncompleted border for a trip (for status modal auto-pop)
+export function useNextBorder(tripId: string | null, direction: "go" | "return") {
+  return useQuery({
+    queryKey: queryKeys.nextBorder(tripId ?? "", direction),
+    queryFn: () => apiFetch<any | null>(`/api/v1/trips/${tripId}/next-border?direction=${direction}`),
+    enabled: !!tripId,
+  });
+}
+
 // Hook to invalidate queries after mutations
 export function useInvalidateQueries() {
   const queryClient = useQueryClient();
@@ -276,6 +306,9 @@ export function useInvalidateQueries() {
     invalidateVehicleStatuses: () => queryClient.invalidateQueries({ queryKey: queryKeys.vehicleStatuses }),
     invalidateCargoTypes: () => queryClient.invalidateQueries({ queryKey: ["cargoTypes"] }),
     invalidateExchangeRates: () => queryClient.invalidateQueries({ queryKey: ["exchangeRates"] }),
+    invalidateBorderPosts: () => queryClient.invalidateQueries({ queryKey: queryKeys.borderPosts }),
+    invalidateTripBorderCrossings: (tripId: string) => queryClient.invalidateQueries({ queryKey: queryKeys.tripBorderCrossings(tripId) }),
+    invalidateNextBorder: (tripId: string) => queryClient.invalidateQueries({ queryKey: ["nextBorder", tripId] }),
     invalidateAll: () => queryClient.invalidateQueries(),
   };
 }

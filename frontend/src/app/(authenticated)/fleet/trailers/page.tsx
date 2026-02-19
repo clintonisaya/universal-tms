@@ -12,7 +12,7 @@ import {
   Form,
   Input,
   Select,
-  message,
+  App,
   Typography,
   Popconfirm,
 } from "antd";
@@ -65,6 +65,7 @@ const TYPE_FILTERS = [
 
 export default function TrailersPage() {
   const router = useRouter();
+  const { message } = App.useApp();
   const { user } = useAuth();
   const { data, isLoading, refetch } = useTrailers();
   const { invalidateTrailers } = useInvalidateQueries();

@@ -1,6 +1,7 @@
 from fastapi import APIRouter
 
 from app.api.routes import (
+    border_posts,
     cargo_types,
     dashboard,
     drivers,
@@ -47,6 +48,7 @@ api_router.include_router(clients.router)
 api_router.include_router(reports.router)
 api_router.include_router(maintenance.router)
 api_router.include_router(exchange_rates.router)
+api_router.include_router(border_posts.router)
 api_router.include_router(tasks.router)
 api_router.include_router(utils.router)
 api_router.include_router(private.router)

@@ -11,6 +11,9 @@ from sqlmodel import func, or_, select
 
 from app.api.deps import CurrentUser, SessionDep
 from app.models import (
+    AttachReturnWaybillRequest,
+    BorderPost,
+    BorderPostPublic,
     Driver,
     DriverPublic,
     DriverStatus,
@@ -21,6 +24,9 @@ from app.models import (
     TrailerStatus,
     TrailersPublic,
     Trip,
+    TripBorderCrossing,
+    TripBorderCrossingPublic,
+    TripBorderCrossingUpsert,
     TripCreate,
     TripPublic,
     TripPublicDetailed,
@@ -34,6 +40,7 @@ from app.models import (
     TrucksPublic,
     UserRole,
     Waybill,
+    WaybillBorder,
     WaybillStatus,
 )
 
@@ -49,6 +56,16 @@ CLOSED_STATUSES = {TripStatus.completed, TripStatus.cancelled}
 router = APIRouter(prefix="/trips", tags=["trips"])
 
 
+# Return leg statuses (Story 2.25) — require return_waybill_id to be set
+RETURN_LEG_STATUSES = {
+    TripStatus.dispatch_return,
+    TripStatus.wait_to_load_return,
+    TripStatus.loading_return,
+    TripStatus.in_transit_return,
+    TripStatus.at_border_return,
+    TripStatus.offloading_return,
+}
+
 # Status mapping for synchronized truck/trailer status updates
 TRIP_TO_TRUCK_STATUS = {
     TripStatus.waiting: TruckStatus.waiting,
@@ -57,7 +74,14 @@ TRIP_TO_TRUCK_STATUS = {
     TripStatus.loading: TruckStatus.loading,
     TripStatus.in_transit: TruckStatus.in_transit,
     TripStatus.at_border: TruckStatus.at_border,
-    TripStatus.offloaded: TruckStatus.offloaded,
+    TripStatus.offloading: TruckStatus.offloaded,
+    # Return leg statuses map to equivalent go-leg truck statuses
+    TripStatus.dispatch_return: TruckStatus.dispatch,
+    TripStatus.wait_to_load_return: TruckStatus.wait_to_load,
+    TripStatus.loading_return: TruckStatus.loading,
+    TripStatus.in_transit_return: TruckStatus.in_transit,
+    TripStatus.at_border_return: TruckStatus.at_border,
+    TripStatus.offloading_return: TruckStatus.offloaded,
     TripStatus.returned: TruckStatus.returned,
     TripStatus.waiting_for_pods: TruckStatus.waiting_for_pods,
     TripStatus.completed: TruckStatus.idle,
@@ -71,21 +95,49 @@ TRIP_TO_TRAILER_STATUS = {
     TripStatus.loading: TrailerStatus.loading,
     TripStatus.in_transit: TrailerStatus.in_transit,
     TripStatus.at_border: TrailerStatus.at_border,
-    TripStatus.offloaded: TrailerStatus.offloaded,
+    TripStatus.offloading: TrailerStatus.offloaded,
+    # Return leg statuses map to equivalent go-leg trailer statuses
+    TripStatus.dispatch_return: TrailerStatus.dispatch,
+    TripStatus.wait_to_load_return: TrailerStatus.wait_to_load,
+    TripStatus.loading_return: TrailerStatus.loading,
+    TripStatus.in_transit_return: TrailerStatus.in_transit,
+    TripStatus.at_border_return: TrailerStatus.at_border,
+    TripStatus.offloading_return: TrailerStatus.offloaded,
     TripStatus.returned: TrailerStatus.returned,
     TripStatus.waiting_for_pods: TrailerStatus.waiting_for_pods,
     TripStatus.completed: TrailerStatus.idle,
     TripStatus.cancelled: TrailerStatus.idle,
 }
 
-TRIP_TO_WAYBILL_STATUS = {
+# Go waybill status sync: waybill is completed once cargo is delivered (Offloading)
+TRIP_TO_GO_WAYBILL_STATUS = {
     TripStatus.waiting: WaybillStatus.open,
     TripStatus.dispatch: WaybillStatus.in_progress,
     TripStatus.wait_to_load: WaybillStatus.in_progress,
     TripStatus.loading: WaybillStatus.in_progress,
     TripStatus.in_transit: WaybillStatus.in_progress,
     TripStatus.at_border: WaybillStatus.in_progress,
-    TripStatus.offloaded: WaybillStatus.in_progress,
+    TripStatus.offloading: WaybillStatus.completed,     # Cargo delivered — go waybill done
+    TripStatus.dispatch_return: WaybillStatus.completed,
+    TripStatus.wait_to_load_return: WaybillStatus.completed,
+    TripStatus.loading_return: WaybillStatus.completed,
+    TripStatus.in_transit_return: WaybillStatus.completed,
+    TripStatus.at_border_return: WaybillStatus.completed,
+    TripStatus.offloading_return: WaybillStatus.completed,
+    TripStatus.returned: WaybillStatus.completed,
+    TripStatus.waiting_for_pods: WaybillStatus.completed,
+    TripStatus.completed: WaybillStatus.completed,
+    TripStatus.cancelled: WaybillStatus.open,
+}
+
+# Return waybill status sync: active during return leg, completed when trip ends
+TRIP_TO_RETURN_WAYBILL_STATUS = {
+    TripStatus.dispatch_return: WaybillStatus.in_progress,
+    TripStatus.wait_to_load_return: WaybillStatus.in_progress,
+    TripStatus.loading_return: WaybillStatus.in_progress,
+    TripStatus.in_transit_return: WaybillStatus.in_progress,
+    TripStatus.at_border_return: WaybillStatus.in_progress,
+    TripStatus.offloading_return: WaybillStatus.in_progress,
     TripStatus.returned: WaybillStatus.in_progress,
     TripStatus.waiting_for_pods: WaybillStatus.in_progress,
     TripStatus.completed: WaybillStatus.completed,
@@ -95,7 +147,7 @@ TRIP_TO_WAYBILL_STATUS = {
 
 def is_truck_available(truck: Truck) -> bool:
     """Check if truck is available for a new trip."""
-    return truck.status in (TruckStatus.idle, TruckStatus.offloaded)
+    return truck.status in (TruckStatus.idle, TruckStatus.offloaded)  # offloaded = truck-side status for Offloading
 
 
 def is_trailer_available(trailer: Trailer) -> bool:
@@ -216,7 +268,7 @@ def read_trips(
             trip_data.waybill_rate = wb.agreed_rate
             trip_data.waybill_currency = wb.currency
             trip_data.waybill_risk_level = wb.risk_level
-        # Location update time: most recent non-null tracking date
+        # Location update time: most recent non-null tracking date (go + return leg)
         tracking_dates = [
             d for d in (
                 trip.dispatch_date,
@@ -225,6 +277,9 @@ def read_trips(
                 trip.loading_end_date,
                 trip.arrival_offloading_date,
                 trip.offloading_date,
+                trip.arrival_loading_return_date,
+                trip.loading_return_start_date,
+                trip.loading_return_end_date,
                 trip.arrival_return_date,
             ) if d is not None
         ]
@@ -339,10 +394,26 @@ def update_trip(
 
     update_dict = trip_in.model_dump(exclude_unset=True)
 
+    # Extract cancellation control flags before applying to trip model (not DB columns)
+    cancel_go_waybill = update_dict.pop("cancel_go_waybill", True)
+    cancel_return_waybill = update_dict.pop("cancel_return_waybill", True)
+    # Default None to True (cancel both by default)
+    if cancel_go_waybill is None:
+        cancel_go_waybill = True
+    if cancel_return_waybill is None:
+        cancel_return_waybill = True
+
     # Handle status change with synchronized updates
     if "status" in update_dict:
         new_status = TripStatus(update_dict["status"])
         current_status = TripStatus(trip.status) if isinstance(trip.status, str) else trip.status
+
+        # Story 2.25: Block return leg statuses if no return waybill is attached
+        if new_status in RETURN_LEG_STATUSES and not trip.return_waybill_id:
+            raise HTTPException(
+                status_code=422,
+                detail="Return waybill must be attached before updating to return leg statuses"
+            )
 
         # Check if this is a reopen operation (Completed/Cancelled -> active)
         is_reopen = current_status in CLOSED_STATUSES and new_status not in CLOSED_STATUSES
@@ -403,7 +474,7 @@ def update_trip(
         # Update driver status based on trip status
         driver = session.get(Driver, trip.driver_id)
         if driver:
-            if new_status == TripStatus.in_transit:
+            if new_status in (TripStatus.in_transit, TripStatus.in_transit_return):
                 driver.status = DriverStatus.on_trip
                 session.add(driver)
             elif new_status in (TripStatus.completed, TripStatus.cancelled):
@@ -415,6 +486,16 @@ def update_trip(
             dispatch_dt = update_dict.get("dispatch_date")
             if dispatch_dt:
                 update_dict["start_date"] = dispatch_dt
+
+        # Auto-record dispatch_return_date when entering Dispatch (Return)
+        if new_status == TripStatus.dispatch_return:
+            if "dispatch_return_date" not in update_dict:
+                update_dict["dispatch_return_date"] = datetime.now(timezone.utc)
+
+        # Auto-record arrival_return_date when entering Offloading (Return)
+        if new_status == TripStatus.offloading_return:
+            if "arrival_return_date" not in update_dict:
+                update_dict["arrival_return_date"] = datetime.now(timezone.utc)
 
         # Handle end_date for completed trips
         if new_status == TripStatus.completed:
@@ -429,12 +510,29 @@ def update_trip(
             # If moved back to waiting, clear end_date
             update_dict["end_date"] = None
 
-        # Update waybill status if linked
-        if trip.waybill_id and new_status in TRIP_TO_WAYBILL_STATUS:
-            waybill = session.get(Waybill, trip.waybill_id)
-            if waybill:
-                waybill.status = TRIP_TO_WAYBILL_STATUS[new_status]
-                session.add(waybill)
+        # Story 2.25: Update go waybill status (dual waybill sync)
+        if trip.waybill_id and new_status in TRIP_TO_GO_WAYBILL_STATUS:
+            go_waybill = session.get(Waybill, trip.waybill_id)
+            if go_waybill:
+                if new_status == TripStatus.cancelled:
+                    if cancel_go_waybill:
+                        go_waybill.status = WaybillStatus.open
+                        session.add(go_waybill)
+                else:
+                    go_waybill.status = TRIP_TO_GO_WAYBILL_STATUS[new_status]
+                    session.add(go_waybill)
+
+        # Story 2.25: Update return waybill status (if attached)
+        if trip.return_waybill_id and new_status in TRIP_TO_RETURN_WAYBILL_STATUS:
+            return_waybill = session.get(Waybill, trip.return_waybill_id)
+            if return_waybill:
+                if new_status == TripStatus.cancelled:
+                    if cancel_return_waybill:
+                        return_waybill.status = WaybillStatus.open
+                        session.add(return_waybill)
+                else:
+                    return_waybill.status = TRIP_TO_RETURN_WAYBILL_STATUS[new_status]
+                    session.add(return_waybill)
 
     trip.sqlmodel_update(update_dict)
     session.add(trip)
@@ -494,6 +592,85 @@ def swap_truck(
     return trip
 
 
+@router.patch("/{id}/attach-return-waybill", response_model=TripPublic)
+def attach_return_waybill(
+    *,
+    session: SessionDep,
+    current_user: CurrentUser,
+    id: uuid.UUID,
+    request: AttachReturnWaybillRequest,
+) -> Any:
+    """
+    Attach a return waybill to a trip (Story 2.25).
+
+    - Only allowed when trip status is 'Offloaded'
+    - The waybill must be 'Open' and not linked to another active trip
+    - Sets the return waybill to 'In Progress' immediately
+    """
+    if current_user.role not in WRITE_ROLES:
+        raise HTTPException(status_code=403, detail="Not enough permissions to update trips")
+
+    trip = session.get(Trip, id)
+    if not trip:
+        raise HTTPException(status_code=404, detail="Trip not found")
+
+    # Validate trip is at Offloading status
+    current_status = TripStatus(trip.status) if isinstance(trip.status, str) else trip.status
+    if current_status != TripStatus.offloading:
+        raise HTTPException(
+            status_code=422,
+            detail="Return waybill can only be attached when trip status is 'Offloading'"
+        )
+
+    # Validate waybill exists
+    return_waybill = session.get(Waybill, request.return_waybill_id)
+    if not return_waybill:
+        raise HTTPException(status_code=404, detail="Waybill not found")
+
+    # Validate waybill is Open
+    if return_waybill.status != WaybillStatus.open:
+        raise HTTPException(
+            status_code=422,
+            detail="Return waybill must have status 'Open'"
+        )
+
+    # Validate waybill is not the same as the go waybill
+    if trip.waybill_id == request.return_waybill_id:
+        raise HTTPException(
+            status_code=422,
+            detail="Return waybill cannot be the same as the Go waybill"
+        )
+
+    # Validate waybill is not already linked to another active trip
+    existing_trip = session.exec(
+        select(Trip)
+        .where(
+            or_(
+                Trip.waybill_id == request.return_waybill_id,
+                Trip.return_waybill_id == request.return_waybill_id,
+            )
+        )
+        .where(Trip.id != id)
+        .where(Trip.status.notin_([TripStatus.completed.value, TripStatus.cancelled.value]))
+    ).first()
+    if existing_trip:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Waybill is already linked to active trip {existing_trip.trip_number}"
+        )
+
+    # Attach return waybill and activate it
+    trip.return_waybill_id = request.return_waybill_id
+    session.add(trip)
+
+    return_waybill.status = WaybillStatus.in_progress
+    session.add(return_waybill)
+
+    session.commit()
+    session.refresh(trip)
+    return trip
+
+
 @router.delete("/{id}")
 def delete_trip(
     session: SessionDep,
@@ -525,13 +702,233 @@ def delete_trip(
         driver.status = DriverStatus.active
         session.add(driver)
 
-    # Reset waybill status back to Open if linked
+    # Reset go waybill status back to Open if linked
     if trip.waybill_id:
         waybill = session.get(Waybill, trip.waybill_id)
         if waybill:
             waybill.status = WaybillStatus.open
             session.add(waybill)
 
+    # Story 2.25: Reset return waybill status back to Open if linked
+    if trip.return_waybill_id:
+        return_waybill = session.get(Waybill, trip.return_waybill_id)
+        if return_waybill:
+            return_waybill.status = WaybillStatus.open
+            session.add(return_waybill)
+
     session.delete(trip)
     session.commit()
     return Message(message="Trip deleted successfully")
+
+
+# ============================================================================
+# Border Crossing Endpoints - Story 2.26
+# ============================================================================
+
+
+def _get_next_uncompleted_border(
+    trip_id: uuid.UUID,
+    direction: str,
+    session: SessionDep,
+) -> BorderPost | None:
+    """
+    Returns the current active or next pending border post for the given direction.
+
+    Priority:
+    1. An IN-PROGRESS border: has arrived_side_a_at set but departed_border_at is NULL.
+       (Truck is at this border — dates should still be editable.)
+    2. The next PENDING border: no crossing record yet (or arrived_side_a_at IS NULL).
+
+    A border is 'completed' only when departed_border_at IS NOT NULL (truck has left
+    the border zone). Until then, the same border keeps showing so dates can be
+    progressively updated.
+    """
+    trip = session.get(Trip, trip_id)
+    if not trip:
+        return None
+
+    waybill_id = trip.waybill_id if direction == "go" else trip.return_waybill_id
+    if not waybill_id:
+        return None
+
+    # Load ordered borders for the waybill
+    borders_stmt = (
+        select(WaybillBorder, BorderPost)
+        .join(BorderPost, BorderPost.id == WaybillBorder.border_post_id)
+        .where(WaybillBorder.waybill_id == waybill_id)
+        .order_by(WaybillBorder.sequence.asc())
+    )
+    border_rows = session.execute(borders_stmt).all()
+    if not border_rows:
+        return None
+
+    # Reverse order for return leg
+    if direction == "return":
+        border_rows = list(reversed(border_rows))
+
+    # Load all crossings for this trip + direction
+    crossings_stmt = (
+        select(TripBorderCrossing)
+        .where(TripBorderCrossing.trip_id == trip_id)
+        .where(TripBorderCrossing.direction == direction)
+    )
+    crossings = {c.border_post_id: c for c in session.exec(crossings_stmt).all()}
+
+    # Priority 1: return the in-progress border (started but not departed)
+    for _wb_border, border_post in border_rows:
+        crossing = crossings.get(border_post.id)
+        if crossing and crossing.arrived_side_a_at is not None and crossing.departed_border_at is None:
+            return border_post
+
+    # Priority 2: return the first not-yet-started border
+    for _wb_border, border_post in border_rows:
+        crossing = crossings.get(border_post.id)
+        if crossing is None or crossing.arrived_side_a_at is None:
+            return border_post
+
+    return None  # All borders fully completed (departed_border_at set on all)
+
+
+@router.get("/{trip_id}/border-crossings", response_model=list[TripBorderCrossingPublic])
+def get_trip_border_crossings(
+    session: SessionDep,
+    current_user: CurrentUser,
+    trip_id: uuid.UUID,
+) -> Any:
+    """Get all recorded border crossings for a trip."""
+    trip = session.get(Trip, trip_id)
+    if not trip:
+        raise HTTPException(status_code=404, detail="Trip not found")
+
+    crossings_stmt = (
+        select(TripBorderCrossing, BorderPost)
+        .join(BorderPost, BorderPost.id == TripBorderCrossing.border_post_id)
+        .where(TripBorderCrossing.trip_id == trip_id)
+        .order_by(TripBorderCrossing.direction, TripBorderCrossing.created_at)
+    )
+    rows = session.execute(crossings_stmt).all()
+
+    return [
+        TripBorderCrossingPublic(
+            id=crossing.id,
+            trip_id=crossing.trip_id,
+            border_post_id=crossing.border_post_id,
+            direction=crossing.direction,
+            arrived_side_a_at=crossing.arrived_side_a_at,
+            documents_submitted_side_a_at=crossing.documents_submitted_side_a_at,
+            documents_cleared_side_a_at=crossing.documents_cleared_side_a_at,
+            arrived_side_b_at=crossing.arrived_side_b_at,
+            documents_submitted_side_b_at=crossing.documents_submitted_side_b_at,
+            documents_cleared_side_b_at=crossing.documents_cleared_side_b_at,
+            departed_border_at=crossing.departed_border_at,
+            created_at=crossing.created_at,
+            updated_at=crossing.updated_at,
+            border_post=border,
+        )
+        for crossing, border in rows
+    ]
+
+
+@router.get("/{trip_id}/next-border", response_model=BorderPostPublic | None)
+def get_next_border(
+    session: SessionDep,
+    current_user: CurrentUser,
+    trip_id: uuid.UUID,
+    direction: str = "go",
+) -> Any:
+    """
+    Returns the next uncompleted border post for a trip in the given direction.
+    Returns null if all borders are completed or no borders declared.
+    """
+    if direction not in ("go", "return"):
+        raise HTTPException(status_code=422, detail="direction must be 'go' or 'return'")
+
+    trip = session.get(Trip, trip_id)
+    if not trip:
+        raise HTTPException(status_code=404, detail="Trip not found")
+
+    return _get_next_uncompleted_border(trip_id, direction, session)
+
+
+@router.put("/{trip_id}/border-crossings/{border_post_id}", response_model=TripBorderCrossingPublic)
+def upsert_border_crossing(
+    *,
+    session: SessionDep,
+    current_user: CurrentUser,
+    trip_id: uuid.UUID,
+    border_post_id: uuid.UUID,
+    crossing_in: TripBorderCrossingUpsert,
+) -> Any:
+    """
+    Upsert a border crossing record for a trip.
+    Creates a new record or updates an existing one (matched by trip_id + border_post_id + direction).
+    All 7 date fields are optional and can be filled progressively.
+    """
+    if current_user.role not in WRITE_ROLES:
+        raise HTTPException(status_code=403, detail="Not enough permissions to record border crossings")
+
+    trip = session.get(Trip, trip_id)
+    if not trip:
+        raise HTTPException(status_code=404, detail="Trip not found")
+
+    border_post = session.get(BorderPost, border_post_id)
+    if not border_post:
+        raise HTTPException(status_code=404, detail="Border post not found")
+
+    if crossing_in.direction not in ("go", "return"):
+        raise HTTPException(status_code=422, detail="direction must be 'go' or 'return'")
+
+    # Try to find existing record
+    existing = session.exec(
+        select(TripBorderCrossing)
+        .where(TripBorderCrossing.trip_id == trip_id)
+        .where(TripBorderCrossing.border_post_id == border_post_id)
+        .where(TripBorderCrossing.direction == crossing_in.direction)
+    ).first()
+
+    date_fields = [
+        "arrived_side_a_at",
+        "documents_submitted_side_a_at",
+        "documents_cleared_side_a_at",
+        "arrived_side_b_at",
+        "documents_submitted_side_b_at",
+        "documents_cleared_side_b_at",
+        "departed_border_at",
+    ]
+
+    if existing:
+        for field in date_fields:
+            value = getattr(crossing_in, field, None)
+            if value is not None:
+                setattr(existing, field, value)
+        existing.updated_at = datetime.now(timezone.utc)
+        session.add(existing)
+        session.commit()
+        session.refresh(existing)
+        crossing = existing
+    else:
+        crossing = TripBorderCrossing(
+            trip_id=trip_id,
+            border_post_id=border_post_id,
+            **crossing_in.model_dump(),
+        )
+        session.add(crossing)
+        session.commit()
+        session.refresh(crossing)
+
+    return TripBorderCrossingPublic(
+        id=crossing.id,
+        trip_id=crossing.trip_id,
+        border_post_id=crossing.border_post_id,
+        direction=crossing.direction,
+        arrived_side_a_at=crossing.arrived_side_a_at,
+        documents_submitted_side_a_at=crossing.documents_submitted_side_a_at,
+        documents_cleared_side_a_at=crossing.documents_cleared_side_a_at,
+        arrived_side_b_at=crossing.arrived_side_b_at,
+        documents_submitted_side_b_at=crossing.documents_submitted_side_b_at,
+        documents_cleared_side_b_at=crossing.documents_cleared_side_b_at,
+        departed_border_at=crossing.departed_border_at,
+        created_at=crossing.created_at,
+        updated_at=crossing.updated_at,
+        border_post=border_post,
+    )

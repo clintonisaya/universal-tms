@@ -15,13 +15,20 @@ import {
   InputNumber,
   Select,
   AutoComplete,
+  Tag,
 } from "antd";
-import { ArrowLeftOutlined, SaveOutlined } from "@ant-design/icons";
+import {
+  ArrowLeftOutlined,
+  SaveOutlined,
+  ArrowUpOutlined,
+  ArrowDownOutlined,
+  CloseOutlined,
+} from "@ant-design/icons";
 import { useAuth } from "@/contexts/AuthContext";
 import { amountInputProps } from "@/lib/utils";
 import type { WaybillCreate } from "@/types/waybill";
 
-const { Title, Text } = Typography;
+const { Title } = Typography;
 const { Option } = Select;
 
 export default function NewWaybillPage() {
@@ -32,6 +39,8 @@ export default function NewWaybillPage() {
   const [locations, setLocations] = useState<any[]>([]);
   const [cargoTypes, setCargoTypes] = useState<any[]>([]);
   const [clients, setClients] = useState<any[]>([]);
+  const [borderPosts, setBorderPosts] = useState<any[]>([]);
+  const [selectedBorderIds, setSelectedBorderIds] = useState<string[]>([]);
   const [loadingResources, setLoadingResources] = useState(false);
 
   useEffect(() => {
@@ -43,19 +52,28 @@ export default function NewWaybillPage() {
   const fetchResources = async () => {
     setLoadingResources(true);
     try {
-      const [cityRes, cargoRes, clientRes] = await Promise.all([
+      const [cityRes, cargoRes, clientRes, borderRes] = await Promise.all([
         fetch("/api/v1/cities", { credentials: "include" }),
         fetch("/api/v1/cargo-types", { credentials: "include" }),
         fetch("/api/v1/clients", { credentials: "include" }),
+        fetch("/api/v1/border-posts?active_only=true&limit=500", { credentials: "include" }),
       ]);
 
-      if (cityRes.ok && cargoRes.ok && clientRes.ok) {
-        const cityData = await cityRes.json();
-        const cargoData = await cargoRes.json();
-        const clientData = await clientRes.json();
-        setLocations(cityData.data);
-        setCargoTypes(cargoData.data);
-        setClients(clientData.data);
+      if (cityRes.ok) {
+        const d = await cityRes.json();
+        setLocations(d.data);
+      }
+      if (cargoRes.ok) {
+        const d = await cargoRes.json();
+        setCargoTypes(d.data);
+      }
+      if (clientRes.ok) {
+        const d = await clientRes.json();
+        setClients(d.data);
+      }
+      if (borderRes.ok) {
+        const d = await borderRes.json();
+        setBorderPosts(d.data);
       }
     } catch (err) {
       console.error("Failed to fetch master data", err);
@@ -64,18 +82,41 @@ export default function NewWaybillPage() {
     }
   };
 
+  // Border reordering helpers
+  const moveBorderUp = (index: number) => {
+    if (index === 0) return;
+    const next = [...selectedBorderIds];
+    [next[index - 1], next[index]] = [next[index], next[index - 1]];
+    setSelectedBorderIds(next);
+  };
+
+  const moveBorderDown = (index: number) => {
+    if (index === selectedBorderIds.length - 1) return;
+    const next = [...selectedBorderIds];
+    [next[index], next[index + 1]] = [next[index + 1], next[index]];
+    setSelectedBorderIds(next);
+  };
+
+  const removeBorder = (id: string) => {
+    setSelectedBorderIds((prev) => prev.filter((b) => b !== id));
+  };
+
+  const borderPostMap = Object.fromEntries(borderPosts.map((b) => [b.id, b]));
+
   const onFinish = async (values: any) => {
     setSubmitting(true);
     try {
+      const payload = {
+        ...values,
+        border_ids: selectedBorderIds.length > 0 ? selectedBorderIds : null,
+      };
       const response = await fetch("/api/v1/waybills", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         credentials: "include",
-        body: JSON.stringify({
-          ...values,
-        }),
+        body: JSON.stringify(payload),
       });
 
       if (response.ok) {
@@ -101,7 +142,7 @@ export default function NewWaybillPage() {
       }}
     >
       <div style={{ maxWidth: 800, margin: "0 auto" }}>
-        <Space orientation="vertical" size="large" style={{ width: "100%" }}>
+        <Space direction="vertical" size="large" style={{ width: "100%" }}>
           <div style={{ display: "flex", alignItems: "center" }}>
             <Button
               icon={<ArrowLeftOutlined />}
@@ -167,11 +208,12 @@ export default function NewWaybillPage() {
                   rules={[{ required: true, message: "Please enter weight" }]}
                 >
                   <InputNumber
-                                    style={{ width: "100%" }}
-                                    min={0}
-                                    placeholder="e.g. 30000"
-                                    {...amountInputProps}
-                                  />                </Form.Item>
+                    style={{ width: "100%" }}
+                    min={0}
+                    placeholder="e.g. 30000"
+                    {...amountInputProps}
+                  />
+                </Form.Item>
                 <Form.Item
                   name="risk_level"
                   label="Risk Level"
@@ -243,12 +285,13 @@ export default function NewWaybillPage() {
                   rules={[{ required: true, message: "Please enter rate" }]}
                 >
                   <InputNumber
-                                    style={{ width: "100%" }}
-                                    min={0}
-                                    precision={2}
-                                    placeholder="e.g. 3500.00"
-                                    {...amountInputProps}
-                                  />                </Form.Item>
+                    style={{ width: "100%" }}
+                    min={0}
+                    precision={2}
+                    placeholder="e.g. 3500.00"
+                    {...amountInputProps}
+                  />
+                </Form.Item>
                 <Form.Item
                   name="currency"
                   label="Currency"
@@ -260,6 +303,89 @@ export default function NewWaybillPage() {
                   </Select>
                 </Form.Item>
               </div>
+
+              <Divider />
+
+              <Title level={4}>Border Crossings (optional)</Title>
+
+              <Form.Item
+                label="Select borders this trip will cross (in order)"
+                extra="Select borders then use the arrows to set the crossing sequence."
+              >
+                <Select
+                  mode="multiple"
+                  placeholder={borderPosts.length > 0 ? "Select border posts..." : "No border posts configured yet — add them in Settings > Border Posts"}
+                  value={selectedBorderIds}
+                  onChange={(ids: string[]) => {
+                    const existing = selectedBorderIds.filter((id) => ids.includes(id));
+                    const added = ids.filter((id) => !selectedBorderIds.includes(id));
+                    setSelectedBorderIds([...existing, ...added]);
+                  }}
+                  optionFilterProp="label"
+                  options={borderPosts.map((bp) => ({
+                    value: bp.id,
+                    label: bp.display_name,
+                  }))}
+                  style={{ width: "100%" }}
+                  disabled={borderPosts.length === 0}
+                />
+              </Form.Item>
+
+              {selectedBorderIds.length > 0 && (
+                <div style={{ marginBottom: 16 }}>
+                  {selectedBorderIds.map((id, index) => {
+                    const bp = borderPostMap[id];
+                    if (!bp) return null;
+                    return (
+                      <div
+                        key={id}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 8,
+                          padding: "6px 8px",
+                          marginBottom: 4,
+                          background: "#f5f5f5",
+                          borderRadius: 6,
+                        }}
+                      >
+                        <Tag color="blue" style={{ margin: 0, minWidth: 24, textAlign: "center" }}>
+                          {index + 1}
+                        </Tag>
+                        <span style={{ flex: 1, fontSize: 13 }}>
+                          <strong>{bp.display_name}</strong>{" "}
+                          <span style={{ color: "#888" }}>
+                            ({bp.side_a_name} → {bp.side_b_name})
+                          </span>
+                        </span>
+                        <Space size={2}>
+                          <Button
+                            type="text"
+                            size="small"
+                            icon={<ArrowUpOutlined />}
+                            disabled={index === 0}
+                            onClick={() => moveBorderUp(index)}
+                          />
+                          <Button
+                            type="text"
+                            size="small"
+                            icon={<ArrowDownOutlined />}
+                            disabled={index === selectedBorderIds.length - 1}
+                            onClick={() => moveBorderDown(index)}
+                          />
+                          <Button
+                            type="text"
+                            size="small"
+                            danger
+                            icon={<CloseOutlined />}
+                            onClick={() => removeBorder(id)}
+                          />
+                        </Space>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
 
               <Divider />
 

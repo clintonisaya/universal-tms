@@ -215,15 +215,7 @@ def read_expenses(
     if current_user.role == UserRole.ops:
         # Ops can only see their own expenses
         query = query.where(ExpenseRequest.created_by_id == current_user.id)
-    elif current_user.role == UserRole.finance:
-        # Finance can see expenses pending their approval or paid
-        query = query.where(
-            ExpenseRequest.status.in_([
-                ExpenseStatus.pending_finance.value,
-                ExpenseStatus.paid.value,
-            ])
-        )
-    # Admin and Manager can see all (no additional filter)
+    # Finance, Manager, Admin can see all expense records regardless of status
 
     # Count total matching records
     count_query = select(func.count()).select_from(query.subquery())

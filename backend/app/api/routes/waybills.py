@@ -11,9 +11,12 @@ from sqlmodel import func, select
 
 from app.api.deps import CurrentUser, SessionDep
 from app.models import (
+    BorderPost,
     Message,
     UserRole,
     Waybill,
+    WaybillBorder,
+    WaybillBorderPublic,
     WaybillCreate,
     WaybillPublic,
     WaybillsPublic,
@@ -97,9 +100,25 @@ def create_waybill(
     if current_user.role not in WRITE_ROLES:
         raise HTTPException(status_code=403, detail="Not enough permissions to create waybills")
 
+    border_ids = waybill_in.border_ids
     waybill_number = generate_waybill_number(session)
     waybill = Waybill.model_validate(waybill_in, update={"waybill_number": waybill_number})
     session.add(waybill)
+    session.flush()  # Get waybill.id before inserting borders
+
+    # Persist ordered border crossings (Story 2.26)
+    if border_ids:
+        for seq, border_post_id in enumerate(border_ids, start=1):
+            border_post = session.get(BorderPost, border_post_id)
+            if not border_post:
+                raise HTTPException(status_code=404, detail=f"Border post {border_post_id} not found")
+            wb_border = WaybillBorder(
+                waybill_id=waybill.id,
+                border_post_id=border_post_id,
+                sequence=seq,
+            )
+            session.add(wb_border)
+
     session.commit()
     session.refresh(waybill)
     return waybill
@@ -122,12 +141,67 @@ def update_waybill(
     if not waybill:
         raise HTTPException(status_code=404, detail="Waybill not found")
 
-    update_dict = waybill_in.model_dump(exclude_unset=True)
+    # Handle border_ids separately — not a Waybill column
+    border_ids = waybill_in.border_ids
+    update_dict = waybill_in.model_dump(exclude_unset=True, exclude={"border_ids"})
     waybill.sqlmodel_update(update_dict)
     session.add(waybill)
+
+    # Update ordered border crossings if provided (Story 2.26)
+    if border_ids is not None:
+        # Delete existing borders for this waybill
+        existing_borders = session.exec(
+            select(WaybillBorder).where(WaybillBorder.waybill_id == id)
+        ).all()
+        for wb in existing_borders:
+            session.delete(wb)
+        session.flush()
+
+        # Re-insert with new order
+        for seq, border_post_id in enumerate(border_ids, start=1):
+            border_post = session.get(BorderPost, border_post_id)
+            if not border_post:
+                raise HTTPException(status_code=404, detail=f"Border post {border_post_id} not found")
+            wb_border = WaybillBorder(
+                waybill_id=id,
+                border_post_id=border_post_id,
+                sequence=seq,
+            )
+            session.add(wb_border)
+
     session.commit()
     session.refresh(waybill)
     return waybill
+
+
+@router.get("/{id}/borders", response_model=list[WaybillBorderPublic])
+def read_waybill_borders(
+    session: SessionDep,
+    current_user: CurrentUser,
+    id: uuid.UUID,
+) -> Any:
+    """Get ordered border crossing list for a waybill."""
+    waybill = session.get(Waybill, id)
+    if not waybill:
+        raise HTTPException(status_code=404, detail="Waybill not found")
+
+    borders = session.exec(
+        select(WaybillBorder, BorderPost)
+        .join(BorderPost, BorderPost.id == WaybillBorder.border_post_id)
+        .where(WaybillBorder.waybill_id == id)
+        .order_by(WaybillBorder.sequence)
+    ).all()
+
+    return [
+        WaybillBorderPublic(
+            id=wb.id,
+            waybill_id=wb.waybill_id,
+            border_post_id=wb.border_post_id,
+            sequence=wb.sequence,
+            border_post=bp,
+        )
+        for wb, bp in borders
+    ]
 
 
 @router.delete("/{id}")

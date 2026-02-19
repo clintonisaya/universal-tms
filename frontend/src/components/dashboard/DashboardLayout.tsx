@@ -112,6 +112,7 @@ const allMenuItems: PermissionMenuItem[] = [
       { key: "/settings/transport/locations", label: "Locations", requires: ["settings:locations"] },
       { key: "/settings/transport/cargo-types", label: "Cargo Types", requires: ["settings:cargo-types"] },
       { key: "/settings/transport/vehicle-statuses", label: "Vehicle Statuses", requires: ["settings:vehicle-statuses"] },
+      { key: "/settings/transport/border-posts", label: "Border Posts", requires: ["settings:vehicle-statuses"] },
     ],
   },
 ];
@@ -223,6 +224,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
       "/settings/transport/locations",
       "/settings/transport/cargo-types",
       "/settings/transport/vehicle-statuses",
+      "/settings/transport/border-posts",
       "/settings/users",
       "/reports/profitability",
     ];

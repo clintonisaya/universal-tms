@@ -72,7 +72,13 @@ const STATUS_COLORS: Record<TripStatus, string> = {
   Loading: "gold",
   "In Transit": "blue",
   "At Border": "purple",
-  Offloaded: "cyan",
+  Offloading: "cyan",
+  "Dispatch (Return)": "purple",
+  "Wait to Load (Return)": "lime",
+  "Loading (Return)": "gold",
+  "In Transit (Return)": "blue",
+  "At Border (Return)": "purple",
+  "Offloading (Return)": "cyan",
   Returned: "geekblue",
   "Waiting for PODs": "orange",
   Completed: "green",
@@ -83,6 +89,11 @@ const STATUS_FILTERS = Object.keys(STATUS_COLORS).map((status) => ({
   text: status,
   value: status,
 }));
+
+const DIRECTION_FILTERS = [
+  { text: "Go", value: "go" },
+  { text: "Return", value: "return" },
+];
 
 function TripsPageContent() {
   const router = useRouter();
@@ -152,6 +163,22 @@ function TripsPageContent() {
         <div style={{ fontWeight: 500 }}>{text}</div>
       ),
       ...getColumnSearchProps<Trip>("route_name"),
+    },
+    {
+      title: "Direction",
+      dataIndex: "return_waybill_id",
+      key: "direction",
+      width: 90,
+      render: (returnWaybillId: string | null) => (
+        <Tag color={returnWaybillId ? "green" : "blue"}>
+          {returnWaybillId ? "Return" : "Go"}
+        </Tag>
+      ),
+      filters: DIRECTION_FILTERS,
+      onFilter: (value, record) => {
+        if (value === "return") return !!record.return_waybill_id;
+        return !record.return_waybill_id;
+      },
     },
     {
       title: "Start Date",

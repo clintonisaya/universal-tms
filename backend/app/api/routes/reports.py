@@ -4,13 +4,21 @@ from typing import Any
 
 from fastapi import APIRouter, Query
 from sqlmodel import func, select
+from sqlalchemy import or_
 from sqlalchemy.orm import selectinload
 
 from app.api.deps import CurrentUser, SessionDep
+from sqlalchemy.orm import aliased
+
+from collections import defaultdict
+
 from app.models import (
+    BorderPost,
     Trip,
+    TripBorderCrossing,
     TripStatus,
     Waybill,
+    WaybillStatus,
     Truck,
     Driver,
     Trailer,
@@ -30,97 +38,220 @@ def get_waybill_tracking_report(
     limit: int = Query(default=200, ge=1, le=500, description="Max records to return"),
 ) -> Any:
     """
-    Get comprehensive waybill tracking report (WakaWaka Style).
-    Joins Waybill -> Trip -> Truck -> Driver -> Trailer for a high-density flat view.
+    Trip-centric tracking report — one row per trip combining go + return waybill data.
+    Unlinked (open, no trip) waybills are appended as separate rows.
     """
-    # Base query with joins
-    base_query = (
-        select(Waybill, Trip, Truck, Driver, Trailer)
-        .outerjoin(Trip, Waybill.id == Trip.waybill_id)
-        .outerjoin(Truck, Trip.truck_id == Truck.id)
-        .outerjoin(Driver, Trip.driver_id == Driver.id)
-        .outerjoin(Trailer, Trip.trailer_id == Trailer.id)
-    )
+    GoWaybill = aliased(Waybill, name="go_waybill")
+    ReturnWaybill = aliased(Waybill, name="return_waybill")
 
-    # Paginated query
-    statement = (
-        base_query
-        .order_by(Waybill.created_at.desc())
+    # Trip-centric: one row per trip, left-join both waybills
+    trips_stmt = (
+        select(Trip, GoWaybill, ReturnWaybill, Truck, Driver, Trailer)
+        .outerjoin(GoWaybill, GoWaybill.id == Trip.waybill_id)
+        .outerjoin(ReturnWaybill, ReturnWaybill.id == Trip.return_waybill_id)
+        .outerjoin(Truck, Truck.id == Trip.truck_id)
+        .outerjoin(Driver, Driver.id == Trip.driver_id)
+        .outerjoin(Trailer, Trailer.id == Trip.trailer_id)
+        .order_by(Trip.created_at.desc())
         .offset(skip)
         .limit(limit)
     )
+    trip_results = session.execute(trips_stmt).all()
 
-    results = session.exec(statement).all()
-    
-    report_data = []
-    for waybill, trip, truck, driver, trailer in results:
-        # Mock calculations for Mileage/Fuel until real IoT/GPS is integrated
-        mileage = 0
-        fuel_consumption = 0
+    # Collect linked waybill IDs to find unlinked ones
+    linked_ids: list = []
+    for row in trip_results:
+        trip = row[0]
+        if trip.waybill_id:
+            linked_ids.append(trip.waybill_id)
+        if trip.return_waybill_id:
+            linked_ids.append(trip.return_waybill_id)
+
+    # Open waybills not yet dispatched on any trip
+    unlinked_stmt = select(Waybill).where(Waybill.status == WaybillStatus.open)
+    if linked_ids:
+        unlinked_stmt = unlinked_stmt.where(Waybill.id.notin_(linked_ids))
+    unlinked_waybills = session.exec(unlinked_stmt).all()
+
+    def calc_durations(trip):
         duration_days = 0
-        
-        if trip:
-            if trip.status == "In Transit":
-                mileage = 150 # Mock value
-                fuel_consumption = 45.5 # Mock value
-            
-            # Calculate Duration
-            # Determine Start Date (Dispatch > Start > Created)
-            start_date = trip.dispatch_date or trip.start_date or trip.created_at
-            
-            if start_date:
-                # Determine End Date (Return > End > Now)
-                end_date = trip.arrival_return_date or trip.end_date or datetime.now(timezone.utc)
-                
-                # Ensure aware datetimes for subtraction
-                if start_date.tzinfo is None:
-                    start_date = start_date.replace(tzinfo=timezone.utc)
-                if end_date.tzinfo is None:
-                    end_date = end_date.replace(tzinfo=timezone.utc)
-                    
-                delta = end_date - start_date
-                duration_days = max(1, delta.days + 1)
+        return_duration_days = 0
+        if not trip:
+            return duration_days, return_duration_days
+
+        start_date = trip.dispatch_date or trip.start_date or trip.created_at
+        if start_date:
+            end_date = trip.arrival_return_date or trip.end_date or datetime.now(timezone.utc)
+            if start_date.tzinfo is None:
+                start_date = start_date.replace(tzinfo=timezone.utc)
+            if end_date.tzinfo is None:
+                end_date = end_date.replace(tzinfo=timezone.utc)
+            duration_days = max(1, (end_date - start_date).days + 1)
+
+        if trip.return_waybill_id and trip.dispatch_return_date:
+            ret_start = trip.dispatch_return_date
+            ret_end = trip.arrival_return_date or datetime.now(timezone.utc)
+            if ret_start.tzinfo is None:
+                ret_start = ret_start.replace(tzinfo=timezone.utc)
+            if ret_end.tzinfo is None:
+                ret_end = ret_end.replace(tzinfo=timezone.utc)
+            return_duration_days = max(1, (ret_end - ret_start).days + 1)
+
+        return duration_days, return_duration_days
+
+    # --- Bulk-fetch border crossings for all trips (avoid N+1) ---
+    trip_ids = [str(row[0].id) for row in trip_results]
+    crossings_by_trip: dict[str, list] = defaultdict(list)
+    if trip_ids:
+        crossings_stmt = (
+            select(TripBorderCrossing, BorderPost)
+            .join(BorderPost, BorderPost.id == TripBorderCrossing.border_post_id)
+            .where(TripBorderCrossing.trip_id.in_(trip_ids))
+            .order_by(TripBorderCrossing.trip_id, TripBorderCrossing.direction, TripBorderCrossing.created_at)
+        )
+        for crossing, bp in session.execute(crossings_stmt).all():
+            crossings_by_trip[str(crossing.trip_id)].append({
+                "border_post_id": str(crossing.border_post_id),
+                "border_display_name": bp.display_name,
+                "side_a_name": bp.side_a_name,
+                "side_b_name": bp.side_b_name,
+                "direction": crossing.direction,
+                "arrived_side_a_at": crossing.arrived_side_a_at.isoformat() if crossing.arrived_side_a_at else None,
+                "documents_submitted_side_a_at": crossing.documents_submitted_side_a_at.isoformat() if crossing.documents_submitted_side_a_at else None,
+                "documents_cleared_side_a_at": crossing.documents_cleared_side_a_at.isoformat() if crossing.documents_cleared_side_a_at else None,
+                "arrived_side_b_at": crossing.arrived_side_b_at.isoformat() if crossing.arrived_side_b_at else None,
+                "documents_submitted_side_b_at": crossing.documents_submitted_side_b_at.isoformat() if crossing.documents_submitted_side_b_at else None,
+                "documents_cleared_side_b_at": crossing.documents_cleared_side_b_at.isoformat() if crossing.documents_cleared_side_b_at else None,
+                "departed_border_at": crossing.departed_border_at.isoformat() if crossing.departed_border_at else None,
+            })
+
+    report_data = []
+
+    # --- Trip rows ---
+    for db_row in trip_results:
+        trip, go_wb, return_wb, truck, driver, trailer = db_row
+        duration_days, return_duration_days = calc_durations(trip)
+
+        def _iso(dt):
+            return dt.isoformat() if dt else None
 
         row = {
-            # 1. Status Plls
-            "waybill_status": waybill.status,
+            # Unique key for frontend table
+            "row_id": str(trip.id),
+            # Trip status
             "trip_status": trip.status if trip else "Not Dispatched",
-            
-            # 2. IDs
-            "waybill_id": str(waybill.id),
-            "waybill_number": waybill.waybill_number,
-            "trip_id": str(trip.id) if trip else None,
-            "trip_number": trip.trip_number if trip else None,
-            
-            # 3. Entity Info
-            "client_name": waybill.client_name,
-            "cargo_type": waybill.cargo_type,
-            "cargo_weight": waybill.weight_kg,
-            "cargo_description": waybill.description,
-            
-            # 4. Route Info
-            "origin": waybill.origin,
-            "destination": waybill.destination,
-            "current_location": trip.current_location if trip else None,
-            "border_location": "Kasumbalesa" if trip and trip.status == "At Border" else None, # Mock logic
-            
-            # 5. Asset Info
+            # IDs
+            "trip_id": str(trip.id),
+            "trip_number": trip.trip_number,
+            # Go waybill
+            "waybill_id": str(go_wb.id) if go_wb else None,
+            "waybill_number": go_wb.waybill_number if go_wb else None,
+            "waybill_status": go_wb.status if go_wb else None,
+            "client_name": go_wb.client_name if go_wb else None,
+            "cargo_type": go_wb.cargo_type if go_wb else None,
+            "cargo_weight": go_wb.weight_kg if go_wb else 0,
+            "cargo_description": go_wb.description if go_wb else "",
+            "origin": go_wb.origin if go_wb else "",
+            "destination": go_wb.destination if go_wb else "",
+            "risk_level": go_wb.risk_level if go_wb else "Low",
+            # Return waybill (if attached)
+            "return_waybill_id": str(trip.return_waybill_id) if trip.return_waybill_id else None,
+            "return_waybill_number": return_wb.waybill_number if return_wb else None,
+            "return_waybill_status": return_wb.status if return_wb else None,
+            "return_client_name": return_wb.client_name if return_wb else None,
+            "return_cargo_type": return_wb.cargo_type if return_wb else None,
+            "return_cargo_weight": return_wb.weight_kg if return_wb else None,
+            "return_origin": return_wb.origin if return_wb else None,
+            "return_destination": return_wb.destination if return_wb else None,
+            "return_cargo_description": return_wb.description if return_wb else None,
+            # Assets — extended
             "truck_plate": truck.plate_number if truck else None,
+            "truck_make": truck.make if truck else None,
+            "truck_model": truck.model if truck else None,
             "driver_name": driver.full_name if driver else None,
+            "driver_license": driver.license_number if driver else None,
+            "driver_passport": driver.passport_number if driver else None,
+            "driver_phone": driver.phone_number if driver else None,
             "trailer_plate": trailer.plate_number if trailer else None,
-            
-            # 6. Metrics (Calculated/Mocked)
-            "mileage_km": mileage,
-            "fuel_consumption_liters": fuel_consumption,
+            "trailer_type": trailer.type if trailer else None,
+            # Location
+            "current_location": trip.current_location,
+            "border_location": "Kasumbalesa" if trip.status in ("At Border", "At Border (Return)") else None,
+            # Duration
             "duration_days": duration_days,
-            
-            # 7. Risk
-            "risk_level": waybill.risk_level,
-            
+            "return_duration_days": return_duration_days,
             # Meta
-            "start_date": trip.start_date if trip else None,
+            "start_date": trip.start_date.isoformat() if trip.start_date else None,
+            # Trip tracking dates
+            "dispatch_date": _iso(trip.dispatch_date),
+            "arrival_loading_date": _iso(trip.arrival_loading_date),
+            "loading_start_date": _iso(trip.loading_start_date),
+            "loading_end_date": _iso(trip.loading_end_date),
+            "arrival_offloading_date": _iso(trip.arrival_offloading_date),
+            "offloading_date": _iso(trip.offloading_date),
+            "dispatch_return_date": _iso(trip.dispatch_return_date),
+            "arrival_loading_return_date": _iso(trip.arrival_loading_return_date),
+            "loading_return_start_date": _iso(trip.loading_return_start_date),
+            "loading_return_end_date": _iso(trip.loading_return_end_date),
+            "arrival_return_date": _iso(trip.arrival_return_date),
+            # Border crossings (bulk-fetched, no N+1)
+            "border_crossings": crossings_by_trip.get(str(trip.id), []),
         }
         report_data.append(row)
+
+    # --- Unlinked waybill rows (no trip yet) ---
+    for wb in unlinked_waybills:
+        report_data.append({
+            "row_id": str(wb.id),
+            "trip_status": "Not Dispatched",
+            "trip_id": None,
+            "trip_number": None,
+            "waybill_id": str(wb.id),
+            "waybill_number": wb.waybill_number,
+            "waybill_status": wb.status,
+            "client_name": wb.client_name,
+            "cargo_type": wb.cargo_type,
+            "cargo_weight": wb.weight_kg,
+            "cargo_description": wb.description,
+            "origin": wb.origin,
+            "destination": wb.destination,
+            "risk_level": wb.risk_level,
+            "return_waybill_id": None,
+            "return_waybill_number": None,
+            "return_waybill_status": None,
+            "return_client_name": None,
+            "return_cargo_type": None,
+            "return_cargo_weight": None,
+            "return_origin": None,
+            "return_destination": None,
+            "return_cargo_description": None,
+            "truck_plate": None,
+            "truck_make": None,
+            "truck_model": None,
+            "driver_name": None,
+            "driver_license": None,
+            "driver_passport": None,
+            "driver_phone": None,
+            "trailer_plate": None,
+            "trailer_type": None,
+            "current_location": None,
+            "border_location": None,
+            "duration_days": 0,
+            "return_duration_days": 0,
+            "start_date": None,
+            "dispatch_date": None,
+            "arrival_loading_date": None,
+            "loading_start_date": None,
+            "loading_end_date": None,
+            "arrival_offloading_date": None,
+            "offloading_date": None,
+            "dispatch_return_date": None,
+            "arrival_loading_return_date": None,
+            "loading_return_start_date": None,
+            "loading_return_end_date": None,
+            "arrival_return_date": None,
+            "border_crossings": [],
+        })
 
     return report_data
 
@@ -196,7 +327,25 @@ def get_financial_pulse(
     # 1. QUARTERLY PROFIT TREND (4 quarters of current year)
     # ============================================================
 
-    # Revenue from Waybills linked to active/completed Trips (current year)
+    # Active/completed trip statuses for revenue counting
+    _active_statuses = [
+        TripStatus.wait_to_load.value,
+        TripStatus.loading.value,
+        TripStatus.in_transit.value,
+        TripStatus.at_border.value,
+        TripStatus.offloading.value,
+        TripStatus.dispatch_return.value,
+        TripStatus.wait_to_load_return.value,
+        TripStatus.loading_return.value,
+        TripStatus.in_transit_return.value,
+        TripStatus.at_border_return.value,
+        TripStatus.offloading_return.value,
+        TripStatus.returned.value,
+        TripStatus.waiting_for_pods.value,
+        TripStatus.completed.value,
+    ]
+
+    # Go waybill revenue (current year)
     revenue_stmt = (
         select(
             func.date(Trip.created_at).label("date"),
@@ -205,18 +354,21 @@ def get_financial_pulse(
         )
         .join(Waybill, Waybill.id == Trip.waybill_id)
         .where(Trip.created_at >= year_start)
-        .where(Trip.status.in_([
-            TripStatus.wait_to_load.value,
-            TripStatus.loading.value,
-            TripStatus.in_transit.value,
-            TripStatus.at_border.value,
-            TripStatus.offloaded.value,
-            TripStatus.returned.value,
-            TripStatus.waiting_for_pods.value,
-            TripStatus.completed.value,
-        ]))
+        .where(Trip.status.in_(_active_statuses))
     )
-    revenue_rows = session.exec(revenue_stmt).all()
+    # Return waybill revenue (current year) — only trips that have return waybill attached
+    return_revenue_stmt = (
+        select(
+            func.date(Trip.created_at).label("date"),
+            Waybill.agreed_rate,
+            Waybill.currency,
+        )
+        .join(Waybill, Waybill.id == Trip.return_waybill_id)
+        .where(Trip.return_waybill_id.isnot(None))
+        .where(Trip.created_at >= year_start)
+        .where(Trip.status.in_(_active_statuses))
+    )
+    revenue_rows = list(session.exec(revenue_stmt).all()) + list(session.exec(return_revenue_stmt).all())
 
     # Expenses (Approved: Pending Finance + Paid) for current year
     approved_statuses = [ExpenseStatus.pending_finance.value, ExpenseStatus.paid.value]
@@ -272,26 +424,22 @@ def get_financial_pulse(
     # 2. MONTHLY STATS (Income vs Expenses for Current Month)
     # ============================================================
 
-    # Monthly Revenue from Waybills
+    # Monthly Revenue: go waybills
     monthly_revenue_stmt = (
-        select(
-            Waybill.agreed_rate,
-            Waybill.currency,
-        )
+        select(Waybill.agreed_rate, Waybill.currency)
         .join(Trip, Waybill.id == Trip.waybill_id)
         .where(Trip.created_at >= current_month_start)
-        .where(Trip.status.in_([
-            TripStatus.wait_to_load.value,
-            TripStatus.loading.value,
-            TripStatus.in_transit.value,
-            TripStatus.at_border.value,
-            TripStatus.offloaded.value,
-            TripStatus.returned.value,
-            TripStatus.waiting_for_pods.value,
-            TripStatus.completed.value,
-        ]))
+        .where(Trip.status.in_(_active_statuses))
     )
-    monthly_revenue_rows = session.exec(monthly_revenue_stmt).all()
+    # Monthly Revenue: return waybills
+    monthly_return_revenue_stmt = (
+        select(Waybill.agreed_rate, Waybill.currency)
+        .join(Trip, Waybill.id == Trip.return_waybill_id)
+        .where(Trip.return_waybill_id.isnot(None))
+        .where(Trip.created_at >= current_month_start)
+        .where(Trip.status.in_(_active_statuses))
+    )
+    monthly_revenue_rows = list(session.exec(monthly_revenue_stmt).all()) + list(session.exec(monthly_return_revenue_stmt).all())
 
     total_monthly_income = Decimal("0")
     for row in monthly_revenue_rows:
@@ -411,13 +559,23 @@ def get_trip_profitability(
     """
     default_rate = get_current_exchange_rate(session)
 
-    # Get trips with waybills
+    # Get trips with go waybills
     trips_stmt = (
         select(Trip, Waybill)
         .join(Waybill, Waybill.id == Trip.waybill_id)
         .order_by(Trip.created_at.desc())
     )
     trip_rows = session.exec(trips_stmt).all()
+
+    # Bulk-fetch return waybills for trips that have one
+    return_waybill_ids = [
+        trip.return_waybill_id for trip, _ in trip_rows if trip.return_waybill_id
+    ]
+    return_waybills: dict = {}
+    if return_waybill_ids:
+        rw_stmt = select(Waybill).where(Waybill.id.in_(return_waybill_ids))
+        for rw in session.exec(rw_stmt).all():
+            return_waybills[rw.id] = rw
 
     # Get all approved expenses grouped by trip (Pending Finance + Paid)
     approved_statuses = [ExpenseStatus.pending_finance.value, ExpenseStatus.paid.value]
@@ -442,16 +600,25 @@ def get_trip_profitability(
 
     # Build profitability data
     profitability_data = []
-    for trip, waybill in trip_rows:
+    for trip, go_waybill in trip_rows:
         trip_id = str(trip.id)
 
-        # Income from waybill (normalized to TZS)
+        # Income: go waybill + return waybill (if attached)
         income = normalize_to_tzs(
-            Decimal(str(waybill.agreed_rate)),
-            waybill.currency,
+            Decimal(str(go_waybill.agreed_rate)),
+            go_waybill.currency,
             None,
             default_rate
         )
+        return_waybill = return_waybills.get(trip.return_waybill_id) if trip.return_waybill_id else None
+        if return_waybill:
+            income += normalize_to_tzs(
+                Decimal(str(return_waybill.agreed_rate)),
+                return_waybill.currency,
+                None,
+                default_rate
+            )
+        waybill = go_waybill  # keep reference for client name below
 
         # Total approved expenses for this trip
         expenses = trip_expenses.get(trip_id, Decimal("0"))

@@ -41,7 +41,7 @@ def get_my_tasks(
     Aggregate all pending tasks for the current user based on their role.
 
     - Manager/Admin: Expenses with status 'Pending Manager'
-    - Finance: Expenses with status 'Pending Finance'
+    - Finance: Expenses with status 'Pending Finance' + 'Returned' (tracking)
     - Ops: Expenses they created with status 'Returned' or 'Rejected'
     """
     tasks: list[dict[str, Any]] = []
@@ -89,6 +89,23 @@ def get_my_tasks(
                 if is_expense_trip_closed(exp):
                     continue
                 tasks.append(_expense_to_task(exp, "payment_processing", ["pay", "return"]))
+
+    if role == UserRole.finance:
+        # Finance also tracks returned expenses — items returned for correction, awaiting resubmission
+        returned_query = (
+            select(ExpenseRequest)
+            .where(ExpenseRequest.status == ExpenseStatus.returned)
+            .options(
+                selectinload(ExpenseRequest.created_by),
+                selectinload(ExpenseRequest.trip),
+            )
+        )
+        if not task_type or task_type == "payment_processing":
+            returned_expenses = session.exec(returned_query).all()
+            for exp in returned_expenses:
+                if is_expense_trip_closed(exp):
+                    continue
+                tasks.append(_expense_to_task(exp, "payment_processing", []))
 
     if role in (UserRole.ops, UserRole.admin):
         # Ops sees only returned expenses they created (rejected expenses are final, no action needed)
