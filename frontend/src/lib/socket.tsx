@@ -13,20 +13,18 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
   const [socket, setSocket] = useState<Socket | null>(null);
 
   useEffect(() => {
-    // Determine the socket URL. 
-    // If running via Next.js proxy (rewrites), we might connect to /api/socket.io or just root.
-    // Ideally use env var, fallback to window.location.origin if API is same domain (proxy).
-    // For now assuming standard development setup where API might be on localhost:8000
-    
-    // Check if NEXT_PUBLIC_API_URL is defined
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-    // If apiUrl has /api/v1, strip it for the root
-    const baseUrl = apiUrl.replace(/\/api\/v1\/?$/, "");
+    // In production, connect through the same origin (frontend proxies to backend)
+    // In development, connect directly to backend
+    const isDev = process.env.NODE_ENV === "development";
+    const socketUrl = isDev
+      ? "http://localhost:8000"
+      : window.location.origin;
 
-    const socketInstance = io(baseUrl, {
+    const socketInstance = io(socketUrl, {
       path: "/socket.io/",
-      transports: ["websocket"],
+      transports: ["polling", "websocket"], // Start with polling, upgrade to WebSocket
       reconnectionAttempts: 5,
+      reconnectionDelay: 2000,
     });
 
     socketInstance.on("connect", () => {

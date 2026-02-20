@@ -87,7 +87,7 @@ export function WaybillDetailDrawer({ open, onClose, waybillId }: WaybillDetailD
               {waybill.cargo_type || "-"}
             </Descriptions.Item>
             <Descriptions.Item label="Weight">
-              {waybill.weight_kg ? `${waybill.weight_kg.toLocaleString()} KG` : "-"}
+              {waybill.weight_kg ? `${Number(waybill.weight_kg).toLocaleString("en-US")} KG` : "-"}
             </Descriptions.Item>
             <Descriptions.Item label="Risk Level">
               {waybill.risk_level || "-"}
@@ -110,7 +110,7 @@ export function WaybillDetailDrawer({ open, onClose, waybillId }: WaybillDetailD
                 : "-"}
             </Descriptions.Item>
             <Descriptions.Item label="Agreed Rate">
-              {waybill.currency} {waybill.agreed_rate?.toLocaleString()}
+              {waybill.currency} {Number(waybill.agreed_rate).toLocaleString("en-US")}
             </Descriptions.Item>
           </Descriptions>
 

@@ -6,12 +6,13 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, UploadFile, File
 from sqlmodel import func, select
 from sqlalchemy.orm import selectinload
 
 from app.api.deps import CurrentUser, SessionDep
 from app.core.socket import sio
+from app.core.storage import storage
 from app.models import (
     ExpenseCategory,
     ExpensePayment,
@@ -44,11 +45,11 @@ def generate_expense_number(session: SessionDep, trip_id: uuid.UUID | None, trip
         count_stmt = select(func.count()).select_from(ExpenseRequest).where(ExpenseRequest.trip_id == trip_id)
         existing_count = session.exec(count_stmt).one()
         seq = existing_count + 1
-        return f"E{trip.trip_number}{seq:03d}"
+        return f"E{trip.trip_number}-{seq:03d}"
     else:
-        # Non-trip: EXP-YYYY-SEQ
+        # Non-trip (Office): EX-YYYY-SEQ - Story 2.17 Scenario 4
         year = datetime.now().year
-        pattern = f"EXP-{year}-%"
+        pattern = f"EX-{year}-%"
         last_stmt = (
             select(ExpenseRequest.expense_number)
             .where(ExpenseRequest.expense_number.like(pattern))
@@ -63,7 +64,7 @@ def generate_expense_number(session: SessionDep, trip_id: uuid.UUID | None, trip
                 seq = last_seq + 1
             except ValueError:
                 pass
-        return f"EXP-{year}-{seq:04d}"
+        return f"EX-{year}-{seq:04d}"
 
 # Valid status transitions by role
 # Format: {current_status: {role: [allowed_new_statuses]}}
@@ -78,6 +79,7 @@ STATUS_TRANSITIONS = {
     },
     ExpenseStatus.returned: {
         UserRole.ops: [ExpenseStatus.pending_manager],  # Resubmit after correction
+        UserRole.finance: [ExpenseStatus.pending_manager],  # Finance can resubmit their own returned expenses
         UserRole.manager: [ExpenseStatus.pending_manager],
         UserRole.admin: [ExpenseStatus.pending_manager],
     },
@@ -103,9 +105,9 @@ def can_view_expense(expense: ExpenseRequest, user: Any) -> bool:
     # Admins and managers can view all
     if user.role in [UserRole.admin, UserRole.manager]:
         return True
-    # Finance can view expenses pending their approval or already paid
+    # Finance can view all expenses (full visibility for processing and tracking)
     if user.role == UserRole.finance:
-        return expense.status in [ExpenseStatus.pending_finance, ExpenseStatus.paid]
+        return True
     # Ops can only view their own
     return expense.created_by_id == user.id
 
@@ -165,7 +167,7 @@ def check_trip_not_closed(session: SessionDep, trip_id: uuid.UUID | None) -> Tri
     return trip
 
 
-@router.get("/", response_model=ExpenseRequestsPublic)
+@router.get("", response_model=ExpenseRequestsPublic)
 def read_expenses(
     session: SessionDep,
     current_user: CurrentUser,
@@ -212,17 +214,16 @@ def read_expenses(
 
     # Apply role-based filtering
     if current_user.role == UserRole.ops:
-        # Ops can only see their own expenses
-        query = query.where(ExpenseRequest.created_by_id == current_user.id)
-    elif current_user.role == UserRole.finance:
-        # Finance can see expenses pending their approval or paid
+        # Trip expenses: all ops users see all (shared visibility across the team)
+        # Office expenses: each ops user sees only their own
+        from sqlalchemy import or_
         query = query.where(
-            ExpenseRequest.status.in_([
-                ExpenseStatus.pending_finance.value,
-                ExpenseStatus.paid.value,
-            ])
+            or_(
+                ExpenseRequest.trip_id.isnot(None),          # any trip expense → visible to all ops
+                ExpenseRequest.created_by_id == current_user.id,  # own office expenses
+            )
         )
-    # Admin and Manager can see all (no additional filter)
+    # Finance, Manager, Admin can see all expense records regardless of status
 
     # Count total matching records
     count_query = select(func.count()).select_from(query.subquery())
@@ -342,7 +343,7 @@ async def batch_update_expenses(
     return Message(message=f"Successfully updated {updated_count} expenses")
 
 
-@router.post("/", response_model=ExpenseRequestPublic)
+@router.post("", response_model=ExpenseRequestPublic)
 async def create_expense(
     *,
     session: SessionDep,
@@ -444,6 +445,10 @@ async def update_expense(
                 detail=f"Not authorized to change status from '{current_status.value}' to '{new_status.value}'"
             )
         update_dict["status"] = new_status.value
+        # Record approver when manager moves expense to Pending Finance
+        if new_status == ExpenseStatus.pending_finance:
+            update_dict["approved_by_id"] = str(current_user.id)
+            update_dict["approved_at"] = datetime.now(timezone.utc)
 
     # For non-status updates, check modify permission
     non_status_updates = {k: v for k, v in update_dict.items() if k != "status"}
@@ -526,6 +531,22 @@ async def process_payment(
     expense.payment_reference = payment_in.reference
     expense.payment_date = datetime.now(timezone.utc)
     expense.paid_by_id = current_user.id
+    
+    # Update bank details in metadata if provided (for any payment method)
+    if payment_in.bank_name or payment_in.account_name or payment_in.account_no:
+        current_metadata = dict(expense.expense_metadata) if expense.expense_metadata else {}
+        bank_details = current_metadata.get("bank_details", {})
+
+        if payment_in.bank_name:
+            bank_details["bank_name"] = payment_in.bank_name
+        if payment_in.account_name:
+            bank_details["account_name"] = payment_in.account_name
+        if payment_in.account_no:
+            bank_details["account_no"] = payment_in.account_no
+
+        current_metadata["bank_details"] = bank_details
+        expense.expense_metadata = current_metadata
+
     expense.updated_at = datetime.now(timezone.utc)
 
     session.add(expense)
@@ -542,6 +563,157 @@ async def process_payment(
     })
 
     return expense
+
+
+@router.post("/{id}/attachment", response_model=ExpenseRequestPublic)
+async def upload_attachment(
+    *,
+    session: SessionDep,
+    current_user: CurrentUser,
+    id: uuid.UUID,
+    file: UploadFile = File(...),
+) -> Any:
+    """
+    Upload an attachment for an expense request.
+    
+    - Validates expense exists and user can modify it
+    - Generates unique filename to prevent overwrites
+    - Uploads to Cloudflare R2
+    - Updates attachment_url in database
+    """
+    expense = session.get(ExpenseRequest, id)
+    if not expense:
+        raise HTTPException(status_code=404, detail="Expense not found")
+
+    # Check if associated trip is closed (Completed/Cancelled)
+    if expense.trip_id:
+        check_trip_not_closed(session, expense.trip_id)
+
+    # Check permissions (same as modify)
+    if not can_modify_expense(expense, current_user):
+        raise HTTPException(
+            status_code=403,
+            detail="Can only add attachments when status is 'Pending Manager' and you are the creator"
+        )
+    
+    # Generate unique filename: expense_id/uuid_filename (prevents overwrites)
+    unique_id = uuid.uuid4().hex[:8]
+    clean_filename = file.filename.replace(" ", "_") if file.filename else "attachment"
+    object_name = f"expenses/{expense.id}/{unique_id}_{clean_filename}"
+
+    # Validate file size (max 3MB)
+    content = await file.read()
+    max_size = 3 * 1024 * 1024  # 3MB
+    if len(content) > max_size:
+        raise HTTPException(status_code=400, detail="File size exceeds 3MB limit")
+
+    # Validate file type
+    allowed_types = [
+        "application/pdf",
+        "image/jpeg", "image/png", "image/gif", "image/webp",
+        "application/msword",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    ]
+    if file.content_type and file.content_type not in allowed_types:
+        raise HTTPException(
+            status_code=400,
+            detail=f"File type '{file.content_type}' not allowed. Supported: PDF, images, Word documents."
+        )
+
+    # Upload to R2
+    uploaded_key = storage.upload_file(content, object_name, file.content_type)
+    
+    if not uploaded_key:
+        raise HTTPException(status_code=500, detail="Failed to upload file to storage")
+        
+    # Construct URL (assuming public access or using R2 dev URL)
+    # For private buckets, we might want to store the key and generate presigned URLs on read.
+    # Here we store the key as the URL reference or the full public URL if configured.
+    # Given the requirements, I'll store the key/path.
+    
+    # Append to attachments list (create new list to trigger change detection)
+    current_attachments = list(expense.attachments) if expense.attachments else []
+    current_attachments.append(uploaded_key)
+    expense.attachments = current_attachments
+    
+    expense.updated_at = datetime.now(timezone.utc)
+    
+    session.add(expense)
+    session.commit()
+    session.refresh(expense)
+    
+    return expense
+
+
+@router.get("/{id}/attachments")
+def get_attachment_urls(
+    *,
+    session: SessionDep,
+    current_user: CurrentUser,
+    id: uuid.UUID,
+) -> Any:
+    """
+    Get presigned URLs for all attachments of an expense.
+    Returns a list of objects with key, filename, and url.
+    """
+    expense = session.get(ExpenseRequest, id)
+    if not expense:
+        raise HTTPException(status_code=404, detail="Expense not found")
+
+    if not can_view_expense(expense, current_user):
+        raise HTTPException(status_code=403, detail="Not authorized to view this expense")
+
+    attachments = expense.attachments or []
+    result = []
+    for key in attachments:
+        url = storage.get_presigned_url(key, expiration=3600)
+        # Extract readable filename from the key
+        filename = key.split("/")[-1] if "/" in key else key
+        # Remove timestamp prefix (YYYYMMDDHHmmss_)
+        if len(filename) > 15 and filename[14] == "_":
+            filename = filename[15:]
+        result.append({"key": key, "filename": filename, "url": url})
+
+    return result
+
+
+@router.delete("/{id}/attachment")
+def delete_attachment(
+    *,
+    session: SessionDep,
+    current_user: CurrentUser,
+    id: uuid.UUID,
+    key: str = Query(..., description="Object key of the attachment to delete"),
+) -> Message:
+    """
+    Delete a specific attachment from an expense.
+    Removes from R2 storage and updates the database.
+    """
+    expense = session.get(ExpenseRequest, id)
+    if not expense:
+        raise HTTPException(status_code=404, detail="Expense not found")
+
+    if not can_modify_expense(expense, current_user):
+        raise HTTPException(
+            status_code=403,
+            detail="Can only remove attachments when status is 'Pending Manager' and you are the creator"
+        )
+
+    current_attachments = list(expense.attachments) if expense.attachments else []
+    if key not in current_attachments:
+        raise HTTPException(status_code=404, detail="Attachment not found")
+
+    # Delete from R2
+    storage.delete_file(key)
+
+    # Remove from database
+    current_attachments.remove(key)
+    expense.attachments = current_attachments
+    expense.updated_at = datetime.now(timezone.utc)
+    session.add(expense)
+    session.commit()
+
+    return Message(message="Attachment deleted successfully")
 
 
 @router.delete("/{id}")

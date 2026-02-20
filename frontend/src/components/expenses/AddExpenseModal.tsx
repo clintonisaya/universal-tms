@@ -9,7 +9,7 @@ import {
   Select,
   Button,
   Space,
-  message,
+  App,
   Tabs,
   Row,
   Col,
@@ -17,10 +17,14 @@ import {
   Table,
   Typography,
   Tooltip,
+  Upload,
 } from "antd";
+import type { UploadFile } from "antd/es/upload/interface";
+import { amountInputProps } from "@/lib/utils";
 import {
   PlusOutlined,
   DeleteOutlined,
+  UploadOutlined,
 } from "@ant-design/icons";
 import type { ExpenseRequestCreate, ExpenseCategory } from "@/types/expense";
 import type { Trip } from "@/types/trip";
@@ -85,6 +89,7 @@ export function AddExpenseModal({
   tripId,
   tripNumber,
 }: AddExpenseModalProps) {
+  const { message } = App.useApp();
   const [form] = Form.useForm();
   const [submitting, setSubmitting] = useState(false);
   const [tripExpenseTypes, setTripExpenseTypes] = useState<TripExpenseType[]>([]);
@@ -97,6 +102,9 @@ export function AddExpenseModal({
   // Table State
   const [items, setItems] = useState<ExpenseItem[]>([]);
   const [count, setCount] = useState(0);
+
+  // File Upload State
+  const [fileList, setFileList] = useState<UploadFile[]>([]);
 
   // Watch Payment Method for conditional fields
   const paymentMethod = Form.useWatch("payment_method", form);
@@ -146,7 +154,7 @@ export function AddExpenseModal({
         try {
           if (isTripExpense) {
             // Fetch Trip Expense Types
-            const response = await fetch("/api/v1/trip-expense-types/?active_only=true&limit=200", {
+            const response = await fetch("/api/v1/trip-expense-types?active_only=true&limit=200", {
               credentials: "include",
             });
             if (response.ok) {
@@ -155,7 +163,7 @@ export function AddExpenseModal({
             }
           } else {
             // Fetch Office Expense Types
-            const response = await fetch("/api/v1/office-expense-types/?active_only=true&limit=200", {
+            const response = await fetch("/api/v1/office-expense-types?active_only=true&limit=200", {
               credentials: "include",
             });
             if (response.ok) {
@@ -180,6 +188,7 @@ export function AddExpenseModal({
         exchange_rate: 1
       }]);
       setCount(1);
+      setFileList([]);
 
       // Set default values
       form.setFieldsValue({
@@ -210,10 +219,26 @@ export function AddExpenseModal({
       }));
   }, [tripExpenseTypes, isTripExpense]);
 
-  // Flat office expense options
-  const officeExpenseOptions = useMemo(() => {
-    return officeExpenseTypes.map(t => ({ label: t.name, value: t.id }));
-  }, [officeExpenseTypes]);
+  // Group office expense types by category for the dropdown
+  const groupedOfficeExpenseOptions = useMemo(() => {
+    if (isTripExpense) return [];
+
+    const grouped: Record<string, OfficeExpenseType[]> = {};
+    officeExpenseTypes.forEach(type => {
+      const cat = type.category || "Other";
+      if (!grouped[cat]) {
+        grouped[cat] = [];
+      }
+      grouped[cat].push(type);
+    });
+
+    return Object.entries(grouped)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([category, types]) => ({
+        label: category,
+        options: types.map(t => ({ label: t.name, value: t.id }))
+      }));
+  }, [officeExpenseTypes, isTripExpense]);
 
   const handleAddRow = () => {
     const newData: ExpenseItem = {
@@ -301,7 +326,7 @@ export function AddExpenseModal({
     try {
 
       // Create separate requests for each item (backend limitation workaround)
-      const promises = items.map(item => {
+      const promises = items.map(async (item) => {
         // Get the expense type name for storing in metadata
         let itemName: string | undefined;
         if (item.expense_type_id) {
@@ -342,12 +367,41 @@ export function AddExpenseModal({
           payload.exchange_rate = item.exchange_rate;
         }
 
-        return fetch("/api/v1/expenses/", {
+        const response = await fetch("/api/v1/expenses", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           credentials: "include",
           body: JSON.stringify(payload),
         });
+
+        if (!response.ok) {
+          throw new Error("Failed to create expense");
+        }
+
+        const expense = await response.json();
+
+        // Upload attachments if exist (Upload all files for all items in this batch)
+        if (fileList.length > 0) {
+          for (const file of fileList) {
+            // When using beforeUpload to manually set fileList, the 'file' object might be the File itself
+            // or it might be wrapped. Handle both cases.
+            const fileToUpload = file.originFileObj || file;
+            
+            if (fileToUpload) {
+              const formData = new FormData();
+              // Cast to any to avoid TS issues if it thinks it's UploadFile but it's actually File/Blob
+              formData.append("file", fileToUpload as any);
+
+              await fetch(`/api/v1/expenses/${expense.id}/attachment`, {
+                method: "POST",
+                credentials: "include",
+                body: formData,
+              });
+            }
+          }
+        }
+        
+        return expense;
       });
 
       await Promise.all(promises);
@@ -355,10 +409,11 @@ export function AddExpenseModal({
       message.success(`${items.length} expense(s) submitted successfully!`);
       form.resetFields();
       setItems([]);
+      setFileList([]);
       onSuccess();
       onClose();
     } catch {
-      message.error("Network error");
+      message.error("Network error or failed to create expenses");
     } finally {
       setSubmitting(false);
     }
@@ -384,7 +439,7 @@ export function AddExpenseModal({
           optionFilterProp="label"
           value={text}
           onChange={(val) => handleItemChange(record.key, "expense_type_id", val)}
-          options={isTripExpense ? groupedTripExpenseOptions : officeExpenseOptions as any}
+          options={isTripExpense ? groupedTripExpenseOptions : groupedOfficeExpenseOptions as any}
           loading={expenseTypesLoading}
         />
       ),
@@ -394,14 +449,14 @@ export function AddExpenseModal({
       dataIndex: "amount",
       width: 140,
       render: (text: number, record: ExpenseItem) => (
-        <InputNumber
-          style={{ width: "100%" }}
-          min={0}
-          value={text}
-          formatter={(value) => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
-          parser={(value) => value?.replace(/,/g, '') as unknown as number}
-          onChange={(val) => handleItemChange(record.key, "amount", val)}
-        />
+        // in columns:
+<InputNumber
+  style={{ width: "100%" }}
+  min={0}
+  value={text}
+  onChange={(val) => handleItemChange(record.key, "amount", val)}
+  {...amountInputProps}
+/>
       ),
     },
     {
@@ -511,7 +566,7 @@ export function AddExpenseModal({
           <Col span={8}>
             <Form.Item label="Application Amount">
               <Input
-                value={totalAmount > 0 ? `${items[0]?.currency || 'TZS'} ${totalAmount.toLocaleString()}` : '-'}
+                value={totalAmount > 0 ? `${items[0]?.currency || 'TZS'} ${totalAmount.toLocaleString("en-US")}` : '-'}
                 readOnly
                 style={{ fontWeight: 'bold' }}
               />
@@ -570,7 +625,7 @@ export function AddExpenseModal({
           scroll={{ x: 1100 }}
           footer={() => (
             <div style={{ textAlign: 'right', fontWeight: 'bold', fontSize: 16 }}>
-              Total: {items[0]?.currency || 'TZS'} {totalAmount > 0 ? totalAmount.toLocaleString() : '-'}
+              Total: {items[0]?.currency || 'TZS'} {totalAmount > 0 ? totalAmount.toLocaleString("en-US") : '-'}
             </div>
           )}
         />
@@ -620,7 +675,48 @@ export function AddExpenseModal({
             {
               key: '2',
               label: 'Attachment Manage',
-              children: <div style={{ padding: 20, textAlign: 'center' }}>Attachment upload functionality coming soon.</div>,
+              children: (
+                <div style={{ padding: 20 }}>
+                  <Form.Item label="Attach Receipt/Document">
+                    <Upload
+                      fileList={fileList}
+                      onRemove={(file) => {
+                        const index = fileList.indexOf(file);
+                        const newFileList = fileList.slice();
+                        newFileList.splice(index, 1);
+                        setFileList(newFileList);
+                        // Clean up blob URL
+                        if (file.url && file.url.startsWith('blob:')) {
+                           URL.revokeObjectURL(file.url);
+                        }
+                      }}
+                      beforeUpload={(file) => {
+                        // Create preview URL immediately so it looks clickable
+                        const fileWithUrl = file as UploadFile;
+                        fileWithUrl.url = URL.createObjectURL(file);
+                        fileWithUrl.preview = fileWithUrl.url;
+                        
+                        setFileList(prev => [...prev, fileWithUrl]); 
+                        return false; 
+                      }}
+                      onPreview={async (file) => {
+                        const previewUrl = file.url || file.preview;
+                        if (previewUrl) {
+                           window.open(previewUrl, '_blank');
+                        }
+                      }}
+                    >
+                      <Button icon={<UploadOutlined />}>Select File</Button>
+                    </Upload>
+                    <div style={{ marginTop: 8, color: '#888' }}>
+                      Supported formats: PDF, Images. Max 3MB.
+                      (The selected files will be attached to all expense items in this application)
+                      <br />
+                      Click the file name to preview.
+                    </div>
+                  </Form.Item>
+                </div>
+              ),
             },
           ]}
         />

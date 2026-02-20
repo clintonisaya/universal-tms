@@ -41,8 +41,8 @@ def get_my_tasks(
     Aggregate all pending tasks for the current user based on their role.
 
     - Manager/Admin: Expenses with status 'Pending Manager'
-    - Finance: Expenses with status 'Pending Finance'
-    - Ops: Expenses they created with status 'Returned' or 'Rejected'
+    - Finance: Expenses with status 'Pending Finance' + 'Returned from finance level' (tracking) + own returned expenses (correction)
+    - Ops/Finance: Their own expenses with status 'Returned' (for correction/resubmission)
     """
     tasks: list[dict[str, Any]] = []
 
@@ -88,10 +88,30 @@ def get_my_tasks(
                 # Skip expenses for closed trips
                 if is_expense_trip_closed(exp):
                     continue
-                tasks.append(_expense_to_task(exp, "payment_processing", ["pay"]))
+                tasks.append(_expense_to_task(exp, "payment_processing", ["pay", "return"]))
 
-    if role in (UserRole.ops, UserRole.admin):
-        # Ops sees only returned expenses they created (rejected expenses are final, no action needed)
+    if role == UserRole.finance:
+        # Finance tracks returned expenses that previously reached finance level.
+        # approved_by_id is only set when manager approves (pending_manager → pending_finance),
+        # so approved_by_id IS NOT NULL means the expense was returned BY finance, not by manager.
+        returned_query = (
+            select(ExpenseRequest)
+            .where(ExpenseRequest.status == ExpenseStatus.returned)
+            .where(ExpenseRequest.approved_by_id.isnot(None))
+            .options(
+                selectinload(ExpenseRequest.created_by),
+                selectinload(ExpenseRequest.trip),
+            )
+        )
+        if not task_type or task_type == "payment_processing":
+            returned_expenses = session.exec(returned_query).all()
+            for exp in returned_expenses:
+                if is_expense_trip_closed(exp):
+                    continue
+                tasks.append(_expense_to_task(exp, "payment_processing", []))
+
+    if role in (UserRole.ops, UserRole.finance, UserRole.admin):
+        # Ops/Finance see returned expenses they created so they can correct and resubmit
         query = (
             select(ExpenseRequest)
             .where(
@@ -111,7 +131,7 @@ def get_my_tasks(
                 # Skip expenses for closed trips
                 if is_expense_trip_closed(exp):
                     continue
-                tasks.append(_expense_to_task(exp, "expense_correction", ["edit"]))
+                tasks.append(_expense_to_task(exp, "expense_correction", ["submit", "reject"]))
 
     # Apply task_type filter (already handled above via skip logic)
     if task_type:

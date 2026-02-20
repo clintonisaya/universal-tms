@@ -1,0 +1,925 @@
+Okay everyone, I've walked through every screen of this TMS and I have a lot to 
+  say. Let me start with the biggest wins first — the login page is gorgeous, the 
+  dark sidebar with gold accents is distinctive, and the permission-based menu    
+  filtering is excellent. The user knows exactly what they can access. Now let me 
+  paint the picture of where users are likely struggling:
+
+  1. Zero Breadcrumbs Anywhere — There are 30+ routes in this app and NOT A SINGLE   breadcrumb. When a driver clicks into /ops/trips/[id], they have NO
+  navigational context. They're deep in a nested page with only a Back button.    
+  This is navigation 101.
+
+  2. Mobile Is Basically Broken — I found only 5 files with any responsive        
+  patterns, and those are all print layouts. The main sidebar is a sticky 260px   
+  Sider with no mobile breakpoint — on a phone, it eats most of the screen. The   
+  tables have no horizontal scroll indicators, no card-view fallback for small    
+  screens. If any field staff (drivers, ops at the border) use this on mobile,    
+  they're pinching and zooming.
+
+  3. No Consistent Empty States — Some pages use Ant Design's Empty component,    
+  others just show a blank table. The dashboard has an empty state for
+  limited-access roles, but the fleet pages don't tell you why the table is empty 
+  — is it loading? Is there no data? Is the filter wrong?
+
+  4. Accessibility is Nearly Absent — Only 4 files have any ARIA attributes. No   
+  keyboard navigation for the sidebar toggle (it uses onClick with no onKeyDown). 
+  The notification bell, profile dropdown — none have proper aria-labels. Screen  
+  reader users are locked out.
+
+  ---
+  :clipboard: John (PM):
+
+  WHY does this system have both /manager/approvals AND /dashboard/tasks? Let me  
+  tell you what I see as a product manager — workflow fragmentation. Here's what I   mean:
+
+  5. The Approval Flow is Split Across 3 Places — A manager sees pending items on 
+  the Dashboard card, then has /manager/approvals for expense approvals, AND      
+  /dashboard/tasks as a todo list. That's THREE places to look for "what do I need   to do right now?" This violates the core UX principle: one place, one action.  
+
+  6. The "Manager" Menu is Hidden — I don't see a "Manager" section in the sidebar   navigation! The allMenuItems in DashboardLayout.tsx has Fleet, Operations,     
+  Reports, Settings... but where's Manager? How do managers even navigate to      
+  /manager/approvals and /manager/payments? Are they relying on the dashboard card   click? That's a discovery problem.
+
+  7. No Onboarding or Help — This is a complex logistics TMS. New users get       
+  dropped into a dashboard with 6+ KPI cards, charts, and tables. There's no      
+  tooltips explaining what "Financial Pulse" means, no guided tour, no contextual 
+  help. The Profile menu item in the user dropdown doesn't even do anything — it's   a dead link.
+
+  8. Settings Sprawl — There are 8 settings sub-pages (Users, Clients, Exchange   
+  Rates, Office Expense Types, Trip Expense Types, Locations, Cargo Types, Vehicle   Statuses). That's a LOT of cognitive load in one menu group. They should be    
+  organized into logical categories in the menu itself.
+
+  ---
+  :building_construction: Winston (Architect):
+
+  From a structural perspective, here's what I see that affects UX:
+
+  9. No Global Error Boundary — I found error boundary patterns in only 6 files,  
+  and most are just Suspense fallbacks. There's no global error.tsx at the layout 
+  level. If any page throws a runtime error, the user sees a white screen or a    
+  Next.js default error — not a branded, helpful error page with a "Go back to    
+  Dashboard" button.
+
+  10. Inconsistent Data Fetching Patterns — Some pages use TanStack Query hooks   
+  (useDashboardStats, useRecentTrips), while others (like the approvals and tasks 
+  pages) do raw useEffect + fetch. This creates inconsistent loading states, no   
+  automatic caching, and different error handling. The user experience differs    
+  between pages — some have stale-while-revalidate (instant feel), others show    
+  full loading spinners every time.
+
+  11. The Notification System Lacks Persistence Sync — useNotifications stores    
+  notifications in localStorage per user ID. But there's no backend persistence.  
+  If a user clears their browser data or switches devices, all notification       
+  history is gone. The NotificationCenter component reads from local state only.  
+
+  12. No Optimistic Updates on CRUD Operations — The settings pages (Trucks,      
+  Drivers, Locations, etc.) all use message.success after mutations, but they call   fetchData() to reload the entire list. There's no optimistic UI — the user     
+  clicks "Save", sees a spinner, waits for the API call, then the whole table     
+  reloads. For simple additions, this feels sluggish.
+
+  ---
+  :art: Sally (UX Designer):
+
+  Building on what John and Winston said, let me add a few more UX-specific       
+  findings:
+
+  13. Delete Confirmations Are Inconsistent — I found Popconfirm and Modal.confirm   used interchangeably across 18 files. Some deletions use inline Popconfirm     
+  (good for quick actions), others use a full modal (heavier). The user never     
+  knows what to expect.
+
+  14. No Undo/Redo for Destructive Actions — When you reject an expense, delete a 
+  truck, or cancel a trip... it's gone. No "Undo" toast, no grace period. For a   
+  financial system where mistakes cost money, this is risky.
+
+  15. Tables Lack Visual Hierarchy — Every table page looks identical: a Title,   
+  maybe some filter buttons, then a massive Ant Design table. There's no visual   
+  differentiation between, say, the "active trips" urgency and "vehicle statuses" 
+  settings. The ops pages should feel more action-oriented with status indicators,   while settings should feel calmer.
+
+  16. No Dark Mode — The sidebar is dark, the content area is light. There's no   
+  dark mode toggle despite the app clearly having a dark design language already. 
+  For users working night shifts (logistics runs 24/7), this would be a real      
+  comfort feature.
+
+  ---
+  Here's a summary of all 16 findings:
+  ┌─────┬─────────────────────────────────────┬──────────┬────────────────┐       
+  │  #  │                Issue                │ Severity │      Area      │       
+  ├─────┼─────────────────────────────────────┼──────────┼────────────────┤       
+  │ 1   │ No breadcrumbs anywhere             │ Medium   │ Navigation     │       
+  ├─────┼─────────────────────────────────────┼──────────┼────────────────┤       
+  │ 2   │ No mobile/responsive support        │ High     │ Responsive     │       
+  ├─────┼─────────────────────────────────────┼──────────┼────────────────┤       
+  │ 3   │ Inconsistent empty states           │ Medium   │ Feedback       │       
+  ├─────┼─────────────────────────────────────┼──────────┼────────────────┤       
+  │ 4   │ Accessibility nearly absent         │ High     │ A11y           │       
+  ├─────┼─────────────────────────────────────┼──────────┼────────────────┤       
+  │ 5   │ Approval flow split across 3 places │ High     │ Workflow       │       
+  ├─────┼─────────────────────────────────────┼──────────┼────────────────┤       
+  │ 6   │ Manager menu items not in sidebar   │ High     │ Navigation     │       
+  ├─────┼─────────────────────────────────────┼──────────┼────────────────┤       
+  │ 7   │ No onboarding or contextual help    │ Medium   │ Onboarding     │       
+  ├─────┼─────────────────────────────────────┼──────────┼────────────────┤       
+  │ 8   │ Settings sprawl in menu             │ Low      │ Navigation     │       
+  ├─────┼─────────────────────────────────────┼──────────┼────────────────┤       
+  │ 9   │ No global error boundary            │ Medium   │ Error Handling │       
+  ├─────┼─────────────────────────────────────┼──────────┼────────────────┤       
+  │ 10  │ Inconsistent data fetching patterns │ Medium   │ Performance    │       
+  ├─────┼─────────────────────────────────────┼──────────┼────────────────┤       
+  │ 11  │ Notifications not synced to backend │ Low      │ Notifications  │       
+  ├─────┼─────────────────────────────────────┼──────────┼────────────────┤       
+  │ 12  │ No optimistic updates on CRUD       │ Low      │ Performance    │       
+  ├─────┼─────────────────────────────────────┼──────────┼────────────────┤       
+  │ 13  │ Inconsistent delete confirmations   │ Low      │ Consistency    │       
+  ├─────┼─────────────────────────────────────┼──────────┼────────────────┤       
+  │ 14  │ No undo for destructive actions     │ Medium   │ Safety         │       
+  ├─────┼─────────────────────────────────────┼──────────┼────────────────┤       
+  │ 15  │ Tables lack visual hierarchy        │ Low      │ Visual Design  │       
+  ├─────┼─────────────────────────────────────┼──────────┼────────────────┤       
+  │ 16  │ No dark mode toggle                 │ Low      │ Comfort        │       
+  └─────┴─────────────────────────────────────┴──────────┴────────────────┘       
+  Speak naturally with the agents — ask follow-ups, challenge their findings, or  
+  drill into any specific area.
+
+  [E] Exit Party Mode - End the collaborative session
+
+✻ Sautéed for 6m 16s
+
+● Agent "Explore TMS frontend pages/UX" completed
+
+● Excellent — the deep-dive audit just came back with even more findings. Let me  
+  have the agents digest this and add their deeper insights.
+
+  ---
+  :art: Sally (UX Designer):
+
+  Oh wow, the deep scan found even MORE than I initially spotted. Let me add the  
+  critical ones I missed:
+
+  17. "Profile" Menu Item is a Dead Link — The user dropdown shows "Profile" but  
+  there's NO click handler. Users click it and nothing happens. That's a
+  trust-breaker — either implement it or remove it.
+
+  18. Back Button Always Goes to Dashboard — Every page's Back button hardcodes   
+  /dashboard as the destination. If a user navigated from Trips → Trip Detail →   
+  Expenses, hitting Back takes them to Dashboard, not back to Trips. router.back()   would be the natural choice, but it's not used ANYWHERE.
+
+  19. Duplicate Payment Modals — I found THREE separate payment modal
+  implementations: ProcessPaymentModal.tsx, PaymentModal.tsx, AND an inline       
+  payment modal inside TripDetailDrawer.tsx. Three ways to do the same thing. This   is maintenance nightmare AND a UX inconsistency — the user could get different 
+  forms for the same action depending on which page they're on.
+
+  20. Auth Loading Spinner Shows on Every Navigation — Every single page re-checks   if (authLoading) return <Spin> even though ProtectedLayout already guards      
+  authentication. This creates a flash-of-spinner on every page navigation. It's  
+  like asking someone for their ID at every door inside a building after they     
+  already showed it at the entrance.
+
+  ---
+  :clipboard: John (PM):
+
+  The missing Manager/Finance menu items are a bigger deal than anyone's
+  acknowledging. Let me be blunt:
+
+  21. Manager & Finance Routes Are Orphaned — /manager/approvals,
+  /manager/payments, /finance/vouchers — these routes EXIST with real pages, but  
+  they're NOT in the sidebar menu. The only way users discover them is by clicking   the "Pending Approvals" dashboard card. If you miss that card, you'd never know   these pages exist. This is a critical discoverability failure for two key      
+  roles.
+
+  22. Fragile Expense Filtering — Trip expenses vs office expenses are
+  distinguished by checking if expense_number.startsWith("EX"). The code even has 
+  a comment about "both old EXP- and new EX- formats." If the numbering format    
+  ever changes, the entire expense separation silently breaks. This should be a   
+  server-side expense_category field, not a client-side string hack.
+
+  23. No "Forgot Password" Flow — The login page has no "Forgot Password" link.   
+  For a multi-user enterprise system, this means every password reset requires an 
+  admin. That's an operational bottleneck.
+
+  ---
+  :building_construction: Winston (Architect):
+
+  From the architecture side, here's what jumped out from the deep scan:
+
+  24. Inline Modals vs Extracted Components — No Standard — Fleet pages (Trucks,  
+  Drivers, Trailers) implement Create/Edit modals inline in the page file — 200+  
+  lines of JSX duplicated per page. Operations pages extract modals into
+  components/ files. There's no team convention here. The inline approach means   
+  every fleet page is 500+ lines and impossible to test the modal in isolation.   
+
+  25. Static message Import vs Hook Pattern — Some pages do import { message }    
+  from "antd" (static, problematic in Next.js App Router), others correctly use   
+  const { message } = App.useApp(). This mixing can cause hydration mismatches and   context issues in production.
+
+  26. No Global Error Boundary Page — Next.js App Router supports error.tsx files 
+  at any layout level. This app has NONE. A runtime error in any page component   
+  shows a raw Next.js error screen instead of a branded "Something went wrong, go 
+  back to Dashboard" page.
+
+  ---
+  :art: Sally (UX Designer):
+
+  Let me compile the complete prioritized UX improvement backlog from everything  
+  we've found:
+
+  CRITICAL (Blocking real users)
+  #: 2
+  Issue: No mobile/responsive sidebar
+  Impact: Field staff can't use the app on phones
+  ────────────────────────────────────────
+  #: 6+21
+  Issue: Manager & Finance menu items missing from sidebar
+  Impact: Key roles can't discover their pages
+  ────────────────────────────────────────
+  #: 4
+  Issue: Accessibility nearly absent
+  Impact: Legal compliance risk, excludes disabled users
+  ────────────────────────────────────────
+  #: 19
+  Issue: 3 duplicate payment modal implementations
+  Impact: Users get inconsistent payment experiences
+  ────────────────────────────────────────
+  #: 20
+  Issue: Auth loading flash on every page
+  Impact: Feels slow, unprofessional
+  HIGH (Significant UX friction)
+  #: 1
+  Issue: No breadcrumbs
+  Impact: Users get lost in deep pages
+  ────────────────────────────────────────
+  #: 5
+  Issue: Approval flow split across 3 places
+  Impact: Managers waste time checking multiple pages
+  ────────────────────────────────────────
+  #: 9+26
+  Issue: No error boundaries
+  Impact: Crashes show raw error pages
+  ────────────────────────────────────────
+  #: 10+25
+  Issue: Inconsistent data fetching & message patterns
+  Impact: Different pages feel different
+  ────────────────────────────────────────
+  #: 17
+  Issue: Dead "Profile" link
+  Impact: Breaks user trust
+  ────────────────────────────────────────
+  #: 18
+  Issue: Back button always goes to Dashboard
+  Impact: Navigation flow feels broken
+  ────────────────────────────────────────
+  #: 22
+  Issue: Fragile expense number prefix filtering
+  Impact: Silent data bugs waiting to happen
+  MEDIUM (Polish and consistency)
+  #: 3
+  Issue: Inconsistent empty states
+  Impact: Confusing when tables are empty
+  ────────────────────────────────────────
+  #: 7
+  Issue: No onboarding or help
+  Impact: Steep learning curve
+  ────────────────────────────────────────
+  #: 13
+  Issue: Mixed delete confirmation patterns
+  Impact: Unpredictable interaction
+  ────────────────────────────────────────
+  #: 14
+  Issue: No undo for destructive actions
+  Impact: Risky for financial data
+  ────────────────────────────────────────
+  #: 23
+  Issue: No forgot password flow
+  Impact: Admin bottleneck
+  ────────────────────────────────────────
+  #: 24
+  Issue: Inline vs extracted modal inconsistency
+  Impact: Developer velocity issue
+  LOW (Nice-to-have)
+  ┌─────┬─────────────────────────────────────┬────────────────────────────┐      
+  │  #  │                Issue                │           Impact           │      
+  ├─────┼─────────────────────────────────────┼────────────────────────────┤      
+  │ 8   │ Settings menu sprawl                │ Cognitive load             │      
+  ├─────┼─────────────────────────────────────┼────────────────────────────┤      
+  │ 11  │ Notifications not synced to backend │ Data loss on browser clear │      
+  ├─────┼─────────────────────────────────────┼────────────────────────────┤      
+  │ 12  │ No optimistic CRUD updates          │ Feels slower than needed   │      
+  ├─────┼─────────────────────────────────────┼────────────────────────────┤      
+  │ 15  │ Tables lack visual hierarchy        │ Everything looks the same  │      
+  ├─────┼─────────────────────────────────────┼────────────────────────────┤      
+  │ 16  │ No dark mode                        │ Night shift comfort        │      
+  └─────┴─────────────────────────────────────┴────────────────────────────┘      
+  ---
+  :clipboard: John (PM):
+
+  If Clinton asked me "what should we fix FIRST?", I'd say: add the
+  Manager/Finance items to the sidebar (item 21). That's a 5-minute code change   
+  that unblocks two entire roles. Then tackle the auth loading flash (item 20) and   the dead Profile link (item 17). Quick wins, huge perception change.
+
+  The mobile responsive work (item 2) is the biggest project but arguably the most   impactful if field staff need to use this.
+
+  ---
+  :building_construction: Winston (Architect):
+
+  I agree with John on priority. From a technical debt perspective, I'd add:      
+  consolidate the 3 payment modals into one (item 19), add error.tsx boundary     
+  files at the (authenticated) layout level (item 26), and standardize on the     
+  App.useApp() hook pattern everywhere (item 25). These are architectural hygiene 
+  that prevent bugs from compounding.
+
+  ---
+  Clinton, that's our complete team audit — 26 findings across navigation,        
+  responsive design, accessibility, workflow, consistency, and architecture. What 
+  would you like to dive deeper into, or shall we start planning fixes?
+
+  [E] Exit Party Mode - End the collaborative session
+
+✻ Crunched for 46s
+
+● Agent "Explore TMS frontend forms/tables" completed
+
+● The second deep-dive audit just landed too. Our agents have even more granular  
+  findings — let me have them weigh in on the new discoveries.
+
+  ---
+  :test_tube: Quinn (QA Engineer):
+
+  Alright, the deep scan turned up some real bugs and safety gaps that need fixing   before they bite someone:
+
+  27. Exchange Rate Delete Has NO Confirmation — Every other delete in the app    
+  uses Popconfirm. Exchange Rate delete just calls handleDelete(rate) directly.   
+  One misclick and a rate is gone. For financial data, that's a serious risk.     
+
+  28. File Upload Has No Actual Validation — The expense attachment upload says   
+  "Max 3MB" and "PDF, images only" in help text, but there's zero programmatic    
+  enforcement. No accept prop on the Upload component, no file size check in      
+  beforeUpload. Users can upload a 500MB video and it'll try to send it.
+
+  29. Row Selection Checkboxes Are Dead UI on 10+ Pages — Every table has
+  checkboxes via getStandardRowSelection, but ONLY the Users page has a
+  BulkActionBar. On Trips, Trucks, Drivers, Trailers, Waybills — the checkboxes   
+  select rows but nothing happens. That's confusing dead UI.
+
+  30. Search Placeholder Shows Raw Field Names —
+  getColumnSearchProps("plate_number") generates the placeholder "Search
+  plate_number" with the underscore. It should say "Search Plate Number". Small   
+  but looks unprofessional.
+
+  ---
+  :computer: Amelia (Developer):
+
+  deps.py:56 — the token validation fix you just made (403→401) is correct. Now   
+  let me flag code-level issues that create UX inconsistency:
+
+  31. Actions Column Flipped on Expense Pages — ops/expenses/page.tsx and
+  office-expenses/page.tsx put the Actions column as the FIRST column on the LEFT,   no fixed. Every other table puts Actions on the RIGHT with fixed: "right".     
+  Users scanning left→right expect data columns first, actions last.
+
+  32. Three "View Detail" Patterns — Trips uses <Button type="link"> on the trip  
+  number AND an EyeOutlined button (redundant). Waybills use <Button type="link"> 
+  only. Expenses use raw <a onClick={...}> with manual blue styling — not keyboard   accessible. Pick one pattern.
+
+  33. Dual Create/Edit Modals on 7 Pages — Trucks, Drivers, Trailers, Clients,    
+  Cargo Types, Vehicle Statuses, Office Expense Types — all define the same form  
+  fields TWICE in separate Create and Edit modals. Locations and Trip Expense     
+  Types already solved this with a single modal + dynamic title. Technical debt.  
+
+  34. destroyOnHidden vs forceRender Inconsistency — Most modals use
+  destroyOnHidden (clean lifecycle). Users modal uses destroyOnHidden={false} +   
+  forceRender (keeps form in DOM always). Different lifecycle behaviors =
+  different bugs.
+
+  35. No Server-Side Pagination — All tables fetch the full dataset and paginate  
+  client-side. Once a fleet company has 500+ trucks or 2000+ expense records, this   will crawl.
+
+  ---
+  :clipboard: John (PM):
+
+  Let me also call out a workflow issue the deep scan surfaced:
+
+  36. Approvals & Finance Payments Use Legacy Fetch — These two critical
+  role-specific pages (/manager/approvals, /manager/payments) use manual useState 
+  + useEffect + fetch instead of TanStack Query. That means no caching, no        
+  stale-while-revalidate, full loading spinner on every visit. The MOST
+  time-sensitive pages for managers and finance have the WORST data loading       
+  experience.
+
+  ---
+  :art: Sally (UX Designer):
+
+  Let me update the full consolidated list. We're now at 36 findings. Here's the  
+  final breakdown by priority:
+
+  CRITICAL (Fix Now)
+  #: 2
+  Finding: No mobile/responsive sidebar
+  Why Critical: Field staff locked out on phones
+  ────────────────────────────────────────
+  #: 6/21
+  Finding: Manager & Finance routes not in sidebar
+  Why Critical: Two roles can't discover their pages
+  ────────────────────────────────────────
+  #: 27
+  Finding: Exchange Rate delete has no confirmation
+  Why Critical: Financial data loss risk
+  ────────────────────────────────────────
+  #: 28
+  Finding: File upload has no size/type validation
+  Why Critical: Server abuse risk, bad UX
+  ────────────────────────────────────────
+  #: 29
+  Finding: Row selection checkboxes do nothing on 10+ pages
+  Why Critical: Dead UI confuses users
+  ────────────────────────────────────────
+  #: 31
+  Finding: Actions column flipped on expense pages
+  Why Critical: Breaks muscle memory
+  HIGH (Fix This Sprint)
+  #: 1
+  Finding: No breadcrumbs
+  Why High: Users lost in deep pages
+  ────────────────────────────────────────
+  #: 4
+  Finding: Accessibility absent (ARIA, keyboard nav)
+  Why High: Legal/compliance risk
+  ────────────────────────────────────────
+  #: 5
+  Finding: Approval flow split across 3 places
+  Why High: Manager workflow friction
+  ────────────────────────────────────────
+  #: 9/26
+  Finding: No global error boundary
+  Why High: Crashes show raw errors
+  ────────────────────────────────────────
+  #: 17
+  Finding: Dead "Profile" menu item
+  Why High: Broken trust
+  ────────────────────────────────────────
+  #: 18
+  Finding: Back button always → Dashboard
+  Why High: Breaks navigation flow
+  ────────────────────────────────────────
+  #: 19
+  Finding: 3 duplicate payment modal implementations
+  Why High: Inconsistent payment UX
+  ────────────────────────────────────────
+  #: 20
+  Finding: Auth loading flash on every page
+  Why High: Feels slow
+  ────────────────────────────────────────
+  #: 25
+  Finding: Static message import on 7 pages
+  Why High: Hydration bugs in production
+  ────────────────────────────────────────
+  #: 30
+  Finding: Search placeholder shows raw field names
+  Why High: Looks unprofessional
+  ────────────────────────────────────────
+  #: 32
+  Finding: Three different "view detail" patterns
+  Why High: Inconsistent interaction
+  ────────────────────────────────────────
+  #: 36
+  Finding: Approvals/Payments use legacy fetch
+  Why High: Slowest pages for busiest roles
+  MEDIUM (Next Sprint)
+  #: 3
+  Finding: Inconsistent empty states
+  Impact: No call-to-action when empty
+  ────────────────────────────────────────
+  #: 7
+  Finding: No onboarding or help
+  Impact: Steep learning curve
+  ────────────────────────────────────────
+  #: 10
+  Finding: Inconsistent data fetching patterns
+  Impact: Different feel per page
+  ────────────────────────────────────────
+  #: 13
+  Finding: Mixed delete confirmation patterns
+  Impact: Unpredictable
+  ────────────────────────────────────────
+  #: 14
+  Finding: No undo for destructive actions
+  Impact: Financial risk
+  ────────────────────────────────────────
+  #: 22
+  Finding: Fragile expense number prefix filtering
+  Impact: Silent bugs
+  ────────────────────────────────────────
+  #: 23
+  Finding: No forgot password flow
+  Impact: Admin bottleneck
+  ────────────────────────────────────────
+  #: 33
+  Finding: Dual Create/Edit modals on 7 pages
+  Impact: Maintenance debt
+  ────────────────────────────────────────
+  #: 34
+  Finding: destroyOnHidden/forceRender inconsistency
+  Impact: Lifecycle bugs
+  ────────────────────────────────────────
+  #: 35
+  Finding: No server-side pagination
+  Impact: Scalability wall
+  LOW (Backlog)
+  ┌─────┬─────────────────────────────────────┬───────────────────────┐
+  │  #  │               Finding               │        Impact         │
+  ├─────┼─────────────────────────────────────┼───────────────────────┤
+  │ 8   │ Settings menu sprawl                │ Cognitive load        │
+  ├─────┼─────────────────────────────────────┼───────────────────────┤
+  │ 11  │ Notifications not synced to backend │ Data loss on clear    │
+  ├─────┼─────────────────────────────────────┼───────────────────────┤
+  │ 12  │ No optimistic CRUD updates          │ Feels slower          │
+  ├─────┼─────────────────────────────────────┼───────────────────────┤
+  │ 15  │ Tables lack visual hierarchy        │ Everything looks same │
+  ├─────┼─────────────────────────────────────┼───────────────────────┤
+  │ 16  │ No dark mode toggle                 │ Night shift comfort   │
+  ├─────┼─────────────────────────────────────┼───────────────────────┤
+  │ 24  │ Inline vs extracted modal pattern   │ Dev velocity          │
+  └─────┴─────────────────────────────────────┴───────────────────────┘
+  ---
+  :building_construction: Winston (Architect):
+
+  If I were building a sprint plan from this, I'd group the quick wins together — 
+  items 17, 25, 27, 29, 30, 31 can all be knocked out in a single day. They're    
+  each 5-30 minute fixes. Then I'd tackle items 6/21 (add Manager/Finance to      
+  sidebar) and item 20 (remove redundant auth spinners) as a second batch.        
+
+  The bigger architectural work — mobile responsive (2), server-side pagination   
+  (35), consolidated payment modals (19), breadcrumbs (1), error boundaries (9/26)   — those are multi-day efforts that should be planned as stories.
+
+  ---
+  Clinton, that's our complete 36-finding UX audit from the full BMAD team. Want  
+  to:
+  - Drill deeper into any specific finding?
+  - Have us start planning fixes for a specific priority tier?
+  - Discuss the quickest wins we can implement right now?
+
+  [E] Exit Party Mode - End the collaborative session
+
+✻ Baked for 54s
+
+❯ sprint plan this                                                                
+                    
+● :clipboard: John (PM):                                                                                                                                            
+  Alright, let me take point on this. Sprint planning is my bread and butter. But 
+  first — how long are your sprints, Clinton? I'll assume 2-week sprints based on 
+  standard practice. Let me size these findings and organize them.                                                                                                  
+  ---                                                                             
+  :runner: Bob (Scrum Master):
+
+  Good call John. Let me help with the estimation. I'll bucket everything by      
+  effort and dependency, then we'll slot them into sprints. I see roughly 4       
+  sprints of work here if we're smart about batching.
+
+  ---
+  :computer: Amelia (Developer):
+
+  Let me tag the actual effort on each. I know this codebase.
+
+  ---
+  SPRINT PLAN: UX Improvement Initiative
+
+  Sprint 1: "Quick Wins & Safety Fixes" (Week 1-2)
+
+  Goal: Fix all the embarrassing stuff — dead UI, missing confirmations, broken   
+  links, and code hygiene. High impact, low effort.
+  Story: 1.1 Remove dead row selection checkboxes
+  Findings: #29
+  Points: 2
+  Description: Remove getStandardRowSelection from pages that have no bulk actions
+    (Trips, Trucks, Drivers, Trailers, Waybills, Maintenance, Cargo
+    Types, Vehicle Statuses, Locations, Trip Expense Types). Keep it on
+    Users (has BulkActionBar) and Approvals (has inline bulk actions).
+  ────────────────────────────────────────
+  Story: 1.2 Add Exchange Rate delete confirmation
+  Findings: #27
+  Points: 1
+  Description: Add Popconfirm to the Exchange Rate delete button — same pattern as
+    every other page.
+  ────────────────────────────────────────
+  Story: 1.3 Fix dead "Profile" menu item
+  Findings: #17
+  Points: 1
+  Description: Either remove the Profile menu item or link it to a basic profile  
+    page showing user info. Removing is the 1-point option.
+  ────────────────────────────────────────
+  Story: 1.4 Add Manager & Finance to sidebar
+  Findings: #6, #21
+  Points: 2
+  Description: Add "Manager" menu group with Approvals + Payments sub-items (gated
+    by expenses:approve permission). Add Finance Vouchers under a
+    Finance group or existing Operations.
+  ────────────────────────────────────────
+  Story: 1.5 Fix Actions column position on expense pages
+  Findings: #31
+  Points: 1
+  Description: Move Actions column to the RIGHT with fixed: "right" on
+    /ops/expenses and /office-expenses pages to match all other tables.
+  ────────────────────────────────────────
+  Story: 1.6 Fix search placeholder humanization
+  Findings: #30
+  Points: 1
+  Description: Update getColumnSearchProps to convert dataIndex from snake_case to
+    Title Case in the placeholder. One-line utility change.
+  ────────────────────────────────────────
+  Story: 1.7 Switch 7 pages to App.useApp() message pattern
+  Findings: #25
+  Points: 2
+  Description: Replace import { message } from "antd" with const { message } =    
+    App.useApp() on Drivers, Trailers, Clients, Cargo Types, Vehicle
+    Statuses, Exchange Rates, Trip Expense Types. Wrap each page in
+    <App> if not already wrapped.
+  ────────────────────────────────────────
+  Story: 1.8 Remove redundant auth loading spinners
+  Findings: #20
+  Points: 2
+  Description: Remove the per-page if (authLoading) return <Spin> guard since     
+    ProtectedLayout already handles this. ~15 pages affected.
+  ────────────────────────────────────────
+  Story: 1.9 Add file upload validation
+  Findings: #28
+  Points: 2
+  Description: Add accept=".pdf,.png,.jpg,.jpeg" prop and file size check
+    (file.size <= 3 * 1024 * 1024) in beforeUpload on AddExpenseModal.
+    Show message.error if rejected.
+  ────────────────────────────────────────
+  Story: 1.10 Standardize "view detail" pattern
+  Findings: #32
+  Points: 2
+  Description: Pick <Button type="link"> on the identifier column as the standard.
+    Remove redundant EyeOutlined on Trips page. Replace raw <a onClick>
+    on expense pages with <Button type="link">.
+  Sprint 1 Total: ~16 points | Capacity: comfortable for 1 developer
+
+  ---
+  :art: Sally (UX Designer):
+
+  Sprint 1 is all code-level fixes. No design work needed from me. But Sprint 2 is   where I come in — that's the navigation and error handling overhaul.
+
+  ---
+  Sprint 2: "Navigation & Error Handling" (Week 3-4)
+
+  Goal: Users can always find where they are, get back to where they were, and see   helpful errors instead of white screens.
+  Story: 2.1 Add breadcrumb component
+  Findings: #1
+  Points: 5
+  Description: Create a <Breadcrumb> component in the DashboardLayout that        
+    auto-generates breadcrumbs from the current pathname. Map routes to
+    human-readable labels. Render below the header bar.
+  ────────────────────────────────────────
+  Story: 2.2 Fix Back button navigation
+  Findings: #18
+  Points: 3
+  Description: Replace all router.push("/dashboard") back buttons with
+    router.back(). Add a fallback: if window.history.length <= 1, fall
+    back to /dashboard. Update all ~20 pages.
+  ────────────────────────────────────────
+  Story: 2.3 Add global error boundary
+  Findings: #9, #26
+  Points: 3
+  Description: Create error.tsx at app/(authenticated)/error.tsx with a branded   
+    error page: EDUPO logo, "Something went wrong" message, "Go to
+    Dashboard" button, and a "Try Again" button that calls reset().
+  ────────────────────────────────────────
+  Story: 2.4 Add custom empty states to tables
+  Findings: #3
+  Points: 3
+  Description: Create a reusable <EmptyState icon action actionText> component.   
+  Add
+     contextual empty states to the top 5 most-used tables: Trips ("No
+    trips yet. Create your first trip."), Trucks, Drivers, Expenses,
+    Waybills.
+  ────────────────────────────────────────
+  Story: 2.5 Unify approval workflow entry points
+  Findings: #5
+  Points: 3
+  Description: Add a "My Tasks" top-level sidebar item (below Dashboard) that     
+  links
+     to /dashboard/tasks. Make the Dashboard "Pending Approvals" card
+    click also go to /dashboard/tasks. Document the single workflow
+    entry point.
+  ────────────────────────────────────────
+  Story: 2.6 Migrate Approvals & Payments to TanStack Query
+  Findings: #36
+  Points: 3
+  Description: Replace manual useState + useEffect + fetch in /manager/approvals  
+    and /manager/payments with proper useQuery/useMutation hooks. Add to
+     useApi.ts.
+  Sprint 2 Total: ~20 points | Capacity: 1 developer + UX review on 2.1, 2.4      
+
+  ---
+  :building_construction: Winston (Architect):
+
+  Sprint 3 is where we tackle the structural debt — consolidating duplicate code  
+  and fixing the architectural inconsistencies.
+
+  ---
+  Sprint 3: "Consolidation & Consistency" (Week 5-6)
+
+  Goal: Eliminate code duplication, standardize patterns, fix the fragile expense 
+  filtering.
+  Story: 3.1 Consolidate 3 payment modals into 1
+  Findings: #19
+  Points: 5
+  Description: Keep ProcessPaymentModal.tsx as the single source of truth. Remove 
+    PaymentModal.tsx (legacy). Replace inline payment modal in
+    TripDetailDrawer.tsx with <ProcessPaymentModal>. Ensure consistent
+    fields: method, reference, date, bank details for transfer.
+  ────────────────────────────────────────
+  Story: 3.2 Merge dual Create/Edit modals
+  Findings: #33
+  Points: 5
+  Description: Refactor Trucks, Drivers, Trailers, Clients, Cargo Types, Vehicle  
+    Statuses, Office Expense Types to use a single modal with dynamic
+    title={editingItem ? "Edit..." : "Add..."} pattern (like Locations
+    page already does). Extract into component files where inline.
+  ────────────────────────────────────────
+  Story: 3.3 Standardize delete confirmation pattern
+  Findings: #13
+  Points: 2
+  Description: Audit all delete actions. Ensure all use Popconfirm with the entity
+    identifier in the description. Document the pattern.
+  ────────────────────────────────────────
+  Story: 3.4 Fix expense filtering to use server-side field
+  Findings: #22
+  Points: 3
+  Description: Add expense_scope field (or use existing category) to the API      
+    response. Filter by field value instead of
+    expense_number.startsWith("EX"). Update frontend to use the new
+    field.
+  ────────────────────────────────────────
+  Story: 3.5 Standardize modal lifecycle
+  Findings: #34
+  Points: 2
+  Description: Audit all modals. Standardize on destroyOnHidden for all CRUD      
+    modals. Fix Users modal to not need forceRender. Use
+    form.setFieldsValue() in the modal's afterOpenChange callback
+    instead.
+  ────────────────────────────────────────
+  Story: 3.6 Add Popconfirm consistency & undo toast
+  Findings: #14
+  Points: 3
+  Description: For high-risk actions (Reject expense, Cancel trip, Delete driver),
+    add a 5-second "Undo" toast using message.open({ content: "Deleted.
+    Undo?", duration: 5, onClick: undoHandler }). Start with expense
+    rejection only.
+  Sprint 3 Total: ~20 points | Capacity: 1-2 developers
+
+  ---
+  :art: Sally (UX Designer):
+
+  Sprint 4 is the big one — mobile responsive and accessibility. These are the    
+  most impactful for real-world usage but require the most design thinking.       
+
+  ---
+  Sprint 4: "Responsive & Accessibility" (Week 7-8)
+
+  Goal: Make the app usable on mobile devices and accessible to all users.        
+  Story: 4.1 Mobile-responsive sidebar
+  Findings: #2
+  Points: 8
+  Description: Use Ant Design's Grid.useBreakpoint(). Below md breakpoint: sidebar
+    becomes a Drawer (hamburger menu icon in header). Collapse sidebar
+    automatically. Add <meta name="viewport"> if missing. Test on 375px
+    width.
+  ────────────────────────────────────────
+  Story: 4.2 Responsive table fallback
+  Findings: #2
+  Points: 5
+  Description: For screens below sm: add scroll={{ x: true }} to all tables that  
+    don't have it. Add horizontal scroll indicator. For the 3 most-used
+    tables (Trips, Expenses, Tracking), consider a card-view mode toggle
+     for mobile.
+  ────────────────────────────────────────
+  Story: 4.3 Add ARIA labels to interactive elements
+  Findings: #4
+  Points: 3
+  Description: Add aria-label to all icon-only buttons (delete, edit, view,       
+    refresh, back). Add aria-label to sidebar toggle. Add role="button"
+    and tabIndex={0} + onKeyDown to custom interactive elements
+    (notification items, sidebar toggle div).
+  ────────────────────────────────────────
+  Story: 4.4 Keyboard navigation for NotificationCenter
+  Findings: #4
+  Points: 3
+  Description: Replace custom notification dropdown div elements with proper      
+    role="listbox" / role="option" pattern. Add arrow key navigation.
+    Add Escape to close.
+  ────────────────────────────────────────
+  Story: 4.5 Add skip-to-content link
+  Findings: #4
+  Points: 1
+  Description: Add a visually-hidden "Skip to main content" link as the first     
+    focusable element in DashboardLayout. Shows on focus (keyboard
+    users).
+  ────────────────────────────────────────
+  Story: 4.6 Color-blind safe status indicators
+  Findings: #4
+  Points: 2
+  Description: Add icons alongside color-coded status tags (checkmark for active, 
+  X
+     for inactive, clock for pending). Don't rely on color alone.
+  Sprint 4 Total: ~22 points | Capacity: 1 developer + UX designer collaboration  
+
+  ---
+  Backlog (Future Sprints)
+  Story: Server-side pagination
+  Findings: #35
+  Points: 8
+  Description: Implement cursor/offset pagination in the API. Update frontend     
+    tables to fetch per-page. Start with Expenses (highest volume).
+  ────────────────────────────────────────
+  Story: Dark mode toggle
+  Findings: #16
+  Points: 5
+  Description: Add theme toggle in header. Use Ant Design's ConfigProvider with   
+    algorithm: theme.darkAlgorithm. Persist preference in localStorage.
+  ────────────────────────────────────────
+  Story: Forgot password flow
+  Findings: #23
+  Points: 5
+  Description: Add email-based password reset. Backend: reset token endpoint +    
+    email send. Frontend: "Forgot Password?" link on login → email form
+    → reset form.
+  ────────────────────────────────────────
+  Story: Onboarding/help system
+  Findings: #7
+  Points: 8
+  Description: Add a first-login guided tour using a library like react-joyride.  
+    Highlight key areas: sidebar, dashboard cards, tasks. Add contextual
+     Tooltip on chart titles.
+  ────────────────────────────────────────
+  Story: Settings menu reorganization
+  Findings: #8
+  Points: 3
+  Description: Group settings into "Transport" (Locations, Cargo, Vehicle
+  Statuses)
+     and "Finance" (Exchange Rates, Expense Types) sub-groups. Already
+    partially done.
+  ────────────────────────────────────────
+  Story: Backend notification sync
+  Findings: #11
+  Points: 5
+  Description: Store notifications in the database per user. Add API endpoints for
+    fetch/mark-read/clear. Replace localStorage with API calls.
+  ────────────────────────────────────────
+  Story: Optimistic CRUD updates
+  Findings: #12
+  Points: 5
+  Description: Use TanStack Query's onMutate for optimistic add/edit/delete on    
+    settings pages. Rollback on error.
+  ────────────────────────────────────────
+  Story: Table visual hierarchy
+  Findings: #15
+  Points: 3
+  Description: Add status-colored left border to Trips and Expenses tables. Use   
+    subtle row background for "urgent" items.
+  ────────────────────────────────────────
+  Story: Profile page
+  Findings: #17 (extended)
+  Points: 3
+  Description: Build a /profile page: user info, password change form,
+  notification
+     preferences.
+  ---
+  :runner: Bob (Scrum Master):
+
+  Here's the summary view:
+  ┌──────────┬─────────────────────┬────────────┬─────────┬──────────┐
+  │  Sprint  │        Theme        │  Stories   │ Points  │ Duration │
+  ├──────────┼─────────────────────┼────────────┼─────────┼──────────┤
+  │ Sprint 1 │ Quick Wins & Safety │ 10 stories │ ~16 pts │ Week 1-2 │
+  ├──────────┼─────────────────────┼────────────┼─────────┼──────────┤
+  │ Sprint 2 │ Navigation & Errors │ 6 stories  │ ~20 pts │ Week 3-4 │
+  ├──────────┼─────────────────────┼────────────┼─────────┼──────────┤
+  │ Sprint 3 │ Consolidation       │ 6 stories  │ ~20 pts │ Week 5-6 │
+  ├──────────┼─────────────────────┼────────────┼─────────┼──────────┤
+  │ Sprint 4 │ Responsive & A11y   │ 6 stories  │ ~22 pts │ Week 7-8 │
+  ├──────────┼─────────────────────┼────────────┼─────────┼──────────┤
+  │ Backlog  │ Future work         │ 9 stories  │ ~45 pts │ TBD      │
+  └──────────┴─────────────────────┴────────────┴─────────┴──────────┘
+  Total initiative: ~78 points across 4 sprints + 45 points backlog
+
+  Sprint 1 is deliberately light (16 pts) because every item is a quick surgical  
+  fix. Sprint 4 is heaviest because responsive and accessibility work requires    
+  more testing.
+
+  ---
+  :clipboard: John (PM):
+
+  One last thing — the single most impactful change per sprint:
+
+  - Sprint 1: Story 1.4 (Add Manager/Finance to sidebar) — unlocks 2 entire roles 
+  - Sprint 2: Story 2.1 (Breadcrumbs) — transforms navigation across the whole app  - Sprint 3: Story 3.1 (Consolidate payment modals) — fixes the most visible     
+  inconsistency
+  - Sprint 4: Story 4.1 (Mobile sidebar) — opens the app to field staff on phones 
+
+  Clinton, want us to start writing the actual user stories for Sprint 1, or do   
+  you want to adjust priorities first?
+
+  [E] Exit Party Mode - End the collaborative session
+
+✻ Baked for 1m 25s
+
+──────────────────────────────────────────────────────────────────────────────────❯  
+──────────────────────────────────────────────────────────────────────────────────  ⏵⏵ accept edits on (shift+tab to cycle)                  Now using extra usage  
+                                                                                  

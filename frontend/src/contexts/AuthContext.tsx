@@ -16,6 +16,7 @@ export interface User {
   full_name: string | null;
   is_superuser: boolean;
   is_active: boolean;
+  permissions: string[];
 }
 
 interface AuthContextType {
@@ -27,8 +28,6 @@ interface AuthContextType {
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
-
-const PUBLIC_PATHS = ["/login"];
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -43,7 +42,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     try {
       const response = await fetch("/api/v1/login/test-token", {
-        method: "POST",
+        method: "GET",
         credentials: "include",
         signal: controller.signal,
       });
@@ -100,26 +99,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
     } finally {
       setUser(null);
+      // Clear the "was authenticated" flag so next visit is treated as first visit
+      if (typeof window !== "undefined") {
+        sessionStorage.removeItem("edupo_was_authenticated");
+      }
       router.push("/login");
     }
   };
 
+  // Initial auth check - only runs once on mount
   useEffect(() => {
     const init = async () => {
       const userData = await fetchUser();
       setUser(userData);
       setLoading(false);
-
-      // Redirect logic
-      const isPublicPath = PUBLIC_PATHS.includes(pathname);
-      if (!userData && !isPublicPath) {
-        router.push("/login");
-      } else if (userData && pathname === "/login") {
-        router.push("/dashboard");
-      }
     };
     init();
-  }, [pathname, router]);
+  }, []);
+
+  // Handle redirect from login page when already logged in
+  // Note: Redirect TO login for unauthenticated users is handled by ProtectedLayout
+  useEffect(() => {
+    if (loading) return; // Wait for auth check to complete
+
+    // Only redirect authenticated users away from login page
+    if (user && pathname === "/login") {
+      router.push("/dashboard");
+    }
+  }, [user, loading, pathname, router]);
 
   return (
     <AuthContext.Provider value={{ user, loading, login, logout, refreshUser }}>

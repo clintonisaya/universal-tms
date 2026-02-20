@@ -18,30 +18,35 @@ depends_on = None
 
 
 def upgrade():
-    # Create ExpenseStatus enum
+    # Create ExpenseStatus enum if it doesn't exist
     op.execute("""
-        CREATE TYPE expensestatus AS ENUM (
-            'pending_manager', 'pending_finance', 'paid', 'rejected', 'returned'
-        )
+        DO $$ BEGIN
+            CREATE TYPE expensestatus AS ENUM (
+                'pending_manager', 'pending_finance', 'paid', 'rejected', 'returned'
+            );
+        EXCEPTION
+            WHEN duplicate_object THEN null;
+        END $$;
     """)
 
-    # Create ExpenseCategory enum
+    # Create ExpenseCategory enum if it doesn't exist
     op.execute("""
-        CREATE TYPE expensecategory AS ENUM (
-            'fuel', 'allowance', 'maintenance', 'office', 'border', 'other'
-        )
+        DO $$ BEGIN
+            CREATE TYPE expensecategory AS ENUM (
+                'fuel', 'allowance', 'maintenance', 'office', 'border', 'other'
+            );
+        EXCEPTION
+            WHEN duplicate_object THEN null;
+        END $$;
     """)
 
-    # Create expense_request table
-    expensestatus_enum = sa.Enum('pending_manager', 'pending_finance', 'paid', 'rejected', 'returned', name='expensestatus', create_type=False)
-    expensecategory_enum = sa.Enum('fuel', 'allowance', 'maintenance', 'office', 'border', 'other', name='expensecategory', create_type=False)
-
+    # Create expense_request table with VARCHAR columns first (avoids SQLAlchemy ENUM auto-creation)
     op.create_table('expense_request',
         sa.Column('trip_id', sa.Uuid(), nullable=True),
         sa.Column('amount', sa.Float(), nullable=False),
-        sa.Column('category', expensecategory_enum, nullable=False),
+        sa.Column('category', sa.String(50), nullable=False),
         sa.Column('description', sqlmodel.sql.sqltypes.AutoString(length=500), nullable=False),
-        sa.Column('status', expensestatus_enum, nullable=False),
+        sa.Column('status', sa.String(50), nullable=False),
         sa.Column('id', sa.Uuid(), nullable=False),
         sa.Column('created_by_id', sa.Uuid(), nullable=False),
         sa.Column('created_at', sa.DateTime(timezone=True), nullable=True),
@@ -50,6 +55,10 @@ def upgrade():
         sa.ForeignKeyConstraint(['trip_id'], ['trip.id'], ),
         sa.PrimaryKeyConstraint('id')
     )
+
+    # Alter columns to use the existing enum types
+    op.execute("ALTER TABLE expense_request ALTER COLUMN category TYPE expensecategory USING category::expensecategory")
+    op.execute("ALTER TABLE expense_request ALTER COLUMN status TYPE expensestatus USING status::expensestatus")
     op.create_index(op.f('ix_expense_request_trip_id'), 'expense_request', ['trip_id'], unique=False)
     op.create_index(op.f('ix_expense_request_status'), 'expense_request', ['status'], unique=False)
     op.create_index(op.f('ix_expense_request_category'), 'expense_request', ['category'], unique=False)

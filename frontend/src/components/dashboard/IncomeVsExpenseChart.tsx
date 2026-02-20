@@ -88,7 +88,7 @@ export function IncomeVsExpenseChart({ data, loading }: IncomeVsExpenseChartProp
             tickFormatter={(value) => formatValue(value)}
           />
           <Tooltip
-            formatter={(value: any) => [`TZS ${Number(value).toLocaleString()}`, ""]}
+            formatter={(value: any) => [`TZS ${Number(value).toLocaleString("en-US")}`, ""]}
             contentStyle={{ borderRadius: 8 }}
           />
           <Bar dataKey="value" radius={[4, 4, 0, 0]}>
@@ -116,7 +116,7 @@ export function IncomeVsExpenseChart({ data, loading }: IncomeVsExpenseChartProp
               color: data.net_profit >= 0 ? "#52c41a" : "#ff4d4f",
             }}
           >
-            TZS {data.net_profit.toLocaleString()}
+            TZS {data.net_profit.toLocaleString("en-US")}
           </span>
         </div>
       )}

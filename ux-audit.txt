@@ -1,0 +1,55 @@
+# UX/UI Audit Report - Edupo TMS
+Date: 2026-02-13
+Auditors: Sally (UX), John (PM), Amelia (Dev)
+
+## 1. Executive Summary
+The Edupo TMS frontend is built on a solid technical foundation (Next.js 16, Ant Design 6, Tailwind 4). However, the user experience suffers from fragmented information architecture, inconsistent styling practices, and potential mobile responsiveness issues. The "generic enterprise" look of Ant Design is present but can be improved with better theming.
+
+## 2. Information Architecture (IA) & Navigation
+**Issue:** The menu structure in `DashboardLayout.tsx` is confusing and inconsistent.
+*   **Fragmented Finance:** `Office Expenses` is a top-level item, while `Trip Expenses` (labeled `Expenses`) is under `Operations`. `Exchange Rates` is under `Settings > Finance`.
+*   **Terminology:** `Operations` vs `Fleet` is ambiguous. Users might look for "Drivers" under Operations.
+*   **Visual Noise:** "Crown" icon and "EDUPO" text are generic.
+
+**Recommendations:**
+*   **Consolidate Finance:** Create a top-level `Finance` section. Move `Office Expenses`, `Trip Profitability` (Reports), and `Exchange Rates` (Settings) into it if they are daily tasks. If `Exchange Rates` is config, keep in Settings.
+*   **Rename for Clarity:** Rename `Operations > Expenses` to `Trip Expenses` to distinguish from Office Expenses.
+*   **Group Settings:** logical grouping in Settings is good, but `Office Expense Types` and `Trip Expense Types` could be grouped under `Finance Settings`.
+
+## 3. Layout & Responsiveness
+**Issue:** The `Sidebar` configuration in `DashboardLayout.tsx` lacks mobile-specific properties.
+*   `Sider` is set to `collapsible` but not `breakpoint="lg"`. On mobile devices, the sidebar might not collapse automatically or might take up too much space.
+*   No "Drawer" or overlay mode for mobile navigation.
+
+**Recommendations:**
+*   Implement `breakpoint="lg"` and `collapsedWidth="0"` for the Sider to auto-hide on mobile.
+*   Consider using a Drawer for navigation on mobile screens (< 768px).
+
+## 4. Styling & Theming
+**Issue:** Inconsistent use of Tailwind CSS and Inline Styles.
+*   `TripsPage` uses `style={{ minHeight: "100vh", background: "#f0f2f5" }}`.
+*   `DashboardLayout` uses inline styles for Header and Sider background.
+*   `globals.css` mixes generic CSS with Tailwind.
+
+**Recommendations:**
+*   **Adopt Tailwind Standard:** Replace inline styles with Tailwind utility classes (e.g., `min-h-screen`, `bg-gray-100`).
+*   **Theme Tokens:** Use Ant Design Design Tokens (via `ConfigProvider`) mapped to Tailwind variables for consistency.
+
+## 5. Component Analysis: Trips Page
+**Path:** `src/app/(authenticated)/ops/trips/page.tsx`
+*   **Pros:**
+    *   Uses Drawers for Create/Edit (keeps context).
+    *   "Row Actions" (opacity hover) reduces clutter.
+    *   Resizable columns are a power-user feature.
+*   **Cons:**
+    *   **"Back" Button:** Hardcoded to `/dashboard`. If the user navigates from deep within Operations, this dumps them back to home.
+    *   **Filters:** Status filters are hardcoded in the column definition.
+
+**Recommendations:**
+*   Remove the "Back" button if the Sidebar provides sufficient navigation, or make it use `router.back()`.
+*   Ensure the Table `scroll={{ x: 'max-content' }}` is set (it uses `fixed: right` for actions, which implies it handles overflow, but double-check mobile view).
+
+## 6. Action Plan
+1.  **Refactor Navigation:** Update `allMenuItems` in `DashboardLayout.tsx` to group Finance items and rename ambiguous labels.
+2.  **Fix Mobile Layout:** Add responsive props to `Sider`.
+3.  **Clean Styles:** Refactor `TripsPage` to use Tailwind classes instead of inline styles as a pilot.

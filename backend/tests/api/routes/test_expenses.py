@@ -607,3 +607,145 @@ def test_office_expense_category_filter(
     # All returned expenses should have Office category
     for expense in content["data"]:
         assert expense["category"] == ExpenseCategory.office.value
+
+
+# ============================================================================
+# Story 2.17: Trip Expense ID Formatting Tests
+# ============================================================================
+
+
+def test_trip_expense_id_sequential_for_same_trip(
+    client: TestClient, superuser_token_headers: dict[str, str], db: Session
+) -> None:
+    """
+    Story 2.17 - Scenario 1 & 2: Create 3 expenses for Trip A, verify IDs 001, 002, 003.
+    Given Trip A with trip_number TXXX-YYYY
+    When I create 3 expenses for this trip
+    Then expense IDs are E{trip_number}-001, E{trip_number}-002, E{trip_number}-003
+    """
+    trip = create_random_trip(db)
+    trip_number = trip.trip_number
+
+    # Create first expense
+    response = client.post(
+        f"{settings.API_V1_STR}/expenses/",
+        headers=superuser_token_headers,
+        json={
+            "trip_id": str(trip.id),
+            "amount": 10000.00,
+            "category": "Fuel",
+            "description": "First fuel expense",
+        },
+    )
+    assert response.status_code == 200
+    expense1 = response.json()
+    assert expense1["expense_number"] == f"E{trip_number}-001"
+
+    # Create second expense
+    response = client.post(
+        f"{settings.API_V1_STR}/expenses/",
+        headers=superuser_token_headers,
+        json={
+            "trip_id": str(trip.id),
+            "amount": 20000.00,
+            "category": "Allowance",
+            "description": "Driver allowance",
+        },
+    )
+    assert response.status_code == 200
+    expense2 = response.json()
+    assert expense2["expense_number"] == f"E{trip_number}-002"
+
+    # Create third expense
+    response = client.post(
+        f"{settings.API_V1_STR}/expenses/",
+        headers=superuser_token_headers,
+        json={
+            "trip_id": str(trip.id),
+            "amount": 5000.00,
+            "category": "Border",
+            "description": "Border fees",
+        },
+    )
+    assert response.status_code == 200
+    expense3 = response.json()
+    assert expense3["expense_number"] == f"E{trip_number}-003"
+
+
+def test_trip_expense_id_independent_sequencing(
+    client: TestClient, superuser_token_headers: dict[str, str], db: Session
+) -> None:
+    """
+    Story 2.17 - Scenario 3: Independent sequencing per trip.
+    Given Trip A has expenses up to -005
+    And Trip B has 0 expenses
+    When I create a new expense for Trip B
+    Then the Expense ID starts fresh at -001
+    """
+    trip_a = create_random_trip(db)
+    trip_b = create_random_trip(db)
+
+    # Create 5 expenses for Trip A
+    for i in range(5):
+        response = client.post(
+            f"{settings.API_V1_STR}/expenses/",
+            headers=superuser_token_headers,
+            json={
+                "trip_id": str(trip_a.id),
+                "amount": 1000.00 * (i + 1),
+                "category": "Fuel",
+                "description": f"Trip A expense {i + 1}",
+            },
+        )
+        assert response.status_code == 200
+        content = response.json()
+        assert content["expense_number"] == f"E{trip_a.trip_number}-{i + 1:03d}"
+
+    # Now create first expense for Trip B - should start at 001
+    response = client.post(
+        f"{settings.API_V1_STR}/expenses/",
+        headers=superuser_token_headers,
+        json={
+            "trip_id": str(trip_b.id),
+            "amount": 15000.00,
+            "category": "Fuel",
+            "description": "Trip B first expense",
+        },
+    )
+    assert response.status_code == 200
+    expense_b = response.json()
+    assert expense_b["expense_number"] == f"E{trip_b.trip_number}-001"
+
+
+def test_office_expense_uses_standard_format(
+    client: TestClient, superuser_token_headers: dict[str, str], db: Session
+) -> None:
+    """
+    Story 2.17 - Scenario 4: Non-trip (Office) expenses use standard EX-YYYY-SEQ format.
+    Given I am creating an Office Expense (not linked to a trip)
+    When I submit
+    Then the system uses the standard Expense ID format EX-YYYY-SEQ
+    """
+    from datetime import datetime
+
+    current_year = datetime.now().year
+
+    response = client.post(
+        f"{settings.API_V1_STR}/expenses/",
+        headers=superuser_token_headers,
+        json={
+            "amount": 50000.00,
+            "category": "Office",
+            "description": "Office supplies purchase",
+        },
+    )
+    assert response.status_code == 200
+    content = response.json()
+
+    # Verify format: EX-YYYY-XXXX
+    expense_number = content["expense_number"]
+    assert expense_number.startswith(f"EX-{current_year}-")
+    # Should have 4-digit sequence
+    seq_part = expense_number.split("-")[-1]
+    assert len(seq_part) == 4
+    assert seq_part.isdigit()

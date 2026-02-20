@@ -39,7 +39,7 @@ def login_access_token(
     return Token(access_token=access_token)
 
 
-@router.post("/login/test-token", response_model=UserPublic)
+@router.get("/login/test-token", response_model=UserPublic)
 def test_token(current_user: CurrentUser) -> Any:
     """
     Test access token

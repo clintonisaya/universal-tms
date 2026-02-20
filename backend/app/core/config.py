@@ -25,7 +25,7 @@ def parse_cors(v: Any) -> list[str] | str:
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         # Use top level .env file (one level above ./backend/)
-        env_file="../.env",
+        env_file=[".env", "../.env"],
         env_ignore_empty=True,
         extra="ignore",
     )
@@ -73,6 +73,15 @@ class Settings(BaseSettings):
 
     # Radar.io API Key
     RADAR_API_KEY: str | None = None
+
+    # Cloudflare R2
+    R2_ACCOUNT_ID: str | None = None
+    R2_ACCESS_KEY_ID: str | None = None
+    R2_SECRET_ACCESS_KEY: str | None = None
+    R2_BUCKET_NAME: str | None = None
+    R2_ENDPOINT: str | None = None
+    R2_REGION: str = "auto"
+    S3_ENDPOINT: str | None = None
 
     # Emails
     SMTP_HOST: str | None = None

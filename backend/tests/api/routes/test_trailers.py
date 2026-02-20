@@ -280,7 +280,7 @@ def test_create_trailer_all_types(
 ) -> None:
     """Test creating trailers with all available types."""
     base = "".join(random.choices(string.ascii_uppercase, k=2))
-    types = ["Flatbed", "Skeleton", "Box", "Tanker"]
+    types = ["Flatbed", "Skeleton", "Box", "Tanker", "Lowbed"]
     for i, trailer_type in enumerate(types):
         digits = f"{random.randint(1000, 9999)}"
         data = {

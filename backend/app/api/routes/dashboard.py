@@ -75,9 +75,10 @@ def get_dashboard_stats(
         select(func.count()).select_from(Driver)
     ).one()
 
+    # Count only idle/available drivers (not assigned to any trip)
     active_drivers = session.exec(
         select(func.count()).select_from(Driver)
-        .where(Driver.status != DriverStatus.inactive)
+        .where(Driver.status == DriverStatus.active)
     ).one()
 
     # --- Expenses / Approvals ---
@@ -112,36 +113,47 @@ def get_dashboard_stats(
 
     total_pending = pending_manager + pending_finance
 
+    # Count expenses from approval stage (Pending Finance + Paid)
+    approved_statuses = [ExpenseStatus.pending_finance, ExpenseStatus.paid]
     total_paid_amount = session.exec(
         select(func.coalesce(func.sum(ExpenseRequest.amount), 0))
-        .where(ExpenseRequest.status == ExpenseStatus.paid)
+        .where(ExpenseRequest.status.in_(approved_statuses))
     ).one()
 
     # --- Profit Trend (Last 30 Days) ---
     thirty_days_ago = datetime.now(timezone.utc) - timedelta(days=30)
     
-    # 1. Daily Revenue (from Waybills linked to completed trips)
+    # 1. Daily Revenue (from Waybills linked to active/completed trips)
     revenue_stmt = (
         select(
-            func.date(Trip.end_date).label("date"),
+            func.date(Trip.created_at).label("date"),
             func.sum(Waybill.agreed_rate).label("revenue")
         )
         .join(Waybill, Waybill.id == Trip.waybill_id)
-        .where(Trip.status == TripStatus.completed)
-        .where(Trip.end_date >= thirty_days_ago)
-        .group_by(func.date(Trip.end_date))
+        .where(Trip.status.in_([
+            TripStatus.wait_to_load.value,
+            TripStatus.loading.value,
+            TripStatus.in_transit.value,
+            TripStatus.at_border.value,
+            TripStatus.offloading.value,
+            TripStatus.returned.value,
+            TripStatus.waiting_for_pods.value,
+            TripStatus.completed.value,
+        ]))
+        .where(Trip.created_at >= thirty_days_ago)
+        .group_by(func.date(Trip.created_at))
     )
     revenue_rows = session.exec(revenue_stmt).all()
     
-    # 2. Daily Expenses (Paid)
+    # 2. Daily Expenses (Approved: Pending Finance + Paid)
     expense_stmt = (
         select(
-            func.date(ExpenseRequest.payment_date).label("date"),
+            func.date(func.coalesce(ExpenseRequest.approved_at, ExpenseRequest.payment_date, ExpenseRequest.created_at)).label("date"),
             func.sum(ExpenseRequest.amount).label("expense")
         )
-        .where(ExpenseRequest.status == ExpenseStatus.paid)
-        .where(ExpenseRequest.payment_date >= thirty_days_ago)
-        .group_by(func.date(ExpenseRequest.payment_date))
+        .where(ExpenseRequest.status.in_(approved_statuses))
+        .where(func.coalesce(ExpenseRequest.approved_at, ExpenseRequest.payment_date, ExpenseRequest.created_at) >= thirty_days_ago)
+        .group_by(func.date(func.coalesce(ExpenseRequest.approved_at, ExpenseRequest.payment_date, ExpenseRequest.created_at)))
     )
     expense_rows = session.exec(expense_stmt).all()
     

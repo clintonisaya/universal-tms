@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 from decimal import Decimal
 from enum import Enum
 
-from sqlalchemy import Column, DateTime, JSON, Numeric
+from sqlalchemy import Column, DateTime, JSON, Numeric, Enum as SAEnum
 from sqlmodel import Field, Relationship, SQLModel
 
 
@@ -26,6 +26,7 @@ class UserBase(SQLModel):
     is_superuser: bool = False
     full_name: str | None = Field(default=None, max_length=255)
     role: UserRole = Field(default=UserRole.ops)
+    permissions: list[str] = Field(default=[], sa_column=Column(JSON))
 
 
 # Properties to receive via API on creation
@@ -44,6 +45,7 @@ class UserUpdate(UserBase):
     username: str | None = Field(default=None, min_length=3, max_length=50)  # type: ignore
     password: str | None = Field(default=None, min_length=8, max_length=128)
     role: UserRole | None = Field(default=None)  # type: ignore
+    permissions: list[str] | None = Field(default=None)
 
 
 class UserUpdateMe(SQLModel):
@@ -57,6 +59,7 @@ class UpdatePassword(SQLModel):
 
 # Database model, database table inferred from class name
 class User(UserBase, table=True):
+    __tablename__ = "users"
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     hashed_password: str
     created_at: datetime | None = Field(
@@ -101,7 +104,7 @@ class Item(ItemBase, table=True):
         sa_type=DateTime(timezone=True),  # type: ignore
     )
     owner_id: uuid.UUID = Field(
-        foreign_key="user.id", nullable=False, ondelete="CASCADE"
+        foreign_key="users.id", nullable=False, ondelete="CASCADE"
     )
     owner: User | None = Relationship(back_populates="items")
 
@@ -147,6 +150,9 @@ class NewPassword(SQLModel):
 class TruckStatus(str, Enum):
     """Truck status values - FR-TRUCK-01, extended for Trip workflow"""
     idle = "Idle"
+    waiting = "Waiting"
+    dispatch = "Dispatch"
+    wait_to_load = "Wait to Load"
     loading = "Loading"
     in_transit = "In Transit"
     at_border = "At Border"
@@ -270,6 +276,9 @@ class DriversPublic(SQLModel):
 class TrailerStatus(str, Enum):
     """Trailer status values - FR-TRAILER-01, extended for Trip workflow"""
     idle = "Idle"
+    waiting = "Waiting"
+    dispatch = "Dispatch"
+    wait_to_load = "Wait to Load"
     loading = "Loading"
     in_transit = "In Transit"
     at_border = "At Border"
@@ -285,6 +294,7 @@ class TrailerType(str, Enum):
     skeleton = "Skeleton"
     box = "Box"
     tanker = "Tanker"
+    lowbed = "Lowbed"
 
 
 # Shared properties
@@ -368,6 +378,7 @@ class WaybillCreate(SQLModel):
     agreed_rate: Decimal = Field(default=Decimal("0.00"), max_digits=12, decimal_places=2, description="Agreed rate")
     currency: str = Field(default="USD", max_length=3, description="Currency code")
     risk_level: str = Field(default="Low", description="Risk level (Low, Medium, High)")
+    border_ids: list[uuid.UUID] | None = Field(default=None, description="Ordered list of border post IDs to cross (Story 2.26)")
 
 
 class WaybillUpdate(SQLModel):
@@ -382,6 +393,7 @@ class WaybillUpdate(SQLModel):
     agreed_rate: Decimal | None = Field(default=None, max_digits=12, decimal_places=2)
     currency: str | None = Field(default=None, max_length=3)
     risk_level: str | None = Field(default=None)
+    border_ids: list[uuid.UUID] | None = Field(default=None, description="Ordered list of border post IDs to cross (Story 2.26)")
 
 
 class Waybill(WaybillBase, table=True):
@@ -408,11 +420,22 @@ class WaybillsPublic(SQLModel):
 
 
 class TripStatus(str, Enum):
-    """Trip status values - Story 2.1"""
+    """Trip status values - Story 2.1, extended with return leg in Story 2.25"""
+    waiting = "Waiting"
+    dispatch = "Dispatch"
+    wait_to_load = "Wait to Load"
     loading = "Loading"
     in_transit = "In Transit"
     at_border = "At Border"
-    offloaded = "Offloaded"
+    offloading = "Offloading"
+    # Return leg statuses (Story 2.25) — only valid when return_waybill_id is set
+    dispatch_return = "Dispatch (Return)"
+    wait_to_load_return = "Wait to Load (Return)"
+    loading_return = "Loading (Return)"
+    in_transit_return = "In Transit (Return)"
+    at_border_return = "At Border (Return)"
+    offloading_return = "Offloading (Return)"
+    # End of journey
     returned = "Returned"
     waiting_for_pods = "Waiting for PODs"
     completed = "Completed"
@@ -426,9 +449,17 @@ class TripBase(SQLModel):
     driver_id: uuid.UUID = Field(foreign_key="driver.id", description="Assigned driver ID")
     route_name: str = Field(min_length=1, max_length=255, description="Route description (e.g., Mombasa - Nairobi)")
     trip_number: str = Field(index=True, unique=True, description="Trip number (T<Plate>-YYYY<Seq>)")
-    waybill_id: uuid.UUID | None = Field(default=None, foreign_key="waybill.id", description="Link to commercial Waybill")
+    waybill_id: uuid.UUID | None = Field(default=None, foreign_key="waybill.id", description="Link to commercial Waybill (Go leg)")
+    return_waybill_id: uuid.UUID | None = Field(default=None, foreign_key="waybill.id", description="Link to return leg Waybill (Story 2.25)")
     current_location: str | None = Field(default=None, description="Current location")
-    status: TripStatus = Field(default=TripStatus.loading, description="Current trip status")
+    status: TripStatus = Field(
+        default=TripStatus.waiting,
+        sa_column=Column(
+            SAEnum(TripStatus, values_callable=lambda obj: [e.value for e in obj]),
+            nullable=False
+        ),
+        description="Current trip status"
+    )
 
 
 # Properties to receive on creation
@@ -447,9 +478,26 @@ class TripUpdate(SQLModel):
     trailer_id: uuid.UUID | None = Field(default=None, description="New trailer ID (for swap)")
     driver_id: uuid.UUID | None = Field(default=None, description="New driver ID")
     route_name: str | None = Field(default=None, min_length=1, max_length=255)
-    waybill_id: uuid.UUID | None = Field(default=None, description="Link to commercial Waybill")
+    waybill_id: uuid.UUID | None = Field(default=None, description="Link to commercial Waybill (Go leg)")
     current_location: str | None = Field(default=None, description="Current location")
     status: TripStatus | None = Field(default=None, description="New status")
+    pod_documents: list | None = Field(default=None, description="POD documents list (supports string URLs or {name,url,leg} dicts)")
+    # Go leg tracking date fields
+    dispatch_date: datetime | None = Field(default=None, description="Date dispatched from yard")
+    arrival_loading_date: datetime | None = Field(default=None, description="Arrival at loading point (Wait to Load)")
+    loading_start_date: datetime | None = Field(default=None, description="Loading started date")
+    loading_end_date: datetime | None = Field(default=None, description="Loading completed date")
+    arrival_offloading_date: datetime | None = Field(default=None, description="Arrival at offloading point")
+    offloading_date: datetime | None = Field(default=None, description="Offloading completed date")
+    arrival_return_date: datetime | None = Field(default=None, description="Arrival back at origin for return offloading")
+    # Return leg tracking date fields (Story 2.25)
+    dispatch_return_date: datetime | None = Field(default=None, description="Date dispatched for return journey")
+    arrival_loading_return_date: datetime | None = Field(default=None, description="Arrival at return loading point")
+    loading_return_start_date: datetime | None = Field(default=None, description="Return cargo loading started")
+    loading_return_end_date: datetime | None = Field(default=None, description="Return cargo loading completed")
+    # Cancellation control flags (Story 2.25) — used when status=Cancelled with dual waybills
+    cancel_go_waybill: bool | None = Field(default=None, description="Reset go waybill to Open on cancel (default: True)")
+    cancel_return_waybill: bool | None = Field(default=None, description="Reset return waybill to Open on cancel (default: True)")
 
 
 # Properties to receive for truck swap
@@ -457,19 +505,42 @@ class TripSwapTruck(SQLModel):
     truck_id: uuid.UUID = Field(description="New truck ID for swap")
 
 
+# Request schema for attaching a return waybill (Story 2.25)
+class AttachReturnWaybillRequest(SQLModel):
+    return_waybill_id: uuid.UUID = Field(description="Waybill ID to attach as the return leg")
+
+
 # Database model
 class Trip(TripBase, table=True):
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
-    pod_documents: list[str] = Field(default=[], sa_column=Column(JSON))
+    pod_documents: list = Field(default=[], sa_column=Column(JSON))
     start_date: datetime | None = Field(
-        default_factory=get_datetime_utc,
-        sa_type=DateTime(timezone=True),  # type: ignore
+        default=None,
+        sa_type=DateTime(timezone=True),
     )
     end_date: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
     created_at: datetime | None = Field(
         default_factory=get_datetime_utc,
         sa_type=DateTime(timezone=True),  # type: ignore
     )
+    updated_at: datetime | None = Field(
+        default_factory=get_datetime_utc,
+        sa_type=DateTime(timezone=True),  # type: ignore
+    )
+    # Tracking date fields
+    dispatch_date: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
+    arrival_loading_date: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
+    loading_start_date: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
+    loading_end_date: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
+    arrival_offloading_date: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
+    offloading_date: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
+    arrival_return_date: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
+    trip_duration_days: int | None = Field(default=None, description="Days from dispatch to return")
+    # Return leg tracking date fields (Story 2.25)
+    dispatch_return_date: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
+    arrival_loading_return_date: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
+    loading_return_start_date: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
+    loading_return_end_date: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
 
     # Relationships
     truck: Truck | None = Relationship()
@@ -480,10 +551,29 @@ class Trip(TripBase, table=True):
 # Properties to return via API
 class TripPublic(TripBase):
     id: uuid.UUID
-    pod_documents: list[str] = []
+    pod_documents: list = []
     start_date: datetime | None = None
     end_date: datetime | None = None
     created_at: datetime | None = None
+    updated_at: datetime | None = None
+    dispatch_date: datetime | None = None
+    arrival_loading_date: datetime | None = None
+    loading_start_date: datetime | None = None
+    loading_end_date: datetime | None = None
+    arrival_offloading_date: datetime | None = None
+    offloading_date: datetime | None = None
+    arrival_return_date: datetime | None = None
+    trip_duration_days: int | None = None
+    # Return leg date fields (Story 2.25)
+    dispatch_return_date: datetime | None = None
+    arrival_loading_return_date: datetime | None = None
+    loading_return_start_date: datetime | None = None
+    loading_return_end_date: datetime | None = None
+    # Enrichment fields from waybill join (Story 4.6)
+    waybill_rate: Decimal | None = None
+    waybill_currency: str | None = None
+    waybill_risk_level: str | None = None
+    location_update_time: datetime | None = None
 
 
 # Trip with nested entities for detailed views
@@ -542,10 +632,11 @@ class ExpenseRequestBase(SQLModel):
     payment_method: PaymentMethod | None = Field(default=None, description="Payment method (CASH or TRANSFER)")
     payment_reference: str | None = Field(default=None, max_length=255, description="Payment reference (required for transfers)")
     payment_date: datetime | None = Field(default=None, sa_type=DateTime(timezone=True), description="Date payment was processed")
-    paid_by_id: uuid.UUID | None = Field(default=None, foreign_key="user.id", description="User who processed the payment")
-    approved_by_id: uuid.UUID | None = Field(default=None, foreign_key="user.id", description="User who approved the expense")
+    paid_by_id: uuid.UUID | None = Field(default=None, foreign_key="users.id", description="User who processed the payment")
+    approved_by_id: uuid.UUID | None = Field(default=None, foreign_key="users.id", description="User who approved the expense")
     approved_at: datetime | None = Field(default=None, sa_type=DateTime(timezone=True), description="Date expense was approved")
     expense_metadata: dict | None = Field(default=None, description="Additional expense metadata (item details, payment info, etc.)")
+    attachments: list[str] | None = Field(default=[], description="List of URLs for attached receipts/documents")
 
 
 # Properties to receive on creation
@@ -574,7 +665,8 @@ class ExpenseRequest(ExpenseRequestBase, table=True):
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     amount: Decimal = Field(sa_column=Column(Numeric(12, 2), nullable=False))
     expense_metadata: dict | None = Field(default=None, sa_column=Column(JSON))
-    created_by_id: uuid.UUID = Field(foreign_key="user.id", description="User who created the expense")
+    attachments: list[str] = Field(default=[], sa_column=Column(JSON))
+    created_by_id: uuid.UUID = Field(foreign_key="users.id", description="User who created the expense")
     created_at: datetime | None = Field(
         default_factory=get_datetime_utc,
         sa_type=DateTime(timezone=True),  # type: ignore
@@ -622,6 +714,9 @@ class ExpensePayment(SQLModel):
     """Schema for processing a payment - Story 2.4"""
     method: PaymentMethod = Field(description="Payment method: CASH or TRANSFER")
     reference: str | None = Field(default=None, max_length=255, description="Reference number (required for TRANSFER)")
+    bank_name: str | None = Field(default=None, max_length=255, description="Bank name")
+    account_name: str | None = Field(default=None, max_length=255, description="Account holder name")
+    account_no: str | None = Field(default=None, max_length=100, description="Bank account number")
 
 
 # ============================================================================
@@ -980,6 +1075,7 @@ class TripExpenseTypesPublic(SQLModel):
 
 class OfficeExpenseTypeBase(SQLModel):
     name: str = Field(unique=True, index=True, min_length=1, max_length=255, description="Office expense type name")
+    category: str = Field(min_length=1, max_length=100, description="Expense category (e.g., Office, Salary, Tax)")
     description: str | None = Field(default=None, max_length=500, description="Description")
     is_active: bool = Field(default=True, description="Whether this expense type is active")
 
@@ -990,6 +1086,7 @@ class OfficeExpenseTypeCreate(OfficeExpenseTypeBase):
 
 class OfficeExpenseTypeUpdate(SQLModel):
     name: str | None = Field(default=None, min_length=1, max_length=255)
+    category: str | None = Field(default=None, min_length=1, max_length=100)
     description: str | None = Field(default=None, max_length=500)
     is_active: bool | None = Field(default=None)
 
@@ -998,6 +1095,7 @@ class OfficeExpenseType(OfficeExpenseTypeBase, table=True):
     __tablename__ = "office_expense_type"
 
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    category: str = Field(index=True, max_length=100)
     created_at: datetime | None = Field(
         default_factory=get_datetime_utc,
         sa_type=DateTime(timezone=True),
@@ -1012,3 +1110,114 @@ class OfficeExpenseTypePublic(OfficeExpenseTypeBase):
 class OfficeExpenseTypesPublic(SQLModel):
     data: list[OfficeExpenseTypePublic]
     count: int
+
+
+# ============================================================================
+# Border Post Models - Story 2.26: Border Crossing Tracking
+# ============================================================================
+
+
+class BorderPostBase(SQLModel):
+    display_name: str = Field(min_length=1, max_length=255, description="Display name e.g. 'Tunduma / Nakonde'")
+    side_a_name: str = Field(min_length=1, max_length=255, description="Side A (go-direction first contact, e.g. 'Tunduma')")
+    side_b_name: str = Field(min_length=1, max_length=255, description="Side B (return-direction first contact, e.g. 'Nakonde')")
+    is_active: bool = Field(default=True, description="Whether this border post is active")
+
+
+class BorderPostCreate(BorderPostBase):
+    pass
+
+
+class BorderPostUpdate(SQLModel):
+    display_name: str | None = Field(default=None, min_length=1, max_length=255)
+    side_a_name: str | None = Field(default=None, min_length=1, max_length=255)
+    side_b_name: str | None = Field(default=None, min_length=1, max_length=255)
+    is_active: bool | None = Field(default=None)
+
+
+class BorderPost(BorderPostBase, table=True):
+    __tablename__ = "border_post"
+
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    created_at: datetime | None = Field(
+        default_factory=get_datetime_utc,
+        sa_type=DateTime(timezone=True),
+    )
+
+
+class BorderPostPublic(BorderPostBase):
+    id: uuid.UUID
+    created_at: datetime | None = None
+
+
+class BorderPostsPublic(SQLModel):
+    data: list[BorderPostPublic]
+    count: int
+
+
+# ============================================================================
+# Waybill Border Junction - Story 2.26
+# ============================================================================
+
+
+class WaybillBorder(SQLModel, table=True):
+    __tablename__ = "waybill_border"
+
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    waybill_id: uuid.UUID = Field(foreign_key="waybill.id", description="Linked waybill")
+    border_post_id: uuid.UUID = Field(foreign_key="border_post.id", description="Border post")
+    sequence: int = Field(description="1-based crossing order for this waybill")
+
+
+class WaybillBorderPublic(SQLModel):
+    id: uuid.UUID
+    waybill_id: uuid.UUID
+    border_post_id: uuid.UUID
+    sequence: int
+    border_post: BorderPostPublic | None = None
+
+
+# ============================================================================
+# Trip Border Crossing - Story 2.26
+# ============================================================================
+
+
+class TripBorderCrossingUpsert(SQLModel):
+    direction: str = Field(max_length=10, description="'go' or 'return'")
+    arrived_side_a_at: datetime | None = None
+    documents_submitted_side_a_at: datetime | None = None
+    documents_cleared_side_a_at: datetime | None = None
+    arrived_side_b_at: datetime | None = None  # "Crossing Side A (= Arrive Side B)"
+    departed_border_at: datetime | None = None
+
+
+class TripBorderCrossing(SQLModel, table=True):
+    __tablename__ = "trip_border_crossing"
+
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    trip_id: uuid.UUID = Field(foreign_key="trip.id", description="Linked trip")
+    border_post_id: uuid.UUID = Field(foreign_key="border_post.id", description="Border post")
+    direction: str = Field(max_length=10, description="'go' or 'return'")
+    # 5 progressive date stamps (side-B doc fields removed — not collected)
+    arrived_side_a_at: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
+    documents_submitted_side_a_at: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
+    documents_cleared_side_a_at: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
+    arrived_side_b_at: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))  # Crossing Side A (= Arrive Side B)
+    departed_border_at: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
+    created_at: datetime | None = Field(default_factory=get_datetime_utc, sa_type=DateTime(timezone=True))
+    updated_at: datetime | None = Field(default_factory=get_datetime_utc, sa_type=DateTime(timezone=True))
+
+
+class TripBorderCrossingPublic(SQLModel):
+    id: uuid.UUID
+    trip_id: uuid.UUID
+    border_post_id: uuid.UUID
+    direction: str
+    arrived_side_a_at: datetime | None = None
+    documents_submitted_side_a_at: datetime | None = None
+    documents_cleared_side_a_at: datetime | None = None
+    arrived_side_b_at: datetime | None = None  # Crossing Side A (= Arrive Side B)
+    departed_border_at: datetime | None = None
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
+    border_post: BorderPostPublic | None = None

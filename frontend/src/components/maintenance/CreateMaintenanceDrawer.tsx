@@ -18,6 +18,7 @@ import {
   Col,
 } from "antd";
 import { SaveOutlined } from "@ant-design/icons";
+import { amountInputProps } from "@/lib/utils";
 import type { Truck, TrucksResponse } from "@/types/truck";
 import type { Trailer, TrailersResponse } from "@/types/trailer";
 import type { MaintenanceEventCreate } from "@/types/maintenance";
@@ -62,8 +63,8 @@ export function CreateMaintenanceDrawer({
     setResourcesLoading(true);
     try {
       const [trucksRes, trailersRes] = await Promise.all([
-        fetch("/api/v1/trucks/?limit=1000", { credentials: "include" }),
-        fetch("/api/v1/trailers/?limit=1000", { credentials: "include" }),
+        fetch("/api/v1/trucks?limit=1000", { credentials: "include" }),
+        fetch("/api/v1/trailers?limit=1000", { credentials: "include" }),
       ]);
 
       if (trucksRes.ok && trailersRes.ok) {
@@ -97,7 +98,7 @@ export function CreateMaintenanceDrawer({
         update_trailer_status: values.asset_type === "trailer" ? values.update_status : false,
       };
 
-      const response = await fetch("/api/v1/maintenance/", {
+      const response = await fetch("/api/v1/maintenance", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -217,6 +218,7 @@ export function CreateMaintenanceDrawer({
                   step={0.01}
                   precision={2}
                   placeholder="0.00"
+                  {...amountInputProps}
                 />
               </Form.Item>
             </Col>

@@ -7,14 +7,30 @@ import type { Trailer } from "./trailer";
 import type { Truck } from "./truck";
 
 export type TripStatus =
+  | "Waiting"
+  | "Dispatch"
+  | "Wait to Load"
   | "Loading"
   | "In Transit"
   | "At Border"
-  | "Offloaded"
+  | "Offloading"
+  // Return leg statuses (Story 2.25) — only when return_waybill_id is set
+  | "Dispatch (Return)"
+  | "Wait to Load (Return)"
+  | "Loading (Return)"
+  | "In Transit (Return)"
+  | "At Border (Return)"
+  | "Offloading (Return)"
+  // End of journey
   | "Returned"
   | "Waiting for PODs"
   | "Completed"
   | "Cancelled";
+
+// POD document entry — supports legacy string URLs and new structured format
+export type PodDocument =
+  | string
+  | { name: string; url: string; leg: "go" | "return" };
 
 export interface Trip {
   id: string;
@@ -24,12 +40,32 @@ export interface Trip {
   route_name: string;
   trip_number: string;
   waybill_id: string | null;
+  return_waybill_id: string | null; // Story 2.25: return leg waybill
   status: TripStatus;
   current_location: string | null;
-  pod_documents: string[];
+  pod_documents: PodDocument[];
   start_date: string | null;
   end_date: string | null;
   created_at: string | null;
+  // Go leg tracking dates
+  dispatch_date: string | null;
+  arrival_loading_date: string | null;
+  loading_start_date: string | null;
+  loading_end_date: string | null;
+  arrival_offloading_date: string | null;
+  offloading_date: string | null;
+  // Return leg tracking dates (Story 2.25)
+  dispatch_return_date: string | null;
+  arrival_loading_return_date: string | null;
+  loading_return_start_date: string | null;
+  loading_return_end_date: string | null;
+  arrival_return_date: string | null;
+  trip_duration_days: number | null;
+  // Waybill enrichment fields (Story 4.6)
+  waybill_rate: number | null;
+  waybill_currency: string | null;
+  waybill_risk_level: string | null;
+  location_update_time: string | null;
 }
 
 export interface TripDetailed extends Trip {
@@ -55,6 +91,23 @@ export interface TripUpdate {
   waybill_id?: string | null;
   status?: TripStatus;
   current_location?: string | null;
+  pod_documents?: PodDocument[];
+  // Go leg tracking dates
+  dispatch_date?: string | null;
+  arrival_loading_date?: string | null;
+  loading_start_date?: string | null;
+  loading_end_date?: string | null;
+  arrival_offloading_date?: string | null;
+  offloading_date?: string | null;
+  // Return leg tracking dates (Story 2.25)
+  dispatch_return_date?: string | null;
+  arrival_loading_return_date?: string | null;
+  loading_return_start_date?: string | null;
+  loading_return_end_date?: string | null;
+  arrival_return_date?: string | null;
+  // Cancellation control flags (Story 2.25)
+  cancel_go_waybill?: boolean;
+  cancel_return_waybill?: boolean;
 }
 
 export interface TripsResponse {

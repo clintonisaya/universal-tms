@@ -30,7 +30,7 @@ DELETE_ROLES = {UserRole.admin}
 
 router = APIRouter(prefix="/maintenance", tags=["maintenance"])
 
-@router.get("/", response_model=MaintenanceEventsPublic)
+@router.get("", response_model=MaintenanceEventsPublic)
 def read_maintenance_events(
     session: SessionDep,
     current_user: CurrentUser,
@@ -65,7 +65,7 @@ def read_maintenance_event(
         raise HTTPException(status_code=404, detail="Maintenance event not found")
     return event
 
-@router.post("/", response_model=MaintenanceEventPublic)
+@router.post("", response_model=MaintenanceEventPublic)
 def create_maintenance_event(
     *,
     session: SessionDep,

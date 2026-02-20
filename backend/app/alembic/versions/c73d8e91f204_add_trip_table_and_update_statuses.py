@@ -36,7 +36,7 @@ def upgrade():
     # DriverStatus - add 'assigned' value
     op.execute("ALTER TYPE driverstatus ADD VALUE IF NOT EXISTS 'assigned'")
 
-    # Create TripStatus enum
+    # Create TripStatus enum if it doesn't exist
     op.execute("""
         DO $$ BEGIN
             CREATE TYPE tripstatus AS ENUM (
@@ -48,14 +48,13 @@ def upgrade():
         END $$;
     """)
 
-    # Create trip table - use existing enum type, don't recreate
-    tripstatus_enum = sa.Enum('loading', 'in_transit', 'at_border', 'offloaded', 'returned', 'waiting_for_pods', 'completed', 'cancelled', name='tripstatus', create_type=False)
+    # Create trip table with VARCHAR for status column first (avoids SQLAlchemy ENUM auto-creation)
     op.create_table('trip',
         sa.Column('truck_id', sa.Uuid(), nullable=False),
         sa.Column('trailer_id', sa.Uuid(), nullable=False),
         sa.Column('driver_id', sa.Uuid(), nullable=False),
         sa.Column('route_name', sqlmodel.sql.sqltypes.AutoString(length=255), nullable=False),
-        sa.Column('status', tripstatus_enum, nullable=False),
+        sa.Column('status', sa.String(50), nullable=False),
         sa.Column('id', sa.Uuid(), nullable=False),
         sa.Column('pod_documents', sa.JSON(), nullable=True),
         sa.Column('start_date', sa.DateTime(timezone=True), nullable=True),
@@ -66,6 +65,9 @@ def upgrade():
         sa.ForeignKeyConstraint(['truck_id'], ['truck.id'], ),
         sa.PrimaryKeyConstraint('id')
     )
+
+    # Alter status column to use the existing tripstatus enum type
+    op.execute("ALTER TABLE trip ALTER COLUMN status TYPE tripstatus USING status::tripstatus")
     op.create_index(op.f('ix_trip_truck_id'), 'trip', ['truck_id'], unique=False)
     op.create_index(op.f('ix_trip_trailer_id'), 'trip', ['trailer_id'], unique=False)
     op.create_index(op.f('ix_trip_driver_id'), 'trip', ['driver_id'], unique=False)

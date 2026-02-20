@@ -9,7 +9,7 @@ from app.models import Country, CountryCreate, CountryPublic, CountriesPublic, C
 
 router = APIRouter(prefix="/countries", tags=["countries"])
 
-@router.get("/", response_model=CountriesPublic)
+@router.get("", response_model=CountriesPublic)
 def read_countries(
     session: SessionDep, current_user: CurrentUser, skip: int = 0, limit: int = 100
 ) -> Any:
@@ -32,7 +32,7 @@ def read_country(session: SessionDep, current_user: CurrentUser, id: uuid.UUID) 
         raise HTTPException(status_code=404, detail="Country not found")
     return country
 
-@router.post("/", response_model=CountryPublic)
+@router.post("", response_model=CountryPublic)
 def create_country(
     *, session: SessionDep, current_user: CurrentUser, country_in: CountryCreate
 ) -> Any:

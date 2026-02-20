@@ -1,6 +1,7 @@
 "use client";
 
-import { Modal, Descriptions, Tag, Space, Divider, Typography, Timeline } from "antd";
+import { useState, useEffect } from "react";
+import { Modal, Descriptions, Tag, Space, Divider, Typography, Timeline, List, Spin, Empty, Button } from "antd";
 import {
   UserOutlined,
   CalendarOutlined,
@@ -10,9 +11,29 @@ import {
   CloseCircleOutlined,
   ClockCircleOutlined,
   BankOutlined,
+  PaperClipOutlined,
+  DownloadOutlined,
+  FilePdfOutlined,
+  FileImageOutlined,
+  FileWordOutlined,
+  FileUnknownOutlined,
 } from "@ant-design/icons";
 import type { ExpenseRequestDetailed, ExpenseStatus } from "@/types/expense";
 import { ExpenseStatusBadge } from "./ExpenseStatusBadge";
+
+interface AttachmentInfo {
+  key: string;
+  filename: string;
+  url: string | null;
+}
+
+function getFileIcon(filename: string) {
+  const lower = filename.toLowerCase();
+  if (lower.endsWith(".pdf")) return <FilePdfOutlined style={{ color: "#ff4d4f", fontSize: 18 }} />;
+  if (lower.match(/\.(jpe?g|png|gif|webp)$/)) return <FileImageOutlined style={{ color: "#1890ff", fontSize: 18 }} />;
+  if (lower.match(/\.(docx?)$/)) return <FileWordOutlined style={{ color: "#2f54eb", fontSize: 18 }} />;
+  return <FileUnknownOutlined style={{ fontSize: 18 }} />;
+}
 
 const { Text, Title } = Typography;
 
@@ -34,10 +55,38 @@ const formatDate = (dateString: string | null | undefined) => {
 };
 
 const formatCurrency = (amount: number, currency: string = "TZS") => {
-  return `${currency} ${amount.toLocaleString()}`;
+  return `${currency} ${Number(amount).toLocaleString("en-US")}`;
 };
 
 export function ExpenseDetailModal({ open, onClose, expense }: ExpenseDetailModalProps) {
+  const [attachments, setAttachments] = useState<AttachmentInfo[]>([]);
+  const [attachmentsLoading, setAttachmentsLoading] = useState(false);
+
+  useEffect(() => {
+    if (open && expense?.id && expense.attachments && expense.attachments.length > 0) {
+      const fetchAttachments = async () => {
+        setAttachmentsLoading(true);
+        try {
+          const response = await fetch(`/api/v1/expenses/${expense.id}/attachments`, {
+            credentials: "include",
+          });
+          if (response.ok) {
+            setAttachments(await response.json());
+          } else {
+            setAttachments([]);
+          }
+        } catch {
+          setAttachments([]);
+        } finally {
+          setAttachmentsLoading(false);
+        }
+      };
+      fetchAttachments();
+    } else {
+      setAttachments([]);
+    }
+  }, [open, expense?.id, expense?.attachments]);
+
   if (!expense) return null;
 
   // Build timeline items based on expense status
@@ -48,7 +97,7 @@ export function ExpenseDetailModal({ open, onClose, expense }: ExpenseDetailModa
     items.push({
       color: "green",
       dot: <FileTextOutlined />,
-      children: (
+      content: (
         <div>
           <Text strong>Application Submitted</Text>
           <br />
@@ -65,7 +114,7 @@ export function ExpenseDetailModal({ open, onClose, expense }: ExpenseDetailModa
       items.push({
         color: "green",
         dot: <CheckCircleOutlined />,
-        children: (
+        content: (
           <div>
             <Text strong>Manager Approved</Text>
             <br />
@@ -85,7 +134,7 @@ export function ExpenseDetailModal({ open, onClose, expense }: ExpenseDetailModa
       items.push({
         color: "red",
         dot: <CloseCircleOutlined />,
-        children: (
+        content: (
           <div>
             <Text strong>Manager Rejected</Text>
             {expense.manager_comment && (
@@ -101,7 +150,7 @@ export function ExpenseDetailModal({ open, onClose, expense }: ExpenseDetailModa
       items.push({
         color: "orange",
         dot: <ClockCircleOutlined />,
-        children: (
+        content: (
           <div>
             <Text strong>Returned for Revision</Text>
             {expense.manager_comment && (
@@ -117,7 +166,7 @@ export function ExpenseDetailModal({ open, onClose, expense }: ExpenseDetailModa
       items.push({
         color: "blue",
         dot: <ClockCircleOutlined />,
-        children: (
+        content: (
           <div>
             <Text strong>Awaiting Manager Approval</Text>
           </div>
@@ -130,7 +179,7 @@ export function ExpenseDetailModal({ open, onClose, expense }: ExpenseDetailModa
       items.push({
         color: "green",
         dot: <BankOutlined />,
-        children: (
+        content: (
           <div>
             <Text strong>Payment Processed</Text>
             <br />
@@ -150,7 +199,7 @@ export function ExpenseDetailModal({ open, onClose, expense }: ExpenseDetailModa
       items.push({
         color: "blue",
         dot: <ClockCircleOutlined />,
-        children: (
+        content: (
           <div>
             <Text strong>Awaiting Finance Payment</Text>
           </div>
@@ -309,8 +358,47 @@ export function ExpenseDetailModal({ open, onClose, expense }: ExpenseDetailModa
         </Descriptions>
       )}
 
+      {/* Attachments */}
+      {expense.attachments && expense.attachments.length > 0 && (
+        <>
+          <Divider titlePlacement="left" styles={{ content: { margin: 0 } }}>
+            <Text strong><PaperClipOutlined /> Attachments ({expense.attachments.length})</Text>
+          </Divider>
+          {attachmentsLoading ? (
+            <div style={{ textAlign: "center", padding: 20 }}><Spin size="small" /></div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
+              {attachments.map((item) => (
+                <div key={item.key} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', background: '#fafafa', borderRadius: 6, border: '1px solid #f0f0f0' }}>
+                  <Space>
+                    {getFileIcon(item.filename)}
+                    {item.url ? (
+                      <a href={item.url} target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', fontWeight: 500 }}>
+                        {item.filename}
+                      </a>
+                    ) : (
+                      <Text>{item.filename}</Text>
+                    )}
+                  </Space>
+                  {item.url && (
+                    <Button
+                      type="text"
+                      size="small"
+                      icon={<DownloadOutlined />}
+                      href={item.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    />
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </>
+      )}
+
       {/* Timeline */}
-      <Divider orientation={"left" as any} styles={{ content: { margin: 0 } }}>
+      <Divider titlePlacement="left" styles={{ content: { margin: 0 } }}>
         <Text strong>Application Timeline</Text>
       </Divider>
       <Timeline items={getTimelineItems()} />

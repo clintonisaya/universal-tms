@@ -16,8 +16,11 @@ import {
   MenuUnfoldOutlined,
   CrownOutlined,
   BarChartOutlined,
+  AuditOutlined,
+  BankOutlined,
 } from "@ant-design/icons";
 import { useAuth } from "@/contexts/AuthContext";
+import { usePermissions } from "@/hooks/usePermissions";
 import { NotificationCenter } from "@/components/layout/NotificationCenter";
 import { clearNotifications } from "@/hooks/useNotifications";
 
@@ -28,7 +31,16 @@ interface DashboardLayoutProps {
   children: React.ReactNode;
 }
 
-const menuItems: MenuProps["items"] = [
+/** Menu item with an optional permission gate. Items without `requires` are always visible. */
+interface PermissionMenuItem {
+  key: string;
+  icon?: React.ReactNode;
+  label: string;
+  requires?: string[];          // user needs ANY of these
+  children?: PermissionMenuItem[];
+}
+
+const allMenuItems: PermissionMenuItem[] = [
   {
     key: "/dashboard",
     icon: <DashboardOutlined />,
@@ -39,10 +51,10 @@ const menuItems: MenuProps["items"] = [
     icon: <CarOutlined />,
     label: "Fleet",
     children: [
-      { key: "/fleet/trucks", label: "Trucks" },
-      { key: "/fleet/trailers", label: "Trailers" },
-      { key: "/fleet/drivers", label: "Drivers" },
-      { key: "/fleet/maintenance", label: "Maintenance" },
+      { key: "/fleet/trucks", label: "Trucks", requires: ["fleet:view"] },
+      { key: "/fleet/trailers", label: "Trailers", requires: ["fleet:view"] },
+      { key: "/fleet/drivers", label: "Drivers", requires: ["fleet:view"] },
+      { key: "/fleet/maintenance", label: "Maintenance", requires: ["fleet:view"] },
     ],
   },
   {
@@ -50,23 +62,42 @@ const menuItems: MenuProps["items"] = [
     icon: <ScheduleOutlined />,
     label: "Operations",
     children: [
-      { key: "/ops/tracking", label: "Control Tower" },
-      { key: "/ops/waybills", label: "Waybills" },
-      { key: "/ops/trips", label: "Trips" },
-      { key: "/ops/expenses", label: "Expenses" },
+      { key: "/ops/tracking", label: "Control Tower", requires: ["tracking:view"] },
+      { key: "/ops/waybills", label: "Waybills", requires: ["waybills:view"] },
+      { key: "/ops/trips", label: "Trips", requires: ["trips:view"] },
+      { key: "/ops/expenses", label: "Expenses", requires: ["expenses:view"] },
     ],
   },
   {
     key: "/office-expenses",
     icon: <DollarOutlined />,
     label: "Office Expenses",
+    requires: ["office-expenses:view"],
+  },
+  {
+    key: "manager",
+    icon: <AuditOutlined />,
+    label: "Manager",
+    children: [
+      { key: "/manager/approvals", label: "Approvals", requires: ["expenses:approve"] },
+    ],
+  },
+  {
+    key: "finance",
+    icon: <BankOutlined />,
+    label: "Finance",
+    children: [
+      { key: "/manager/payments", label: "Payments", requires: ["expenses:pay"] },
+      { key: "/finance/vouchers/bulk", label: "Vouchers", requires: ["expenses:pay"] },
+      { key: "/settings/finance", label: "Exchange Rates", requires: ["settings:exchange-rates"] },
+    ],
   },
   {
     key: "reports",
     icon: <BarChartOutlined />,
     label: "Reports",
     children: [
-      { key: "/reports/profitability", label: "Trip Profitability" },
+      { key: "/reports/profitability", label: "Trip Profitability", requires: ["reports:view"] },
     ],
   },
   {
@@ -74,24 +105,62 @@ const menuItems: MenuProps["items"] = [
     icon: <SettingOutlined />,
     label: "Settings",
     children: [
-      { key: "/settings/users", label: "Users" },
-      { key: "/settings/clients", label: "Clients" },
-      { key: "/settings/finance", label: "Exchange Rates" },
-      { key: "/settings/finance/office-expense-types", label: "Office Expense Types" },
-      { key: "/settings/trip-expenses", label: "Trip Expense Types" },
-      { key: "/settings/transport/locations", label: "Locations" },
-      { key: "/settings/transport/cargo-types", label: "Cargo Types" },
-      { key: "/settings/transport/vehicle-statuses", label: "Vehicle Statuses" },
+      { key: "/settings/users", label: "Users", requires: ["users:manage"] },
+      { key: "/settings/clients", label: "Clients", requires: ["settings:clients"] },
+      { key: "/settings/finance/office-expense-types", label: "Office Expense Types", requires: ["settings:office-expense-types"] },
+      { key: "/settings/trip-expenses", label: "Trip Expense Types", requires: ["settings:trip-expense-types"] },
+      { key: "/settings/transport/locations", label: "Locations", requires: ["settings:locations"] },
+      { key: "/settings/transport/cargo-types", label: "Cargo Types", requires: ["settings:cargo-types"] },
+      { key: "/settings/transport/vehicle-statuses", label: "Vehicle Statuses", requires: ["settings:vehicle-statuses"] },
+      { key: "/settings/transport/border-posts", label: "Border Posts", requires: ["settings:vehicle-statuses"] },
     ],
   },
 ];
+
+/** Filter menu items based on user permissions. Groups with no visible children are removed. */
+function filterMenuItems(
+  items: PermissionMenuItem[],
+  check: (...perms: string[]) => boolean,
+): MenuProps["items"] {
+  const result: NonNullable<MenuProps["items"]> = [];
+
+  for (const item of items) {
+    // If item has a permission gate, check it
+    if (item.requires && !check(...item.requires)) continue;
+
+    if (item.children) {
+      // Recursively filter children
+      const filteredChildren = filterMenuItems(item.children, check) as any[];
+      // Only show parent group if it has at least one visible child
+      if (filteredChildren.length === 0) continue;
+      result.push({
+        key: item.key,
+        icon: item.icon,
+        label: item.label,
+        children: filteredChildren,
+      });
+    } else {
+      result.push({
+        key: item.key,
+        icon: item.icon,
+        label: item.label,
+      });
+    }
+  }
+
+  return result;
+}
 
 export function DashboardLayout({ children }: DashboardLayoutProps) {
   const router = useRouter();
   const pathname = usePathname();
   const { user, logout } = useAuth();
+  const { hasAnyPermission } = usePermissions();
   const [collapsed, setCollapsed] = useState(false);
   const { token } = theme.useToken();
+
+  // Build permission-filtered menu
+  const menuItems = filterMenuItems(allMenuItems, hasAnyPermission);
 
   const handleMenuClick: MenuProps["onClick"] = ({ key }) => {
     if (key.startsWith("/")) {
@@ -144,6 +213,10 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
       "/ops/trips",
       "/ops/expenses",
       "/office-expenses",
+      "/manager/approvals",
+      "/manager/payments",
+      "/finance/vouchers/bulk",
+      "/finance/vouchers",
       "/settings/clients",
       "/settings/finance",
       "/settings/finance/office-expense-types",
@@ -151,6 +224,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
       "/settings/transport/locations",
       "/settings/transport/cargo-types",
       "/settings/transport/vehicle-statuses",
+      "/settings/transport/border-posts",
       "/settings/users",
       "/reports/profitability",
     ];
@@ -168,6 +242,8 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
     // Always keep sections open if we are inside them
     if (pathname.startsWith("/fleet")) return ["fleet"];
     if (pathname.startsWith("/ops")) return ["operations"];
+    if (pathname.startsWith("/manager")) return ["manager"];
+    if (pathname.startsWith("/finance")) return ["finance"];
     if (pathname.startsWith("/reports")) return ["reports"];
     if (pathname.startsWith("/settings")) return ["settings"];
 
@@ -190,7 +266,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
           top: 0,
           left: 0,
         }}
-        width={260}
+        width={200}
         trigger={null}
       >
         <div style={{
@@ -213,7 +289,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                   fontFamily: "Inter, sans-serif"
                 }}
               >
-                EDUPO TMS
+                EDUPO
               </Text>
             )}
           </Space>

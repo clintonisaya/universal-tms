@@ -21,7 +21,7 @@ from app.models import (
 router = APIRouter(prefix="/vehicle-statuses", tags=["vehicle-statuses"])
 
 
-@router.get("/", response_model=VehicleStatusesPublic)
+@router.get("", response_model=VehicleStatusesPublic)
 def read_vehicle_statuses(
     session: SessionDep,
     current_user: CurrentUser,
@@ -57,7 +57,7 @@ def read_vehicle_status(
     return status
 
 
-@router.post("/", response_model=VehicleStatusPublic)
+@router.post("", response_model=VehicleStatusPublic)
 def create_vehicle_status(
     *,
     session: SessionDep,
