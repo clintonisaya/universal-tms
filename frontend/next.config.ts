@@ -1,6 +1,9 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Ensure @tanstack/react-query is bundled once (fixes "No QueryClient set" with Turbopack)
+  transpilePackages: ["@tanstack/react-query"],
+
   // Fixes the API proxy so it works on both Local (Laptop) and Docker (Server)
   async rewrites() {
     const backendUrl =
