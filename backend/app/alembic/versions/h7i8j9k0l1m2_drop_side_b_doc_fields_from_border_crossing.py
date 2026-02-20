@@ -21,16 +21,16 @@ depends_on = None
 
 
 def upgrade():
-    op.drop_column('tripbordercrossing', 'documents_submitted_side_b_at')
-    op.drop_column('tripbordercrossing', 'documents_cleared_side_b_at')
+    op.drop_column('trip_border_crossing', 'documents_submitted_side_b_at')
+    op.drop_column('trip_border_crossing', 'documents_cleared_side_b_at')
 
 
 def downgrade():
     op.add_column(
-        'tripbordercrossing',
+        'trip_border_crossing',
         sa.Column('documents_submitted_side_b_at', sa.DateTime(timezone=True), nullable=True)
     )
     op.add_column(
-        'tripbordercrossing',
+        'trip_border_crossing',
         sa.Column('documents_cleared_side_b_at', sa.DateTime(timezone=True), nullable=True)
     )

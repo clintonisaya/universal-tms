@@ -580,7 +580,7 @@ export function UpdateTripStatusModal({
                   <Col span={12}>
                     <Form.Item
                       name="border_arrived_side_b_at"
-                      label={`Crossing Side A (= Arrive at ${selectedStatus === "At Border" ? nextBorder.side_b_name : nextBorder.side_a_name})`}
+                      label={`Crossed ${selectedStatus === "At Border" ? nextBorder.side_a_name : nextBorder.side_b_name} (= Arrive at ${selectedStatus === "At Border" ? nextBorder.side_b_name : nextBorder.side_a_name})`}
                     >
                       <DatePicker format="DD/MM/YYYY" style={{ width: "100%" }} />
                     </Form.Item>

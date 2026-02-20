@@ -790,7 +790,7 @@ export function TripDetailDrawer({ open, onClose, tripId }: TripDetailDrawerProp
                             { field: "arrived_side_a_at", label: `Arrived at ${sideALabel}` },
                             { field: "documents_submitted_side_a_at", label: `Documents Submitted at ${sideALabel}` },
                             { field: "documents_cleared_side_a_at", label: `Documents Cleared at ${sideALabel}` },
-                            { field: "arrived_side_b_at", label: `Crossing Side A (= Arrive at ${sideBLabel})` },
+                            { field: "arrived_side_b_at", label: `Crossed ${sideALabel} (= Arrive at ${sideBLabel})` },
                             { field: "departed_border_at", label: "Departed Border Zone" },
                           ];
 

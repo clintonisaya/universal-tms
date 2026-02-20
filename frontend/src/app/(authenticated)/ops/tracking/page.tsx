@@ -291,7 +291,7 @@ export default function TrackingPage() {
         { header: `Border ${n} Arrived Side A`, key: `bcG${n}_arr_a`, width: 20 },
         { header: `Border ${n} Docs Submitted A`, key: `bcG${n}_sub_a`, width: 20 },
         { header: `Border ${n} Docs Cleared A`, key: `bcG${n}_clr_a`, width: 20 },
-        { header: `Border ${n} Crossing Side A (= Arrive Side B)`, key: `bcG${n}_arr_b`, width: 28 },
+        { header: `Border ${n} Crossed (= Arrive Side B)`, key: `bcG${n}_arr_b`, width: 24 },
         { header: `Border ${n} Departed Zone`, key: `bcG${n}_dep`, width: 20 }
       );
     }
@@ -304,7 +304,7 @@ export default function TrackingPage() {
         { header: `Return Border ${n} Arrived Side A`, key: `bcR${n}_arr_a`, width: 20 },
         { header: `Return Border ${n} Docs Submitted A`, key: `bcR${n}_sub_a`, width: 20 },
         { header: `Return Border ${n} Docs Cleared A`, key: `bcR${n}_clr_a`, width: 20 },
-        { header: `Return Border ${n} Crossing Side A (= Arrive Side B)`, key: `bcR${n}_arr_b`, width: 32 },
+        { header: `Return Border ${n} Crossed (= Arrive Side B)`, key: `bcR${n}_arr_b`, width: 28 },
         { header: `Return Border ${n} Departed Zone`, key: `bcR${n}_dep`, width: 20 }
       );
     }
