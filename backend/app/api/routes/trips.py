@@ -810,8 +810,6 @@ def get_trip_border_crossings(
             documents_submitted_side_a_at=crossing.documents_submitted_side_a_at,
             documents_cleared_side_a_at=crossing.documents_cleared_side_a_at,
             arrived_side_b_at=crossing.arrived_side_b_at,
-            documents_submitted_side_b_at=crossing.documents_submitted_side_b_at,
-            documents_cleared_side_b_at=crossing.documents_cleared_side_b_at,
             departed_border_at=crossing.departed_border_at,
             created_at=crossing.created_at,
             updated_at=crossing.updated_at,
@@ -883,8 +881,6 @@ def upsert_border_crossing(
         "documents_submitted_side_a_at",
         "documents_cleared_side_a_at",
         "arrived_side_b_at",
-        "documents_submitted_side_b_at",
-        "documents_cleared_side_b_at",
         "departed_border_at",
     ]
 
@@ -917,8 +913,6 @@ def upsert_border_crossing(
         documents_submitted_side_a_at=crossing.documents_submitted_side_a_at,
         documents_cleared_side_a_at=crossing.documents_cleared_side_a_at,
         arrived_side_b_at=crossing.arrived_side_b_at,
-        documents_submitted_side_b_at=crossing.documents_submitted_side_b_at,
-        documents_cleared_side_b_at=crossing.documents_cleared_side_b_at,
         departed_border_at=crossing.departed_border_at,
         created_at=crossing.created_at,
         updated_at=crossing.updated_at,

@@ -1187,9 +1187,7 @@ class TripBorderCrossingUpsert(SQLModel):
     arrived_side_a_at: datetime | None = None
     documents_submitted_side_a_at: datetime | None = None
     documents_cleared_side_a_at: datetime | None = None
-    arrived_side_b_at: datetime | None = None
-    documents_submitted_side_b_at: datetime | None = None
-    documents_cleared_side_b_at: datetime | None = None
+    arrived_side_b_at: datetime | None = None  # "Crossing Side A (= Arrive Side B)"
     departed_border_at: datetime | None = None
 
 
@@ -1200,13 +1198,11 @@ class TripBorderCrossing(SQLModel, table=True):
     trip_id: uuid.UUID = Field(foreign_key="trip.id", description="Linked trip")
     border_post_id: uuid.UUID = Field(foreign_key="border_post.id", description="Border post")
     direction: str = Field(max_length=10, description="'go' or 'return'")
-    # 7 progressive date stamps
+    # 5 progressive date stamps (side-B doc fields removed — not collected)
     arrived_side_a_at: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
     documents_submitted_side_a_at: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
     documents_cleared_side_a_at: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
-    arrived_side_b_at: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
-    documents_submitted_side_b_at: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
-    documents_cleared_side_b_at: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
+    arrived_side_b_at: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))  # Crossing Side A (= Arrive Side B)
     departed_border_at: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
     created_at: datetime | None = Field(default_factory=get_datetime_utc, sa_type=DateTime(timezone=True))
     updated_at: datetime | None = Field(default_factory=get_datetime_utc, sa_type=DateTime(timezone=True))
@@ -1220,9 +1216,7 @@ class TripBorderCrossingPublic(SQLModel):
     arrived_side_a_at: datetime | None = None
     documents_submitted_side_a_at: datetime | None = None
     documents_cleared_side_a_at: datetime | None = None
-    arrived_side_b_at: datetime | None = None
-    documents_submitted_side_b_at: datetime | None = None
-    documents_cleared_side_b_at: datetime | None = None
+    arrived_side_b_at: datetime | None = None  # Crossing Side A (= Arrive Side B)
     departed_border_at: datetime | None = None
     created_at: datetime | None = None
     updated_at: datetime | None = None

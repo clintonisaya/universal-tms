@@ -120,8 +120,6 @@ def get_waybill_tracking_report(
                 "documents_submitted_side_a_at": crossing.documents_submitted_side_a_at.isoformat() if crossing.documents_submitted_side_a_at else None,
                 "documents_cleared_side_a_at": crossing.documents_cleared_side_a_at.isoformat() if crossing.documents_cleared_side_a_at else None,
                 "arrived_side_b_at": crossing.arrived_side_b_at.isoformat() if crossing.arrived_side_b_at else None,
-                "documents_submitted_side_b_at": crossing.documents_submitted_side_b_at.isoformat() if crossing.documents_submitted_side_b_at else None,
-                "documents_cleared_side_b_at": crossing.documents_cleared_side_b_at.isoformat() if crossing.documents_cleared_side_b_at else None,
                 "departed_border_at": crossing.departed_border_at.isoformat() if crossing.departed_border_at else None,
             })
 

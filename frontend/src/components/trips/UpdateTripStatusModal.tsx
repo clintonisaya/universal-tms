@@ -235,8 +235,6 @@ export function UpdateTripStatusModal({
             "documents_submitted_side_a_at",
             "documents_cleared_side_a_at",
             "arrived_side_b_at",
-            "documents_submitted_side_b_at",
-            "documents_cleared_side_b_at",
             "departed_border_at",
           ];
           dateFields.forEach((f) => {
@@ -298,8 +296,6 @@ export function UpdateTripStatusModal({
           "documents_submitted_side_a_at",
           "documents_cleared_side_a_at",
           "arrived_side_b_at",
-          "documents_submitted_side_b_at",
-          "documents_cleared_side_b_at",
           "departed_border_at",
         ];
         const crossingPayload: any = { direction };
@@ -578,29 +574,13 @@ export function UpdateTripStatusModal({
                   </Col>
                 </Row>
                 <Divider style={{ margin: "8px 0" }}>
-                  {selectedStatus === "At Border" ? nextBorder.side_b_name : nextBorder.side_a_name} Side
+                  Crossing
                 </Divider>
                 <Row gutter={12}>
                   <Col span={12}>
                     <Form.Item
                       name="border_arrived_side_b_at"
-                      label={`Arrived at ${selectedStatus === "At Border" ? nextBorder.side_b_name : nextBorder.side_a_name} (= Departed ${selectedStatus === "At Border" ? nextBorder.side_a_name : nextBorder.side_b_name})`}
-                    >
-                      <DatePicker format="DD/MM/YYYY" style={{ width: "100%" }} />
-                    </Form.Item>
-                  </Col>
-                  <Col span={12}>
-                    <Form.Item
-                      name="border_documents_submitted_side_b_at"
-                      label={`Documents Submitted at ${selectedStatus === "At Border" ? nextBorder.side_b_name : nextBorder.side_a_name}`}
-                    >
-                      <DatePicker format="DD/MM/YYYY" style={{ width: "100%" }} />
-                    </Form.Item>
-                  </Col>
-                  <Col span={12}>
-                    <Form.Item
-                      name="border_documents_cleared_side_b_at"
-                      label={`Documents Cleared at ${selectedStatus === "At Border" ? nextBorder.side_b_name : nextBorder.side_a_name}`}
+                      label={`Crossing Side A (= Arrive at ${selectedStatus === "At Border" ? nextBorder.side_b_name : nextBorder.side_a_name})`}
                     >
                       <DatePicker format="DD/MM/YYYY" style={{ width: "100%" }} />
                     </Form.Item>

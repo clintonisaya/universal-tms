@@ -115,8 +115,6 @@ interface TrackingRow {
     documents_submitted_side_a_at: string | null;
     documents_cleared_side_a_at: string | null;
     arrived_side_b_at: string | null;
-    documents_submitted_side_b_at: string | null;
-    documents_cleared_side_b_at: string | null;
     departed_border_at: string | null;
   }>;
 
@@ -293,9 +291,7 @@ export default function TrackingPage() {
         { header: `Border ${n} Arrived Side A`, key: `bcG${n}_arr_a`, width: 20 },
         { header: `Border ${n} Docs Submitted A`, key: `bcG${n}_sub_a`, width: 20 },
         { header: `Border ${n} Docs Cleared A`, key: `bcG${n}_clr_a`, width: 20 },
-        { header: `Border ${n} Arrived Side B`, key: `bcG${n}_arr_b`, width: 20 },
-        { header: `Border ${n} Docs Submitted B`, key: `bcG${n}_sub_b`, width: 20 },
-        { header: `Border ${n} Docs Cleared B`, key: `bcG${n}_clr_b`, width: 20 },
+        { header: `Border ${n} Crossing Side A (= Arrive Side B)`, key: `bcG${n}_arr_b`, width: 28 },
         { header: `Border ${n} Departed Zone`, key: `bcG${n}_dep`, width: 20 }
       );
     }
@@ -308,9 +304,7 @@ export default function TrackingPage() {
         { header: `Return Border ${n} Arrived Side A`, key: `bcR${n}_arr_a`, width: 20 },
         { header: `Return Border ${n} Docs Submitted A`, key: `bcR${n}_sub_a`, width: 20 },
         { header: `Return Border ${n} Docs Cleared A`, key: `bcR${n}_clr_a`, width: 20 },
-        { header: `Return Border ${n} Arrived Side B`, key: `bcR${n}_arr_b`, width: 20 },
-        { header: `Return Border ${n} Docs Submitted B`, key: `bcR${n}_sub_b`, width: 20 },
-        { header: `Return Border ${n} Docs Cleared B`, key: `bcR${n}_clr_b`, width: 20 },
+        { header: `Return Border ${n} Crossing Side A (= Arrive Side B)`, key: `bcR${n}_arr_b`, width: 32 },
         { header: `Return Border ${n} Departed Zone`, key: `bcR${n}_dep`, width: 20 }
       );
     }
@@ -405,8 +399,6 @@ export default function TrackingPage() {
         borderData[`bcG${n}_sub_a`] = fmtDate(bc.documents_submitted_side_a_at);
         borderData[`bcG${n}_clr_a`] = fmtDate(bc.documents_cleared_side_a_at);
         borderData[`bcG${n}_arr_b`] = fmtDate(bc.arrived_side_b_at);
-        borderData[`bcG${n}_sub_b`] = fmtDate(bc.documents_submitted_side_b_at);
-        borderData[`bcG${n}_clr_b`] = fmtDate(bc.documents_cleared_side_b_at);
         borderData[`bcG${n}_dep`] = fmtDate(bc.departed_border_at);
         (borderData as any)[`days_bcG${n}`] = calcDays(bc.arrived_side_a_at, bc.departed_border_at);
       });
@@ -418,8 +410,6 @@ export default function TrackingPage() {
         borderData[`bcR${n}_sub_a`] = fmtDate(bc.documents_submitted_side_a_at);
         borderData[`bcR${n}_clr_a`] = fmtDate(bc.documents_cleared_side_a_at);
         borderData[`bcR${n}_arr_b`] = fmtDate(bc.arrived_side_b_at);
-        borderData[`bcR${n}_sub_b`] = fmtDate(bc.documents_submitted_side_b_at);
-        borderData[`bcR${n}_clr_b`] = fmtDate(bc.documents_cleared_side_b_at);
         borderData[`bcR${n}_dep`] = fmtDate(bc.departed_border_at);
         (borderData as any)[`days_bcR${n}`] = calcDays(bc.arrived_side_a_at, bc.departed_border_at);
       });

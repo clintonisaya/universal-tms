@@ -790,18 +790,16 @@ export function TripDetailDrawer({ open, onClose, tripId }: TripDetailDrawerProp
                             { field: "arrived_side_a_at", label: `Arrived at ${sideALabel}` },
                             { field: "documents_submitted_side_a_at", label: `Documents Submitted at ${sideALabel}` },
                             { field: "documents_cleared_side_a_at", label: `Documents Cleared at ${sideALabel}` },
-                            { field: "arrived_side_b_at", label: `Arrived at ${sideBLabel} (= Departed ${sideALabel})` },
-                            { field: "documents_submitted_side_b_at", label: `Documents Submitted at ${sideBLabel}` },
-                            { field: "documents_cleared_side_b_at", label: `Documents Cleared at ${sideBLabel}` },
+                            { field: "arrived_side_b_at", label: `Crossing Side A (= Arrive at ${sideBLabel})` },
                             { field: "departed_border_at", label: "Departed Border Zone" },
                           ];
 
                           const filledCount = dateFields.filter((df) => crossing[df.field]).length;
                           const completionTag =
-                            filledCount === 7 ? (
+                            filledCount === 5 ? (
                               <Tag color="success">Complete</Tag>
                             ) : filledCount > 0 ? (
-                              <Tag color="warning">In Progress ({filledCount}/7)</Tag>
+                              <Tag color="warning">In Progress ({filledCount}/5)</Tag>
                             ) : (
                               <Tag color="default">Pending</Tag>
                             );
@@ -822,12 +820,10 @@ export function TripDetailDrawer({ open, onClose, tripId }: TripDetailDrawerProp
                                 {dateFields.map((df) => (
                                   <Descriptions.Item key={df.field} label={df.label}>
                                     {crossing[df.field]
-                                      ? new Date(crossing[df.field]).toLocaleString("en-GB", {
+                                      ? new Date(crossing[df.field]).toLocaleDateString("en-GB", {
                                           day: "2-digit",
                                           month: "2-digit",
                                           year: "numeric",
-                                          hour: "2-digit",
-                                          minute: "2-digit",
                                         })
                                       : "—"}
                                   </Descriptions.Item>
