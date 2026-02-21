@@ -157,10 +157,8 @@ export function UpdateTripDrawer({
     const handleWaybillChange = (waybillId: string) => {
         const waybill = waybills.find((w) => w.id === waybillId);
         setSelectedWaybill(waybill || null);
-        if (waybill && (!form.getFieldValue("route_name") || form.getFieldValue("route_name").trim() === "")) {
-            // Auto-populate route from waybill origin and destination if empty
-            // Usually editing won't overwrite an existing route unless it was blank,
-            // but let's automatically suggest it for convenience when attaching a new waybill
+        if (waybill) {
+            // Auto-populate route from waybill origin and destination
             form.setFieldsValue({
                 route_name: `${waybill.origin} - ${waybill.destination}`,
             });
