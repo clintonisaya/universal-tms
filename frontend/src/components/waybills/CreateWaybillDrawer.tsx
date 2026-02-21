@@ -355,7 +355,7 @@ export function CreateWaybillDrawer({
                           borderRadius: 6,
                         }}
                       >
-                        <Tag color="blue" style={{ margin: 0, minWidth: 24, textAlign: "center" }}>
+                        <Tag color="default" style={{ margin: 0, minWidth: 24, textAlign: "center" }}>
                           {index + 1}
                         </Tag>
                         <span style={{ flex: 1, fontSize: 13 }}>

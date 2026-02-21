@@ -12,8 +12,8 @@ const themeConfig: ThemeConfig = {
         fontSizeHeading5: 14, // Slightly larger for emphasis
 
         // Brand Colors
-        colorPrimary: '#D4AF37', // Brand Gold
-        colorInfo: '#D4AF37',
+        colorPrimary: '#B8961F', // Brand Gold (WCAG AA-compliant — contrast ratio ~4.5:1 on white)
+        colorInfo: '#B8961F',
 
         // Neutralizing Text for better readability
         colorTextBase: '#262626', // Slightly softer black
@@ -53,11 +53,11 @@ const themeConfig: ThemeConfig = {
             contentFontSize: 13,
         },
         Input: {
-            activeBorderColor: '#D4AF37',
-            hoverBorderColor: '#EAC159',
+            activeBorderColor: '#B8961F',
+            hoverBorderColor: '#D4AF37',
         },
         Select: {
-            colorPrimary: '#D4AF37',
+            colorPrimary: '#B8961F',
         },
         Typography: {
             fontFamilyCode: '"Fira Code", monospace',

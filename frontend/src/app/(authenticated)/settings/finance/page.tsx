@@ -170,6 +170,7 @@ export default function ExchangeRateSettingsPage() {
               size="small"
               icon={<EditOutlined />}
               onClick={() => openEdit(record)}
+              aria-label="Edit Exchange Rate"
             />
             <Button
               type="text"
@@ -177,6 +178,7 @@ export default function ExchangeRateSettingsPage() {
               size="small"
               icon={<DeleteOutlined />}
               onClick={() => handleDelete(record)}
+              aria-label="Delete Exchange Rate"
             />
           </Space>
         </div>

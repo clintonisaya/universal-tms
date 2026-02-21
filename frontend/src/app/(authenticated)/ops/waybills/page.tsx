@@ -8,7 +8,6 @@ import {
   Card,
   Flex,
   Space,
-  Tag,
   message,
   Typography,
   Popconfirm,
@@ -35,20 +34,13 @@ import {
   getStandardRowSelection,
   useResizableColumns,
 } from "@/components/ui/tableUtils";
+import { WaybillStatusTag } from "@/components/ui/WaybillStatusTag";
 
 const { Title } = Typography;
 
-const STATUS_COLORS: Record<WaybillStatus, string> = {
-  Open: "green",
-  "In Progress": "blue",
-  Completed: "purple",
-  Invoiced: "gold",
-};
-
-const STATUS_FILTERS = Object.keys(STATUS_COLORS).map((status) => ({
-  text: status,
-  value: status,
-}));
+const STATUS_FILTERS = ["Open", "In Progress", "Completed", "Invoiced"].map(
+  (s) => ({ text: s, value: s })
+);
 
 export default function WaybillsPage() {
   const router = useRouter();
@@ -161,7 +153,7 @@ export default function WaybillsPage() {
       key: "status",
       width: 100,
       render: (status: WaybillStatus) => (
-        <Tag color={STATUS_COLORS[status]}>{status}</Tag>
+        <WaybillStatusTag status={status} />
       ),
       ...getColumnFilterProps("status", STATUS_FILTERS),
     },

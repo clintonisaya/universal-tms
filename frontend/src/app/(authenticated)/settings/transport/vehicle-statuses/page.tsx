@@ -180,7 +180,7 @@ export default function VehicleStatusesPage() {
       key: "is_active",
       width: 100,
       render: (active: boolean) => (
-        <Tag color={active ? "green" : "red"}>{active ? "Active" : "Inactive"}</Tag>
+        <Tag color={active ? "success" : "error"}>{active ? "Active" : "Inactive"}</Tag>
       ),
       ...getColumnFilterProps("is_active", STATUS_FILTERS),
     },
@@ -197,6 +197,7 @@ export default function VehicleStatusesPage() {
               size="small"
               icon={<EditOutlined />}
               onClick={() => openEditModal(record)}
+              aria-label="Edit Vehicle Status"
             />
             <Popconfirm
               title="Delete vehicle status"
@@ -206,7 +207,7 @@ export default function VehicleStatusesPage() {
               cancelText="No"
               okButtonProps={{ danger: true }}
             >
-              <Button type="text" danger size="small" icon={<DeleteOutlined />} />
+              <Button type="text" danger size="small" icon={<DeleteOutlined />} aria-label="Delete Vehicle Status" />
             </Popconfirm>
           </Space>
         </div>

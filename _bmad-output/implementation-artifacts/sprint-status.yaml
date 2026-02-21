@@ -99,7 +99,11 @@ development_status:
   4-7-expense-review-action-modal: ready-for-dev
   epic-4-retrospective: optional
 
-  # Epic 5: Speed & Functionality Quick Fixes
+  # Epic 5: UX Improvements & Accessibility (from UX Audit 2026-02-20)
   epic-5: in-progress
+  5-1-accessibility-compliance: review
   5-2-eliminate-auth-loading-flash: review
+  5-3-design-system-visual-consistency: in-progress
+  5-4-bulk-action-bar-rollout: ready-for-dev
+  5-5-role-based-ux-personalization: ready-for-dev
   epic-5-retrospective: optional

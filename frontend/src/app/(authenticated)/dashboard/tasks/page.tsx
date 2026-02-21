@@ -48,9 +48,9 @@ interface TodoTask {
 
 
 const TASK_TYPE_LABELS: Record<string, { label: string; color: string }> = {
-  expense_approval: { label: "Expense Approval", color: "gold" },
-  payment_processing: { label: "Payment Processing", color: "blue" },
-  expense_correction: { label: "Expense Correction", color: "orange" },
+  expense_approval: { label: "Expense Approval", color: "warning" },
+  payment_processing: { label: "Payment Processing", color: "processing" },
+  expense_correction: { label: "Expense Correction", color: "warning" },
 };
 
 function formatTimeAgo(dateStr: string): string {

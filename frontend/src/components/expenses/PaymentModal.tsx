@@ -406,7 +406,7 @@ export function PaymentModal({ open, onClose, onSuccess, expense }: PaymentModal
                 <span>
                   <PaperClipOutlined /> Attachments
                   {expense.attachments && expense.attachments.length > 0 && (
-                    <Tag color="blue" style={{ marginLeft: 6 }}>{expense.attachments.length}</Tag>
+                    <Tag color="default" style={{ marginLeft: 6 }}>{expense.attachments.length}</Tag>
                   )}
                 </span>
               ),

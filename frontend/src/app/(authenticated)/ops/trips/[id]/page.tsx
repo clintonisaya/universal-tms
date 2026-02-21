@@ -7,7 +7,6 @@ import {
   Button,
   Space,
   Tabs,
-  Tag,
   Descriptions,
   Table,
   message,
@@ -34,36 +33,11 @@ import type {
 import { useAuth } from "@/contexts/AuthContext";
 import { AddExpenseModal } from "@/components/expenses/AddExpenseModal";
 import { UpdateTripStatusModal } from "@/components/trips/UpdateTripStatusModal";
+import { ExpenseStatusBadge } from "@/components/expenses/ExpenseStatusBadge";
+import { TripStatusTag } from "@/components/ui/TripStatusTag";
 
 const { Title, Text } = Typography;
 
-const TRIP_STATUS_COLORS: Record<TripStatus, string> = {
-  Waiting: "default",
-  Dispatch: "purple",
-  "Wait to Load": "lime",
-  Loading: "gold",
-  "In Transit": "blue",
-  "At Border": "purple",
-  Offloading: "cyan",
-  "Dispatch (Return)": "purple",
-  "Wait to Load (Return)": "lime",
-  "Loading (Return)": "gold",
-  "In Transit (Return)": "blue",
-  "At Border (Return)": "purple",
-  "Offloading (Return)": "cyan",
-  Returned: "geekblue",
-  "Waiting for PODs": "orange",
-  Completed: "green",
-  Cancelled: "red",
-};
-
-const EXPENSE_STATUS_COLORS: Record<ExpenseStatus, string> = {
-  "Pending Manager": "gold",
-  "Pending Finance": "blue",
-  Paid: "green",
-  Rejected: "red",
-  Returned: "orange",
-};
 
 export default function TripDetailPage() {
   const router = useRouter();
@@ -178,9 +152,7 @@ export default function TripDetailPage() {
       title: "Status",
       dataIndex: "status",
       key: "status",
-      render: (status: ExpenseStatus) => (
-        <Tag color={EXPENSE_STATUS_COLORS[status]}>{status}</Tag>
-      ),
+      render: (status: ExpenseStatus) => <ExpenseStatusBadge status={status} compact />,
     },
     {
       title: "Created",
@@ -258,7 +230,7 @@ export default function TripDetailPage() {
               <Title level={2} style={{ margin: 0 }}>
                 Trip: {trip.route_name}
               </Title>
-              <Tag color={TRIP_STATUS_COLORS[trip.status]}>{trip.status}</Tag>
+              <TripStatusTag status={trip.status} />
               <Button 
                 type="link" 
                 onClick={() => setIsStatusModalOpen(true)}
@@ -280,9 +252,7 @@ export default function TripDetailPage() {
                       {trip.route_name}
                     </Descriptions.Item>
                     <Descriptions.Item label="Status">
-                      <Tag color={TRIP_STATUS_COLORS[trip.status]}>
-                        {trip.status}
-                      </Tag>
+                      <TripStatusTag status={trip.status} />
                     </Descriptions.Item>
                     <Descriptions.Item label="Detailed Status/Location">
                       {trip.current_location || "-"}

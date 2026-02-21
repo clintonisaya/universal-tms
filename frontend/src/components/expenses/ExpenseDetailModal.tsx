@@ -241,7 +241,7 @@ export function ExpenseDetailModal({ open, onClose, expense }: ExpenseDetailModa
           <Text strong>{expense.expense_number || expense.id.slice(0, 8).toUpperCase()}</Text>
         </Descriptions.Item>
         <Descriptions.Item label="Category" span={1}>
-          <Tag color="blue">{expense.category}</Tag>
+          <Tag color="default">{expense.category}</Tag>
         </Descriptions.Item>
         <Descriptions.Item label="Remarks" span={2}>
           {expense.description || "-"}

@@ -288,11 +288,11 @@ export default function TripExpenseTypesPage() {
       width: 100,
       render: (_, record: TreeNode) => {
         if ("isCategory" in record && record.isCategory) {
-          return <Tag color="blue">{record.children?.length || 0} items</Tag>;
+          return <Tag color="default">{record.children?.length || 0} items</Tag>;
         }
         const expenseType = record as ExpenseTypeNode;
         return (
-          <Tag color={expenseType.is_active ? "green" : "default"}>
+          <Tag color={expenseType.is_active ? "success" : "default"}>
             {expenseType.is_active ? "Active" : "Inactive"}</Tag>
         );
       },
@@ -325,6 +325,7 @@ export default function TripExpenseTypesPage() {
                 type="text"
                 size="small"
                 icon={<EditOutlined />}
+                aria-label="Edit Expense Category"
                 onClick={() => {
                   setEditingItem(record as CategoryNode | ExpenseTypeNode);
                   if (isCategory) {
@@ -349,7 +350,7 @@ export default function TripExpenseTypesPage() {
                 cancelText="No"
                 okButtonProps={{ danger: true }}
               >
-                <Button type="text" danger size="small" icon={<DeleteOutlined />} />
+                <Button type="text" danger size="small" icon={<DeleteOutlined />} aria-label="Delete Expense Category" />
               </Popconfirm>
             </Space>
           </div>

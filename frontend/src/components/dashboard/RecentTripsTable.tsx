@@ -6,28 +6,10 @@ import { useRouter } from "next/navigation";
 import type { ColumnsType } from "antd/es/table";
 import type { Trip, TripStatus } from "@/types/trip";
 import { useAuth } from "@/contexts/AuthContext";
+import { TripStatusTag } from "@/components/ui/TripStatusTag";
 
 const { Title, Text } = Typography;
 
-const STATUS_COLORS: Record<TripStatus, string> = {
-  Waiting: "default",
-  Dispatch: "purple",
-  "Wait to Load": "lime",
-  Loading: "gold",
-  "In Transit": "blue",
-  "At Border": "purple",
-  Offloading: "cyan",
-  "Dispatch (Return)": "purple",
-  "Wait to Load (Return)": "lime",
-  "Loading (Return)": "gold",
-  "In Transit (Return)": "blue",
-  "At Border (Return)": "purple",
-  "Offloading (Return)": "cyan",
-  Returned: "geekblue",
-  "Waiting for PODs": "orange",
-  Completed: "green",
-  Cancelled: "red",
-};
 
 function getRiskColor(risk: string | null | undefined): string {
   switch (risk) {
@@ -118,9 +100,7 @@ export function RecentTripsTable({ data, loading }: RecentTripsTableProps) {
       dataIndex: "status",
       key: "status",
       width: 120,
-      render: (status: TripStatus) => (
-        <Tag color={STATUS_COLORS[status]}>{status}</Tag>
-      ),
+      render: (status: TripStatus) => <TripStatusTag status={status} />,
     },
         {
       title: "Last Updated",

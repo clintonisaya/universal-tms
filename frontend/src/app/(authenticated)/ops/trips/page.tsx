@@ -32,6 +32,7 @@ import {
   getStandardRowSelection,
   useResizableColumns,
 } from "@/components/ui/tableUtils";
+import { TripStatusTag } from "@/components/ui/TripStatusTag";
 
 const { Title, Text } = Typography;
 
@@ -65,30 +66,12 @@ function formatRelativeTime(dateStr: string | null | undefined): string {
   return date.toLocaleDateString();
 }
 
-const STATUS_COLORS: Record<TripStatus, string> = {
-  Waiting: "default",
-  Dispatch: "purple",
-  "Wait to Load": "lime",
-  Loading: "gold",
-  "In Transit": "blue",
-  "At Border": "purple",
-  Offloading: "cyan",
-  "Dispatch (Return)": "purple",
-  "Wait to Load (Return)": "lime",
-  "Loading (Return)": "gold",
-  "In Transit (Return)": "blue",
-  "At Border (Return)": "purple",
-  "Offloading (Return)": "cyan",
-  Returned: "geekblue",
-  "Waiting for PODs": "orange",
-  Completed: "green",
-  Cancelled: "red",
-};
-
-const STATUS_FILTERS = Object.keys(STATUS_COLORS).map((status) => ({
-  text: status,
-  value: status,
-}));
+const STATUS_FILTERS: { text: string; value: string }[] = [
+  "Waiting", "Dispatch", "Wait to Load", "Loading", "In Transit", "At Border",
+  "Offloading", "Dispatch (Return)", "Wait to Load (Return)", "Loading (Return)",
+  "In Transit (Return)", "At Border (Return)", "Offloading (Return)",
+  "Returned", "Waiting for PODs", "Completed", "Cancelled",
+].map((s) => ({ text: s, value: s }));
 
 const DIRECTION_FILTERS = [
   { text: "Go", value: "go" },
@@ -170,7 +153,7 @@ function TripsPageContent() {
       key: "direction",
       width: 90,
       render: (returnWaybillId: string | null) => (
-        <Tag color={returnWaybillId ? "green" : "blue"}>
+        <Tag color={returnWaybillId ? "geekblue" : "default"}>
           {returnWaybillId ? "Return" : "Go"}
         </Tag>
       ),
@@ -201,9 +184,7 @@ function TripsPageContent() {
       dataIndex: "status",
       key: "status",
       width: 120,
-      render: (status: TripStatus) => (
-        <Tag color={STATUS_COLORS[status]}>{status}</Tag>
-      ),
+      render: (status: TripStatus) => <TripStatusTag status={status} />,
       ...getColumnFilterProps("status", STATUS_FILTERS),
     },
         {
@@ -259,6 +240,7 @@ function TripsPageContent() {
               size="small"
               icon={<EyeOutlined />}
               onClick={() => setDetailDrawerTripId(record.id)}
+              aria-label={`View Trip ${record.trip_number}`}
             />
             <Popconfirm
               title="Delete trip"
@@ -268,7 +250,7 @@ function TripsPageContent() {
               cancelText="No"
               okButtonProps={{ danger: true }}
             >
-              <Button type="text" danger size="small" icon={<DeleteOutlined />} />
+              <Button type="text" danger size="small" icon={<DeleteOutlined />} aria-label={`Delete Trip ${record.trip_number}`} />
             </Popconfirm>
           </Space>
         </div>

@@ -606,6 +606,7 @@ export function EditExpenseModal({
                       <Col span={8}>
                         <Form.Item label="Application Amount">
                           <Input
+                            aria-label="Application Amount"
                             value={items.length > 0 && totalAmount > 0 ? `${items[0]?.currency || 'TZS'} ${totalAmount.toLocaleString("en-US")}` : '-'}
                             readOnly
                             style={{ fontWeight: 'bold' }}
@@ -675,7 +676,7 @@ export function EditExpenseModal({
                 <span>
                   <PaperClipOutlined /> Attachment Manage
                   {(existingAttachments.length > 0 || fileList.length > 0) && (
-                    <Tag color="blue" style={{ marginLeft: 6 }}>
+                    <Tag color="default" style={{ marginLeft: 6 }}>
                       {existingAttachments.length + fileList.length}
                     </Tag>
                   )}

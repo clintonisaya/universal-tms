@@ -83,7 +83,13 @@
       "Bash(\"/c/Users/IT/AppData/Local/Programs/Python/Python313/python.exe\" -c \"import ast; ast.parse\\(open\\(''app/api/routes/reports.py''\\).read\\(\\)\\); print\\(''OK''\\)\")",
       "Bash(\"/c/Users/IT/AppData/Local/Programs/Python/Python313/python.exe\" -c \"import ast; ast.parse\\(open\\(''app/api/routes/trips.py''\\).read\\(\\)\\); print\\(''trips OK''\\); ast.parse\\(open\\(''app/api/routes/border_posts.py''\\).read\\(\\)\\); print\\(''border_posts OK''\\); ast.parse\\(open\\(''app/api/routes/waybills.py''\\).read\\(\\)\\); print\\(''waybills OK''\\)\")",
       "Bash(\"/c/Users/IT/AppData/Local/Programs/Python/Python313/python.exe\" -c \"import ast; ast.parse\\(open\\(''app/models.py''\\).read\\(\\)\\); print\\(''models OK''\\)\")",
-      "Bash(\"/c/Users/IT/AppData/Local/Programs/Python/Python313/python.exe\" -c \"import ast; ast.parse\\(open\\(''app/alembic/versions/f5g6h7i8j9k0_add_border_crossing_tables.py''\\).read\\(\\)\\); print\\(''migration OK''\\)\")"
+      "Bash(\"/c/Users/IT/AppData/Local/Programs/Python/Python313/python.exe\" -c \"import ast; ast.parse\\(open\\(''app/alembic/versions/f5g6h7i8j9k0_add_border_crossing_tables.py''\\).read\\(\\)\\); print\\(''migration OK''\\)\")",
+      "Bash(cmd /c \"netstat -ano | findstr :5432\")",
+      "Bash(cmd /c netstat -ano)",
+      "Bash(git checkout:*)",
+      "Bash(git pull:*)",
+      "Bash(git stash:*)",
+      "Bash(npm run test:*)"
     ]
   }
 }

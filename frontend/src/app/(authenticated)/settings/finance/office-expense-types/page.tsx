@@ -234,6 +234,7 @@ export default function OfficeExpenseTypesPage() {
               size="small"
               icon={<EditOutlined />}
               onClick={() => openEditModal(record)}
+              aria-label="Edit Expense Type"
             />
             <Popconfirm
               title="Delete type"
@@ -243,7 +244,7 @@ export default function OfficeExpenseTypesPage() {
               cancelText="No"
               okButtonProps={{ danger: true }}
             >
-              <Button type="text" danger size="small" icon={<DeleteOutlined />} />
+              <Button type="text" danger size="small" icon={<DeleteOutlined />} aria-label="Delete Expense Type" />
             </Popconfirm>
           </Space>
         </div>

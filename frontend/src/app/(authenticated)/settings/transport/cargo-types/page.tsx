@@ -177,6 +177,7 @@ export default function CargoTypesPage() {
               size="small"
               icon={<EditOutlined />}
               onClick={() => openEditModal(record)}
+              aria-label="Edit Cargo Type"
             />
             <Popconfirm
               title="Delete cargo type"
@@ -186,7 +187,7 @@ export default function CargoTypesPage() {
               cancelText="No"
               okButtonProps={{ danger: true }}
             >
-              <Button type="text" danger size="small" icon={<DeleteOutlined />} />
+              <Button type="text" danger size="small" icon={<DeleteOutlined />} aria-label="Delete Cargo Type" />
             </Popconfirm>
           </Space>
         </div>

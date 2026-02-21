@@ -27,6 +27,8 @@ import {
   getColumnSearchProps,
   useResizableColumns,
 } from "@/components/ui/tableUtils";
+import { TripStatusTag } from "@/components/ui/TripStatusTag";
+import type { TripStatus } from "@/types/trip";
 
 const { Title, Text } = Typography;
 
@@ -58,16 +60,6 @@ interface ProfitabilityResponse {
   summary: ProfitabilitySummary;
 }
 
-const STATUS_COLORS: Record<string, string> = {
-  Loading: "blue",
-  "In Transit": "processing",
-  "At Border": "orange",
-  Offloaded: "purple",
-  Returned: "cyan",
-  "Waiting for PODs": "gold",
-  Completed: "green",
-  Cancelled: "red",
-};
 
 export default function TripProfitabilityPage() {
   const router = useRouter();
@@ -168,9 +160,7 @@ export default function TripProfitabilityPage() {
       dataIndex: "status",
       key: "status",
       width: 130,
-      render: (status: string) => (
-        <Tag color={STATUS_COLORS[status] || "default"}>{status}</Tag>
-      ),
+      render: (status: string) => <TripStatusTag status={status as TripStatus} />,
     },
     {
       title: "Income (TZS)",
@@ -275,6 +265,7 @@ export default function TripProfitabilityPage() {
           size="small"
           icon={<EyeOutlined />}
           title="View Trip Details"
+          aria-label="View Trip Details"
           onClick={() => router.push(`/ops/trips/${record.trip_id}`)}
         />
       ),

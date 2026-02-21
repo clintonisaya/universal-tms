@@ -1,17 +1,12 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Drawer, Descriptions, Tag, Typography, Spin, message, Space, Button } from "antd";
-import type { Waybill, WaybillStatus } from "@/types/waybill";
+import { Drawer, Descriptions, Typography, Spin, message, Space, Button } from "antd";
+import type { Waybill } from "@/types/waybill";
+import { WaybillStatusTag } from "@/components/ui/WaybillStatusTag";
 
 const { Title, Text } = Typography;
 
-const STATUS_COLORS: Record<WaybillStatus, string> = {
-  Open: "green",
-  "In Progress": "blue",
-  Completed: "purple",
-  Invoiced: "gold",
-};
 
 interface WaybillDetailDrawerProps {
   open: boolean;
@@ -58,7 +53,7 @@ export function WaybillDetailDrawer({ open, onClose, waybillId }: WaybillDetailD
         waybill ? (
           <Space>
             <span>Waybill: {waybill.waybill_number}</span>
-            <Tag color={STATUS_COLORS[waybill.status]}>{waybill.status}</Tag>
+            <WaybillStatusTag status={waybill.status} />
           </Space>
         ) : (
           "Waybill Details"

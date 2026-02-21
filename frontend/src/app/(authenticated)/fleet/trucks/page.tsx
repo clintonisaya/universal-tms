@@ -7,7 +7,6 @@ import {
   Button,
   Card,
   Space,
-  Tag,
   Modal,
   Form,
   Input,
@@ -27,19 +26,10 @@ import {
   getStandardRowSelection,
   useResizableColumns,
 } from "@/components/ui/tableUtils";
+import { VehicleStatusTag } from "@/components/ui/VehicleStatusTag";
 
 const { Title } = Typography;
 
-const STATUS_COLORS: Record<string, string> = {
-  Idle: "green",
-  Loading: "cyan",
-  "In Transit": "blue",
-  "At Border": "gold",
-  Offloaded: "purple",
-  Returned: "default",
-  "Waiting for PODs": "magenta",
-  Maintenance: "orange",
-};
 
 const STATUS_FILTERS = [
   { text: "Idle", value: "Idle" },
@@ -189,9 +179,7 @@ export default function TrucksPage() {
       dataIndex: "status",
       key: "status",
       width: 120,
-      render: (status: string) => (
-        <Tag color={STATUS_COLORS[status] || "default"}>{status}</Tag>
-      ),
+      render: (status: string) => <VehicleStatusTag status={status} />,
       ...getColumnFilterProps("status", STATUS_FILTERS),
     },
     {
@@ -207,6 +195,7 @@ export default function TrucksPage() {
               size="small"
               icon={<EyeOutlined />}
               title="View Details"
+              aria-label={`View Truck ${record.plate_number}`}
               onClick={() => router.push(`/fleet/trucks/${record.id}`)}
             />
             <Button
@@ -214,6 +203,7 @@ export default function TrucksPage() {
               size="small"
               icon={<EditOutlined />}
               onClick={() => openEditModal(record)}
+              aria-label={`Edit Truck ${record.plate_number}`}
             />
             <Popconfirm
               title="Delete truck"
@@ -223,7 +213,7 @@ export default function TrucksPage() {
               cancelText="No"
               okButtonProps={{ danger: true }}
             >
-              <Button type="text" danger icon={<DeleteOutlined />} size="small" />
+              <Button type="text" danger icon={<DeleteOutlined />} size="small" aria-label={`Delete Truck ${record.plate_number}`} />
             </Popconfirm>
           </Space>
         </div>

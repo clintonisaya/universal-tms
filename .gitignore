@@ -42,9 +42,9 @@ docker-compose.override.yml
 nul
 pic/
 
-.claude/
-.agent/
-.gemini/
-.bmad/
-_bmad-output/
-_bmad/
+*.claude/
+*.agent/
+*.gemini/
+*.bmad/
+*_bmad-output/
+*_bmad/

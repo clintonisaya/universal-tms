@@ -41,37 +41,11 @@ import { useAuth } from "@/contexts/AuthContext";
 import { AddExpenseModal } from "@/components/expenses/AddExpenseModal";
 import { UpdateTripStatusModal } from "@/components/trips/UpdateTripStatusModal";
 import { ExpenseStatusBadge } from "@/components/expenses/ExpenseStatusBadge";
+import { TripStatusTag } from "@/components/ui/TripStatusTag";
 
 const { Title, Text } = Typography;
 const { TextArea } = Input;
 
-const TRIP_STATUS_COLORS: Record<TripStatus, string> = {
-  Waiting: "default",
-  Dispatch: "purple",
-  "Wait to Load": "lime",
-  Loading: "gold",
-  "In Transit": "blue",
-  "At Border": "purple",
-  Offloading: "cyan",
-  "Dispatch (Return)": "purple",
-  "Wait to Load (Return)": "lime",
-  "Loading (Return)": "gold",
-  "In Transit (Return)": "blue",
-  "At Border (Return)": "purple",
-  "Offloading (Return)": "cyan",
-  Returned: "geekblue",
-  "Waiting for PODs": "orange",
-  Completed: "green",
-  Cancelled: "red",
-};
-
-const EXPENSE_STATUS_COLORS: Record<ExpenseStatus, string> = {
-  "Pending Manager": "gold",
-  "Pending Finance": "blue",
-  Paid: "green",
-  Rejected: "red",
-  Returned: "orange",
-};
 
 interface TripDetailDrawerProps {
   open: boolean;
@@ -499,7 +473,7 @@ export function TripDetailDrawer({ open, onClose, tripId }: TripDetailDrawerProp
               cancelText="No"
               okButtonProps={{ danger: true }}
             >
-              <Button type="text" danger icon={<DeleteOutlined />} size="small" />
+              <Button type="text" danger icon={<DeleteOutlined />} size="small" aria-label="Delete Expense" />
             </Popconfirm>
           )}
         </Space>
@@ -516,7 +490,7 @@ export function TripDetailDrawer({ open, onClose, tripId }: TripDetailDrawerProp
           trip ? (
             <Space>
               <span>Trip: {trip.route_name}</span>
-              <Tag color={TRIP_STATUS_COLORS[trip.status]}>{trip.status}</Tag>
+              <TripStatusTag status={trip.status} />
             </Space>
           ) : (
             "Trip Details"
@@ -566,14 +540,12 @@ export function TripDetailDrawer({ open, onClose, tripId }: TripDetailDrawerProp
                         {trip.route_name}
                       </Descriptions.Item>
                       <Descriptions.Item label="Direction">
-                        <Tag color={trip.return_waybill_id ? "green" : "blue"}>
+                        <Tag color={trip.return_waybill_id ? "geekblue" : "default"}>
                           {trip.return_waybill_id ? "Return" : "Go"}
                         </Tag>
                       </Descriptions.Item>
                       <Descriptions.Item label="Status">
-                        <Tag color={TRIP_STATUS_COLORS[trip.status]}>
-                          {trip.status}
-                        </Tag>
+                        <TripStatusTag status={trip.status} />
                       </Descriptions.Item>
                       <Descriptions.Item label="Detailed Status/Location">
                         {trip.current_location || "-"}
@@ -809,7 +781,7 @@ export function TripDetailDrawer({ open, onClose, tripId }: TripDetailDrawerProp
                             label: (
                               <Space>
                                 <strong>{bp?.display_name || "Unknown Border"}</strong>
-                                <Tag color={isGo ? "blue" : "green"}>
+                                <Tag color={isGo ? "default" : "geekblue"}>
                                   {isGo ? "Go" : "Return"}
                                 </Tag>
                                 {completionTag}

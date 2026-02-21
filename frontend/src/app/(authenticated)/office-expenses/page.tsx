@@ -128,6 +128,7 @@ export default function OfficeExpensesPage() {
             size="small"
             icon={<HistoryOutlined />}
             title="View History"
+            aria-label="View Expense History"
             onClick={() => handleViewHistory(record)}
           />
           {canPrint(record.status) && (
@@ -136,6 +137,7 @@ export default function OfficeExpensesPage() {
               size="small"
               icon={<PrinterOutlined />}
               title="Print Voucher"
+              aria-label="Print Expense Voucher"
               onClick={() => handlePrint(record.id)}
             />
           )}

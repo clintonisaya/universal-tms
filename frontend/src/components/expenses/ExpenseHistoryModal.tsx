@@ -1,6 +1,6 @@
 "use client";
 
-import { Modal, Steps, Descriptions, Tag, Typography, Space, Divider } from "antd";
+import { Modal, Steps, Descriptions, Typography, Space, Divider } from "antd";
 import {
   UserOutlined,
   CheckCircleOutlined,
@@ -9,16 +9,9 @@ import {
   ClockCircleOutlined,
 } from "@ant-design/icons";
 import type { ExpenseRequestDetailed, ExpenseStatus } from "@/types/expense";
+import { ExpenseStatusBadge } from "@/components/expenses/ExpenseStatusBadge";
 
 const { Text } = Typography;
-
-const STATUS_COLORS: Record<ExpenseStatus, string> = {
-  "Pending Manager": "orange",
-  "Pending Finance": "blue",
-  Paid: "green",
-  Rejected: "red",
-  Returned: "purple",
-};
 
 interface ExpenseHistoryModalProps {
   open: boolean;
@@ -174,7 +167,7 @@ export function ExpenseHistoryModal({
       title={
         <Space>
           <span>Expense History</span>
-          <Tag color={STATUS_COLORS[expense.status]}>{expense.status}</Tag>
+          <ExpenseStatusBadge status={expense.status} />
         </Space>
       }
       open={open}

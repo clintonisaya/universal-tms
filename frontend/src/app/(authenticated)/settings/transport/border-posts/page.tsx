@@ -178,7 +178,7 @@ export default function BorderPostsPage() {
       dataIndex: "side_a_name",
       key: "side_a_name",
       width: 180,
-      render: (text: string) => <Tag color="blue">{text}</Tag>,
+      render: (text: string) => <Tag color="default">{text}</Tag>,
       ...getColumnSearchProps("side_a_name"),
     },
     {
@@ -186,7 +186,7 @@ export default function BorderPostsPage() {
       dataIndex: "side_b_name",
       key: "side_b_name",
       width: 180,
-      render: (text: string) => <Tag color="green">{text}</Tag>,
+      render: (text: string) => <Tag color="geekblue">{text}</Tag>,
       ...getColumnSearchProps("side_b_name"),
     },
     {
@@ -216,6 +216,7 @@ export default function BorderPostsPage() {
                 size="small"
                 icon={<EditOutlined />}
                 onClick={() => openEditModal(record)}
+                aria-label="Edit Border Post"
               />
             )}
             {canWrite && record.is_active && (
@@ -227,7 +228,7 @@ export default function BorderPostsPage() {
                 cancelText="Cancel"
                 okButtonProps={{ danger: true }}
               >
-                <Button type="text" danger size="small" icon={<StopOutlined />} />
+                <Button type="text" danger size="small" icon={<StopOutlined />} aria-label="Deactivate Border Post" />
               </Popconfirm>
             )}
           </Space>

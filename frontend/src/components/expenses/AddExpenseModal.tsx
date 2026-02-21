@@ -540,7 +540,7 @@ export function AddExpenseModal({
           type="text"
           danger
           icon={<DeleteOutlined />}
-          aria-label="Delete Item"
+          aria-label="Delete Expense Item"
           onClick={() => handleDeleteRow(record.key)}
         />
       ),
@@ -566,6 +566,7 @@ export function AddExpenseModal({
           <Col span={8}>
             <Form.Item label="Application Amount">
               <Input
+                aria-label="Application Amount"
                 value={totalAmount > 0 ? `${items[0]?.currency || 'TZS'} ${totalAmount.toLocaleString("en-US")}` : '-'}
                 readOnly
                 style={{ fontWeight: 'bold' }}

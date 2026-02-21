@@ -181,6 +181,7 @@ export default function ExpensesPage() {
             size="small"
             icon={<HistoryOutlined />}
             title="View History"
+            aria-label="View Expense History"
             onClick={() => handleViewHistory(record)}
           />
           {record.trip_id && (
@@ -189,6 +190,7 @@ export default function ExpensesPage() {
               size="small"
               icon={<EyeOutlined />}
               title="View Trip"
+              aria-label="View Trip"
               onClick={() => handleViewTrip(record.trip_id!)}
             />
           )}
@@ -198,6 +200,7 @@ export default function ExpensesPage() {
               size="small"
               icon={<PrinterOutlined />}
               title="Print Voucher"
+              aria-label="Print Expense Voucher"
               onClick={() => handlePrint(record.id)}
             />
           )}

@@ -256,6 +256,7 @@ export default function LocationsPage() {
                 type="text"
                 size="small"
                 icon={<EditOutlined />}
+                aria-label="Edit Location"
                 onClick={() => {
                   setEditingItem(record);
                   if (isCountry) {
@@ -274,7 +275,7 @@ export default function LocationsPage() {
                 cancelText="No"
                 okButtonProps={{ danger: true }}
               >
-                <Button type="text" danger size="small" icon={<DeleteOutlined />} />
+                <Button type="text" danger size="small" icon={<DeleteOutlined />} aria-label="Delete Location" />
               </Popconfirm>
             </Space>
           </div>

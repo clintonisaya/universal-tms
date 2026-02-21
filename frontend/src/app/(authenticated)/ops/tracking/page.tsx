@@ -126,28 +126,28 @@ interface TrackingRow {
 
 const STATUS_COLORS: Record<string, string> = {
   // Waybill Statuses
-  Open: "blue",
+  Open: "default",
   "In Progress": "processing",
-  Completed: "green",
-  Invoiced: "purple",
+  Completed: "success",
+  Invoiced: "geekblue",
   // Trip Statuses
   Waiting: "default",
   Dispatch: "purple",
   "Wait to Load": "lime",
   Loading: "gold",
-  "In Transit": "cyan",
-  "At Border": "orange",
-  Offloading: "lime",
+  "In Transit": "processing",
+  "At Border": "purple",
+  Offloading: "cyan",
   // Return leg statuses (Story 2.25)
   "Dispatch (Return)": "purple",
   "Wait to Load (Return)": "lime",
   "Loading (Return)": "gold",
-  "In Transit (Return)": "cyan",
-  "At Border (Return)": "orange",
-  "Offloading (Return)": "lime",
+  "In Transit (Return)": "processing",
+  "At Border (Return)": "purple",
+  "Offloading (Return)": "cyan",
   Returned: "geekblue",
-  "Waiting for PODs": "volcano",
-  Cancelled: "red",
+  "Waiting for PODs": "warning",
+  Cancelled: "error",
   "Not Dispatched": "default",
 };
 
@@ -607,13 +607,13 @@ export default function TrackingPage() {
       render: (_, r) => (
         <Flex vertical gap={2} align="center">
           <Tooltip title="Overall trip duration">
-            <Tag color={r.duration_days > 15 ? "red" : r.duration_days > 7 ? "orange" : "green"}>
+            <Tag color={r.duration_days > 15 ? "error" : r.duration_days > 7 ? "warning" : "success"}>
               {r.duration_days}d
             </Tag>
           </Tooltip>
           {r.return_duration_days > 0 && (
             <Tooltip title="Return leg duration">
-              <Tag color="geekblue" style={{ fontSize: 10 }}>
+              <Tag color="default" style={{ fontSize: 10 }}>
                 Ret: {r.return_duration_days}d
               </Tag>
             </Tooltip>

@@ -7,7 +7,6 @@ import {
   Button,
   Card,
   Flex,
-  Tag,
   Typography,
 } from "antd";
 import {
@@ -25,6 +24,7 @@ import {
   getStandardRowSelection,
   useResizableColumns,
 } from "@/components/ui/tableUtils";
+import { ExpenseStatusBadge } from "@/components/expenses/ExpenseStatusBadge";
 
 const { Title } = Typography;
 
@@ -93,15 +93,9 @@ export default function MaintenancePage() {
       key: "status",
       width: 130,
       render: (_, record) => {
-        const status = record.expense?.status || "Unknown";
-        const colors: Record<string, string> = {
-          "Pending Manager": "orange",
-          "Pending Finance": "blue",
-          Paid: "green",
-          Rejected: "red",
-          Returned: "purple",
-        };
-        return <Tag color={colors[status] || "default"}>{status}</Tag>;
+        const status = record.expense?.status;
+        if (!status) return "-";
+        return <ExpenseStatusBadge status={status as any} compact />;
       },
     },
   ];

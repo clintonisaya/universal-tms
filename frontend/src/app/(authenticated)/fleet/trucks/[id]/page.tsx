@@ -8,7 +8,6 @@ import {
   Flex,
   Space,
   Tabs,
-  Tag,
   Descriptions,
   Table,
   Statistic,
@@ -32,19 +31,11 @@ import {
   getColumnSearchProps,
   getStandardRowSelection,
 } from "@/components/ui/tableUtils";
+import { VehicleStatusTag } from "@/components/ui/VehicleStatusTag";
+import { ExpenseStatusBadge } from "@/components/expenses/ExpenseStatusBadge";
 
 const { Title, Text } = Typography;
 
-const TRUCK_STATUS_COLORS: Record<string, string> = {
-  Idle: "green",
-  Loading: "cyan",
-  "In Transit": "blue",
-  "At Border": "gold",
-  Offloaded: "purple",
-  Returned: "default",
-  "Waiting for PODs": "magenta",
-  Maintenance: "orange",
-};
 
 export default function TruckDetailPage() {
   const router = useRouter();
@@ -160,14 +151,7 @@ export default function TruckDetailPage() {
       render: (_, record) => {
         const status = record.expense?.status;
         if (!status) return "-";
-        const colors: Record<string, string> = {
-          "Pending Manager": "gold",
-          "Pending Finance": "blue",
-          Paid: "green",
-          Rejected: "red",
-          Returned: "orange",
-        };
-        return <Tag color={colors[status] || "default"}>{status}</Tag>;
+        return <ExpenseStatusBadge status={status as any} compact />;
       },
     },
   ];
@@ -218,9 +202,7 @@ export default function TruckDetailPage() {
               <Title level={2} style={{ margin: 0 }}>
                 {truck.plate_number}
               </Title>
-              <Tag color={TRUCK_STATUS_COLORS[truck.status]}>
-                {truck.status}
-              </Tag>
+              <VehicleStatusTag status={truck.status} />
             </Space>
           </div>
 
@@ -236,9 +218,7 @@ export default function TruckDetailPage() {
                       {truck.plate_number}
                     </Descriptions.Item>
                     <Descriptions.Item label="Status">
-                      <Tag color={TRUCK_STATUS_COLORS[truck.status]}>
-                        {truck.status}
-                      </Tag>
+                      <VehicleStatusTag status={truck.status} />
                     </Descriptions.Item>
                     <Descriptions.Item label="Make">
                       {truck.make}

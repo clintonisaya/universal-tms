@@ -369,7 +369,7 @@ const UsersContent = () => {
       key: "role",
       width: 100,
       render: (role) => (
-        <Tag color={role === "admin" ? "red" : "blue"}>{role.toUpperCase()}</Tag>
+        <Tag color={role === "admin" ? "error" : "default"}>{role.toUpperCase()}</Tag>
       ),
       ...getColumnFilterProps("role", ROLE_FILTERS),
     },
@@ -381,7 +381,7 @@ const UsersContent = () => {
       render: (perms: string[]) => (
         perms && perms.length > 0 ? (
           <Tooltip title={perms.join(", ")}>
-            <Tag color="cyan">{perms.length} Permissions</Tag>
+            <Tag color="default">{perms.length} Permissions</Tag>
           </Tooltip>
         ) : <Text type="secondary">-</Text>
       ),
@@ -411,6 +411,7 @@ const UsersContent = () => {
               size="small"
               icon={<EditOutlined />}
               onClick={() => openModal(record)}
+              aria-label={`Edit User ${record.username}`}
             />
             <Tooltip title="Reset Password">
               <Popconfirm
@@ -418,7 +419,7 @@ const UsersContent = () => {
                 description="Reset to default password? User will need to change it."
                 onConfirm={() => handleResetPassword(record)}
               >
-                <Button type="text" size="small" icon={<KeyOutlined />} />
+                <Button type="text" size="small" icon={<KeyOutlined />} aria-label="Reset Password" />
               </Popconfirm>
             </Tooltip>
             <Popconfirm
@@ -429,7 +430,7 @@ const UsersContent = () => {
               cancelText="No"
               okButtonProps={{ danger: true }}
             >
-              <Button type="text" danger icon={<DeleteOutlined />} size="small" />
+              <Button type="text" danger icon={<DeleteOutlined />} size="small" aria-label={`Delete User ${record.username}`} />
             </Popconfirm>
           </Space>
         </div>

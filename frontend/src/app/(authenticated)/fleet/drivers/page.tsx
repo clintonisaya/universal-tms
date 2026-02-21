@@ -46,10 +46,10 @@ import {
 const { Title } = Typography;
 
 const STATUS_COLORS: Record<DriverStatus, string> = {
-  Active: "green",
+  Active: "success",
   Assigned: "cyan",
-  "On Trip": "blue",
-  Inactive: "gray",
+  "On Trip": "processing",
+  Inactive: "default",
 };
 
 const STATUS_FILTERS = [
@@ -246,6 +246,7 @@ export default function DriversPage() {
               size="small"
               icon={<EditOutlined />}
               onClick={() => openEditModal(record)}
+              aria-label={`Edit Driver ${record.full_name}`}
             />
             <Popconfirm
               title="Delete driver"
@@ -255,7 +256,7 @@ export default function DriversPage() {
               cancelText="No"
               okButtonProps={{ danger: true }}
             >
-              <Button type="text" danger icon={<DeleteOutlined />} size="small" />
+              <Button type="text" danger icon={<DeleteOutlined />} size="small" aria-label={`Delete Driver ${record.full_name}`} />
             </Popconfirm>
           </Space>
         </div>

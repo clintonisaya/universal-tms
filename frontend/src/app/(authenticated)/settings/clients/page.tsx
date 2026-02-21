@@ -182,6 +182,7 @@ export default function ClientsPage() {
               type="text"
               icon={<EditOutlined />}
               onClick={() => openEditModal(record)}
+              aria-label="Edit Client"
             />
             <Popconfirm
               title="Delete client"
@@ -191,7 +192,7 @@ export default function ClientsPage() {
               cancelText="No"
               okButtonProps={{ danger: true }}
             >
-              <Button type="text" danger icon={<DeleteOutlined />} />
+              <Button type="text" danger icon={<DeleteOutlined />} aria-label="Delete Client" />
             </Popconfirm>
           </Space>
         </div>
