@@ -23,7 +23,9 @@ import {
 import type { ColumnsType } from "antd/es/table";
 import type { Trip, TripStatus } from "@/types/trip";
 import { useAuth } from "@/contexts/AuthContext";
+import { usePermissions } from "@/hooks/usePermissions";
 import { useTrips, useInvalidateQueries } from "@/hooks/useApi";
+import { EmptyState } from "@/components/ui";
 import { CreateTripDrawer } from "@/components/trips/CreateTripDrawer";
 import { TripDetailDrawer } from "@/components/trips/TripDetailDrawer";
 import {
@@ -96,9 +98,17 @@ function TripsPageContent() {
 
   const [createDrawerOpen, setCreateDrawerOpen] = useState(false);
   const [detailDrawerTripId, setDetailDrawerTripId] = useState<string | null>(null);
+  const { hasPermission } = usePermissions();
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
+  const [tableFilters, setTableFilters] = useState<Record<string, any>>({});
+  const [tableKey, setTableKey] = useState(0);
+
+  const hasActiveFilters = Object.values(tableFilters).some(
+    (v) => v != null && (Array.isArray(v) ? v.length > 0 : true)
+  );
+  const clearAllFilters = () => { setTableFilters({}); setTableKey((k) => k + 1); };
 
   const handleDelete = async (trip: Trip) => {
     try {
@@ -304,12 +314,31 @@ function TripsPageContent() {
           </div>
 
           <Table<Trip>
+            key={tableKey}
             columns={resizableColumns}
             components={components}
             dataSource={trips}
             rowKey="id"
             loading={loading}
             sticky={{ offsetHeader: 64 }}
+            onChange={(_, filters) => setTableFilters(filters as Record<string, any>)}
+            locale={{
+              emptyText: hasActiveFilters ? (
+                <EmptyState
+                  message="No results match your filters."
+                  action={{ label: "Clear Filters", onClick: clearAllFilters }}
+                />
+              ) : (
+                <EmptyState
+                  message="No trips found."
+                  action={
+                    hasPermission("trips:create")
+                      ? { label: "Create Trip", onClick: () => setCreateDrawerOpen(true) }
+                      : undefined
+                  }
+                />
+              ),
+            }}
             rowSelection={getStandardRowSelection(
               currentPage,
               pageSize,

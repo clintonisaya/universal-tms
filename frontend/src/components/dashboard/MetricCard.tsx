@@ -26,20 +26,31 @@ export function MetricCard({
   isRevenue = false,
   onClick,
 }: MetricCardProps) {
-  const getStatusColor = () => {
+  const getStatusBorderColor = () => {
     switch (status) {
       case "critical":
-        return "#ff4d4f"; // Red
+        return "#ff4d4f";
       case "active":
-        return "#1890ff"; // Blue for In Transit
+        return "#1890ff";
       default:
         return "transparent";
     }
   };
 
+  const getStatusBackground = () => {
+    switch (status) {
+      case "critical":
+        return "rgba(255,77,79,0.05)";
+      case "active":
+        return "rgba(24,144,255,0.05)";
+      default:
+        return undefined;
+    }
+  };
+
   const getValueColor = () => {
     if (status === "critical") return "#ff4d4f";
-    if (isRevenue) return "#D4AF37"; // Royal Gold
+    if (isRevenue) return "#B8961F"; // WCAG-compliant gold
     return "#1F1F1F"; // Charcoal
   };
 
@@ -50,10 +61,11 @@ export function MetricCard({
       onClick={onClick}
       style={{
         height: "100%",
-        borderTop: `2px solid ${getStatusColor()}`,
+        borderLeft: `4px solid ${getStatusBorderColor()}`,
         borderRadius: "4px",
         boxShadow: "0 1px 2px rgba(0,0,0,0.03)",
         cursor: onClick ? "pointer" : "default",
+        background: getStatusBackground(),
       }}
       styles={{ body: { padding: "20px 24px" } }}
     >

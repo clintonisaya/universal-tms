@@ -27,6 +27,7 @@ import {
 } from "@/components/ui/tableUtils";
 import { ExpenseStatusBadge } from "@/components/expenses/ExpenseStatusBadge";
 import { ExpenseReviewModal } from "@/components/expenses/ExpenseReviewModal";
+import { EmptyState } from "@/components/ui";
 
 const { Title, Text } = Typography;
 
@@ -294,6 +295,23 @@ function ApprovalPageContent() {
             rowKey="id"
             loading={loading}
             sticky={{ offsetHeader: 64 }}
+            locale={{
+              emptyText:
+                statusFilter === "Pending Manager" && !categoryFilter ? (
+                  <EmptyState message="All caught up! No pending approvals." />
+                ) : (
+                  <EmptyState
+                    message="No results match your filters."
+                    action={{
+                      label: "Clear Filters",
+                      onClick: () => {
+                        setStatusFilter("Pending Manager");
+                        setCategoryFilter("");
+                      },
+                    }}
+                  />
+                ),
+            }}
             rowSelection={getStandardRowSelection(
               currentPage,
               pageSize,

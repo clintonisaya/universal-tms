@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Row, Col, Empty, Typography, App, notification } from "antd";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
@@ -22,10 +22,11 @@ import { ExpenseDistributionChart } from "@/components/dashboard/ExpenseDistribu
 import { UtilizationChart } from "@/components/dashboard/UtilizationChart";
 import { RecentTripsTable } from "@/components/dashboard/RecentTripsTable";
 import { ToDoWidget } from "@/components/dashboard/ToDoWidget";
+import { QuickActionsWidget } from "@/components/dashboard/QuickActionsWidget";
 import type { TaskType } from "@/types/notification";
 import { TASK_TYPE_ICONS, TOAST_DURATION_SECONDS } from "@/types/notification";
 
-const { Title } = Typography;
+const { Title, Text } = Typography;
 
 interface DashboardStats {
   total_trucks: number;
@@ -80,6 +81,26 @@ interface TaskSocketEvent {
   manager?: string;
 }
 
+// AC-4: Tracks seconds since last data refresh, resets when dependency changes
+function useLastUpdated(dependency: unknown): number {
+  const [lastUpdated, setLastUpdated] = useState(new Date());
+  const [secondsAgo, setSecondsAgo] = useState(0);
+
+  useEffect(() => {
+    setLastUpdated(new Date());
+    setSecondsAgo(0);
+  }, [dependency]);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setSecondsAgo(Math.floor((Date.now() - lastUpdated.getTime()) / 1000));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [lastUpdated]);
+
+  return secondsAgo;
+}
+
 function buildToastMessage(taskType: TaskType | undefined, data: TaskSocketEvent): string {
   switch (taskType) {
     case "expense_approval":
@@ -122,6 +143,9 @@ function DashboardContent() {
   const recentTrips = tripsData?.data || [];
   const todoCount = todoData?.total ?? 0;
   const financialPulse = pulseData || null;
+
+  // AC-4: Freshness indicator — resets when stats data changes
+  const secondsAgo = useLastUpdated(statsData);
 
   // Listen for notification-click events from the NotificationCenter in the header
   useEffect(() => {
@@ -242,7 +266,16 @@ function DashboardContent() {
         />
       </div>
 
+      <QuickActionsWidget />
+
       {/* KPI Cards Row */}
+      <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 8 }}>
+        {!statsLoading && (
+          <Text type="secondary" style={{ fontSize: 12 }}>
+            Last updated: {secondsAgo}s ago
+          </Text>
+        )}
+      </div>
       <Row gutter={[16, 16]}>
         {/* Pending Approvals: admin, manager, finance */}
         {canSee(role, ["finance"]) && (

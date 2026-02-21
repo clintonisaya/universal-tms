@@ -27,6 +27,7 @@ import {
   useResizableColumns,
 } from "@/components/ui/tableUtils";
 import { VehicleStatusTag } from "@/components/ui/VehicleStatusTag";
+import { EmptyState } from "@/components/ui";
 
 const { Title } = Typography;
 
@@ -273,6 +274,7 @@ export default function TrucksPage() {
             rowKey="id"
             loading={isLoading}
             sticky={{ offsetHeader: 64 }}
+            locale={{ emptyText: <EmptyState message="No trucks registered yet." /> }}
             rowSelection={getStandardRowSelection(
               currentPage,
               pageSize,

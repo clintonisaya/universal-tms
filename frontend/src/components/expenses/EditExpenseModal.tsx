@@ -395,7 +395,15 @@ export function EditExpenseModal({
 
       if (!updateResponse.ok) {
         const err = await updateResponse.json();
-        message.error(err.detail || "Failed to update expense");
+        if (updateResponse.status === 422 && Array.isArray(err.detail)) {
+          const fieldErrors = (err.detail as { loc: string[]; msg: string }[]).map((e) => ({
+            name: e.loc[e.loc.length - 1],
+            errors: [e.msg],
+          }));
+          form.setFields(fieldErrors);
+        } else {
+          msg.error(typeof err.detail === "string" ? err.detail : "Failed to update expense");
+        }
         return;
       }
 

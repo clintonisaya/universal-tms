@@ -153,7 +153,16 @@ export function CreateTripDrawer({
         onClose();
       } else {
         const error = await response.json();
-        message.error(error.detail || "Failed to create trip");
+        if (response.status === 422 && Array.isArray(error.detail)) {
+          // Map FastAPI validation errors to form fields
+          const fieldErrors = (error.detail as { loc: string[]; msg: string }[]).map((e) => ({
+            name: e.loc[e.loc.length - 1],
+            errors: [e.msg],
+          }));
+          form.setFields(fieldErrors);
+        } else {
+          message.error(typeof error.detail === "string" ? error.detail : "Failed to create trip");
+        }
       }
     } catch {
       message.error("Network error");

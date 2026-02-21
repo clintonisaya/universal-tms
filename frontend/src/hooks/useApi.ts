@@ -1,5 +1,13 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
+// AC-4 (Story 5.7): Typed API error for field-level validation mapping
+export class ApiError extends Error {
+  constructor(public status: number, public detail: unknown) {
+    super(typeof detail === "string" ? detail : `API error: ${status}`);
+    this.name = "ApiError";
+  }
+}
+
 // Generic fetch function with error handling
 async function apiFetch<T>(url: string, options?: RequestInit): Promise<T> {
   const response = await fetch(url, {
@@ -11,9 +19,14 @@ async function apiFetch<T>(url: string, options?: RequestInit): Promise<T> {
     if (response.status === 401) {
       // Dispatch event for UI to handle (e.g., show login modal)
       window.dispatchEvent(new Event("session-expired"));
-      throw new Error("Unauthorized");
+      throw new ApiError(401, "Unauthorized");
     }
-    throw new Error(`API error: ${response.status}`);
+    let detail: unknown = `API error: ${response.status}`;
+    try {
+      const body = await response.json();
+      detail = body.detail ?? body.message ?? detail;
+    } catch (_) {}
+    throw new ApiError(response.status, detail);
   }
 
   return response.json();

@@ -35,6 +35,7 @@ import {
   useResizableColumns,
 } from "@/components/ui/tableUtils";
 import { WaybillStatusTag } from "@/components/ui/WaybillStatusTag";
+import { EmptyState } from "@/components/ui";
 
 const { Title } = Typography;
 
@@ -66,6 +67,13 @@ export default function WaybillsPage() {
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
+  const [tableFilters, setTableFilters] = useState<Record<string, any>>({});
+  const [tableKey, setTableKey] = useState(0);
+
+  const hasActiveFilters = Object.values(tableFilters).some(
+    (v) => v != null && (Array.isArray(v) ? v.length > 0 : true)
+  );
+  const clearAllFilters = () => { setTableFilters({}); setTableKey((k) => k + 1); };
 
   const handleDelete = async (waybill: Waybill) => {
     try {
@@ -245,12 +253,24 @@ export default function WaybillsPage() {
           </div>
 
           <Table<Waybill>
+            key={tableKey}
             columns={resizableColumns}
             components={components}
             dataSource={waybills}
             rowKey="id"
             loading={loading}
             sticky={{ offsetHeader: 64 }}
+            onChange={(_, filters) => setTableFilters(filters as Record<string, any>)}
+            locale={{
+              emptyText: hasActiveFilters ? (
+                <EmptyState
+                  message="No results match your filters."
+                  action={{ label: "Clear Filters", onClick: clearAllFilters }}
+                />
+              ) : (
+                <EmptyState message="No waybills found." />
+              ),
+            }}
             rowSelection={getStandardRowSelection(
               currentPage,
               pageSize,

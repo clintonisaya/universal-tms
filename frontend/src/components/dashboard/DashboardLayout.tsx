@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
-import { Layout, Menu, Typography, Avatar, Dropdown, Space, theme, ConfigProvider } from "antd";
+import { Layout, Menu, Typography, Avatar, Dropdown, Space, theme, ConfigProvider, Tooltip, Button } from "antd";
 import type { MenuProps } from "antd";
 import {
   DashboardOutlined,
@@ -18,6 +18,7 @@ import {
   BarChartOutlined,
   AuditOutlined,
   BankOutlined,
+  UnorderedListOutlined,
 } from "@ant-design/icons";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePermissions } from "@/hooks/usePermissions";
@@ -38,6 +39,7 @@ interface PermissionMenuItem {
   label: string;
   requires?: string[];          // user needs ANY of these
   children?: PermissionMenuItem[];
+  type?: "group";               // visual group label (not clickable, no permission needed)
 }
 
 const allMenuItems: PermissionMenuItem[] = [
@@ -105,14 +107,35 @@ const allMenuItems: PermissionMenuItem[] = [
     icon: <SettingOutlined />,
     label: "Settings",
     children: [
-      { key: "/settings/users", label: "Users", requires: ["users:manage"] },
-      { key: "/settings/clients", label: "Clients", requires: ["settings:clients"] },
-      { key: "/settings/finance/office-expense-types", label: "Office Expense Types", requires: ["settings:office-expense-types"] },
-      { key: "/settings/trip-expenses", label: "Trip Expense Types", requires: ["settings:trip-expense-types"] },
-      { key: "/settings/transport/locations", label: "Locations", requires: ["settings:locations"] },
-      { key: "/settings/transport/cargo-types", label: "Cargo Types", requires: ["settings:cargo-types"] },
-      { key: "/settings/transport/vehicle-statuses", label: "Vehicle Statuses", requires: ["settings:vehicle-statuses"] },
-      { key: "/settings/transport/border-posts", label: "Border Posts", requires: ["settings:vehicle-statuses"] },
+      {
+        key: "settings-admin-group",
+        label: "Administration",
+        type: "group",
+        children: [
+          { key: "/settings/users", label: "Users", requires: ["users:manage"] },
+          { key: "/settings/clients", label: "Clients", requires: ["settings:clients"] },
+        ],
+      },
+      {
+        key: "settings-finance-group",
+        label: "Finance",
+        type: "group",
+        children: [
+          { key: "/settings/finance/office-expense-types", label: "Office Expense Types", requires: ["settings:office-expense-types"] },
+          { key: "/settings/trip-expenses", label: "Trip Expense Types", requires: ["settings:trip-expense-types"] },
+        ],
+      },
+      {
+        key: "settings-transport-group",
+        label: "Transport",
+        type: "group",
+        children: [
+          { key: "/settings/transport/locations", label: "Locations", requires: ["settings:locations"] },
+          { key: "/settings/transport/cargo-types", label: "Cargo Types", requires: ["settings:cargo-types"] },
+          { key: "/settings/transport/vehicle-statuses", label: "Vehicle Statuses", requires: ["settings:vehicle-statuses"] },
+          { key: "/settings/transport/border-posts", label: "Border Posts", requires: ["settings:vehicle-statuses"] },
+        ],
+      },
     ],
   },
 ];
@@ -125,6 +148,19 @@ function filterMenuItems(
   const result: NonNullable<MenuProps["items"]> = [];
 
   for (const item of items) {
+    // Visual group items — filter their children, skip if all hidden
+    if (item.type === "group") {
+      const filteredChildren = filterMenuItems(item.children ?? [], check) as any[];
+      if (filteredChildren.length === 0) continue;
+      result.push({
+        type: "group",
+        key: item.key,
+        label: item.label,
+        children: filteredChildren,
+      });
+      continue;
+    }
+
     // If item has a permission gate, check it
     if (item.requires && !check(...item.requires)) continue;
 
@@ -355,6 +391,15 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
           </div>
 
           <Space size="large">
+            <Tooltip title="Tasks">
+              <Button
+                type="text"
+                icon={<UnorderedListOutlined />}
+                onClick={() => router.push("/dashboard/tasks")}
+                aria-label="View Tasks"
+                style={{ color: "#595959" }}
+              />
+            </Tooltip>
             <NotificationCenter onNotificationClick={handleNotificationClick} />
             <Dropdown menu={{ items: userMenuItems }} placement="bottomRight" trigger={['click']}>
               <div style={{ cursor: "pointer", padding: "4px 8px", borderRadius: "4px", transition: "background 0.3s" }}>

@@ -26,6 +26,7 @@ import type { Trip } from "@/types/trip";
 import { useAuth } from "@/contexts/AuthContext";
 import { useExpenses, useTrips, useInvalidateQueries } from "@/hooks/useApi";
 import { AddExpenseModal } from "@/components/expenses/AddExpenseModal";
+import { EmptyState } from "@/components/ui";
 
 import { ExpenseHistoryModal } from "@/components/expenses/ExpenseHistoryModal";
 import { ExpenseReviewModal } from "@/components/expenses/ExpenseReviewModal";
@@ -95,6 +96,13 @@ export default function ExpensesPage() {
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
+  const [tableFilters, setTableFilters] = useState<Record<string, any>>({});
+  const [tableKey, setTableKey] = useState(0);
+
+  const hasActiveFilters = Object.values(tableFilters).some(
+    (v) => v != null && (Array.isArray(v) ? v.length > 0 : true)
+  );
+  const clearAllFilters = () => { setTableFilters({}); setTableKey((k) => k + 1); };
 
   // Trip Selection State
   const [tripSelectModalOpen, setTripSelectModalOpen] = useState(false);
@@ -326,12 +334,24 @@ export default function ExpensesPage() {
           </div>
 
           <Table<ExpenseRequestDetailed>
+            key={tableKey}
             columns={resizableColumns}
             components={components}
             dataSource={expenses}
             rowKey="id"
             loading={loading}
             sticky={{ offsetHeader: 64 }}
+            onChange={(_, filters) => setTableFilters(filters as Record<string, any>)}
+            locale={{
+              emptyText: hasActiveFilters ? (
+                <EmptyState
+                  message="No results match your filters."
+                  action={{ label: "Clear Filters", onClick: clearAllFilters }}
+                />
+              ) : (
+                <EmptyState message="No expenses found for this period." />
+              ),
+            }}
             rowSelection={getStandardRowSelection(
               currentPage,
               pageSize,

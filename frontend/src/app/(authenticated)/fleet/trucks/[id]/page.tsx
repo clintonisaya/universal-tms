@@ -14,7 +14,9 @@ import {
   message,
   Typography,
   Spin,
+  Breadcrumb,
 } from "antd";
+import Link from "next/link";
 import {
   ArrowLeftOutlined,
   ReloadOutlined,
@@ -205,6 +207,14 @@ export default function TruckDetailPage() {
               <VehicleStatusTag status={truck.status} />
             </Space>
           </div>
+
+          <Breadcrumb
+            style={{ marginBottom: 4 }}
+            items={[
+              { title: <Link href="/fleet/trucks">Trucks</Link> },
+              { title: truck.plate_number },
+            ]}
+          />
 
           <Tabs
             defaultActiveKey="details"

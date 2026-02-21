@@ -42,6 +42,7 @@ import {
   getStandardRowSelection,
   useResizableColumns,
 } from "@/components/ui/tableUtils";
+import { EmptyState } from "@/components/ui";
 
 const { Title } = Typography;
 
@@ -316,6 +317,7 @@ export default function DriversPage() {
             rowKey="id"
             loading={isLoading}
             sticky={{ offsetHeader: 64 }}
+            locale={{ emptyText: <EmptyState message="No drivers registered yet." /> }}
             rowSelection={getStandardRowSelection(
               currentPage,
               pageSize,

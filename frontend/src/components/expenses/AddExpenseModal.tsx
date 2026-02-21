@@ -375,7 +375,13 @@ export function AddExpenseModal({
         });
 
         if (!response.ok) {
-          throw new Error("Failed to create expense");
+          let detail = "Failed to create expense";
+          try {
+            const body = await response.json();
+            if (typeof body.detail === "string") detail = body.detail;
+            else if (Array.isArray(body.detail) && body.detail[0]?.msg) detail = body.detail[0].msg;
+          } catch (_) {}
+          throw new Error(detail);
         }
 
         const expense = await response.json();
@@ -412,8 +418,13 @@ export function AddExpenseModal({
       setFileList([]);
       onSuccess();
       onClose();
-    } catch {
-      message.error("Network error or failed to create expenses");
+    } catch (err: unknown) {
+      // Show API validation detail when available
+      if (err instanceof Error) {
+        message.error(err.message || "Failed to create expenses");
+      } else {
+        message.error("Network error or failed to create expenses");
+      }
     } finally {
       setSubmitting(false);
     }

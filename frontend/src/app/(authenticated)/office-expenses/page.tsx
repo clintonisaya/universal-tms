@@ -32,6 +32,7 @@ import {
   getStandardRowSelection,
   useResizableColumns,
 } from "@/components/ui/tableUtils";
+import { EmptyState } from "@/components/ui";
 
 const { Title } = Typography;
 
@@ -257,6 +258,7 @@ export default function OfficeExpensesPage() {
             rowKey="id"
             loading={loading}
             sticky={{ offsetHeader: 64 }}
+            locale={{ emptyText: <EmptyState message="No office expenses found." /> }}
             rowSelection={getStandardRowSelection(
               currentPage,
               pageSize,

@@ -15,7 +15,9 @@ import {
   Popconfirm,
   Alert,
   Tooltip,
+  Breadcrumb,
 } from "antd";
+import Link from "next/link";
 import {
   ArrowLeftOutlined,
   PlusOutlined,
@@ -231,14 +233,22 @@ export default function TripDetailPage() {
                 Trip: {trip.route_name}
               </Title>
               <TripStatusTag status={trip.status} />
-              <Button 
-                type="link" 
+              <Button
+                type="link"
                 onClick={() => setIsStatusModalOpen(true)}
               >
                 Update Status
               </Button>
             </Space>
           </div>
+
+          <Breadcrumb
+            style={{ marginBottom: 4 }}
+            items={[
+              { title: <Link href="/ops/trips">Trips</Link> },
+              { title: trip.route_name },
+            ]}
+          />
 
           <Tabs
             defaultActiveKey="details"
