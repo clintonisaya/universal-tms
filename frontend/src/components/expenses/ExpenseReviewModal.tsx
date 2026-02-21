@@ -1179,17 +1179,21 @@ export function ExpenseReviewModal({
           />
 
           {/* Inline Payment Form — shown when finance has "pay" action */}
-          {showPay && (
-            <Form form={paymentForm} layout="vertical" onFinish={handleConfirmPayment}>
-              <div
-                style={{
-                  marginTop: 16,
-                  padding: 16,
-                  background: "#fafafa",
-                  borderRadius: 8,
-                  border: "1px solid #f0f0f0",
-                }}
-              >
+          <Form
+            form={paymentForm}
+            layout="vertical"
+            onFinish={handleConfirmPayment}
+            style={{ display: showPay ? "block" : "none" }}
+          >
+            <div
+              style={{
+                marginTop: 16,
+                padding: 16,
+                background: "#fafafa",
+                borderRadius: 8,
+                border: "1px solid #f0f0f0",
+              }}
+            >
                 <Text strong style={{ display: "block", marginBottom: 12 }}>
                   Payment Details
                 </Text>
@@ -1327,7 +1331,6 @@ export function ExpenseReviewModal({
                 </div>
               </div>
             </Form>
-          )}
 
           {/* Standard action panel — for non-payment actions (approve, reject, return, submit) */}
           {hasActions && !showPay && (

@@ -19,6 +19,7 @@ import {
   ArrowLeftOutlined,
   DeleteOutlined,
   EyeOutlined,
+  EditOutlined,
 } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
 import type { Trip, TripStatus } from "@/types/trip";
@@ -27,6 +28,7 @@ import { usePermissions } from "@/hooks/usePermissions";
 import { useTrips, useInvalidateQueries } from "@/hooks/useApi";
 import { EmptyState } from "@/components/ui";
 import { CreateTripDrawer } from "@/components/trips/CreateTripDrawer";
+import { UpdateTripDrawer } from "@/components/trips/UpdateTripDrawer";
 import { TripDetailDrawer } from "@/components/trips/TripDetailDrawer";
 import {
   getColumnSearchProps,
@@ -98,6 +100,7 @@ function TripsPageContent() {
 
   const [createDrawerOpen, setCreateDrawerOpen] = useState(false);
   const [detailDrawerTripId, setDetailDrawerTripId] = useState<string | null>(null);
+  const [updateDrawerTripId, setUpdateDrawerTripId] = useState<string | null>(null);
   const { hasPermission } = usePermissions();
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
@@ -197,7 +200,7 @@ function TripsPageContent() {
       render: (status: TripStatus) => <TripStatusTag status={status} />,
       ...getColumnFilterProps("status", STATUS_FILTERS),
     },
-        {
+    {
       title: "Last Updated",
       dataIndex: "location_update_time",
       key: "location_update_time",
@@ -211,22 +214,22 @@ function TripsPageContent() {
       ),
       sorter: (a, b) =>
         (a.location_update_time || "").localeCompare(b.location_update_time || ""),
-    }, 
+    },
     ...(showFinancialData
       ? [
-          {
-            title: "Rate",
-            dataIndex: "waybill_rate",
-            key: "rate",
-            width: 120,
-            render: (_: unknown, record: Trip) =>
-              record.waybill_rate != null ? (
-                <Text>{formatCurrency(record.waybill_rate, record.waybill_currency)}</Text>
-              ) : (
-                <Text type="secondary">-</Text>
-              ),
-          } as ColumnsType<Trip>[number],
-        ]
+        {
+          title: "Rate",
+          dataIndex: "waybill_rate",
+          key: "rate",
+          width: 120,
+          render: (_: unknown, record: Trip) =>
+            record.waybill_rate != null ? (
+              <Text>{formatCurrency(record.waybill_rate, record.waybill_currency)}</Text>
+            ) : (
+              <Text type="secondary">-</Text>
+            ),
+        } as ColumnsType<Trip>[number],
+      ]
       : []),
 
     {
@@ -251,6 +254,13 @@ function TripsPageContent() {
               icon={<EyeOutlined />}
               onClick={() => setDetailDrawerTripId(record.id)}
               aria-label={`View Trip ${record.trip_number}`}
+            />
+            <Button
+              type="text"
+              size="small"
+              icon={<EditOutlined />}
+              onClick={() => setUpdateDrawerTripId(record.id)}
+              aria-label={`Edit Trip ${record.trip_number}`}
             />
             <Popconfirm
               title="Delete trip"
@@ -367,10 +377,21 @@ function TripsPageContent() {
         onSuccess={() => invalidateTrips()}
       />
 
+      <UpdateTripDrawer
+        open={!!updateDrawerTripId}
+        onClose={() => setUpdateDrawerTripId(null)}
+        onSuccess={() => invalidateTrips()}
+        tripId={updateDrawerTripId}
+      />
+
       <TripDetailDrawer
         open={!!detailDrawerTripId}
         onClose={() => setDetailDrawerTripId(null)}
         tripId={detailDrawerTripId}
+        onEdit={(id) => {
+          setDetailDrawerTripId(null);
+          setUpdateDrawerTripId(id);
+        }}
       />
     </div>
   );

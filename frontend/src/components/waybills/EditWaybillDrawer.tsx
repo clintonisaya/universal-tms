@@ -163,12 +163,13 @@ export function EditWaybillDrawer({
         </Space>
       }
     >
+      <Form form={form} layout="vertical" onFinish={onFinish} size="large">
       {loading ? (
         <div style={{ display: "flex", justifyContent: "center", padding: 50 }}>
           <Spin size="large" />
         </div>
       ) : (
-        <Form form={form} layout="vertical" onFinish={onFinish} size="large">
+        <>
           <Title level={5}>Client & Cargo</Title>
 
           <Form.Item
@@ -390,8 +391,9 @@ export function EditWaybillDrawer({
               })}
             </div>
           )}
-        </Form>
+        </>
       )}
+      </Form>
     </Drawer>
   );
 }

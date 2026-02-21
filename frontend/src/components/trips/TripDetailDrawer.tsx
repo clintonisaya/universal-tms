@@ -51,9 +51,10 @@ interface TripDetailDrawerProps {
   open: boolean;
   onClose: () => void;
   tripId: string | null;
+  onEdit?: (tripId: string) => void;
 }
 
-export function TripDetailDrawer({ open, onClose, tripId }: TripDetailDrawerProps) {
+export function TripDetailDrawer({ open, onClose, tripId, onEdit }: TripDetailDrawerProps) {
   const { user } = useAuth();
 
   const [trip, setTrip] = useState<TripDetailed | null>(null);
@@ -390,7 +391,7 @@ export function TripDetailDrawer({ open, onClose, tripId }: TripDetailDrawerProp
       title: "Category",
       dataIndex: "category",
       key: "category",
-      width: 150, 
+      width: 150,
     },
     {
       title: "Description",
@@ -511,6 +512,11 @@ export function TripDetailDrawer({ open, onClose, tripId }: TripDetailDrawerProp
               {trip.status !== "Completed" && trip.status !== "Cancelled" && (
                 <Button danger onClick={openCancelModal}>
                   Cancel Trip
+                </Button>
+              )}
+              {trip.status !== "Completed" && trip.status !== "Cancelled" && (
+                <Button type="primary" ghost onClick={() => onEdit?.(trip.id)}>
+                  Edit Trip
                 </Button>
               )}
               <Button type="link" onClick={() => setIsStatusModalOpen(true)}>
@@ -793,10 +799,10 @@ export function TripDetailDrawer({ open, onClose, tripId }: TripDetailDrawerProp
                                   <Descriptions.Item key={df.field} label={df.label}>
                                     {crossing[df.field]
                                       ? new Date(crossing[df.field]).toLocaleDateString("en-GB", {
-                                          day: "2-digit",
-                                          month: "2-digit",
-                                          year: "numeric",
-                                        })
+                                        day: "2-digit",
+                                        month: "2-digit",
+                                        year: "numeric",
+                                      })
                                       : "—"}
                                   </Descriptions.Item>
                                 ))}

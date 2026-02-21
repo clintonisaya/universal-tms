@@ -192,17 +192,18 @@ export function CreateTripDrawer({
         </Space>
       }
     >
-      {loading ? (
-        <div style={{ display: "flex", justifyContent: "center", padding: 50 }}>
-          <Spin size="large" />
-        </div>
-      ) : (
-        <Form
+      <Form
           form={form}
           layout="vertical"
           onFinish={onFinish}
           size="large"
         >
+      {loading ? (
+        <div style={{ display: "flex", justifyContent: "center", padding: 50 }}>
+          <Spin size="large" />
+        </div>
+      ) : (
+        <>
           <Title level={5}>Waybill & Route</Title>
           <Form.Item
             name="waybill_id"
@@ -289,8 +290,9 @@ export function CreateTripDrawer({
               ))}
             </Select>
           </Form.Item>
-        </Form>
+        </>
       )}
+      </Form>
     </Drawer>
   );
 }
