@@ -114,7 +114,7 @@ development_status:
   5-11-mobile-responsiveness: ready-for-dev
   5-12-inline-add-new-trip-creation: ready-for-dev
   5-13-expense-history-in-review-modal: review
-  5-14-settings-section-split: ready-for-dev
+  5-14-settings-section-split: review
   5-15-font-size-audit: review
   5-16-chart-colors-wcag: review
   5-17-keyboard-navigation-modal-chains: ready-for-dev

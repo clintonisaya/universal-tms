@@ -44,6 +44,7 @@ const STATUS_COLORS: Record<ExpenseStatus, string> = {
   "Paid": "green",
   "Rejected": "red",
   "Returned": "purple",
+  "Voided": "red",
 };
 
 const STATUS_FILTERS = Object.keys(STATUS_COLORS).map((status) => ({

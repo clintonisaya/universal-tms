@@ -78,6 +78,13 @@ function getDualStatusBadges(status: ExpenseStatus, compact: boolean): React.Rea
         </Tag>,
       ];
 
+    case "Voided":
+      return [
+        <Tag key="voided" color="red">
+          Voided
+        </Tag>,
+      ];
+
     default:
       return [
         <Tag key="unknown" color="default">

@@ -70,18 +70,24 @@ def generate_expense_number(session: SessionDep, trip_id: uuid.UUID | None, trip
 # Format: {current_status: {role: [allowed_new_statuses]}}
 STATUS_TRANSITIONS = {
     ExpenseStatus.pending_manager: {
-        UserRole.manager: [ExpenseStatus.pending_finance, ExpenseStatus.rejected, ExpenseStatus.returned],
-        UserRole.admin: [ExpenseStatus.pending_finance, ExpenseStatus.rejected, ExpenseStatus.returned],
+        UserRole.manager: [ExpenseStatus.pending_finance, ExpenseStatus.rejected, ExpenseStatus.returned, ExpenseStatus.voided],
+        UserRole.admin: [ExpenseStatus.pending_finance, ExpenseStatus.rejected, ExpenseStatus.returned, ExpenseStatus.voided],
     },
     ExpenseStatus.pending_finance: {
-        UserRole.finance: [ExpenseStatus.paid, ExpenseStatus.returned],
-        UserRole.admin: [ExpenseStatus.paid, ExpenseStatus.returned],
+        UserRole.finance: [ExpenseStatus.paid, ExpenseStatus.returned, ExpenseStatus.voided],
+        UserRole.manager: [ExpenseStatus.voided],
+        UserRole.admin: [ExpenseStatus.paid, ExpenseStatus.returned, ExpenseStatus.voided],
+    },
+    ExpenseStatus.paid: {
+        UserRole.finance: [ExpenseStatus.voided],
+        UserRole.manager: [ExpenseStatus.voided],
+        UserRole.admin: [ExpenseStatus.voided],
     },
     ExpenseStatus.returned: {
         UserRole.ops: [ExpenseStatus.pending_manager],  # Resubmit after correction
-        UserRole.finance: [ExpenseStatus.pending_manager],  # Finance can resubmit their own returned expenses
-        UserRole.manager: [ExpenseStatus.pending_manager],
-        UserRole.admin: [ExpenseStatus.pending_manager],
+        UserRole.finance: [ExpenseStatus.pending_manager, ExpenseStatus.voided],  # Finance can resubmit their own returned expenses
+        UserRole.manager: [ExpenseStatus.pending_manager, ExpenseStatus.voided],
+        UserRole.admin: [ExpenseStatus.pending_manager, ExpenseStatus.voided],
     },
 }
 

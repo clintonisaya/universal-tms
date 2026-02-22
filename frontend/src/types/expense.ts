@@ -12,7 +12,8 @@ export type ExpenseStatus =
   | "Pending Finance"
   | "Paid"
   | "Rejected"
-  | "Returned";
+  | "Returned"
+  | "Voided";
 
 export type ExpenseCategory =
   | "Fuel"

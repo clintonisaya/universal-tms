@@ -31,6 +31,9 @@ export const AVAILABLE_PERMISSIONS = [
   // Finance
   { label: "Pay Expenses", value: "expenses:pay", group: "Finance" },
   { label: "Exchange Rates", value: "settings:exchange-rates", group: "Finance" },
+  { label: "Expense Console Access", value: "expenses:audit-console", group: "Finance" },
+  { label: "Void Expenses", value: "expenses:void", group: "Finance" },
+  { label: "Amend Attachments", value: "expenses:amend-attachment", group: "Finance" },
   // Reports
   { label: "View Reports", value: "reports:view", group: "Reports" },
   // Settings – granular per feature

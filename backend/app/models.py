@@ -600,6 +600,7 @@ class ExpenseStatus(str, Enum):
     paid = "Paid"
     rejected = "Rejected"
     returned = "Returned"
+    voided = "Voided"
 
 
 class ExpenseCategory(str, Enum):

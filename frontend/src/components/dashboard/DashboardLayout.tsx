@@ -89,6 +89,7 @@ const allMenuItems: PermissionMenuItem[] = [
     icon: <BankOutlined />,
     label: "Finance",
     children: [
+      { key: "/finance/expense-console", label: "Expense Console", requires: ["expenses:audit-console"] },
       { key: "/manager/payments", label: "Payments", requires: ["expenses:pay"] },
       { key: "/finance/vouchers/bulk", label: "Vouchers", requires: ["expenses:pay"] },
       { key: "/settings/finance", label: "Exchange Rates", requires: ["settings:exchange-rates"] },
@@ -108,12 +109,15 @@ const allMenuItems: PermissionMenuItem[] = [
     label: "Settings",
     children: [
       {
-        key: "settings-admin-group",
-        label: "Administration",
+        key: "settings-operations-group",
+        label: "Operations",
         type: "group",
         children: [
-          { key: "/settings/users", label: "Users", requires: ["users:manage"] },
           { key: "/settings/clients", label: "Clients", requires: ["settings:clients"] },
+          { key: "/settings/transport/locations", label: "Locations", requires: ["settings:locations"] },
+          { key: "/settings/transport/cargo-types", label: "Cargo Types", requires: ["settings:cargo-types"] },
+          { key: "/settings/transport/vehicle-statuses", label: "Vehicle Statuses", requires: ["settings:vehicle-statuses"] },
+          { key: "/settings/transport/border-posts", label: "Border Posts", requires: ["settings:vehicle-statuses"] },
         ],
       },
       {
@@ -126,14 +130,11 @@ const allMenuItems: PermissionMenuItem[] = [
         ],
       },
       {
-        key: "settings-transport-group",
-        label: "Transport",
+        key: "settings-admin-group",
+        label: "Administration",
         type: "group",
         children: [
-          { key: "/settings/transport/locations", label: "Locations", requires: ["settings:locations"] },
-          { key: "/settings/transport/cargo-types", label: "Cargo Types", requires: ["settings:cargo-types"] },
-          { key: "/settings/transport/vehicle-statuses", label: "Vehicle Statuses", requires: ["settings:vehicle-statuses"] },
-          { key: "/settings/transport/border-posts", label: "Border Posts", requires: ["settings:vehicle-statuses"] },
+          { key: "/settings/users", label: "Users", requires: ["users:manage"] },
         ],
       },
     ],
@@ -250,6 +251,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
       "/ops/expenses",
       "/office-expenses",
       "/manager/approvals",
+      "/finance/expense-console",
       "/manager/payments",
       "/finance/vouchers/bulk",
       "/finance/vouchers",
