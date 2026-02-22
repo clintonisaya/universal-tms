@@ -126,7 +126,7 @@ function PermissionToggles({
                 {group}
               </Text>
               <Flex align="center" gap={6}>
-                <Text style={{ fontSize: 11, color: "#9ca3af" }}>{allOn ? "All" : someOn ? "Some" : "None"}</Text>
+                <Text style={{ fontSize: 12, color: "#9ca3af" }}>{allOn ? "All" : someOn ? "Some" : "None"}</Text>
                 <Switch
                   size="small"
                   checked={allOn}

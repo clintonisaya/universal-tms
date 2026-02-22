@@ -522,9 +522,9 @@ export default function TrackingPage() {
           )}
           {/* Trip number */}
           {r.trip_number ? (
-            <Text style={{ fontSize: 11, color: "#595959" }}>{r.trip_number}</Text>
+            <Text style={{ fontSize: 12, color: "#595959" }}>{r.trip_number}</Text>
           ) : (
-            <Text type="secondary" style={{ fontSize: 11 }}>
+            <Text type="secondary" style={{ fontSize: 12 }}>
               No Trip
             </Text>
           )}
@@ -538,16 +538,16 @@ export default function TrackingPage() {
       render: (_, r) => (
         <Flex vertical gap={2} align="start">
           {r.waybill_status && (
-            <Tag color={STATUS_COLORS[r.waybill_status]} style={{ fontSize: 11 }}>
+            <Tag color={STATUS_COLORS[r.waybill_status]} style={{ fontSize: 12 }}>
               Go: {r.waybill_status}
             </Tag>
           )}
           {r.return_waybill_status && (
-            <Tag color={STATUS_COLORS[r.return_waybill_status]} style={{ fontSize: 11 }}>
+            <Tag color={STATUS_COLORS[r.return_waybill_status]} style={{ fontSize: 12 }}>
               Ret: {r.return_waybill_status}
             </Tag>
           )}
-          <Tag color={STATUS_COLORS[r.trip_status]} style={{ fontSize: 11 }}>
+          <Tag color={STATUS_COLORS[r.trip_status]} style={{ fontSize: 12 }}>
             Trip: {r.trip_status}
           </Tag>
         </Flex>
@@ -564,16 +564,16 @@ export default function TrackingPage() {
           </Text>
           {/* Return client if different */}
           {r.return_client_name && r.return_client_name !== r.client_name && (
-            <Text style={{ fontSize: 11, color: "#52c41a" }}>
+            <Text style={{ fontSize: 12, color: "#52c41a" }}>
               <SwapOutlined style={{ marginRight: 3 }} />
               {r.return_client_name}
             </Text>
           )}
-          <Text type="secondary" style={{ fontSize: 11 }}>
+          <Text type="secondary" style={{ fontSize: 12 }}>
             {r.cargo_type} • {r.cargo_weight?.toLocaleString("en-US") || 0}kg
           </Text>
           {r.return_cargo_weight && (
-            <Text type="secondary" style={{ fontSize: 11 }}>
+            <Text type="secondary" style={{ fontSize: 12 }}>
               Ret: {r.return_cargo_type} • {r.return_cargo_weight?.toLocaleString("en-US")}kg
             </Text>
           )}
@@ -613,7 +613,7 @@ export default function TrackingPage() {
           </Tooltip>
           {r.return_duration_days > 0 && (
             <Tooltip title="Return leg duration">
-              <Tag color="default" style={{ fontSize: 10 }}>
+              <Tag color="default" style={{ fontSize: 12 }}>
                 Ret: {r.return_duration_days}d
               </Tag>
             </Tooltip>

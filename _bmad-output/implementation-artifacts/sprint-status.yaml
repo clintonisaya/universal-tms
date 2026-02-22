@@ -105,11 +105,18 @@ development_status:
   5-2-eliminate-auth-loading-flash: review
   5-3-design-system-visual-consistency: review
   5-4-bulk-action-bar-rollout: ready-for-dev
-  5-5-role-based-ux-personalization: ready-for-dev
+  5-5-role-based-ux-personalization: review
   5-6-navigation-breadcrumbs-ia: review
   5-7-feedback-states-empty-loading-errors: in-progress
   5-8-dashboard-visual-hierarchy: review
-  5-9-payment-workflow-ux: ready-for-dev
-  5-10-session-recovery-workflow-efficiency: ready-for-dev
+  5-9-payment-workflow-ux: review
+  5-10-session-recovery-workflow-efficiency: review
   5-11-mobile-responsiveness: ready-for-dev
+  5-12-inline-add-new-trip-creation: ready-for-dev
+  5-13-expense-history-in-review-modal: review
+  5-14-settings-section-split: ready-for-dev
+  5-15-font-size-audit: review
+  5-16-chart-colors-wcag: review
+  5-17-keyboard-navigation-modal-chains: ready-for-dev
+  5-18-form-field-label-association: ready-for-dev
   epic-5-retrospective: optional

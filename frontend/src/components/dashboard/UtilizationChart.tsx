@@ -11,6 +11,7 @@ import {
   Legend,
   ResponsiveContainer,
 } from "recharts";
+import { CHART_COLORS } from "@/lib/chartColors";
 
 interface DataPoint {
   name: string;
@@ -38,9 +39,9 @@ export function UtilizationChart({ data, loading }: UtilizationChartProps) {
           <YAxis axisLine={false} tickLine={false} />
           <Tooltip cursor={{ fill: 'transparent' }} />
           <Legend wrapperStyle={{ paddingTop: 10 }} />
-          <Bar dataKey="Idle" stackId="a" fill="#faad14" />
+          <Bar dataKey="Idle" stackId="a" fill={CHART_COLORS.primary} />
           <Bar dataKey="Transit" stackId="a" fill="#001529" />
-          <Bar dataKey="Border" stackId="a" fill="#13c2c2" />
+          <Bar dataKey="Border" stackId="a" fill={CHART_COLORS.teal} />
           <Bar dataKey="Maintenance" stackId="a" fill="#1890ff" />
         </BarChart>
       </ResponsiveContainer>

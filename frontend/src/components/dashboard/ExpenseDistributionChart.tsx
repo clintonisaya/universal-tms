@@ -9,6 +9,7 @@ import {
   ResponsiveContainer,
   Legend,
 } from "recharts";
+import { CHART_COLORS } from "@/lib/chartColors";
 
 const { Title } = Typography;
 
@@ -23,12 +24,12 @@ interface ExpenseDistributionChartProps {
 }
 
 const CATEGORY_COLORS: Record<string, string> = {
-  Fuel: "#1890ff",
-  Allowance: "#fa541c",
-  Maintenance: "#faad14",
-  Office: "#722ed1",
-  Border: "#13c2c2",
-  Other: "#8c8c8c",
+  Fuel: CHART_COLORS.blue,
+  Allowance: CHART_COLORS.red,
+  Maintenance: CHART_COLORS.primary,
+  Office: CHART_COLORS.purple,
+  Border: CHART_COLORS.teal,
+  Other: CHART_COLORS.green,
 };
 
 export function ExpenseDistributionChart({ data, loading }: ExpenseDistributionChartProps) {
@@ -120,7 +121,7 @@ export function ExpenseDistributionChart({ data, loading }: ExpenseDistributionC
                 iconType="circle"
                 iconSize={8}
                 formatter={(value: string) => (
-                  <span style={{ fontSize: 11, color: "#595959" }}>{value}</span>
+                  <span style={{ fontSize: 12, color: "#595959" }}>{value}</span>
                 )}
               />
             </PieChart>

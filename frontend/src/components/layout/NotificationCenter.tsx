@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { Badge, Button, Tooltip, Typography, Divider, Empty } from "antd";
 import { BellOutlined } from "@ant-design/icons";
 import { useAuth } from "@/contexts/AuthContext";
@@ -9,6 +9,14 @@ import { TASK_TYPE_ICONS } from "@/types/notification";
 import type { Notification } from "@/types/notification";
 
 const { Text } = Typography;
+
+// AC-2: Notification role filtering — filter at display time, never modify stored data
+const ALL_ROLES = ['admin', 'manager', 'ops', 'dispatcher', 'finance', 'fleet'];
+const TASK_TYPE_ROLE_MAP: Record<string, string[]> = {
+  expense_approval: ['manager', 'admin'],
+  payment_processing: ['finance', 'manager', 'admin'],
+  expense_correction: ['ops', 'dispatcher', 'admin'],
+};
 
 function formatTimeAgo(dateStr: string): string {
   if (!dateStr) return "";
@@ -32,9 +40,23 @@ export function NotificationCenter({
   onNotificationClick,
 }: NotificationCenterProps) {
   const { user } = useAuth();
-  const { notifications, unreadCount, markAsRead, markAllRead } =
+  const { notifications, markAsRead, markAllRead } =
     useNotifications(user?.id);
   const [open, setOpen] = useState(false);
+
+  // AC-2, AC-3: Filter notifications by role at render time — stored data is never modified
+  const roleFilteredNotifications = useMemo(() => {
+    const userRole = user?.role ?? '';
+    return notifications.filter((n) => {
+      const allowedRoles = TASK_TYPE_ROLE_MAP[n.taskType] ?? ALL_ROLES;
+      return allowedRoles.includes(userRole);
+    });
+  }, [notifications, user?.role]);
+
+  const roleFilteredUnreadCount = useMemo(
+    () => roleFilteredNotifications.filter((n) => !n.read).length,
+    [roleFilteredNotifications],
+  );
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Close dropdown on outside click
@@ -60,14 +82,14 @@ export function NotificationCenter({
     onNotificationClick?.(notification.taskId);
   };
 
-  // Show at most 10 in the dropdown
-  const visibleNotifications = notifications.slice(0, 10);
+  // Show at most 10 in the dropdown (role-filtered — AC-2, AC-3)
+  const visibleNotifications = roleFilteredNotifications.slice(0, 10);
 
   return (
     <div ref={dropdownRef} style={{ position: "relative" }}>
       <Tooltip title="Notifications">
         <Badge
-          count={unreadCount}
+          count={roleFilteredUnreadCount}
           overflowCount={99}
           offset={[-4, 4]}
           color="#faad14"
@@ -115,7 +137,7 @@ export function NotificationCenter({
             <Text strong style={{ fontSize: 14 }}>
               Notifications
             </Text>
-            {unreadCount > 0 && (
+            {roleFilteredUnreadCount > 0 && (
               <Button
                 type="link"
                 size="small"
@@ -206,7 +228,7 @@ export function NotificationCenter({
                     </div>
                     <Text
                       type="secondary"
-                      style={{ fontSize: 11 }}
+                      style={{ fontSize: 12 }}
                     >
                       {formatTimeAgo(n.timestamp)}
                     </Text>

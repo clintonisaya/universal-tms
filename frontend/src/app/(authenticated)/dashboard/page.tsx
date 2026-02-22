@@ -277,7 +277,22 @@ function DashboardContent() {
         )}
       </div>
       <Row gutter={[16, 16]}>
-        {/* Pending Approvals: admin, manager, finance */}
+        {/* AC-4: Ops/Dispatcher priority — Trucks In Transit appears first */}
+        {(role === 'ops' || role === 'dispatcher') && (
+          <Col xs={24} sm={12} lg={6} xl={4}>
+            <MetricCard
+              title="Trucks In Transit"
+              value={stats?.trucks_in_transit ?? 0}
+              status={
+                (stats?.trucks_in_transit ?? 0) > 0 ? "active" : "normal"
+              }
+              loading={loading}
+              onClick={() => router.push("/ops/trips")}
+            />
+          </Col>
+        )}
+
+        {/* Pending Approvals: admin, manager, finance — first for manager/finance roles */}
         {canSee(role, ["finance"]) && (
           <Col xs={24} sm={12} lg={6} xl={4}>
             <MetricCard
@@ -324,8 +339,8 @@ function DashboardContent() {
           </Col>
         )}
 
-        {/* Trucks In Transit: admin, manager, ops */}
-        {canSee(role, ["ops"]) && (
+        {/* Trucks In Transit: admin, manager only — ops/dispatcher already see it first above */}
+        {canSee(role, ["ops"]) && role !== 'ops' && role !== 'dispatcher' && (
           <Col xs={24} sm={12} lg={6} xl={4}>
             <MetricCard
               title="Trucks In Transit"

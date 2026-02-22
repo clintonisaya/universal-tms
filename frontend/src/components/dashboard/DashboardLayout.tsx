@@ -413,7 +413,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                   />
                   <div style={{ display: "flex", flexDirection: "column", lineHeight: 1.2 }}>
                     <Text strong style={{ fontSize: 13 }}>{user?.full_name || user?.username || "Admin User"}</Text>
-                    <Text type="secondary" style={{ fontSize: 11 }}>{user?.role || "Administrator"}</Text>
+                    <Text type="secondary" style={{ fontSize: 12 }}>{user?.role || "Administrator"}</Text>
                   </div>
                 </Space>
               </div>

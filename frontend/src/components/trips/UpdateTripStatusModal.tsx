@@ -16,6 +16,7 @@ import {
   DatePicker,
   Timeline,
   Typography,
+  Steps,
 } from "antd";
 import {
   CheckCircleOutlined,
@@ -76,6 +77,27 @@ const STATUS_ORDER: TripStatus[] = [
   "Waiting for PODs",
   "Completed",
 ];
+
+// Simplified pipeline for the Steps progress indicator (AC-2)
+const TRIP_PIPELINE_STEPS: TripStatus[] = [
+  "Waiting",
+  "Loading",
+  "In Transit",
+  "Offloading",
+  "Waiting for PODs",
+  "Completed",
+];
+
+// Map any TripStatus to its nearest pipeline step index
+function getPipelineStepIndex(status: TripStatus | undefined): number {
+  if (!status) return 0;
+  const direct = TRIP_PIPELINE_STEPS.indexOf(status);
+  if (direct >= 0) return direct;
+  // Map intermediate/return statuses to nearest pipeline step
+  if (["Dispatch", "Wait to Load", "At Border"].includes(status)) return 2; // In Transit area
+  if (["Dispatch (Return)", "Wait to Load (Return)", "Loading (Return)", "In Transit (Return)", "At Border (Return)", "Offloading (Return)", "Returned"].includes(status)) return 4; // Post-offloading
+  return 0;
+}
 
 interface UpdateTripStatusModalProps {
   open: boolean;
@@ -420,7 +442,7 @@ export function UpdateTripStatusModal({
               </Text>
             )}
             {extraDates && (
-              <Text type="secondary" style={{ fontSize: 11, display: "block" }}>
+              <Text type="secondary" style={{ fontSize: 12, display: "block" }}>
                 {extraDates}
               </Text>
             )}
@@ -471,6 +493,28 @@ export function UpdateTripStatusModal({
       confirmLoading={loadingResources}
       width={800}
     >
+      {/* AC-2: Status flow pipeline indicator */}
+      <Steps
+        size="small"
+        current={getPipelineStepIndex(currentStatus)}
+        status={currentStatus === "Cancelled" ? "error" : "process"}
+        style={{ marginBottom: 16 }}
+        items={TRIP_PIPELINE_STEPS.map((s, i) => {
+          const idx = getPipelineStepIndex(currentStatus);
+          return {
+            title: s,
+            status: currentStatus === "Cancelled" && i === idx
+              ? "error"
+              : i < idx
+                ? "finish"
+                : i === idx
+                  ? "process"
+                  : "wait",
+          };
+        })}
+      />
+      <Divider style={{ margin: "8px 0 12px" }} />
+
       {/* Previous Status Timeline */}
       {timelineItems.length > 0 && (
         <>

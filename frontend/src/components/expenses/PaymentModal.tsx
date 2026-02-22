@@ -18,6 +18,8 @@ import {
   Spin,
   Empty,
   Tag,
+  Result,
+  Descriptions,
 } from "antd";
 import {
   DollarOutlined,
@@ -27,7 +29,9 @@ import {
   FileImageOutlined,
   FileWordOutlined,
   FileUnknownOutlined,
+  PrinterOutlined,
 } from "@ant-design/icons";
+import { PrintPreviewModal } from "./PrintPreviewModal";
 import type { ExpenseRequestDetailed } from "@/types/expense";
 import dayjs from "dayjs";
 
@@ -35,6 +39,15 @@ interface AttachmentInfo {
   key: string;
   filename: string;
   url: string | null;
+}
+
+interface PaymentResult {
+  amount: number;
+  currency: string;
+  method: string;
+  reference: string | null;
+  paidAt: string;
+  recipient: string;
 }
 
 function getFileIcon(filename: string) {
@@ -60,6 +73,8 @@ export function PaymentModal({ open, onClose, onSuccess, expense }: PaymentModal
   const [submitting, setSubmitting] = useState(false);
   const [attachments, setAttachments] = useState<AttachmentInfo[]>([]);
   const [attachmentsLoading, setAttachmentsLoading] = useState(false);
+  const [paymentResult, setPaymentResult] = useState<PaymentResult | null>(null);
+  const [printReceiptOpen, setPrintReceiptOpen] = useState(false);
 
   // Watch Payment Method for conditional fields
   const paymentMethod = Form.useWatch("method", form);
@@ -120,10 +135,16 @@ export function PaymentModal({ open, onClose, onSuccess, expense }: PaymentModal
       });
 
       if (response.ok) {
-        message.success("Payment processed successfully");
-        form.resetFields();
-        onSuccess();
-        onClose();
+        const methodLabel = values.method === "CASH" ? "Cash" : "Bank Transfer / M-Pesa";
+        setPaymentResult({
+          amount: expense.amount,
+          currency: expense.currency ?? "TZS",
+          method: methodLabel,
+          reference: values.reference || null,
+          paidAt: new Date().toLocaleString(),
+          recipient: expense.created_by?.full_name ?? expense.created_by?.username ?? "—",
+        });
+        onSuccess(); // invalidate React Query — do NOT call onClose() yet
       } else {
         const error = await response.json();
         message.error(error.detail || "Payment failed");
@@ -378,10 +399,11 @@ export function PaymentModal({ open, onClose, onSuccess, expense }: PaymentModal
       style={{ top: 20 }}
       styles={{ body: { maxHeight: "calc(100vh - 200px)", overflowY: "auto" } }}
       onCancel={() => {
+        setPaymentResult(null);
         form.resetFields();
         onClose();
       }}
-      footer={[
+      footer={paymentResult ? null : [
         <Button key="cancel" onClick={onClose}>
           Cancel
         </Button>,
@@ -391,6 +413,40 @@ export function PaymentModal({ open, onClose, onSuccess, expense }: PaymentModal
       ]}
       destroyOnHidden
     >
+      {paymentResult ? (
+        <Result
+          status="success"
+          title="Payment Processed Successfully"
+          subTitle={`${paymentResult.currency} ${Number(paymentResult.amount).toLocaleString("en-US")} via ${paymentResult.method}`}
+          extra={[
+            <Button
+              key="print"
+              icon={<PrinterOutlined />}
+              onClick={() => setPrintReceiptOpen(true)}
+            >
+              Print Receipt
+            </Button>,
+            <Button
+              key="close"
+              type="primary"
+              onClick={() => {
+                setPaymentResult(null);
+                form.resetFields();
+                onClose();
+              }}
+            >
+              Close
+            </Button>,
+          ]}
+        >
+          <Descriptions size="small" column={2} bordered>
+            <Descriptions.Item label="Recipient">{paymentResult.recipient}</Descriptions.Item>
+            <Descriptions.Item label="Reference">{paymentResult.reference ?? "—"}</Descriptions.Item>
+            <Descriptions.Item label="Payment Date">{paymentResult.paidAt}</Descriptions.Item>
+            <Descriptions.Item label="Method">{paymentResult.method}</Descriptions.Item>
+          </Descriptions>
+        </Result>
+      ) : (
       <Form form={form} layout="vertical" onFinish={handleFinish}>
         <Tabs
           defaultActiveKey="1"
@@ -462,6 +518,13 @@ export function PaymentModal({ open, onClose, onSuccess, expense }: PaymentModal
           ]}
         />
       </Form>
+      )}
+
+      <PrintPreviewModal
+        open={printReceiptOpen}
+        onClose={() => setPrintReceiptOpen(false)}
+        expenseIds={[expense.id]}
+      />
     </Modal>
   );
 }

@@ -9,12 +9,14 @@ import {
   Space,
   Typography,
   message,
+  Tooltip,
 } from "antd";
 import {
   ReloadOutlined,
   PlusOutlined,
   PrinterOutlined,
   HistoryOutlined,
+  QuestionCircleOutlined,
 } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
 import type { ExpenseRequestDetailed, ExpenseStatus } from "@/types/expense";
@@ -250,6 +252,17 @@ export default function OfficeExpensesPage() {
               </Button>
             </Space>
           </div>
+
+          {user?.role === 'ops' && (
+            <div style={{ marginBottom: 8 }}>
+              <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                Showing: all trip expenses · your office expenses{' '}
+                <Tooltip title="Ops users see all trip expenses and their own submitted office expenses. Managers and Finance see all office expenses.">
+                  <QuestionCircleOutlined style={{ cursor: 'help' }} />
+                </Tooltip>
+              </Typography.Text>
+            </div>
+          )}
 
           <Table<ExpenseRequestDetailed>
             columns={resizableColumns}

@@ -14,7 +14,6 @@ import {
   Button,
   Typography,
   Table,
-  Timeline,
   Spin,
   Empty,
   App,
@@ -23,6 +22,7 @@ import {
   Tooltip,
   DatePicker,
   Form,
+  Steps,
 } from "antd";
 import dayjs from "dayjs";
 import { amountInputProps, fmtAmount, fmtCurrency } from "@/lib/utils";
@@ -32,9 +32,6 @@ import {
   UndoOutlined,
   DollarOutlined,
   SendOutlined,
-  FileTextOutlined,
-  ClockCircleOutlined,
-  BankOutlined,
   DownloadOutlined,
   FilePdfOutlined,
   FileImageOutlined,
@@ -533,9 +530,39 @@ export function ExpenseReviewModal({
   const displayAmount = editable && editItem ? editItem.amount : (expense?.amount ?? 0);
   const displayCurrency = editable && editItem ? editItem.currency : (expense?.currency ?? "TZS");
 
+  // AC-2: Expense approval pipeline Steps
+  const EXPENSE_STEPS = ["Submitted", "Manager Review", "Finance Payment", "Paid"];
+  const expenseStepIndex: Record<string, number> = {
+    "Pending Manager": 1,
+    "Pending Finance": 2,
+    "Paid": 3,
+    "Rejected": 1,
+    "Returned": 1,
+  };
+  const currentExpenseStep = expenseStepIndex[expense?.status ?? ""] ?? 0;
+  const isExpenseError = expense?.status === "Rejected" || expense?.status === "Returned";
+
   // Tab 1: Expense Details
   const ExpenseDetailsTab = expense ? (
     <>
+      {/* AC-2: Approval pipeline indicator */}
+      <Steps
+        size="small"
+        current={currentExpenseStep}
+        status={isExpenseError ? "error" : "process"}
+        style={{ marginBottom: 16 }}
+        items={EXPENSE_STEPS.map((label, i) => ({
+          title: label,
+          status: isExpenseError && i === currentExpenseStep
+            ? "error"
+            : i < currentExpenseStep
+              ? "finish"
+              : i === currentExpenseStep
+                ? "process"
+                : "wait",
+        }))}
+      />
+
       {/* Return reason banner */}
       {isReturned && expense.manager_comment && (
         <Alert
@@ -986,126 +1013,138 @@ export function ExpenseReviewModal({
     </div>
   );
 
-  // Tab 3: History/Timeline
-  const getTimelineItems = () => {
+  // Tab 3: Tracking — dynamic approval pipeline (handles return→resubmit flow)
+  const buildTrackingSteps = () => {
     if (!expense) return [];
-    const items = [];
 
-    items.push({
-      color: "green" as const,
-      dot: <FileTextOutlined />,
-      content: (
-        <div>
-          <Text strong>Application Submitted</Text>
-          <br />
-          <Text type="secondary">
-            {formatDate(expense.created_at)}
-            {expense.created_by &&
-              ` by ${expense.created_by.full_name || expense.created_by.username}`}
+    // Detect "was returned and resubmitted": status is Pending Manager but manager_comment
+    // persists from the return action (resubmit only patches status, not the comment).
+    const wasReturned = expense.status === "Pending Manager" && !!expense.manager_comment;
+
+    const submitted = {
+      title: "Submitted",
+      status: "finish" as const,
+      description: expense.created_by ? (
+        <Text type="secondary" style={{ fontSize: 12 }}>
+          {expense.created_by.full_name || expense.created_by.username} · {formatDate(expense.created_at)}
+        </Text>
+      ) : undefined,
+    };
+
+    if (wasReturned) {
+      // Show the return event that happened between submissions
+      return [
+        submitted,
+        {
+          title: "Returned for Revision",
+          status: "error" as const,
+          description: (
+            <Text italic style={{ fontSize: 12 }}>&quot;{expense.manager_comment}&quot;</Text>
+          ),
+        },
+        {
+          title: "Resubmitted",
+          status: "process" as const,
+          description: <Text type="secondary" style={{ fontSize: 12 }}>Awaiting manager review</Text>,
+        },
+        { title: "Finance Payment", status: "wait" as const },
+      ];
+    }
+
+    if (expense.status === "Pending Manager") {
+      return [
+        submitted,
+        {
+          title: "Manager Review",
+          status: "process" as const,
+          description: <Text type="secondary" style={{ fontSize: 12 }}>Awaiting manager review</Text>,
+        },
+        { title: "Finance Payment", status: "wait" as const },
+      ];
+    }
+
+    if (expense.status === "Rejected") {
+      return [
+        submitted,
+        {
+          title: "Rejected",
+          status: "error" as const,
+          description: expense.approved_by ? (
+            <Space direction="vertical" size={0}>
+              <Text type="secondary" style={{ fontSize: 12 }}>
+                {expense.approved_by.full_name || expense.approved_by.username} · {formatDate(expense.approved_at)}
+              </Text>
+              {expense.manager_comment && (
+                <Text italic style={{ fontSize: 12 }}>&quot;{expense.manager_comment}&quot;</Text>
+              )}
+            </Space>
+          ) : undefined,
+        },
+      ];
+    }
+
+    if (expense.status === "Returned") {
+      return [
+        submitted,
+        {
+          title: "Returned for Revision",
+          status: "error" as const,
+          description: expense.approved_by ? (
+            <Space direction="vertical" size={0}>
+              <Text type="secondary" style={{ fontSize: 12 }}>
+                {expense.approved_by.full_name || expense.approved_by.username} · {formatDate(expense.approved_at)}
+              </Text>
+              {expense.manager_comment && (
+                <Text italic style={{ fontSize: 12 }}>&quot;{expense.manager_comment}&quot;</Text>
+              )}
+            </Space>
+          ) : undefined,
+        },
+      ];
+    }
+
+    // Pending Finance or Paid
+    const managerApproved = {
+      title: "Manager Approved",
+      status: "finish" as const,
+      description: expense.approved_by ? (
+        <Space direction="vertical" size={0}>
+          <Text type="secondary" style={{ fontSize: 12 }}>
+            {expense.approved_by.full_name || expense.approved_by.username} · {formatDate(expense.approved_at)}
           </Text>
-        </div>
-      ),
-    });
+          {expense.manager_comment && (
+            <Text italic style={{ fontSize: 12 }}>&quot;{expense.manager_comment}&quot;</Text>
+          )}
+        </Space>
+      ) : undefined,
+    };
 
-    if (expense.approved_at && expense.approved_by) {
-      items.push({
-        color: "green" as const,
-        dot: <CheckCircleOutlined />,
-        content: (
-          <div>
-            <Text strong>Manager Approved</Text>
-            <br />
-            <Text type="secondary">
-              {formatDate(expense.approved_at)} by{" "}
-              {expense.approved_by.full_name || expense.approved_by.username}
-            </Text>
-            {expense.manager_comment && (
-              <>
-                <br />
-                <Text italic>&quot;{expense.manager_comment}&quot;</Text>
-              </>
-            )}
-          </div>
-        ),
-      });
-    } else if (expense.status === "Rejected") {
-      items.push({
-        color: "red" as const,
-        dot: <CloseCircleOutlined />,
-        content: (
-          <div>
-            <Text strong>Manager Rejected</Text>
-            {expense.manager_comment && (
-              <>
-                <br />
-                <Text italic>&quot;{expense.manager_comment}&quot;</Text>
-              </>
-            )}
-          </div>
-        ),
-      });
-    } else if (expense.status === "Returned") {
-      items.push({
-        color: "orange" as const,
-        dot: <ClockCircleOutlined />,
-        content: (
-          <div>
-            <Text strong>Returned for Revision</Text>
-          </div>
-        ),
-      });
-    } else if (expense.status === "Pending Manager") {
-      items.push({
-        color: "blue" as const,
-        dot: <ClockCircleOutlined />,
-        content: (
-          <div>
-            <Text strong>Awaiting Manager Approval</Text>
-          </div>
-        ),
-      });
-    }
+    const financeStep = {
+      title: "Finance Payment",
+      status: expense.status === "Paid" ? ("finish" as const) : ("process" as const),
+      description:
+        expense.status === "Paid" && expense.paid_by ? (
+          <Text type="secondary" style={{ fontSize: 12 }}>
+            {expense.paid_by.full_name || expense.paid_by.username} · {formatDate(expense.payment_date)}
+            {expense.payment_method && ` · ${expense.payment_method}`}
+            {expense.payment_reference && ` (${expense.payment_reference})`}
+          </Text>
+        ) : expense.status === "Pending Finance" ? (
+          <Text type="secondary" style={{ fontSize: 12 }}>Awaiting finance payment</Text>
+        ) : undefined,
+    };
 
-    if (expense.status === "Paid" && expense.payment_date) {
-      items.push({
-        color: "green" as const,
-        dot: <BankOutlined />,
-        content: (
-          <div>
-            <Text strong>Payment Processed</Text>
-            <br />
-            <Text type="secondary">
-              {formatDate(expense.payment_date)}
-              {expense.paid_by &&
-                ` by ${expense.paid_by.full_name || expense.paid_by.username}`}
-            </Text>
-            <br />
-            <Text>
-              Method: {expense.payment_method || "N/A"}
-              {expense.payment_reference &&
-                ` | Ref: ${expense.payment_reference}`}
-            </Text>
-          </div>
-        ),
-      });
-    } else if (expense.status === "Pending Finance") {
-      items.push({
-        color: "blue" as const,
-        dot: <ClockCircleOutlined />,
-        content: (
-          <div>
-            <Text strong>Awaiting Finance Payment</Text>
-          </div>
-        ),
-      });
-    }
-
-    return items;
+    return [submitted, managerApproved, financeStep];
   };
 
   const HistoryTab = (
     <div style={{ padding: "16px 0" }}>
-      <Timeline items={getTimelineItems()} />
+      <Steps
+        direction="vertical"
+        size="small"
+        current={-1}
+        items={buildTrackingSteps()}
+      />
     </div>
   );
 
