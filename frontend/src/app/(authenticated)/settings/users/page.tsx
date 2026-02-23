@@ -191,8 +191,12 @@ const UsersContent = () => {
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
+  const [isResetPasswordModalOpen, setIsResetPasswordModalOpen] = useState(false);
+  const [resetPasswordUser, setResetPasswordUser] = useState<User | null>(null);
+  const [resetPasswordSubmitting, setResetPasswordSubmitting] = useState(false);
 
   const [form] = Form.useForm();
+  const [resetPasswordForm] = Form.useForm();
 
   // Role Access Control
   useEffect(() => {
@@ -275,17 +279,32 @@ const UsersContent = () => {
     }
   };
 
-  const handleResetPassword = async (user: User) => {
+  const openResetPasswordModal = (user: User) => {
+    setResetPasswordUser(user);
+    setIsResetPasswordModalOpen(true);
+  };
+
+  const handleResetPasswordSubmit = async (values: { new_password: string }) => {
+    if (!resetPasswordUser) return;
+    setResetPasswordSubmitting(true);
     try {
-      const response = await fetch(`/api/v1/users/${user.id}/password-reset`, {
+      const response = await fetch(`/api/v1/users/${resetPasswordUser.id}/password-reset`, {
         method: "POST",
+        headers: { "Content-Type": "application/json" },
         credentials: "include",
+        body: JSON.stringify({ new_password: values.new_password }),
       });
       if (response.ok) {
-        message.success(`Password for ${user.username} reset to default`);
+        message.success(`Password for ${resetPasswordUser.username} updated successfully`);
+        setIsResetPasswordModalOpen(false);
+      } else {
+        const error = await response.json();
+        message.error(error.detail || "Failed to update password");
       }
     } catch {
       message.error("Network error");
+    } finally {
+      setResetPasswordSubmitting(false);
     }
   };
 
@@ -414,13 +433,13 @@ const UsersContent = () => {
               aria-label={`Edit User ${record.username}`}
             />
             <Tooltip title="Reset Password">
-              <Popconfirm
-                title="Reset Password"
-                description="Reset to default password? User will need to change it."
-                onConfirm={() => handleResetPassword(record)}
-              >
-                <Button type="text" size="small" icon={<KeyOutlined />} aria-label="Reset Password" />
-              </Popconfirm>
+              <Button
+                type="text"
+                size="small"
+                icon={<KeyOutlined />}
+                aria-label="Reset Password"
+                onClick={() => openResetPasswordModal(record)}
+              />
             </Tooltip>
             <Popconfirm
               title="Delete user"
@@ -574,6 +593,56 @@ const UsersContent = () => {
             <Button onClick={() => setIsModalOpen(false)}>Cancel</Button>
             <Button type="primary" htmlType="submit" loading={submitting}>
               {editingUser ? "Update" : "Create"}
+            </Button>
+          </Flex>
+        </Form>
+      </Modal>
+      <Modal
+        title={<span style={{ fontSize: 18, fontWeight: 600, color: "#1f2937" }}>Reset Password — {resetPasswordUser?.username}</span>}
+        open={isResetPasswordModalOpen}
+        onCancel={() => setIsResetPasswordModalOpen(false)}
+        footer={null}
+        width={420}
+        destroyOnHidden
+      >
+        <Form
+          form={resetPasswordForm}
+          layout="vertical"
+          onFinish={handleResetPasswordSubmit}
+          style={{ marginTop: 16 }}
+        >
+          <Form.Item
+            label="New Password"
+            name="new_password"
+            rules={[
+              { required: true, message: "Please enter a new password" },
+              { min: 8, message: "Password must be at least 8 characters" },
+            ]}
+          >
+            <Input.Password placeholder="Min 8 characters" />
+          </Form.Item>
+          <Form.Item
+            label="Confirm New Password"
+            name="confirm_password"
+            dependencies={["new_password"]}
+            rules={[
+              { required: true, message: "Please confirm the new password" },
+              ({ getFieldValue }) => ({
+                validator(_, value) {
+                  if (!value || getFieldValue("new_password") === value) {
+                    return Promise.resolve();
+                  }
+                  return Promise.reject(new Error("Passwords do not match"));
+                },
+              }),
+            ]}
+          >
+            <Input.Password placeholder="Re-enter password" />
+          </Form.Item>
+          <Flex justify="flex-end" gap="small">
+            <Button onClick={() => setIsResetPasswordModalOpen(false)}>Cancel</Button>
+            <Button type="primary" htmlType="submit" loading={resetPasswordSubmitting}>
+              Save
             </Button>
           </Flex>
         </Form>
