@@ -58,6 +58,10 @@ export default function ExpenseConsolePage() {
   const [dateRange, setDateRange] = useState<[dayjs.Dayjs | null, dayjs.Dayjs | null] | null>(null);
   const [searchText, setSearchText] = useState("");
 
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
+
   // Permission gate
   useEffect(() => {
     if (!hasAnyPermission("expenses:audit-console") && !hasFullAccess) {
@@ -240,7 +244,18 @@ export default function ExpenseConsolePage() {
           rowKey="id"
           loading={isLoading}
           scroll={{ x: 1000 }}
-          pagination={{ pageSize: 20, showSizeChanger: true, showTotal: (t) => `${t} expenses` }}
+          pagination={{
+            current: currentPage,
+            pageSize,
+            total: filtered.length,
+            showTotal: (total) => `Total ${total} expenses`,
+            showSizeChanger: true,
+            pageSizeOptions: ["20", "50", "100"],
+            onChange: (page, size) => {
+              setCurrentPage(page);
+              setPageSize(size);
+            },
+          }}
           size="small"
         />
       </Card>
