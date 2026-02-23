@@ -546,6 +546,26 @@ def update_trip(
                     return_waybill.status = TRIP_TO_RETURN_WAYBILL_STATUS[new_status]
                     session.add(return_waybill)
 
+    # Sync waybill status when waybill_id is being newly attached without a status change
+    if "waybill_id" in update_dict and "status" not in update_dict:
+        new_waybill_id = update_dict["waybill_id"]
+        old_waybill_id = trip.waybill_id
+
+        # Release the old waybill if it's being replaced
+        if old_waybill_id and old_waybill_id != new_waybill_id:
+            old_wb = session.get(Waybill, old_waybill_id)
+            if old_wb:
+                old_wb.status = WaybillStatus.open
+                session.add(old_wb)
+
+        # Mark the new waybill according to the trip's current status
+        if new_waybill_id:
+            current_trip_status = TripStatus(trip.status) if isinstance(trip.status, str) else trip.status
+            new_wb = session.get(Waybill, new_waybill_id)
+            if new_wb:
+                new_wb.status = TRIP_TO_GO_WAYBILL_STATUS.get(current_trip_status, WaybillStatus.in_progress)
+                session.add(new_wb)
+
     trip.sqlmodel_update(update_dict)
     session.add(trip)
     session.commit()

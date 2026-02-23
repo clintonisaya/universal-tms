@@ -15,6 +15,7 @@ from app.api.deps import (
 from app.core.config import settings
 from app.core.security import get_password_hash, verify_password
 from app.models import (
+    AdminPasswordReset,
     Item,
     Message,
     UpdatePassword,
@@ -267,19 +268,15 @@ def delete_user(
     response_model=Message,
 )
 def admin_reset_password(
-    session: SessionDep, user_id: uuid.UUID
+    session: SessionDep, user_id: uuid.UUID, body: AdminPasswordReset
 ) -> Any:
     """
-    Admin override: Reset user password to default.
+    Admin override: Set a new password for a user.
     """
     user = session.get(User, user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-    
-    # Reset to default password (should be 'changethis' or env var, using hardcoded for now or generate random)
-    default_pwd = settings.FIRST_SUPERUSER_PASSWORD or "changethis"
-    hashed_password = get_password_hash(default_pwd)
-    user.hashed_password = hashed_password
+    user.hashed_password = get_password_hash(body.new_password)
     session.add(user)
     session.commit()
-    return Message(message="Password reset successfully")
+    return Message(message="Password updated successfully")

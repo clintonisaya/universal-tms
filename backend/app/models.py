@@ -142,6 +142,10 @@ class NewPassword(SQLModel):
     new_password: str = Field(min_length=8, max_length=128)
 
 
+class AdminPasswordReset(SQLModel):
+    new_password: str = Field(min_length=8, max_length=128)
+
+
 # ============================================================================
 # Truck Models - Story 1.4: Truck Registry Management
 # ============================================================================
