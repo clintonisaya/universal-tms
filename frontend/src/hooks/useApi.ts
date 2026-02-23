@@ -124,10 +124,16 @@ export function useWaybills(enabled = true) {
 }
 
 // Expenses
-export function useExpenses(enabled = true) {
+export function useExpenses(params?: { skip?: number; limit?: number }, enabled = true) {
+  const qs =
+    params && Object.keys(params).length
+      ? `?${new URLSearchParams(
+          Object.fromEntries(Object.entries(params).map(([k, v]) => [k, String(v)]))
+        ).toString()}`
+      : "";
   return useQuery({
-    queryKey: queryKeys.expenses,
-    queryFn: () => apiFetch<{ data: any[]; count: number }>("/api/v1/expenses"),
+    queryKey: [...queryKeys.expenses, params],
+    queryFn: () => apiFetch<{ data: any[]; count: number }>(`/api/v1/expenses${qs}`),
     enabled,
   });
 }

@@ -75,7 +75,7 @@ export default function ExpensesPage() {
   const isAuthenticated = !!user;
 
   // TanStack Query for expenses and trips data
-  const { data: expensesData, isLoading: loading, refetch } = useExpenses(isAuthenticated);
+  const { data: expensesData, isLoading: loading, refetch } = useExpenses(undefined, isAuthenticated);
   const { data: tripsData, isLoading: tripsLoading } = useTrips({ limit: 100 }, isAuthenticated);
 
   // Filter to show only trip expenses (NOT office expenses)

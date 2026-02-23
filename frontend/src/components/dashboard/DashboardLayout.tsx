@@ -63,7 +63,7 @@ const allMenuItems: PermissionMenuItem[] = [
     icon: <ScheduleOutlined />,
     label: "Operations",
     children: [
-      { key: "/ops/tracking", label: "Control Tower", requires: ["tracking:view"] },
+      { key: "/ops/tracking", label: "Tracking", requires: ["tracking:view"] },
       { key: "/ops/waybills", label: "Waybills", requires: ["waybills:view"] },
       { key: "/ops/trips", label: "Trips", requires: ["trips:view"] },
       { key: "/ops/expenses", label: "Expenses", requires: ["expenses:view"] },
@@ -90,7 +90,6 @@ const allMenuItems: PermissionMenuItem[] = [
     children: [
       { key: "/finance/expense-console", label: "Expense Console", requires: ["expenses:audit-console"] },
       { key: "/manager/payments", label: "Payments", requires: ["expenses:pay"] },
-      { key: "/finance/vouchers/bulk", label: "Vouchers", requires: ["expenses:pay"] },
       { key: "/settings/finance", label: "Exchange Rates", requires: ["settings:exchange-rates"] },
     ],
   },
@@ -252,8 +251,6 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
       "/manager/approvals",
       "/finance/expense-console",
       "/manager/payments",
-      "/finance/vouchers/bulk",
-      "/finance/vouchers",
       "/settings/clients",
       "/settings/finance",
       "/settings/finance/office-expense-types",

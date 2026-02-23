@@ -658,7 +658,7 @@ export default function TrackingPage() {
                 Back
               </Button>
               <Title level={3} style={{ margin: 0 }}>
-                Control Tower
+                Tracking
               </Title>
             </Space>
             <Space>

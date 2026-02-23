@@ -39,7 +39,7 @@ const ALL_QUICK_ACTIONS: QuickAction[] = [
     roles: ["ops", "admin", "manager"],
   },
   {
-    label: "Control Tower",
+    label: "Tracking",
     href: "/ops/tracking",
     icon: <RadarChartOutlined />,
     permission: "tracking:view",

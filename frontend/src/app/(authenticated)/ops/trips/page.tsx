@@ -91,13 +91,6 @@ function TripsPageContent() {
   // Only fetch when user is authenticated
   const isAuthenticated = !!user;
 
-  // TanStack Query for trips data
-  const { data, isLoading: loading, refetch } = useTrips(undefined, isAuthenticated);
-  const trips = data?.data || [];
-  const totalCount = data?.count || 0;
-
-  const showFinancialData = user?.role === "admin" || user?.role === "manager";
-
   const [createDrawerOpen, setCreateDrawerOpen] = useState(false);
   const [detailDrawerTripId, setDetailDrawerTripId] = useState<string | null>(null);
   const [updateDrawerTripId, setUpdateDrawerTripId] = useState<string | null>(null);
@@ -107,6 +100,16 @@ function TripsPageContent() {
   const [pageSize, setPageSize] = useState(20);
   const [tableFilters, setTableFilters] = useState<Record<string, any>>({});
   const [tableKey, setTableKey] = useState(0);
+
+  // TanStack Query for trips data — server-side pagination
+  const { data, isLoading: loading, refetch } = useTrips(
+    { skip: (currentPage - 1) * pageSize, limit: pageSize },
+    isAuthenticated
+  );
+  const trips = data?.data || [];
+  const totalCount = data?.count || 0;
+
+  const showFinancialData = user?.role === "admin" || user?.role === "manager";
 
   const hasActiveFilters = Object.values(tableFilters).some(
     (v) => v != null && (Array.isArray(v) ? v.length > 0 : true)

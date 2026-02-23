@@ -80,6 +80,8 @@ function TasksContent() {
   const [typeFilter, setTypeFilter] = useState<string | undefined>(undefined);
   const [sortBy, setSortBy] = useState<string>("date");
   const [sortOrder, setSortOrder] = useState<string>("desc");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
 
   // Review modal state
   const [reviewModalVisible, setReviewModalVisible] = useState(false);
@@ -294,14 +296,14 @@ function TasksContent() {
           <Space style={{ marginBottom: 16 }} wrap>
             <Select
               value={typeFilter || ""}
-              onChange={(val) => setTypeFilter(val || undefined)}
+              onChange={(val) => { setTypeFilter(val || undefined); setCurrentPage(1); }}
               options={typeOptions}
               style={{ width: 180 }}
               placeholder="Filter by type"
             />
             <Select
               value={sortBy}
-              onChange={setSortBy}
+              onChange={(val) => { setSortBy(val); setCurrentPage(1); }}
               options={[
                 { value: "date", label: "Sort by Date" },
                 { value: "amount", label: "Sort by Amount" },
@@ -310,7 +312,7 @@ function TasksContent() {
             />
             <Select
               value={sortOrder}
-              onChange={setSortOrder}
+              onChange={(val) => { setSortOrder(val); setCurrentPage(1); }}
               options={[
                 { value: "desc", label: "Newest First" },
                 { value: "asc", label: "Oldest First" },
@@ -340,7 +342,18 @@ function TasksContent() {
               rowKey="id"
               loading={loading}
               size="small"
-              pagination={{ pageSize: 20 }}
+              pagination={{
+                current: currentPage,
+                pageSize,
+                total: tasks.length,
+                showTotal: (total) => `Total ${total} tasks`,
+                showSizeChanger: true,
+                pageSizeOptions: ["20", "50", "100"],
+                onChange: (page, size) => {
+                  setCurrentPage(page);
+                  setPageSize(size);
+                },
+              }}
               scroll={{ x: 900 }}
               onRow={(record) => ({
                 id: `task-row-${record.id}`,
