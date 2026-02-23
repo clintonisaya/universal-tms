@@ -122,7 +122,7 @@ export default function ExpenseConsolePage() {
       key: "amount",
       width: 120,
       render: (_, record) =>
-        `${record.currency ?? "USD"} ${record.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}`,
+        `${record.currency ?? "USD"} ${record.amount.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
     },
     {
       title: "Status",
