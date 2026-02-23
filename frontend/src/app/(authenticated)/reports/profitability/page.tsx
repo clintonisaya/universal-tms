@@ -13,6 +13,7 @@ import {
   Statistic,
   Row,
   Col,
+  Tooltip,
 } from "antd";
 import {
   ReloadOutlined,
@@ -20,6 +21,7 @@ import {
   EyeOutlined,
   ArrowUpOutlined,
   ArrowDownOutlined,
+  InfoCircleOutlined,
 } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
 import { useAuth } from "@/contexts/AuthContext";
@@ -72,6 +74,83 @@ export default function TripProfitabilityPage() {
   const [pageSize, setPageSize] = useState(20);
   const [sortBy, setSortBy] = useState<string>("margin");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
+
+  // Currency display
+  const [displayCurrency, setDisplayCurrency] = useState<"TZS" | "USD">("TZS");
+  const [exchangeRate, setExchangeRate] = useState<number | null>(null);
+
+  // Fetch exchange rate mirroring the backend's get_current_exchange_rate fallback chain:
+  //   1. Current month/year exact match
+  //   2. Most recent rate overall (any month/year)
+  //   3. Hardcoded default 2500 (same as backend Decimal("2500.00"))
+  // This ensures the same rate is used for TZS→USD conversion as the backend used for
+  // USD→TZS normalization when building the profitability data.
+  useEffect(() => {
+    const now = new Date();
+    const month = now.getMonth() + 1;
+    const year = now.getFullYear();
+
+    const resolveRate = async (): Promise<number> => {
+      // Step 1: try current month (exact match + pre-month fallback from /current endpoint)
+      const r1 = await fetch(
+        `/api/v1/finance/exchange-rates/current?month=${month}&year=${year}`,
+        { credentials: "include" }
+      );
+      if (r1.ok) {
+        const d = await r1.json();
+        if (d?.rate && Number(d.rate) > 1) return Number(d.rate);
+      }
+
+      // Step 2: mirror backend "most recent overall" — fetch list sorted by year/month desc
+      const r2 = await fetch(
+        `/api/v1/finance/exchange-rates?limit=1`,
+        { credentials: "include" }
+      );
+      if (r2.ok) {
+        const d = await r2.json();
+        const first = d?.data?.[0];
+        if (first?.rate && Number(first.rate) > 1) return Number(first.rate);
+      }
+
+      // Step 3: backend hardcoded default
+      return 2500;
+    };
+
+    resolveRate()
+      .then(setExchangeRate)
+      .catch(() => setExchangeRate(2500));
+  }, []);
+
+  // Convert a TZS value to the selected display currency
+  const toDisplay = useCallback(
+    (val: number): number => {
+      if (displayCurrency === "USD" && exchangeRate && exchangeRate > 1) {
+        return val / exchangeRate;
+      }
+      return val;
+    },
+    [displayCurrency, exchangeRate]
+  );
+
+  // Format a display value with correct precision per currency
+  const fmt = useCallback(
+    (val: number): string => {
+      const converted = toDisplay(val);
+      if (displayCurrency === "USD") {
+        return converted.toLocaleString("en-US", {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        });
+      }
+      return converted.toLocaleString("en-US", { maximumFractionDigits: 0 });
+    },
+    [displayCurrency, toDisplay]
+  );
+
+  const cur = displayCurrency;
+  // exchangeRate is always resolved (min 2500) — warn only if using the hardcoded default
+  const usingDefaultRate = exchangeRate === 2500;
+  const noRate = false; // USD toggle always available — rate is always resolved
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -163,36 +242,36 @@ export default function TripProfitabilityPage() {
       render: (status: string) => <TripStatusTag status={status as TripStatus} />,
     },
     {
-      title: "Income (TZS)",
+      title: `Income (${cur})`,
       dataIndex: "income",
       key: "income",
-      width: 140,
+      width: 150,
       align: "right",
       render: (val: number) => (
         <Text style={{ color: "#52c41a", fontWeight: 500 }}>
-          {val.toLocaleString("en-US")}
+          {fmt(val)}
         </Text>
       ),
       sorter: true,
     },
     {
-      title: "Expenses (TZS)",
+      title: `Expenses (${cur})`,
       dataIndex: "expenses",
       key: "expenses",
-      width: 140,
+      width: 150,
       align: "right",
       render: (val: number) => (
         <Text style={{ color: "#ff4d4f", fontWeight: 500 }}>
-          {val.toLocaleString("en-US")}
+          {fmt(val)}
         </Text>
       ),
       sorter: true,
     },
     {
-      title: "Net Profit (TZS)",
+      title: `Net Profit (${cur})`,
       dataIndex: "net_profit",
       key: "net_profit",
-      width: 150,
+      width: 160,
       align: "right",
       render: (val: number) => (
         <Text
@@ -202,16 +281,16 @@ export default function TripProfitabilityPage() {
           }}
         >
           {val >= 0 ? "+" : ""}
-          {val.toLocaleString("en-US")}
+          {fmt(val)}
         </Text>
       ),
       sorter: true,
     },
     {
-      title: "Profit/Day (TZS)",
+      title: `Profit/Day (${cur})`,
       dataIndex: "profit_per_day",
       key: "profit_per_day",
-      width: 150,
+      width: 160,
       align: "right",
       render: (val: number) => (
         <Text
@@ -219,7 +298,7 @@ export default function TripProfitabilityPage() {
             color: val >= 0 ? "#52c41a" : "#ff4d4f",
           }}
         >
-          {val.toLocaleString("en-US")}
+          {fmt(val)}
         </Text>
       ),
       sorter: true,
@@ -275,6 +354,32 @@ export default function TripProfitabilityPage() {
   // Make columns resizable
   const { resizableColumns, components } = useResizableColumns(columns);
 
+  // Currency toggle buttons
+  const currencyToggle = (
+    <Space size={4}>
+      {(["TZS", "USD"] as const).map((c) => (
+        <Button
+          key={c}
+          size="small"
+          type={displayCurrency === c ? "primary" : "default"}
+          onClick={() => setDisplayCurrency(c)}
+        >
+          {c}
+        </Button>
+      ))}
+      {displayCurrency === "USD" && exchangeRate && (
+        <Text type="secondary" style={{ fontSize: 11 }}>
+          1 USD = {exchangeRate.toLocaleString("en-US")} TZS
+          {usingDefaultRate && (
+            <Tooltip title="No exchange rate found in Finance settings — using default rate of 2,500 TZS/USD. Set the current rate in Finance → Exchange Rates for accurate figures.">
+              <InfoCircleOutlined style={{ color: "#faad14", marginLeft: 4 }} />
+            </Tooltip>
+          )}
+        </Text>
+      )}
+    </Space>
+  );
+
   return (
     <div
       style={{
@@ -289,8 +394,9 @@ export default function TripProfitabilityPage() {
           <Card>
             <Statistic
               title="Total Revenue"
-              value={summary?.total_income || 0}
-              prefix="TZS"
+              value={toDisplay(summary?.total_income || 0)}
+              prefix={cur}
+              precision={displayCurrency === "USD" ? 2 : 0}
               styles={{ content: { color: "#52c41a" } }}
             />
           </Card>
@@ -299,8 +405,9 @@ export default function TripProfitabilityPage() {
           <Card>
             <Statistic
               title="Total Expenses"
-              value={summary?.total_expenses || 0}
-              prefix="TZS"
+              value={toDisplay(summary?.total_expenses || 0)}
+              prefix={cur}
+              precision={displayCurrency === "USD" ? 2 : 0}
               styles={{ content: { color: "#ff4d4f" } }}
             />
           </Card>
@@ -309,8 +416,9 @@ export default function TripProfitabilityPage() {
           <Card>
             <Statistic
               title="Total Profit"
-              value={summary?.total_profit || 0}
-              prefix="TZS"
+              value={toDisplay(summary?.total_profit || 0)}
+              prefix={cur}
+              precision={displayCurrency === "USD" ? 2 : 0}
               styles={{
                 content: {
                   color: (summary?.total_profit || 0) >= 0 ? "#52c41a" : "#ff4d4f",
@@ -343,9 +451,9 @@ export default function TripProfitabilityPage() {
           <Card>
             <Statistic
               title="Daily Profit"
-              value={summary?.total_profit_per_day || 0}
-              prefix="TZS"
-              precision={0}
+              value={toDisplay(summary?.total_profit_per_day || 0)}
+              prefix={cur}
+              precision={displayCurrency === "USD" ? 2 : 0}
               styles={{
                 content: {
                   color: (summary?.total_profit_per_day || 0) >= 0 ? "#52c41a" : "#ff4d4f",
@@ -378,6 +486,7 @@ export default function TripProfitabilityPage() {
               </Title>
             </Space>
             <Space>
+              {currencyToggle}
               <Button icon={<ReloadOutlined />} onClick={fetchData}>
                 Refresh
               </Button>
@@ -386,7 +495,10 @@ export default function TripProfitabilityPage() {
 
           <Text type="secondary">
             Shows all trips with waybills. Sort by Margin % to identify least
-            profitable trips. All values normalized to TZS.
+            profitable trips. Base values are in TZS
+            {displayCurrency === "USD" && exchangeRate
+              ? ` — converted at 1 USD = ${exchangeRate.toLocaleString("en-US")} TZS${usingDefaultRate ? " (default — set Finance exchange rate for accuracy)" : ""}`
+              : "."}
           </Text>
 
           <Table<TripProfitability>

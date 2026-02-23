@@ -492,6 +492,7 @@ export function UpdateTripStatusModal({
       footer={null}
       confirmLoading={loadingResources}
       width={800}
+      forceRender
     >
       {/* AC-2: Status flow pipeline indicator */}
       <Steps

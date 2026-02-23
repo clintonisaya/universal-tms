@@ -1188,7 +1188,7 @@ export function ExpenseReviewModal({
         body: { maxHeight: "calc(100vh - 200px)", overflowY: "auto" },
       }}
       footer={null}
-      destroyOnHidden
+      forceRender
     >
       {loading ? (
         <div style={{ textAlign: "center", padding: 80 }}>

@@ -148,7 +148,7 @@ export function EditWaybillDrawer({
       open={open}
       onClose={onClose}
       styles={{ wrapper: { width: 1200 } }}
-      destroyOnHidden
+      forceRender
       extra={
         <Space>
           <Button onClick={onClose}>Cancel</Button>

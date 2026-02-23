@@ -355,7 +355,7 @@ export default function LocationsPage() {
           countryForm.resetFields();
         }}
         footer={null}
-        destroyOnHidden
+        forceRender
       >
         <Form
           form={countryForm}
@@ -401,7 +401,7 @@ export default function LocationsPage() {
           cityForm.resetFields();
         }}
         footer={null}
-        destroyOnHidden
+        forceRender
       >
         <Form
           form={cityForm}

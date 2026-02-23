@@ -585,7 +585,7 @@ export function ProcessPaymentModal({
         body: { maxHeight: "calc(100vh - 200px)", overflowY: "auto" },
       }}
       footer={null}
-      destroyOnHidden
+      forceRender
     >
       <Form form={form} layout="vertical" onFinish={handleFinish}>
         <Tabs

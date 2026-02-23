@@ -14,7 +14,6 @@ import {
   UserOutlined,
   MenuFoldOutlined,
   MenuUnfoldOutlined,
-  CrownOutlined,
   BarChartOutlined,
   AuditOutlined,
   BankOutlined,
@@ -316,12 +315,11 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
           backgroundColor: "#1F1F1F"
         }}>
           <Space>
-            <CrownOutlined style={{ fontSize: "24px", color: token.colorPrimary }} />
             {!collapsed && (
               <Text
                 strong
                 style={{
-                  color: "#fff",
+                  color: token.colorPrimary,
                   fontSize: 18,
                   letterSpacing: "0.5px",
                   fontFamily: "Inter, sans-serif"

@@ -435,7 +435,7 @@ export default function TripExpenseTypesPage() {
           categoryForm.resetFields();
         }}
         footer={null}
-        destroyOnHidden
+        forceRender
       >
         <Form
           form={categoryForm}
@@ -476,7 +476,7 @@ export default function TripExpenseTypesPage() {
           expenseTypeForm.resetFields();
         }}
         footer={null}
-        destroyOnHidden
+        forceRender
       >
         <Form
           form={expenseTypeForm}

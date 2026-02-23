@@ -2,7 +2,7 @@
 
 import { useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Button, Form, Input, Typography, message, Spin } from "antd";
+import { Button, Form, Input, Typography, message, Spin, Alert } from "antd";
 import { UserOutlined, LockOutlined } from "@ant-design/icons";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -18,6 +18,7 @@ function LoginForm() {
   const searchParams = useSearchParams();
   const { login } = useAuth();
   const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [messageApi, contextHolder] = message.useMessage();
 
   // Get the callback URL from query params (set by middleware when redirecting)
@@ -26,6 +27,7 @@ function LoginForm() {
 
   const onFinish = async (values: LoginFormFields) => {
     setLoading(true);
+    setErrorMsg(null);
     try {
       const success = await login(values.username, values.password);
 
@@ -33,10 +35,10 @@ function LoginForm() {
         messageApi.success("Login successful!");
         router.push(callbackUrl);
       } else {
-        messageApi.error("Invalid username or password");
+        setErrorMsg("Invalid username or password. Please try again.");
       }
     } catch {
-      messageApi.error("Network error. Please try again.");
+      setErrorMsg("Network error. Please check your connection and try again.");
     } finally {
       setLoading(false);
     }
@@ -85,6 +87,22 @@ function LoginForm() {
           transform: translateY(-1px);
           transition: all 0.2s ease;
         }
+
+        /* ── Respect user motion preferences ── */
+        @media (prefers-reduced-motion: reduce) {
+          .login-card,
+          .login-brand,
+          .login-field-1,
+          .login-field-2,
+          .login-btn,
+          .login-btn:not(:disabled) {
+            animation: none !important;
+            opacity: 1 !important;
+            transform: none !important;
+          }
+          .login-brand { letter-spacing: 6px !important; }
+          .login-separator { animation: none !important; opacity: 1 !important; width: 32px !important; }
+        }
       `}</style>
 
       <div
@@ -130,7 +148,7 @@ function LoginForm() {
               background: "#181A1F",
               border: "1px solid rgba(212, 175, 55, 0.20)",
               borderBottom: "2px solid rgba(212, 175, 55, 0.55)",
-              borderRadius: "4px",
+              borderRadius: "20px",
               padding: "48px 40px 40px",
               boxShadow: "0 24px 64px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(0,0,0,0.3)",
             }}
@@ -172,17 +190,21 @@ function LoginForm() {
             >
               <Form.Item
                 name="username"
-                label={<span style={{ color: "rgba(255,255,255,0.50)", fontSize: 11, letterSpacing: "1.5px" }}>USERNAME</span>}
+                label={
+                  <span style={{ color: "rgba(255,255,255,0.70)", fontSize: 13, letterSpacing: "1.5px" }}>
+                    USERNAME
+                  </span>
+                }
                 rules={[{ required: true, message: "Username is required" }]}
                 style={{ marginBottom: 20 }}
                 className="login-field-1"
               >
                 <Input
-                  prefix={<UserOutlined style={{ color: "rgba(255,255,255,0.25)", marginRight: 8 }} />}
+                  prefix={<UserOutlined style={{ color: "rgba(255,255,255,0.40)", marginRight: 8 }} />}
                   autoComplete="username"
                   style={{
                     background: "#0D0E11",
-                    borderColor: "#2a2c31",
+                    borderColor: "#3a3d44",
                     color: "#FFF",
                     borderRadius: "2px",
                   }}
@@ -192,23 +214,44 @@ function LoginForm() {
 
               <Form.Item
                 name="password"
-                label={<span style={{ color: "rgba(255,255,255,0.50)", fontSize: 11, letterSpacing: "1.5px" }}>PASSWORD</span>}
+                label={
+                  <span style={{ color: "rgba(255,255,255,0.70)", fontSize: 13, letterSpacing: "1.5px" }}>
+                    PASSWORD
+                  </span>
+                }
                 rules={[{ required: true, message: "Password is required" }]}
-                style={{ marginBottom: 32 }}
+                style={{ marginBottom: errorMsg ? 16 : 32 }}
                 className="login-field-2"
               >
                 <Input.Password
-                  prefix={<LockOutlined style={{ color: "rgba(255,255,255,0.25)", marginRight: 8 }} />}
+                  prefix={<LockOutlined style={{ color: "rgba(255,255,255,0.40)", marginRight: 8 }} />}
                   autoComplete="current-password"
                   style={{
                     background: "#0D0E11",
-                    borderColor: "#2a2c31",
+                    borderColor: "#3a3d44",
                     color: "#FFF",
                     borderRadius: "2px",
                   }}
                   styles={{ input: { background: "transparent", color: "#FFF" } }}
                 />
               </Form.Item>
+
+              {/* ── Inline error — visible near the action ── */}
+              {errorMsg && (
+                <Alert
+                  message={errorMsg}
+                  type="error"
+                  showIcon
+                  style={{
+                    marginBottom: 20,
+                    background: "rgba(255,77,79,0.10)",
+                    border: "1px solid rgba(255,77,79,0.30)",
+                    borderRadius: "2px",
+                    color: "#ff7875",
+                    fontSize: 13,
+                  }}
+                />
+              )}
 
               <Form.Item style={{ marginBottom: 0 }}>
                 <Button
@@ -222,7 +265,7 @@ function LoginForm() {
                     background: "#D4AF37",
                     borderColor: "#D4AF37",
                     color: "#000000",
-                    fontSize: "12px",
+                    fontSize: "13px",
                     fontWeight: 700,
                     letterSpacing: "2px",
                     textTransform: "uppercase",

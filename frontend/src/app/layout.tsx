@@ -22,7 +22,10 @@ export const metadata: Metadata = {
   title: "Edupo TMS",
   description: "Transport Management System",
   icons: {
-    icon: "/edupo-logo.png",
+    icon: [
+      { url: "/favicon.ico", sizes: "any" },
+      { url: "/favicon-logo.png", type: "image/png", sizes: "256x256" },
+    ],
   },
 };
 

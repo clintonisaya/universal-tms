@@ -411,7 +411,7 @@ export function PaymentModal({ open, onClose, onSuccess, expense }: PaymentModal
           Confirm Payment
         </Button>,
       ]}
-      destroyOnHidden
+      forceRender
     >
       {paymentResult ? (
         <Result

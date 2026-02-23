@@ -281,6 +281,7 @@ export function CreateTripDrawer({
         onClose={onClose}
         styles={{ wrapper: { width: 1200 } }}
         destroyOnHidden={false}
+        forceRender
         extra={
           <Space>
             <Button onClick={onClose}>Cancel</Button>
@@ -360,7 +361,7 @@ export function CreateTripDrawer({
                   placeholder="Select a truck"
                   showSearch
                   optionFilterProp="children"
-                  dropdownRender={(menu) => (
+                  popupRender={(menu) => (
                     <>
                       {menu}
                       <Divider style={{ margin: "8px 0" }} />
@@ -413,7 +414,7 @@ export function CreateTripDrawer({
                   placeholder="Select a driver"
                   showSearch
                   optionFilterProp="children"
-                  dropdownRender={(menu) => (
+                  popupRender={(menu) => (
                     <>
                       {menu}
                       <Divider style={{ margin: "8px 0" }} />
@@ -453,7 +454,7 @@ export function CreateTripDrawer({
           setAddTruckOpen(false);
         }}
         footer={null}
-        destroyOnHidden
+        forceRender
       >
         <Form
           form={addTruckForm}
@@ -511,7 +512,7 @@ export function CreateTripDrawer({
           setAddDriverOpen(false);
         }}
         footer={null}
-        destroyOnHidden
+        forceRender
       >
         <Form
           form={addDriverForm}

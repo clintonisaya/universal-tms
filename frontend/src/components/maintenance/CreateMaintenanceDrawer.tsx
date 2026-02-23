@@ -129,7 +129,7 @@ export function CreateMaintenanceDrawer({
       open={open}
       onClose={onClose}
       styles={{ wrapper: { width: 1200 } }}
-      destroyOnHidden={false}
+      forceRender
       extra={
         <Space>
           <Button onClick={onClose}>Cancel</Button>

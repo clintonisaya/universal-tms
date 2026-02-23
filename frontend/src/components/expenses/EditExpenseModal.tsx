@@ -576,7 +576,7 @@ export function EditExpenseModal({
           Update & Resubmit
         </Button>,
       ]}
-      destroyOnHidden
+      forceRender
     >
       {/* Manager Feedback */}
       {expense.manager_comment && (

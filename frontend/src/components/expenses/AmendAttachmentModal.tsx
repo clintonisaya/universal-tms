@@ -151,7 +151,7 @@ export function AmendAttachmentModal({ expense, open, onClose }: AmendAttachment
         </Space>
       }
       width={560}
-      destroyOnClose
+      destroyOnHidden
     >
       <Spin spinning={loading}>
         <Text strong style={{ display: "block", marginBottom: 8 }}>
@@ -202,8 +202,26 @@ export function AmendAttachmentModal({ expense, open, onClose }: AmendAttachment
             Add Attachments
           </Text>
           <Upload
+            accept=".pdf,.jpg,.jpeg,.png,.gif,.webp,.doc,.docx,.xls,.xlsx"
             fileList={fileList}
             beforeUpload={(file) => {
+              const maxSize = 3 * 1024 * 1024;
+              if (file.size > maxSize) {
+                message.error(`${file.name} exceeds the 3 MB limit`);
+                return Upload.LIST_IGNORE;
+              }
+              const allowed = [
+                "application/pdf",
+                "image/jpeg", "image/png", "image/gif", "image/webp",
+                "application/msword",
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                "application/vnd.ms-excel",
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+              ];
+              if (!allowed.includes(file.type)) {
+                message.error(`${file.name}: unsupported type. Use PDF, images, Word, or Excel.`);
+                return Upload.LIST_IGNORE;
+              }
               const f = file as UploadFile;
               f.url = URL.createObjectURL(file);
               setFileList((prev) => [...prev, f]);
@@ -217,7 +235,7 @@ export function AmendAttachmentModal({ expense, open, onClose }: AmendAttachment
             <Button icon={<UploadOutlined />}>Select File</Button>
           </Upload>
           <Text type="secondary" style={{ display: "block", marginTop: 4, fontSize: 12 }}>
-            Supported: PDF, Images. Max 3MB.
+            Accepted: PDF, JPEG, PNG, GIF, WebP, Word (.doc/.docx), Excel (.xls/.xlsx) · Max 3 MB
           </Text>
         </div>
       </Spin>

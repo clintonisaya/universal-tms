@@ -65,7 +65,11 @@ export interface Trip {
   waybill_rate: number | null;
   waybill_currency: string | null;
   waybill_risk_level: string | null;
+  waybill_number: string | null;
+  return_waybill_number: string | null;
   location_update_time: string | null;
+  // Trip-level document attachments
+  attachments: string[];
 }
 
 export interface TripDetailed extends Trip {

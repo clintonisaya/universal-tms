@@ -25,6 +25,7 @@ from app.api.routes import (
     reports,
     maintenance,
     office_expense_types,
+    files,
 )
 
 api_router = APIRouter()
@@ -52,3 +53,4 @@ api_router.include_router(border_posts.router)
 api_router.include_router(tasks.router)
 api_router.include_router(utils.router)
 api_router.include_router(private.router)
+api_router.include_router(files.router, prefix="/files", tags=["files"])

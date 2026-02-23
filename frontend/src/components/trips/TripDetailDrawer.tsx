@@ -13,20 +13,19 @@ import {
   message,
   Typography,
   Spin,
-  Popconfirm,
   Modal,
-  Form,
-  Input,
-  Radio,
+  Upload,
+  Alert,
+  Tooltip,
 } from "antd";
+import type { UploadFile } from "antd";
 import {
   PlusOutlined,
   ReloadOutlined,
+  UploadOutlined,
   DeleteOutlined,
-  CheckCircleOutlined,
-  CloseCircleOutlined,
-  RollbackOutlined,
-  DollarOutlined,
+  DownloadOutlined,
+  PaperClipOutlined,
 } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
 import type { TripDetailed, TripStatus, PodDocument } from "@/types/trip";
@@ -35,16 +34,15 @@ import type {
   ExpenseRequest,
   ExpenseRequestsResponse,
   ExpenseStatus,
-  PaymentMethod,
 } from "@/types/expense";
+import type { ExchangeRate } from "@/types/finance";
 import { useAuth } from "@/contexts/AuthContext";
 import { AddExpenseModal } from "@/components/expenses/AddExpenseModal";
 import { UpdateTripStatusModal } from "@/components/trips/UpdateTripStatusModal";
 import { ExpenseStatusBadge } from "@/components/expenses/ExpenseStatusBadge";
 import { TripStatusTag } from "@/components/ui/TripStatusTag";
 
-const { Title, Text } = Typography;
-const { TextArea } = Input;
+const { Text } = Typography;
 
 
 interface TripDetailDrawerProps {
@@ -60,6 +58,7 @@ export function TripDetailDrawer({ open, onClose, tripId, onEdit }: TripDetailDr
   const [trip, setTrip] = useState<TripDetailed | null>(null);
   const [expenses, setExpenses] = useState<ExpenseRequest[]>([]);
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState("details");
   const [expensesLoading, setExpensesLoading] = useState(true);
   const [isAddExpenseOpen, setIsAddExpenseOpen] = useState(false);
   const [isStatusModalOpen, setIsStatusModalOpen] = useState(false);
@@ -75,25 +74,24 @@ export function TripDetailDrawer({ open, onClose, tripId, onEdit }: TripDetailDr
   const [borderCrossings, setBorderCrossings] = useState<any[]>([]);
   const [loadingCrossings, setLoadingCrossings] = useState(false);
 
+  // Attachments state
+  interface TripAttachment { key: string; filename: string; url: string; }
+  const [tripAttachments, setTripAttachments] = useState<TripAttachment[]>([]);
+  const [attachmentsLoading, setAttachmentsLoading] = useState(false);
+  const [uploadingAttachment, setUploadingAttachment] = useState(false);
+  const [deletingAttachmentKey, setDeletingAttachmentKey] = useState<string | null>(null);
+
   // Cancellation modal state (Story 2.25 — dual waybill cancel)
   const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
   const [cancelGoWaybill, setCancelGoWaybill] = useState(true);
   const [cancelReturnWaybill, setCancelReturnWaybill] = useState(true);
   const [cancelling, setCancelling] = useState(false);
 
-  // Inline approval state
-  const [approvalModalVisible, setApprovalModalVisible] = useState(false);
-  const [approvalAction, setApprovalAction] = useState<"Returned" | "Rejected" | null>(null);
-  const [approvalComment, setApprovalComment] = useState("");
-  const [approvalExpenseId, setApprovalExpenseId] = useState<string | null>(null);
-  const [approvalProcessing, setApprovalProcessing] = useState(false);
+  // Currency display preference
+  const [displayCurrency, setDisplayCurrency] = useState<string>("TZS");
 
-  // Inline payment state
-  const [paymentModalVisible, setPaymentModalVisible] = useState(false);
-  const [paymentExpense, setPaymentExpense] = useState<ExpenseRequest | null>(null);
-  const [paymentProcessing, setPaymentProcessing] = useState(false);
-  const [paymentForm] = Form.useForm();
-  const paymentMethod = Form.useWatch("method", paymentForm);
+  // Finance exchange rates — keyed by "YYYY-M" for quick lookup
+  const [exchangeRateMap, setExchangeRateMap] = useState<Record<string, number>>({});
 
   const fetchTrip = useCallback(async () => {
     if (!tripId) return;
@@ -151,18 +149,102 @@ export function TripDetailDrawer({ open, onClose, tripId, onEdit }: TripDetailDr
     }
   }, [tripId]);
 
+  // Attachment handlers
+  const fetchTripAttachments = useCallback(async () => {
+    if (!tripId) return;
+    setAttachmentsLoading(true);
+    try {
+      const res = await fetch(`/api/v1/trips/${tripId}/attachments`, { credentials: "include" });
+      if (res.ok) setTripAttachments(await res.json());
+    } catch { /* silently fail */ } finally {
+      setAttachmentsLoading(false);
+    }
+  }, [tripId]);
+
+  const handleUploadAttachment = async (file: UploadFile) => {
+    const fileToUpload = (file.originFileObj || file) as File;
+    if (!tripId || !fileToUpload) return false;
+    setUploadingAttachment(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", fileToUpload);
+      const res = await fetch(`/api/v1/trips/${tripId}/attachment`, {
+        method: "POST",
+        credentials: "include",
+        body: formData,
+      });
+      if (res.ok) {
+        message.success("Attachment uploaded");
+        fetchTripAttachments();
+        fetchTrip(); // refresh trip so attachment count updates
+      } else {
+        const err = await res.json();
+        message.error(err.detail || "Upload failed");
+      }
+    } catch {
+      message.error("Network error");
+    } finally {
+      setUploadingAttachment(false);
+    }
+    return false; // prevent antd default upload
+  };
+
+  const handleDeleteAttachment = async (key: string) => {
+    if (!tripId) return;
+    setDeletingAttachmentKey(key);
+    try {
+      const res = await fetch(
+        `/api/v1/trips/${tripId}/attachment?key=${encodeURIComponent(key)}`,
+        { method: "DELETE", credentials: "include" }
+      );
+      if (res.ok) {
+        message.success("Attachment removed");
+        setTripAttachments((prev) => prev.filter((a) => a.key !== key));
+        fetchTrip();
+      } else {
+        const err = await res.json();
+        message.error(err.detail || "Delete failed");
+      }
+    } catch {
+      message.error("Network error");
+    } finally {
+      setDeletingAttachmentKey(null);
+    }
+  };
+
+  // Fetch all finance exchange rates once on open — used as fallback for expenses
+  // without their own exchange_rate
+  useEffect(() => {
+    if (!open) return;
+    fetch("/api/v1/finance/exchange-rates?limit=200", { credentials: "include" })
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => {
+        if (!data?.data) return;
+        const map: Record<string, number> = {};
+        (data.data as ExchangeRate[]).forEach((er) => {
+          map[`${er.year}-${er.month}`] = er.rate;
+        });
+        setExchangeRateMap(map);
+      })
+      .catch(() => {}); // silently fail — conversion falls back gracefully
+  }, [open]);
+
   useEffect(() => {
     if (open && tripId) {
       fetchTrip();
       fetchExpenses();
       fetchBorderCrossings();
+      fetchTripAttachments();
     }
     if (!open) {
       setTrip(null);
       setExpenses([]);
       setBorderCrossings([]);
+      setTripAttachments([]);
+      setExchangeRateMap({});
+      setActiveTab("details");
     }
-  }, [open, tripId, fetchTrip, fetchExpenses, fetchBorderCrossings]);
+  }, [open, tripId, fetchTrip, fetchExpenses, fetchBorderCrossings, fetchTripAttachments]);
 
   // Story 2.25: Fetch open waybills for the return waybill selector
   const fetchOpenWaybills = async () => {
@@ -251,147 +333,20 @@ export function TripDetailDrawer({ open, onClose, tripId, onEdit }: TripDetailDr
     setIsCancelModalOpen(true);
   };
 
-  const handleDeleteExpense = async (expense: ExpenseRequest) => {
-    try {
-      const response = await fetch(`/api/v1/expenses/${expense.id}`, {
-        method: "DELETE",
-        credentials: "include",
-      });
-
-      if (response.ok) {
-        message.success("Expense deleted");
-        fetchExpenses();
-      } else {
-        const error = await response.json();
-        message.error(error.detail || "Failed to delete expense");
-      }
-    } catch {
-      message.error("Network error");
-    }
-  };
-
-  // Inline approve
-  const handleApprove = async (expenseId: string) => {
-    setApprovalProcessing(true);
-    try {
-      const response = await fetch("/api/v1/expenses/batch", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({
-          ids: [expenseId],
-          status: "Pending Finance",
-        }),
-      });
-
-      if (response.ok) {
-        message.success("Expense approved");
-        fetchExpenses();
-      } else {
-        const error = await response.json();
-        message.error(error.detail || "Approval failed");
-      }
-    } catch {
-      message.error("Network error");
-    } finally {
-      setApprovalProcessing(false);
-    }
-  };
-
-  // Inline return/reject
-  const openApprovalModal = (expenseId: string, action: "Returned" | "Rejected") => {
-    setApprovalExpenseId(expenseId);
-    setApprovalAction(action);
-    setApprovalComment("");
-    setApprovalModalVisible(true);
-  };
-
-  const handleReturnReject = async () => {
-    if (!approvalExpenseId || !approvalAction) return;
-    setApprovalProcessing(true);
-    try {
-      const response = await fetch("/api/v1/expenses/batch", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({
-          ids: [approvalExpenseId],
-          status: approvalAction,
-          comment: approvalComment,
-        }),
-      });
-
-      if (response.ok) {
-        message.success(`Expense ${approvalAction.toLowerCase()}`);
-        setApprovalModalVisible(false);
-        fetchExpenses();
-      } else {
-        const error = await response.json();
-        message.error(error.detail || "Operation failed");
-      }
-    } catch {
-      message.error("Network error");
-    } finally {
-      setApprovalProcessing(false);
-    }
-  };
-
-  // Inline payment
-  const openPaymentModal = (expense: ExpenseRequest) => {
-    setPaymentExpense(expense);
-    paymentForm.resetFields();
-    paymentForm.setFieldsValue({ method: "CASH" });
-    setPaymentModalVisible(true);
-  };
-
-  const handlePayment = async (values: { method: PaymentMethod; reference?: string }) => {
-    if (!paymentExpense) return;
-    setPaymentProcessing(true);
-    try {
-      const body: { method: string; reference?: string } = {
-        method: values.method,
-      };
-      if (values.method === "TRANSFER" && values.reference) {
-        body.reference = values.reference;
-      }
-
-      const response = await fetch(
-        `/api/v1/expenses/${paymentExpense.id}/payment`,
-        {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify(body),
-        }
-      );
-
-      if (response.ok) {
-        message.success("Payment processed");
-        setPaymentModalVisible(false);
-        setPaymentExpense(null);
-        paymentForm.resetFields();
-        fetchExpenses();
-      } else {
-        const error = await response.json();
-        message.error(error.detail || "Payment failed");
-      }
-    } catch {
-      message.error("Network error");
-    } finally {
-      setPaymentProcessing(false);
-    }
-  };
-
-  const userRole = user?.role;
-  const isManager = userRole === "manager" || user?.is_superuser;
-  const isFinance = userRole === "finance" || user?.is_superuser;
 
   const expenseColumns: ColumnsType<ExpenseRequest> = [
+    {
+      title: "Expense #",
+      dataIndex: "expense_number",
+      key: "expense_number",
+      width: 200,
+      render: (val: string | null) => val ?? "—",
+    },
     {
       title: "Category",
       dataIndex: "category",
       key: "category",
-      width: 150,
+      width: 130,
     },
     {
       title: "Description",
@@ -408,6 +363,7 @@ export function TripDetailDrawer({ open, onClose, tripId, onEdit }: TripDetailDr
         return `${cur} ${Number(amount).toLocaleString("en-US")}`;
       },
       align: "right",
+      width: 160,
     },
     {
       title: "Status",
@@ -416,73 +372,75 @@ export function TripDetailDrawer({ open, onClose, tripId, onEdit }: TripDetailDr
       width: 200,
       render: (status: ExpenseStatus) => <ExpenseStatusBadge status={status} compact />,
     },
-    {
-      title: "Actions",
-      key: "actions",
-      width: 300,
-      render: (_, record) => (
-        <Space size="small" wrap className="row-actions">
-          {/* Manager actions for Pending Manager */}
-          {isManager && record.status === "Pending Manager" && (
-            <>
-              <Button
-                type="primary"
-                size="small"
-                icon={<CheckCircleOutlined />}
-                onClick={() => handleApprove(record.id)}
-                loading={approvalProcessing}
-              >
-                Approve
-              </Button>
-              <Button
-                size="small"
-                danger
-                icon={<RollbackOutlined />}
-                onClick={() => openApprovalModal(record.id, "Returned")}
-              >
-                Return
-              </Button>
-              <Button
-                size="small"
-                danger
-                type="dashed"
-                icon={<CloseCircleOutlined />}
-                onClick={() => openApprovalModal(record.id, "Rejected")}
-              >
-                Reject
-              </Button>
-            </>
-          )}
-          {/* Finance actions for Pending Finance */}
-          {isFinance && record.status === "Pending Finance" && (
-            <Button
-              type="primary"
-              size="small"
-              icon={<DollarOutlined />}
-              onClick={() => openPaymentModal(record)}
-            >
-              Pay
-            </Button>
-          )}
-          {/* Delete for Pending Manager */}
-          {record.status === "Pending Manager" && (
-            <Popconfirm
-              title="Delete expense"
-              description="Are you sure?"
-              onConfirm={() => handleDeleteExpense(record)}
-              okText="Yes"
-              cancelText="No"
-              okButtonProps={{ danger: true }}
-            >
-              <Button type="text" danger icon={<DeleteOutlined />} size="small" aria-label="Delete Expense" />
-            </Popconfirm>
-          )}
-        </Space>
-      ),
-    },
   ];
 
-  const totalExpenses = expenses.reduce((sum, e) => sum + e.amount, 0);
+  // Exclude Voided and Rejected — only count active/processed expenses
+  const countableExpenses = expenses.filter(
+    (e) => e.status !== "Voided" && e.status !== "Rejected"
+  );
+
+  // Resolve the best available exchange rate for an expense:
+  // 1. Use expense's own exchange_rate if it's a real rate (> 1)
+  // 2. Fall back to finance exchange rate table keyed by expense's created_at month/year
+  // exchange_rate = TZS per 1 unit of the expense's foreign currency (e.g. 1 USD = 2500 TZS)
+  const resolveRate = (e: ExpenseRequest): number | null => {
+    const ownRate = e.exchange_rate ? Number(e.exchange_rate) : null;
+    if (ownRate && ownRate > 1) return ownRate;
+
+    // Fall back to finance exchange rate table
+    if (e.created_at) {
+      const d = new Date(e.created_at);
+      const key = `${d.getFullYear()}-${d.getMonth() + 1}`;
+      const financeRate = exchangeRateMap[key];
+      if (financeRate && financeRate > 1) return financeRate;
+    }
+
+    // Try latest available rate as last resort
+    const rates = Object.values(exchangeRateMap).filter((r) => r > 1);
+    if (rates.length > 0) return Math.max(...rates); // most recent tends to be highest index — use last entry instead
+    return null;
+  };
+
+  const convertedTotal = (targetCurrency: string): { total: number; unconvertedCount: number } => {
+    let total = 0;
+    let unconvertedCount = 0;
+
+    for (const e of countableExpenses) {
+      const cur = e.currency || "TZS";
+      const amount = Number(e.amount);
+
+      if (cur === targetCurrency) {
+        total += amount;
+      } else {
+        const rate = resolveRate(e);
+        if (rate) {
+          if (targetCurrency === "TZS") {
+            // Foreign → TZS: multiply
+            total += amount * rate;
+          } else if (targetCurrency === "USD" && cur === "TZS") {
+            // TZS → USD: divide
+            total += amount / rate;
+          } else {
+            // Other currency pair — no conversion rule
+            unconvertedCount += 1;
+          }
+        } else {
+          unconvertedCount += 1;
+        }
+      }
+    }
+
+    return { total, unconvertedCount };
+  };
+
+  // Determine which currencies are actually present in countable expenses
+  const availableCurrencies = [...new Set(countableExpenses.map((e) => e.currency || "TZS"))];
+  // Always show TZS; show USD only if any countable expense is in USD
+  const toggleCurrencies = availableCurrencies.includes("USD") ? ["TZS", "USD"] : ["TZS"];
+
+  const activeCurrency = toggleCurrencies.includes(displayCurrency)
+    ? displayCurrency
+    : toggleCurrencies[0];
 
   return (
     <>
@@ -534,7 +492,8 @@ export function TripDetailDrawer({ open, onClose, tripId, onEdit }: TripDetailDr
           <div style={{ textAlign: "center", padding: 50 }}>Trip not found</div>
         ) : (
           <Tabs
-            defaultActiveKey="details"
+            activeKey={activeTab}
+            onChange={setActiveTab}
             items={[
               {
                 key: "details",
@@ -594,8 +553,8 @@ export function TripDetailDrawer({ open, onClose, tripId, onEdit }: TripDetailDr
                         column={2}
                         size="small"
                       >
-                        <Descriptions.Item label="Waybill ID" span={2}>
-                          <Text code>{trip.waybill_id}</Text>
+                        <Descriptions.Item label="Waybill #" span={2}>
+                          <Text strong>{trip.waybill_number ?? trip.waybill_id}</Text>
                         </Descriptions.Item>
                         {trip.dispatch_date && (
                           <Descriptions.Item label="Dispatched">
@@ -623,8 +582,8 @@ export function TripDetailDrawer({ open, onClose, tripId, onEdit }: TripDetailDr
                         column={2}
                         size="small"
                       >
-                        <Descriptions.Item label="Waybill ID" span={2}>
-                          <Text code>{trip.return_waybill_id}</Text>
+                        <Descriptions.Item label="Waybill #" span={2}>
+                          <Text strong>{trip.return_waybill_number ?? trip.return_waybill_id}</Text>
                         </Descriptions.Item>
                         {trip.arrival_loading_return_date && (
                           <Descriptions.Item label="Arrival at Return Loading">
@@ -709,20 +668,39 @@ export function TripDetailDrawer({ open, onClose, tripId, onEdit }: TripDetailDr
                         alignItems: "center",
                       }}
                     >
+                      {(() => {
+                        const { total, unconvertedCount } = convertedTotal(activeCurrency);
+                        return (
+                          <Space align="center" wrap>
+                            <Text strong>Total Expenses:</Text>
+                            <Text strong style={{ fontSize: 15 }}>
+                              {activeCurrency}{" "}
+                              {total.toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                            </Text>
+                            {/* Currency toggle */}
+                            {toggleCurrencies.length > 1 && (
+                              <Space size={4}>
+                                {toggleCurrencies.map((cur) => (
+                                  <Button
+                                    key={cur}
+                                    size="small"
+                                    type={activeCurrency === cur ? "primary" : "default"}
+                                    onClick={() => setDisplayCurrency(cur)}
+                                  >
+                                    {cur}
+                                  </Button>
+                                ))}
+                              </Space>
+                            )}
+                            <Text type="secondary" style={{ fontSize: 11 }}>
+                              {unconvertedCount > 0
+                                ? `(${unconvertedCount} expense${unconvertedCount > 1 ? "s" : ""} excluded — no exchange rate set)`
+                                : "(excl. Voided & Rejected)"}
+                            </Text>
+                          </Space>
+                        );
+                      })()}
                       <Space>
-                        <Text strong>Total Expenses:</Text>
-                        <Text>
-                          TZS {Number(totalExpenses).toLocaleString("en-US")}
-                        </Text>
-                      </Space>
-                      <Space>
-                        <Button
-                          icon={<ReloadOutlined />}
-                          onClick={fetchExpenses}
-                          size="small"
-                        >
-                          Refresh
-                        </Button>
                         <Button
                           type="primary"
                           icon={<PlusOutlined />}
@@ -730,6 +708,13 @@ export function TripDetailDrawer({ open, onClose, tripId, onEdit }: TripDetailDr
                           size="small"
                         >
                           Add Expense
+                        </Button>
+                        <Button
+                          icon={<ReloadOutlined />}
+                          onClick={fetchExpenses}
+                          size="small"
+                        >
+                          Refresh
                         </Button>
                       </Space>
                     </div>
@@ -814,6 +799,137 @@ export function TripDetailDrawer({ open, onClose, tripId, onEdit }: TripDetailDr
                     )}
                   </Space>
                 ),
+              },
+              {
+                key: "attachments",
+                label: (
+                  <Space size={4}>
+                    <PaperClipOutlined />
+                    {`Attachments${tripAttachments.length > 0 ? ` (${tripAttachments.length})` : ""}`}
+                  </Space>
+                ),
+                children: (() => {
+                  const isClosed = trip.status === "Completed" || trip.status === "Cancelled";
+                  return (
+                    <Space orientation="vertical" size="middle" style={{ width: "100%" }}>
+                      {isClosed && (
+                        <Alert
+                          type="info"
+                          showIcon
+                          message="Trip Closed"
+                          description="This trip is closed. Attachments are read-only."
+                          style={{ marginBottom: 4 }}
+                        />
+                      )}
+
+                      {/* Upload area — disabled when trip is closed */}
+                      {!isClosed && (
+                        <Upload
+                          accept=".pdf,.jpg,.jpeg,.png,.webp,.gif,.doc,.docx,.xls,.xlsx"
+                          beforeUpload={(file) => {
+                            // Client-side size validation (10 MB)
+                            const maxSize = 5 * 1024 * 1024;
+                            if (file.size > maxSize) {
+                              message.error(`${file.name} exceeds 5 MB limit`);
+                              return Upload.LIST_IGNORE;
+                            }
+                            // Client-side type validation
+                            const allowed = [
+                              "application/pdf",
+                              "image/jpeg", "image/png", "image/webp", "image/gif",
+                              "application/msword",
+                              "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                              "application/vnd.ms-excel",
+                              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                            ];
+                            if (!allowed.includes(file.type)) {
+                              message.error(`${file.name}: unsupported file type. Use PDF, images, Word, or Excel.`);
+                              return Upload.LIST_IGNORE;
+                            }
+                            handleUploadAttachment(file as any);
+                            return false;
+                          }}
+                          showUploadList={false}
+                          disabled={uploadingAttachment}
+                        >
+                          <Button
+                            icon={<UploadOutlined />}
+                            loading={uploadingAttachment}
+                          >
+                            Upload Document
+                          </Button>
+                        </Upload>
+                      )}
+                      {!isClosed && (
+                        <Text type="secondary" style={{ fontSize: 11 }}>
+                          Accepted: PDF, JPEG, PNG, WebP, GIF, Word (.doc/.docx), Excel (.xls/.xlsx) · Max 5 MB per file
+                        </Text>
+                      )}
+
+                      {/* Attachment list */}
+                      {attachmentsLoading ? (
+                        <div style={{ textAlign: "center", padding: 24 }}>
+                          <Spin />
+                        </div>
+                      ) : tripAttachments.length === 0 ? (
+                        <Text type="secondary">No attachments uploaded yet.</Text>
+                      ) : (
+                        <Table
+                          size="small"
+                          dataSource={tripAttachments}
+                          rowKey="key"
+                          pagination={false}
+                          columns={[
+                            {
+                              title: "File",
+                              dataIndex: "filename",
+                              key: "filename",
+                              render: (name: string, rec) => (
+                                <a href={rec.url} target="_blank" rel="noreferrer">
+                                  <Space size={4}>
+                                    <PaperClipOutlined />
+                                    {name}
+                                  </Space>
+                                </a>
+                              ),
+                            },
+                            {
+                              title: "",
+                              key: "actions",
+                              width: 80,
+                              align: "right" as const,
+                              render: (_: unknown, rec) => (
+                                <Space>
+                                  <Tooltip title="Download">
+                                    <Button
+                                      type="text"
+                                      size="small"
+                                      icon={<DownloadOutlined />}
+                                      href={rec.url}
+                                      target="_blank"
+                                    />
+                                  </Tooltip>
+                                  {!isClosed && (
+                                    <Tooltip title="Delete">
+                                      <Button
+                                        type="text"
+                                        size="small"
+                                        danger
+                                        icon={<DeleteOutlined />}
+                                        loading={deletingAttachmentKey === rec.key}
+                                        onClick={() => handleDeleteAttachment(rec.key)}
+                                      />
+                                    </Tooltip>
+                                  )}
+                                </Space>
+                              ),
+                            },
+                          ]}
+                        />
+                      )}
+                    </Space>
+                  );
+                })(),
               },
             ]}
           />
@@ -940,98 +1056,6 @@ export function TripDetailDrawer({ open, onClose, tripId, onEdit }: TripDetailDr
         </Space>
       </Modal>
 
-      {/* Inline Return/Reject Comment Modal */}
-      <Modal
-        title={`${approvalAction} Expense`}
-        open={approvalModalVisible}
-        onOk={handleReturnReject}
-        onCancel={() => {
-          setApprovalModalVisible(false);
-          setApprovalComment("");
-        }}
-        confirmLoading={approvalProcessing}
-        okText={`Confirm ${approvalAction}`}
-        okButtonProps={{ danger: true }}
-      >
-        <Space orientation="vertical" style={{ width: "100%" }}>
-          <Text>Please provide a reason:</Text>
-          <TextArea
-            rows={3}
-            value={approvalComment}
-            onChange={(e) => setApprovalComment(e.target.value)}
-            placeholder="e.g. Missing receipt, Duplicate entry..."
-          />
-        </Space>
-      </Modal>
-
-      {/* Inline Payment Modal */}
-      <Modal
-        title={`Process Payment — ${paymentExpense?.description || ""}`}
-        open={paymentModalVisible}
-        onCancel={() => {
-          setPaymentModalVisible(false);
-          setPaymentExpense(null);
-          paymentForm.resetFields();
-        }}
-        footer={null}
-        forceRender
-      >
-        {paymentExpense && (
-          <div style={{ marginBottom: 16 }}>
-            <Text type="secondary">Amount: </Text>
-            <Text strong>
-              {paymentExpense.currency || "TZS"} {Number(paymentExpense.amount).toLocaleString("en-US")}
-            </Text>
-          </div>
-        )}
-
-        <Form
-          form={paymentForm}
-          layout="vertical"
-          onFinish={handlePayment}
-          initialValues={{ method: "CASH" }}
-        >
-          <Form.Item
-            name="method"
-            label="Payment Method"
-            rules={[{ required: true }]}
-          >
-            <Radio.Group>
-              <Radio.Button value="CASH">Cash</Radio.Button>
-              <Radio.Button value="TRANSFER">Transfer</Radio.Button>
-            </Radio.Group>
-          </Form.Item>
-
-          {paymentMethod === "TRANSFER" && (
-            <Form.Item
-              name="reference"
-              label="Reference Number"
-              rules={[
-                { required: true, message: "Reference is required for transfers" },
-              ]}
-            >
-              <Input placeholder="e.g. Bank Transaction ID" />
-            </Form.Item>
-          )}
-
-          <Form.Item style={{ marginBottom: 0, textAlign: "right" }}>
-            <Space>
-              <Button
-                onClick={() => {
-                  setPaymentModalVisible(false);
-                  setPaymentExpense(null);
-                  paymentForm.resetFields();
-                }}
-              >
-                Cancel
-              </Button>
-              <Button type="primary" htmlType="submit" loading={paymentProcessing}>
-                Confirm Payment
-              </Button>
-            </Space>
-          </Form.Item>
-        </Form>
-      </Modal>
     </>
   );
 }

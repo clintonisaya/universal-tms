@@ -514,6 +514,7 @@ class AttachReturnWaybillRequest(SQLModel):
 class Trip(TripBase, table=True):
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     pod_documents: list = Field(default=[], sa_column=Column(JSON))
+    attachments: list = Field(default=[], sa_column=Column(JSON), description="Trip-level document attachments (keys in R2 storage)")
     start_date: datetime | None = Field(
         default=None,
         sa_type=DateTime(timezone=True),
@@ -552,6 +553,7 @@ class Trip(TripBase, table=True):
 class TripPublic(TripBase):
     id: uuid.UUID
     pod_documents: list = []
+    attachments: list = []
     start_date: datetime | None = None
     end_date: datetime | None = None
     created_at: datetime | None = None
@@ -573,6 +575,8 @@ class TripPublic(TripBase):
     waybill_rate: Decimal | None = None
     waybill_currency: str | None = None
     waybill_risk_level: str | None = None
+    waybill_number: str | None = None
+    return_waybill_number: str | None = None
     location_update_time: datetime | None = None
 
 

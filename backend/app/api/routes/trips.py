@@ -6,10 +6,12 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, File, HTTPException, Query, UploadFile
 from sqlmodel import func, or_, select
+from sqlalchemy.orm.attributes import flag_modified
 
 from app.api.deps import CurrentUser, SessionDep
+from app.core.storage import storage
 from app.models import (
     AttachReturnWaybillRequest,
     BorderPost,
@@ -281,11 +283,24 @@ def read_trip(
     current_user: CurrentUser,
     id: uuid.UUID,
 ) -> Any:
-    """Get trip by ID with detailed information."""
+    """Get trip by ID with detailed information including waybill numbers."""
     trip = session.get(Trip, id)
     if not trip:
         raise HTTPException(status_code=404, detail="Trip not found")
-    return trip
+    trip_data = TripPublicDetailed.model_validate(trip)
+    # Enrich with waybill numbers so frontend can display human-readable IDs
+    if trip.waybill_id:
+        wb = session.get(Waybill, trip.waybill_id)
+        if wb:
+            trip_data.waybill_rate = wb.agreed_rate
+            trip_data.waybill_currency = wb.currency
+            trip_data.waybill_risk_level = wb.risk_level
+            trip_data.waybill_number = wb.waybill_number
+    if trip.return_waybill_id:
+        rwb = session.get(Waybill, trip.return_waybill_id)
+        if rwb:
+            trip_data.return_waybill_number = rwb.waybill_number
+    return trip_data
 
 
 @router.post("", response_model=TripPublic)
@@ -393,6 +408,11 @@ def update_trip(
     if "status" in update_dict:
         new_status = TripStatus(update_dict["status"])
         current_status = TripStatus(trip.status) if isinstance(trip.status, str) else trip.status
+
+        # Auto-advance "Returned" → "Waiting for PODs" when arrival date is provided
+        if new_status == TripStatus.returned and update_dict.get("arrival_return_date"):
+            new_status = TripStatus.waiting_for_pods
+            update_dict["status"] = TripStatus.waiting_for_pods.value
 
         # Story 2.25: Block return leg statuses if no return waybill is attached
         if new_status in RETURN_LEG_STATUSES and not trip.return_waybill_id:
@@ -891,8 +911,6 @@ def upsert_border_crossing(
                 setattr(existing, field, value)
         existing.updated_at = datetime.now(timezone.utc)
         session.add(existing)
-        session.commit()
-        session.refresh(existing)
         crossing = existing
     else:
         crossing = TripBorderCrossing(
@@ -901,8 +919,35 @@ def upsert_border_crossing(
             **crossing_in.model_dump(),
         )
         session.add(crossing)
-        session.commit()
-        session.refresh(crossing)
+
+    # Auto-advance trip status when truck departs the border zone
+    current_trip_status = TripStatus(trip.status) if isinstance(trip.status, str) else trip.status
+    if crossing.departed_border_at:
+        auto_status = None
+        if current_trip_status == TripStatus.at_border and crossing_in.direction == "go":
+            auto_status = TripStatus.in_transit
+        elif current_trip_status == TripStatus.at_border_return and crossing_in.direction == "return":
+            auto_status = TripStatus.in_transit_return
+
+        if auto_status:
+            trip.status = auto_status
+            trip.updated_at = datetime.now(timezone.utc)
+            truck = session.get(Truck, trip.truck_id)
+            if truck and auto_status in TRIP_TO_TRUCK_STATUS:
+                truck.status = TRIP_TO_TRUCK_STATUS[auto_status]
+                session.add(truck)
+            trailer = session.get(Trailer, trip.trailer_id)
+            if trailer and auto_status in TRIP_TO_TRAILER_STATUS:
+                trailer.status = TRIP_TO_TRAILER_STATUS[auto_status]
+                session.add(trailer)
+            driver = session.get(Driver, trip.driver_id)
+            if driver:
+                driver.status = DriverStatus.on_trip
+                session.add(driver)
+            session.add(trip)
+
+    session.commit()
+    session.refresh(crossing)
 
     return TripBorderCrossingPublic(
         id=crossing.id,
@@ -918,3 +963,149 @@ def upsert_border_crossing(
         updated_at=crossing.updated_at,
         border_post=border_post,
     )
+
+
+# ============================================================================
+# Trip Attachments — upload, list, delete trip-level documents
+# ============================================================================
+
+ALLOWED_ATTACHMENT_TYPES = [
+    "application/pdf",
+    "image/jpeg",
+    "image/png",
+    "image/webp",
+    "image/gif",
+    "application/msword",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "application/vnd.ms-excel",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+]
+MAX_ATTACHMENT_SIZE = 5 * 1024 * 1024  # 5 MB
+
+
+@router.post("/{id}/attachment", response_model=TripPublic)
+async def upload_trip_attachment(
+    *,
+    session: SessionDep,
+    current_user: CurrentUser,
+    id: uuid.UUID,
+    file: UploadFile = File(...),
+) -> Any:
+    """
+    Upload a document attachment for a trip.
+
+    - Accepted formats: PDF, JPEG, PNG, WebP, GIF, Word (.doc/.docx), Excel (.xls/.xlsx)
+    - Maximum file size: 10 MB
+    - Not allowed on Completed or Cancelled trips
+    - Permitted roles: admin, manager, ops
+    """
+    trip = session.get(Trip, id)
+    if not trip:
+        raise HTTPException(status_code=404, detail="Trip not found")
+
+    if current_user.role not in WRITE_ROLES:
+        raise HTTPException(status_code=403, detail="Not enough permissions to add trip attachments")
+
+    if trip.status in CLOSED_STATUSES:
+        raise HTTPException(status_code=400, detail="Cannot add attachments to a completed or cancelled trip")
+
+    # Validate file type
+    if file.content_type not in ALLOWED_ATTACHMENT_TYPES:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"File type '{file.content_type}' is not allowed. "
+                "Accepted: PDF, JPEG, PNG, WebP, GIF, Word (.doc/.docx), Excel (.xls/.xlsx)"
+            ),
+        )
+
+    # Read and validate file size
+    content = await file.read()
+    if len(content) > MAX_ATTACHMENT_SIZE:
+        raise HTTPException(status_code=400, detail="File size exceeds 10 MB limit")
+
+    # Generate unique storage key
+    unique_id = uuid.uuid4().hex[:8]
+    clean_filename = (file.filename or "attachment").replace(" ", "_")
+    object_name = f"trips/{trip.id}/{unique_id}_{clean_filename}"
+
+    uploaded_key = storage.upload_file(content, object_name, file.content_type)
+    print(f"DEBUG: Uploaded key: {uploaded_key}")
+    if not uploaded_key:
+        raise HTTPException(status_code=500, detail="Failed to upload file to storage")
+
+    current_attachments = list(trip.attachments) if trip.attachments else []
+    current_attachments.append(uploaded_key)
+    print(f"DEBUG: Current attachments before save: {current_attachments}")
+    trip.attachments = current_attachments
+    flag_modified(trip, "attachments")
+    trip.updated_at = datetime.now(timezone.utc)
+    session.add(trip)
+    session.commit()
+    session.refresh(trip)
+    print(f"DEBUG: Trip attachments after refresh: {trip.attachments}")
+    return trip
+
+
+@router.get("/{id}/attachments")
+def get_trip_attachments(
+    *,
+    session: SessionDep,
+    current_user: CurrentUser,
+    id: uuid.UUID,
+) -> Any:
+    """
+    Get presigned download URLs for all attachments on a trip.
+    Returns a list of {key, filename, url} objects.
+    """
+    trip = session.get(Trip, id)
+    if not trip:
+        raise HTTPException(status_code=404, detail="Trip not found")
+
+    result = []
+    for key in (trip.attachments or []):
+        url = storage.get_presigned_url(key, expiration=3600)
+        filename = key.split("/")[-1] if "/" in key else key
+        # Strip the 8-char hex prefix added during upload
+        if len(filename) > 9 and filename[8] == "_":
+            filename = filename[9:]
+        result.append({"key": key, "filename": filename, "url": url})
+
+    return result
+
+
+@router.delete("/{id}/attachment")
+def delete_trip_attachment(
+    *,
+    session: SessionDep,
+    current_user: CurrentUser,
+    id: uuid.UUID,
+    key: str = Query(..., description="Storage key of the attachment to remove"),
+) -> Message:
+    """
+    Delete a specific attachment from a trip.
+    Removes from R2 storage and updates the database record.
+    Not permitted on Completed or Cancelled trips.
+    """
+    trip = session.get(Trip, id)
+    if not trip:
+        raise HTTPException(status_code=404, detail="Trip not found")
+
+    if current_user.role not in WRITE_ROLES:
+        raise HTTPException(status_code=403, detail="Not enough permissions to delete trip attachments")
+
+    if trip.status in CLOSED_STATUSES:
+        raise HTTPException(status_code=400, detail="Cannot modify attachments on a completed or cancelled trip")
+
+    current_attachments = list(trip.attachments) if trip.attachments else []
+    if key not in current_attachments:
+        raise HTTPException(status_code=404, detail="Attachment not found")
+
+    storage.delete_file(key)
+    current_attachments.remove(key)
+    trip.attachments = current_attachments
+    flag_modified(trip, "attachments")
+    trip.updated_at = datetime.now(timezone.utc)
+    session.add(trip)
+    session.commit()
+    return Message(message="Attachment deleted successfully")

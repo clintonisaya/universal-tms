@@ -595,8 +595,10 @@ async def upload_attachment(
     if expense.trip_id:
         check_trip_not_closed(session, expense.trip_id)
 
-    # Check permissions (same as modify)
-    if not can_modify_expense(expense, current_user):
+    # Admin/Manager can amend attachments on any expense (Expense Console use case).
+    # Regular users (ops, finance) can only upload when status allows modification.
+    AMEND_ROLES = {UserRole.admin, UserRole.manager}
+    if current_user.role not in AMEND_ROLES and not can_modify_expense(expense, current_user):
         raise HTTPException(
             status_code=403,
             detail="Can only add attachments when status is 'Pending Manager' and you are the creator"
@@ -619,6 +621,8 @@ async def upload_attachment(
         "image/jpeg", "image/png", "image/gif", "image/webp",
         "application/msword",
         "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "application/vnd.ms-excel",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     ]
     if file.content_type and file.content_type not in allowed_types:
         raise HTTPException(
@@ -675,9 +679,9 @@ def get_attachment_urls(
         url = storage.get_presigned_url(key, expiration=3600)
         # Extract readable filename from the key
         filename = key.split("/")[-1] if "/" in key else key
-        # Remove timestamp prefix (YYYYMMDDHHmmss_)
-        if len(filename) > 15 and filename[14] == "_":
-            filename = filename[15:]
+        # Strip the 8-char hex prefix added during upload (e.g. "a1b2c3d4_myfile.pdf")
+        if len(filename) > 9 and filename[8] == "_":
+            filename = filename[9:]
         result.append({"key": key, "filename": filename, "url": url})
 
     return result
@@ -699,7 +703,8 @@ def delete_attachment(
     if not expense:
         raise HTTPException(status_code=404, detail="Expense not found")
 
-    if not can_modify_expense(expense, current_user):
+    AMEND_ROLES = {UserRole.admin, UserRole.manager}
+    if current_user.role not in AMEND_ROLES and not can_modify_expense(expense, current_user):
         raise HTTPException(
             status_code=403,
             detail="Can only remove attachments when status is 'Pending Manager' and you are the creator"
