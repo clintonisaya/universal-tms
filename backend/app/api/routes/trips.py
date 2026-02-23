@@ -558,12 +558,16 @@ def update_trip(
                 old_wb.status = WaybillStatus.open
                 session.add(old_wb)
 
-        # Mark the new waybill according to the trip's current status
+        # Mark the new waybill according to the trip's current status.
+        # A waybill attached to any active (non-cancelled) trip is at minimum In Progress.
         if new_waybill_id:
             current_trip_status = TripStatus(trip.status) if isinstance(trip.status, str) else trip.status
             new_wb = session.get(Waybill, new_waybill_id)
             if new_wb:
-                new_wb.status = TRIP_TO_GO_WAYBILL_STATUS.get(current_trip_status, WaybillStatus.in_progress)
+                mapped_status = TRIP_TO_GO_WAYBILL_STATUS.get(current_trip_status, WaybillStatus.in_progress)
+                if mapped_status == WaybillStatus.open and current_trip_status != TripStatus.cancelled:
+                    mapped_status = WaybillStatus.in_progress
+                new_wb.status = mapped_status
                 session.add(new_wb)
 
     trip.sqlmodel_update(update_dict)
