@@ -502,6 +502,9 @@ class TripUpdate(SQLModel):
     # Cancellation control flags (Story 2.25) — used when status=Cancelled with dual waybills
     cancel_go_waybill: bool | None = Field(default=None, description="Reset go waybill to Open on cancel (default: True)")
     cancel_return_waybill: bool | None = Field(default=None, description="Reset return waybill to Open on cancel (default: True)")
+    # Client report fields
+    return_empty_container_date: datetime | None = Field(default=None, description="Date empty container was returned")
+    remarks: str | None = Field(default=None, description="Free-text remarks for client report")
 
 
 # Properties to receive for truck swap
@@ -546,6 +549,9 @@ class Trip(TripBase, table=True):
     arrival_loading_return_date: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
     loading_return_start_date: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
     loading_return_end_date: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
+    # Client report fields
+    return_empty_container_date: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
+    remarks: str | None = Field(default=None)
 
     # Relationships
     truck: Truck | None = Relationship()
@@ -575,12 +581,16 @@ class TripPublic(TripBase):
     arrival_loading_return_date: datetime | None = None
     loading_return_start_date: datetime | None = None
     loading_return_end_date: datetime | None = None
+    # Client report fields
+    return_empty_container_date: datetime | None = None
+    remarks: str | None = None
     # Enrichment fields from waybill join (Story 4.6)
     waybill_rate: Decimal | None = None
     waybill_currency: str | None = None
     waybill_risk_level: str | None = None
     waybill_number: str | None = None
     return_waybill_number: str | None = None
+    return_route_name: str | None = None
     location_update_time: datetime | None = None
 
 

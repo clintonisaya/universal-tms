@@ -343,6 +343,16 @@ export default function TripDetailPage() {
     return null;
   }
 
+  const RETURN_STATUSES = new Set([
+    "Dispatch (Return)", "Wait to Load (Return)", "Loading (Return)",
+    "In Transit (Return)", "At Border (Return)", "Offloading (Return)",
+    "Returned", "Waiting for PODs",
+  ]);
+  const effectiveRoute =
+    RETURN_STATUSES.has(trip.status) && trip.return_route_name
+      ? trip.return_route_name
+      : trip.route_name;
+
   return (
     <div
       style={{
@@ -368,7 +378,7 @@ export default function TripDetailPage() {
                 Back
               </Button>
               <Title level={2} style={{ margin: 0 }}>
-                Trip: {trip.route_name}
+                Trip: {effectiveRoute}
               </Title>
               <TripStatusTag status={trip.status} />
               <Button
@@ -384,7 +394,7 @@ export default function TripDetailPage() {
             style={{ marginBottom: 4 }}
             items={[
               { title: <Link href="/ops/trips">Trips</Link> },
-              { title: trip.route_name },
+              { title: effectiveRoute },
             ]}
           />
 
@@ -397,7 +407,7 @@ export default function TripDetailPage() {
                 children: (
                   <Descriptions bordered column={2}>
                     <Descriptions.Item label="Route">
-                      {trip.route_name}
+                      {effectiveRoute}
                     </Descriptions.Item>
                     <Descriptions.Item label="Status">
                       <TripStatusTag status={trip.status} />

@@ -192,6 +192,9 @@ def get_waybill_tracking_report(
             "loading_return_start_date": _iso(trip.loading_return_start_date),
             "loading_return_end_date": _iso(trip.loading_return_end_date),
             "arrival_return_date": _iso(trip.arrival_return_date),
+            # Client report fields
+            "return_empty_container_date": _iso(trip.return_empty_container_date),
+            "remarks": trip.remarks,
             # Border crossings (bulk-fetched, no N+1)
             "border_crossings": crossings_by_trip.get(str(trip.id), []),
         }
@@ -248,6 +251,8 @@ def get_waybill_tracking_report(
             "loading_return_start_date": None,
             "loading_return_end_date": None,
             "arrival_return_date": None,
+            "return_empty_container_date": None,
+            "remarks": None,
             "border_crossings": [],
         })
 

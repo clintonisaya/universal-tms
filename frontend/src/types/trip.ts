@@ -67,6 +67,7 @@ export interface Trip {
   waybill_risk_level: string | null;
   waybill_number: string | null;
   return_waybill_number: string | null;
+  return_route_name: string | null;
   location_update_time: string | null;
   // Trip-level document attachments
   attachments: string[];

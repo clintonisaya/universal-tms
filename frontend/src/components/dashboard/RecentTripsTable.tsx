@@ -11,6 +11,12 @@ import { TripStatusTag } from "@/components/ui/TripStatusTag";
 const { Title, Text } = Typography;
 
 
+const RETURN_STATUSES = new Set([
+  "Dispatch (Return)", "Wait to Load (Return)", "Loading (Return)",
+  "In Transit (Return)", "At Border (Return)", "Offloading (Return)",
+  "Returned", "Waiting for PODs",
+]);
+
 function getRiskColor(risk: string | null | undefined): string {
   switch (risk) {
     case "High":
@@ -84,7 +90,11 @@ export function RecentTripsTable({ data, loading }: RecentTripsTableProps) {
       key: "route_name",
       width: 250,
       ellipsis: true,
-      render: (text: string) => <Text>{text}</Text>,
+      render: (text: string, record: Trip) => {
+        const isReturn = RETURN_STATUSES.has(record.status);
+        const display = isReturn && record.return_route_name ? record.return_route_name : text;
+        return <Text>{display}</Text>;
+      },
     },
     {
       title: "Location",

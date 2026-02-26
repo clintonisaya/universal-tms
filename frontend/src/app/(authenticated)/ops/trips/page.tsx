@@ -70,6 +70,12 @@ function formatRelativeTime(dateStr: string | null | undefined): string {
   return date.toLocaleDateString();
 }
 
+const RETURN_STATUSES = new Set([
+  "Dispatch (Return)", "Wait to Load (Return)", "Loading (Return)",
+  "In Transit (Return)", "At Border (Return)", "Offloading (Return)",
+  "Returned", "Waiting for PODs",
+]);
+
 const STATUS_FILTERS: { text: string; value: string }[] = [
   "Waiting", "Dispatch", "Wait to Load", "Loading", "In Transit", "At Border",
   "Offloading", "Dispatch (Return)", "Wait to Load (Return)", "Loading (Return)",
@@ -158,9 +164,11 @@ function TripsPageContent() {
       dataIndex: "route_name",
       key: "route_name",
       sorter: (a, b) => a.route_name.localeCompare(b.route_name),
-      render: (text: string) => (
-        <div style={{ fontWeight: 500 }}>{text}</div>
-      ),
+      render: (text: string, record: Trip) => {
+        const isReturn = RETURN_STATUSES.has(record.status);
+        const display = isReturn && record.return_route_name ? record.return_route_name : text;
+        return <div style={{ fontWeight: 500 }}>{display}</div>;
+      },
       ...getColumnSearchProps<Trip>("route_name"),
     },
     {

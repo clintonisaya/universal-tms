@@ -222,6 +222,12 @@ export function UpdateTripStatusModal({
         if (selectedStatus === "In Transit (Return)" && (tripData as any).loading_return_end_date) {
             fields.loading_return_end_date = dayjs((tripData as any).loading_return_end_date);
         }
+        if ((tripData as any).return_empty_container_date) {
+            fields.return_empty_container_date = dayjs((tripData as any).return_empty_container_date);
+        }
+        if ((tripData as any).remarks) {
+            fields.remarks = (tripData as any).remarks;
+        }
 
         form.setFieldsValue(fields);
     }
@@ -382,6 +388,12 @@ export function UpdateTripStatusModal({
       }
       if (values.loading_return_end_date) {
         payload.loading_return_end_date = values.loading_return_end_date.format("YYYY-MM-DD");
+      }
+      if (values.return_empty_container_date) {
+        payload.return_empty_container_date = values.return_empty_container_date.format("YYYY-MM-DD");
+      }
+      if (values.remarks !== undefined) {
+        payload.remarks = values.remarks || null;
       }
 
       const response = await fetch(`/api/v1/trips/${tripId}`, {
@@ -838,6 +850,26 @@ export function UpdateTripStatusModal({
             />
           </Form.Item>
         )}
+
+        {/* Return Empty Container Date — available on Returned / Waiting for PODs */}
+        {(selectedStatus === "Returned" || selectedStatus === "Waiting for PODs") && (
+          <Form.Item name="return_empty_container_date" label="Return Empty Container Date">
+            <DatePicker
+              format="DD/MM/YYYY"
+              style={{ width: "100%" }}
+              placeholder="Date empty container was returned"
+            />
+          </Form.Item>
+        )}
+
+        {/* Remarks — always available */}
+        <Form.Item name="remarks" label="Remarks">
+          <Input.TextArea
+            rows={2}
+            placeholder="Optional notes for client report"
+            maxLength={500}
+          />
+        </Form.Item>
 
         <Divider style={{ margin: "12px 0" }}>Location</Divider>
 

@@ -122,6 +122,10 @@ interface TrackingRow {
   return_origin: string | null;
   return_destination: string | null;
   return_cargo_description: string | null;
+
+  // Trip extra fields
+  return_empty_container_date: string | null;
+  remarks: string | null;
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -155,6 +159,33 @@ const RISK_COLORS: Record<string, string> = {
   Low: "success",
   Medium: "warning",
   High: "error",
+};
+
+const RETURN_STATUSES = new Set([
+  "Dispatch (Return)", "Wait to Load (Return)", "Loading (Return)",
+  "In Transit (Return)", "At Border (Return)", "Offloading (Return)",
+  "Returned", "Waiting for PODs",
+]);
+
+const STATUS_ROW_COLORS: Record<string, string> = {
+  "In Transit": "D9F2DC",
+  "In Transit (Return)": "D9F2DC",
+  "Offloading": "D9F2DC",
+  "Offloading (Return)": "D9F2DC",
+  "Loading": "FFF3CD",
+  "Loading (Return)": "FFF3CD",
+  "Wait to Load": "FFF3CD",
+  "Wait to Load (Return)": "FFF3CD",
+  "Dispatch": "FFF3CD",
+  "Dispatch (Return)": "FFF3CD",
+  "At Border": "FFE0B2",
+  "At Border (Return)": "FFE0B2",
+  "Not Dispatched": "DDEEFF",
+  "Waiting": "DDEEFF",
+  "Returned": "EDE7F6",
+  "Waiting for PODs": "EDE7F6",
+  "Cancelled": "FFCDD2",
+  "Completed": "F5F5F5",
 };
 
 export default function TrackingPage() {
@@ -236,34 +267,11 @@ export default function TrackingPage() {
     applySearch(data, {});
   };
 
-  // Row colour by trip status (Story 2.26)
-  const STATUS_ROW_COLORS: Record<string, string> = {
-    "In Transit": "D9F2DC",
-    "In Transit (Return)": "D9F2DC",
-    "Offloading": "D9F2DC",
-    "Offloading (Return)": "D9F2DC",
-    "Loading": "FFF3CD",
-    "Loading (Return)": "FFF3CD",
-    "Wait to Load": "FFF3CD",
-    "Wait to Load (Return)": "FFF3CD",
-    "Dispatch": "FFF3CD",
-    "Dispatch (Return)": "FFF3CD",
-    "At Border": "FFE0B2",
-    "At Border (Return)": "FFE0B2",
-    "Not Dispatched": "DDEEFF",
-    "Waiting": "DDEEFF",
-    "Returned": "EDE7F6",
-    "Waiting for PODs": "EDE7F6",
-    "Cancelled": "FFCDD2",
-    "Completed": "F5F5F5",
-  };
-
   // Excel Export
   const handleExport = async () => {
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet("Control Tower");
 
-    // Determine max go and return border crossings separately for dynamic columns
     type ColDef = Partial<ExcelJS.Column>;
 
     const maxGoBorders = filteredData.reduce(
@@ -275,7 +283,6 @@ export default function TrackingPage() {
       0
     );
 
-    // Helper: days between two ISO date strings (1 decimal)
     const calcDays = (start: string | null | undefined, end: string | null | undefined): number | string => {
       if (!start || !end) return "-";
       const diff = new Date(end).getTime() - new Date(start).getTime();
@@ -287,12 +294,12 @@ export default function TrackingPage() {
     for (let i = 0; i < maxGoBorders; i++) {
       const n = i + 1;
       goBorderCols.push(
-        { header: `Border ${n} Name`, key: `bcG${n}_name`, width: 22 },
-        { header: `Border ${n} Arrived Side A`, key: `bcG${n}_arr_a`, width: 20 },
-        { header: `Border ${n} Docs Submitted A`, key: `bcG${n}_sub_a`, width: 20 },
-        { header: `Border ${n} Docs Cleared A`, key: `bcG${n}_clr_a`, width: 20 },
-        { header: `Border ${n} Crossed (= Arrive Side B)`, key: `bcG${n}_arr_b`, width: 24 },
-        { header: `Border ${n} Departed Zone`, key: `bcG${n}_dep`, width: 20 }
+        { header: `Border ${n} Name`,           key: `bcG${n}_name`,  width: 22 },
+        { header: `Border ${n} Arrived`,         key: `bcG${n}_arr_a`, width: 20 },
+        { header: `Border ${n} Docs Submitted`, key: `bcG${n}_sub_a`, width: 20 },
+        { header: `Border ${n} Docs Cleared`,   key: `bcG${n}_clr_a`, width: 20 },
+        { header: `Border ${n} Crossed`,        key: `bcG${n}_arr_b`, width: 22 },
+        { header: `Border ${n} Departed Zone`,  key: `bcG${n}_dep`,   width: 20 }
       );
     }
 
@@ -300,173 +307,312 @@ export default function TrackingPage() {
     for (let i = 0; i < maxReturnBorders; i++) {
       const n = i + 1;
       returnBorderCols.push(
-        { header: `Return Border ${n} Name`, key: `bcR${n}_name`, width: 22 },
-        { header: `Return Border ${n} Arrived Side A`, key: `bcR${n}_arr_a`, width: 20 },
-        { header: `Return Border ${n} Docs Submitted A`, key: `bcR${n}_sub_a`, width: 20 },
-        { header: `Return Border ${n} Docs Cleared A`, key: `bcR${n}_clr_a`, width: 20 },
-        { header: `Return Border ${n} Crossed (= Arrive Side B)`, key: `bcR${n}_arr_b`, width: 28 },
-        { header: `Return Border ${n} Departed Zone`, key: `bcR${n}_dep`, width: 20 }
+        { header: `Ret Border ${n} Name`,           key: `bcR${n}_name`,  width: 22 },
+        { header: `Ret Border ${n} Arrived Side A`, key: `bcR${n}_arr_a`, width: 20 },
+        { header: `Ret Border ${n} Docs Submitted`, key: `bcR${n}_sub_a`, width: 20 },
+        { header: `Ret Border ${n} Docs Cleared`,   key: `bcR${n}_clr_a`, width: 20 },
+        { header: `Ret Border ${n} Crossed`,        key: `bcR${n}_arr_b`, width: 22 },
+        { header: `Ret Border ${n} Departed Zone`,  key: `bcR${n}_dep`,   width: 20 }
       );
     }
 
-    // Dynamic days-per-border columns (placed in the Days section)
     const daysBorderGoCols: ColDef[] = [];
     for (let i = 0; i < maxGoBorders; i++) {
       const n = i + 1;
-      daysBorderGoCols.push({ header: `Days at Border ${n}`, key: `days_bcG${n}`, width: 16 });
+      daysBorderGoCols.push({ header: `Days at Border ${n}`,     key: `days_bcG${n}`, width: 16 });
     }
     const daysBorderReturnCols: ColDef[] = [];
     for (let i = 0; i < maxReturnBorders; i++) {
       const n = i + 1;
-      daysBorderReturnCols.push({ header: `Days at Return Border ${n}`, key: `days_bcR${n}`, width: 20 });
+      daysBorderReturnCols.push({ header: `Days at Ret Border ${n}`, key: `days_bcR${n}`, width: 18 });
     }
 
     worksheet.columns = [
-      { header: "No.", key: "index", width: 8 },
-      { header: "Trip #", key: "trip_number", width: 20 },
-      { header: "Trip Status", key: "trip_status", width: 22 },
-      // Go Waybill block
-      { header: "Go Waybill #", key: "waybill_number", width: 20 },
-      { header: "Go WB Status", key: "waybill_status", width: 15 },
-      { header: "Client (Go)", key: "client_name", width: 25 },
-      { header: "Origin", key: "origin", width: 25 },
-      { header: "Destination", key: "destination", width: 25 },
-      { header: "Cargo Type (Go)", key: "cargo_type", width: 20 },
-      { header: "Cargo Weight (Go) kg", key: "cargo_weight", width: 18 },
-      { header: "Cargo Description (Go)", key: "cargo_description", width: 30 },
-      { header: "Risk", key: "risk_level", width: 10 },
-      // Return Waybill block
-      { header: "Return Waybill #", key: "return_waybill_number", width: 20 },
-      { header: "Return WB Status", key: "return_waybill_status", width: 18 },
-      { header: "Client (Return)", key: "return_client_name", width: 25 },
-      { header: "Return Origin", key: "return_origin", width: 25 },
-      { header: "Return Destination", key: "return_destination", width: 25 },
-      { header: "Cargo Type (Return)", key: "return_cargo_type", width: 20 },
-      { header: "Cargo Weight (Return) kg", key: "return_cargo_weight", width: 22 },
-      // Driver block
-      { header: "Driver Name", key: "driver_name", width: 22 },
-      { header: "Driver Licence", key: "driver_license", width: 18 },
-      { header: "Driver Passport", key: "driver_passport", width: 18 },
-      { header: "Driver Phone", key: "driver_phone", width: 16 },
-      // Truck block
-      { header: "Truck Plate", key: "truck_plate", width: 14 },
-      // Trailer block
-      { header: "Trailer Plate", key: "trailer_plate", width: 14 },
-      { header: "Trailer Type", key: "trailer_type", width: 14 },
-      // Tracking dates
-      { header: "Dispatch Date", key: "dispatch_date", width: 20 },
-      { header: "Arrival at Loading", key: "arrival_loading_date", width: 20 },
-      { header: "Loading Start", key: "loading_start_date", width: 20 },
-      { header: "Loading End", key: "loading_end_date", width: 20 },
-      // Go border crossings (happen between loading and offloading)
+      { header: "No.",               key: "index",             width: 8  },
+      { header: "Leg",               key: "leg",               width: 10 },
+      { header: "Trip #",            key: "trip_number",       width: 20 },
+      { header: "Trip Status",       key: "trip_status",       width: 22 },
+      { header: "Waybill #",         key: "waybill_number",    width: 20 },
+      { header: "WB Status",         key: "waybill_status",    width: 15 },
+      { header: "Client",            key: "client_name",       width: 25 },
+      { header: "Origin",            key: "origin",            width: 25 },
+      { header: "Destination",       key: "destination",       width: 25 },
+      { header: "Cargo Description", key: "cargo_description", width: 30 },
+      { header: "Risk",              key: "risk_level",        width: 10 },
+      { header: "Driver Name",       key: "driver_name",       width: 22 },
+      { header: "Driver Licence",    key: "driver_license",    width: 18 },
+      { header: "Driver Passport",   key: "driver_passport",   width: 18 },
+      { header: "Driver Phone",      key: "driver_phone",      width: 16 },
+      { header: "Truck Plate",       key: "truck_plate",       width: 14 },
+      { header: "Trailer Plate",     key: "trailer_plate",     width: 14 },
+      { header: "Dispatch Date",            key: "dispatch_date",           width: 20 },
+      { header: "Arrival at Loading",       key: "arrival_loading_date",    width: 20 },
+      { header: "Loading Start",            key: "loading_start_date",      width: 20 },
+      { header: "Loading End",                   key: "loading_end_date",        width: 20 },
+      { header: "Current Location / Remark",     key: "current_location",        width: 28 },
       ...goBorderCols,
-      { header: "Arrival at Offloading", key: "arrival_offloading_date", width: 22 },
-      { header: "Offloading Date", key: "offloading_date", width: 20 },
-      { header: "Return Dispatch Date", key: "dispatch_return_date", width: 20 },
-      { header: "Return Arrival at Loading", key: "arrival_loading_return_date", width: 24 },
-      { header: "Return Loading Start", key: "loading_return_start_date", width: 20 },
-      { header: "Return Loading End", key: "loading_return_end_date", width: 20 },
-      // Return border crossings (happen between return loading and return offloading)
+      { header: "Arrival at Offloading",    key: "arrival_offloading_date", width: 22 },
+      { header: "Offloading Date",          key: "offloading_date",         width: 20 },
       ...returnBorderCols,
-      { header: "Arrival at Return Destination", key: "arrival_return_date", width: 26 },
-      // Duration
-      { header: "Days (Overall)", key: "duration_days", width: 14 },
-      { header: "Days (Return Leg)", key: "return_duration_days", width: 16 },
-      { header: "Days at Loading", key: "days_loading", width: 16 },
-      { header: "Days at Loading (Return)", key: "days_loading_return", width: 22 },
+      { header: "Arrival at Return Dest.",  key: "arrival_return_date",     width: 26 },
+      { header: "Days (Leg)",               key: "duration_days",           width: 14 },
+      { header: "Days at Loading",          key: "days_loading",            width: 16 },
       ...daysBorderGoCols,
       ...daysBorderReturnCols,
-      // Location
-      { header: "Current Location", key: "current_location", width: 25 },
     ] as Partial<ExcelJS.Column>[];
 
-    // Bold header row + freeze
     worksheet.getRow(1).font = { bold: true };
     worksheet.views = [{ state: "frozen", ySplit: 1 }];
 
     const fmtDate = (d: string | null | undefined) =>
       d ? new Date(d).toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric" }) : "-";
 
-    filteredData.forEach((row, index) => {
-      const borderData: Record<string, string> = {};
-      const goCrossings = (row.border_crossings || []).filter((bc: any) => bc.direction === "go");
+    let rowNum = 0;
+    filteredData.forEach((row) => {
+      const goCrossings     = (row.border_crossings || []).filter((bc: any) => bc.direction === "go");
       const returnCrossings = (row.border_crossings || []).filter((bc: any) => bc.direction === "return");
 
+      const goBorderData: Record<string, string | number> = {};
       goCrossings.forEach((bc: any, i: number) => {
         const n = i + 1;
-        borderData[`bcG${n}_name`] = bc.border_display_name || "-";
-        borderData[`bcG${n}_arr_a`] = fmtDate(bc.arrived_side_a_at);
-        borderData[`bcG${n}_sub_a`] = fmtDate(bc.documents_submitted_side_a_at);
-        borderData[`bcG${n}_clr_a`] = fmtDate(bc.documents_cleared_side_a_at);
-        borderData[`bcG${n}_arr_b`] = fmtDate(bc.arrived_side_b_at);
-        borderData[`bcG${n}_dep`] = fmtDate(bc.departed_border_at);
-        (borderData as any)[`days_bcG${n}`] = calcDays(bc.arrived_side_a_at, bc.departed_border_at);
+        goBorderData[`bcG${n}_name`]  = bc.border_display_name || "-";
+        goBorderData[`bcG${n}_arr_a`] = fmtDate(bc.arrived_side_a_at);
+        goBorderData[`bcG${n}_sub_a`] = fmtDate(bc.documents_submitted_side_a_at);
+        goBorderData[`bcG${n}_clr_a`] = fmtDate(bc.documents_cleared_side_a_at);
+        goBorderData[`bcG${n}_arr_b`] = fmtDate(bc.arrived_side_b_at);
+        goBorderData[`bcG${n}_dep`]   = fmtDate(bc.departed_border_at);
+        goBorderData[`days_bcG${n}`]  = calcDays(bc.arrived_side_a_at, bc.departed_border_at);
       });
 
+      const returnBorderData: Record<string, string | number> = {};
       returnCrossings.forEach((bc: any, i: number) => {
         const n = i + 1;
-        borderData[`bcR${n}_name`] = bc.border_display_name || "-";
-        borderData[`bcR${n}_arr_a`] = fmtDate(bc.arrived_side_a_at);
-        borderData[`bcR${n}_sub_a`] = fmtDate(bc.documents_submitted_side_a_at);
-        borderData[`bcR${n}_clr_a`] = fmtDate(bc.documents_cleared_side_a_at);
-        borderData[`bcR${n}_arr_b`] = fmtDate(bc.arrived_side_b_at);
-        borderData[`bcR${n}_dep`] = fmtDate(bc.departed_border_at);
-        (borderData as any)[`days_bcR${n}`] = calcDays(bc.arrived_side_a_at, bc.departed_border_at);
+        returnBorderData[`bcR${n}_name`]  = bc.border_display_name || "-";
+        returnBorderData[`bcR${n}_arr_a`] = fmtDate(bc.arrived_side_a_at);
+        returnBorderData[`bcR${n}_sub_a`] = fmtDate(bc.documents_submitted_side_a_at);
+        returnBorderData[`bcR${n}_clr_a`] = fmtDate(bc.documents_cleared_side_a_at);
+        returnBorderData[`bcR${n}_arr_b`] = fmtDate(bc.arrived_side_b_at);
+        returnBorderData[`bcR${n}_dep`]   = fmtDate(bc.departed_border_at);
+        returnBorderData[`days_bcR${n}`]  = calcDays(bc.arrived_side_a_at, bc.departed_border_at);
       });
 
-      const excelRow = worksheet.addRow({
-        index: index + 1,
-        trip_number: row.trip_number || "-",
-        trip_status: row.trip_status,
-        waybill_number: row.waybill_number || "-",
-        waybill_status: row.waybill_status || "-",
-        client_name: row.client_name || "-",
-        origin: (row as any).origin || "-",
-        destination: (row as any).destination || "-",
-        cargo_type: row.cargo_type || "-",
-        cargo_weight: row.cargo_weight || 0,
-        cargo_description: (row as any).cargo_description || "-",
-        risk_level: row.risk_level,
-        return_waybill_number: row.return_waybill_number || "-",
-        return_waybill_status: row.return_waybill_status || "-",
-        return_client_name: row.return_client_name || "-",
-        return_origin: (row as any).return_origin || "-",
-        return_destination: (row as any).return_destination || "-",
-        return_cargo_type: row.return_cargo_type || "-",
-        return_cargo_weight: row.return_cargo_weight ?? "-",
-        driver_name: row.driver_name || "-",
-        driver_license: (row as any).driver_license || "-",
-        driver_passport: (row as any).driver_passport || "-",
-        driver_phone: (row as any).driver_phone || "-",
-        truck_plate: row.truck_plate || "-",
-        trailer_plate: row.trailer_plate || "-",
-        trailer_type: (row as any).trailer_type || "-",
-        dispatch_date: fmtDate((row as any).dispatch_date),
-        arrival_loading_date: fmtDate((row as any).arrival_loading_date),
-        loading_start_date: fmtDate((row as any).loading_start_date),
-        loading_end_date: fmtDate((row as any).loading_end_date),
-        arrival_offloading_date: fmtDate((row as any).arrival_offloading_date),
-        offloading_date: fmtDate((row as any).offloading_date),
-        dispatch_return_date: fmtDate((row as any).dispatch_return_date),
-        arrival_loading_return_date: fmtDate((row as any).arrival_loading_return_date),
-        loading_return_start_date: fmtDate((row as any).loading_return_start_date),
-        loading_return_end_date: fmtDate((row as any).loading_return_end_date),
-        arrival_return_date: fmtDate((row as any).arrival_return_date),
-        duration_days: row.duration_days,
-        return_duration_days: row.return_duration_days || 0,
-        days_loading: calcDays(row.arrival_loading_date, row.loading_end_date),
-        days_loading_return: calcDays(row.arrival_loading_return_date, row.loading_return_end_date),
+      const sharedFields = {
+        trip_number:      row.trip_number || "-",
+        trip_status:      row.trip_status,
+        risk_level:       row.risk_level,
+        driver_name:      row.driver_name || "-",
+        driver_license:   row.driver_license || "-",
+        driver_passport:  row.driver_passport || "-",
+        driver_phone:     row.driver_phone || "-",
+        truck_plate:      row.truck_plate || "-",
+        trailer_plate:    row.trailer_plate || "-",
         current_location: row.current_location || "-",
-        ...borderData,
+      };
+
+      const statusColor = STATUS_ROW_COLORS[row.trip_status] ?? "FFFFFF";
+
+      // --- GO ROW ---
+      const goRow = worksheet.addRow({
+        ...sharedFields,
+        index:                   ++rowNum,
+        leg:                     "Go",
+        waybill_number:          row.waybill_number || "-",
+        waybill_status:          row.waybill_status || "-",
+        client_name:             row.client_name || "-",
+        origin:                  row.origin || "-",
+        destination:             row.destination || "-",
+        cargo_description:       row.cargo_description || "-",
+        dispatch_date:           fmtDate(row.dispatch_date),
+        arrival_loading_date:    fmtDate(row.arrival_loading_date),
+        loading_start_date:      fmtDate(row.loading_start_date),
+        loading_end_date:        fmtDate(row.loading_end_date),
+        arrival_offloading_date: fmtDate(row.arrival_offloading_date),
+        offloading_date:         fmtDate(row.offloading_date),
+        arrival_return_date:     "-",
+        duration_days:           row.duration_days,
+        days_loading:            calcDays(row.arrival_loading_date, row.loading_end_date),
+        ...goBorderData,
+      });
+      goRow.eachCell({ includeEmpty: true }, (cell) => {
+        cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: `FF${statusColor}` } };
       });
 
-      // Apply row colour fill by trip status
-      const statusColor = STATUS_ROW_COLORS[row.trip_status] ?? "FFFFFF";
-      excelRow.eachCell({ includeEmpty: true }, (cell) => {
+      // --- RETURN ROW (only if return waybill exists) ---
+      if (row.return_waybill_id) {
+        const retRow = worksheet.addRow({
+          ...sharedFields,
+          index:                   ++rowNum,
+          leg:                     "Return",
+          waybill_number:          row.return_waybill_number || "-",
+          waybill_status:          row.return_waybill_status || "-",
+          client_name:             row.return_client_name || "-",
+          origin:                  row.return_origin || "-",
+          destination:             row.return_destination || "-",
+          cargo_description:       row.return_cargo_description || "-",
+          // dispatch_date reused for return dispatch — "Leg Dispatch Date" applies to both legs
+          dispatch_date:           fmtDate(row.dispatch_return_date),
+          arrival_loading_date:    fmtDate(row.arrival_loading_return_date),
+          loading_start_date:      fmtDate(row.loading_return_start_date),
+          loading_end_date:        fmtDate(row.loading_return_end_date),
+          arrival_offloading_date: "-",
+          offloading_date:         "-",
+          arrival_return_date:     fmtDate(row.arrival_return_date),
+          duration_days:           row.return_duration_days ?? "-",
+          days_loading:            calcDays(row.arrival_loading_return_date, row.loading_return_end_date),
+          ...returnBorderData,
+        });
+        retRow.eachCell({ includeEmpty: true }, (cell) => {
+          cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFEAF7FF" } };
+        });
+      }
+    });
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    const blob = new Blob([buffer], {
+      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `Edupo_Control_Tower_${new Date().toISOString().slice(0, 10)}.xlsx`;
+    a.click();
+    window.URL.revokeObjectURL(url);
+  };
+
+  // Client Excel Export — selected trips only, border columns resolved from selected data
+  const handleClientExport = async () => {
+    const keySet = new Set(selectedRowKeys.map(String));
+    const selectedRows = filteredData.filter((r) => keySet.has(String(r.row_id)));
+    if (selectedRows.length === 0) {
+      message.warning("Please select trips to export first");
+      return;
+    }
+
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet("Trucks Report");
+
+    const fmtDate = (d: string | null | undefined) =>
+      d ? new Date(d).toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric" }) : "";
+
+    const calcDays = (start: string | null | undefined, end: string | null | undefined): number | string => {
+      if (!start || !end) return "";
+      const diff = new Date(end).getTime() - new Date(start).getTime();
+      if (isNaN(diff) || diff < 0) return "";
+      return Math.round(diff / (1000 * 60 * 60 * 24 * 10)) / 10;
+    };
+
+    // Build border template from the first selected trip that has go-direction crossings.
+    // Since the user selects trips on the same route, all selected rows share the same borders.
+    const firstWithBorders = selectedRows.find((r) =>
+      (r.border_crossings || []).some((bc: any) => bc.direction === "go")
+    );
+    const goBorderTemplate: { sideA: string; sideB: string; displayName: string }[] = (
+      firstWithBorders?.border_crossings || []
+    )
+      .filter((bc: any) => bc.direction === "go")
+      .map((bc: any) => ({
+        sideA: bc.side_a_name ?? "Side A",
+        sideB: bc.side_b_name ?? "Side B",
+        displayName: bc.border_display_name ?? "",
+      }));
+
+    const multipleB = goBorderTemplate.length > 1;
+
+    // Dynamically generate one group of columns per border
+    const borderCols: Partial<ExcelJS.Column>[] = [];
+    goBorderTemplate.forEach((b, i) => {
+      const suffix = multipleB ? ` (${b.displayName || i + 1})` : "";
+      borderCols.push(
+        { header: `${b.sideA} Arrived${suffix}`, key: `bc${i}_arr_a`, width: 18 },
+        { header: `Docs Submitted${suffix}`, key: `bc${i}_sub_a`, width: 18 },
+        { header: `Docs Received${suffix}`, key: `bc${i}_clr_a`, width: 18 },
+        { header: `${b.sideB} Arrvl${suffix}`, key: `bc${i}_arr_b`, width: 16 },
+        { header: `${b.sideB} Dispatch${suffix}`, key: `bc${i}_dep`, width: 18 },
+        { header: `Border Days${suffix}`, key: `bc${i}_days`, width: 14 },
+      );
+    });
+
+    const reportDate = new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric" });
+
+    worksheet.columns = [
+      { header: "Truck", key: "truck", width: 16 },
+      { header: "Trailer", key: "trailer", width: 16 },
+      { header: "Type of Business", key: "type_of_business", width: 18 },
+      { header: "Client", key: "client", width: 25 },
+      { header: "Cargo Details", key: "cargo_details", width: 30 },
+      { header: "Origin", key: "origin", width: 22 },
+      { header: "Destination", key: "destination", width: 22 },
+      { header: "Border Entry", key: "border_entry", width: 22 },
+      { header: "Loading Date", key: "loading_date", width: 16 },
+      { header: "Report Date", key: "report_date", width: 16 },
+      { header: "Current Position", key: "current_position", width: 22 },
+      { header: "TOTAL DAYS", key: "total_days", width: 12 },
+      { header: "Status", key: "status", width: 22 },
+      ...borderCols,
+      { header: "Arrvl at Offloading place", key: "arrvl_offloading", width: 22 },
+      { header: "Offloading Date", key: "offloading_date", width: 16 },
+      { header: "Arrival loading return", key: "arrvl_mine_return", width: 22 },
+      { header: "Return loading", key: "return_loading", width: 16 },
+      { header: "Return dispatching date", key: "return_dispatching", width: 22 },
+      { header: "Return offloading", key: "return_offloading", width: 18 },
+      { header: "Return empty container", key: "return_empty_container", width: 22 },
+      { header: "Remarks", key: "remarks", width: 30 },
+      { header: "Transit Days", key: "transit_days", width: 14 },
+    ] as Partial<ExcelJS.Column>[];
+
+    // Header styling
+    const headerRow = worksheet.getRow(1);
+    headerRow.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF1F4E79" } };
+    headerRow.font = { bold: true, color: { argb: "FFFFFFFF" } };
+    worksheet.views = [{ state: "frozen", ySplit: 1 }];
+
+    selectedRows.forEach((row) => {
+      const goCrossings = (row.border_crossings || []).filter((bc: any) => bc.direction === "go");
+
+      // Build border cell data keyed by column key
+      const borderData: Record<string, string | number> = {};
+      goBorderTemplate.forEach((_, i) => {
+        const bc = goCrossings[i];
+        borderData[`bc${i}_arr_a`] = bc ? fmtDate(bc.arrived_side_a_at) : "";
+        borderData[`bc${i}_sub_a`] = bc ? fmtDate(bc.documents_submitted_side_a_at) : "";
+        borderData[`bc${i}_clr_a`] = bc ? fmtDate(bc.documents_cleared_side_a_at) : "";
+        borderData[`bc${i}_arr_b`] = bc ? fmtDate(bc.arrived_side_b_at) : "";
+        borderData[`bc${i}_dep`] = bc ? fmtDate(bc.departed_border_at) : "";
+        borderData[`bc${i}_days`] = bc ? calcDays(bc.arrived_side_a_at, bc.departed_border_at) : "";
+      });
+
+      const clientRow = worksheet.addRow({
+        truck: row.truck_plate || "",
+        trailer: row.trailer_plate || "",
+        type_of_business: row.return_waybill_id ? "Return" : "Going",
+        client: row.client_name || "",
+        cargo_details: row.cargo_description || "",
+        origin: row.origin || "",
+        destination: row.destination || "",
+        border_entry: goCrossings[0]?.border_display_name || "",
+        loading_date: fmtDate(row.loading_start_date),
+        report_date: reportDate,
+        current_position: row.current_location || "",
+        total_days: row.duration_days || "",
+        status: row.trip_status || "",
+        ...borderData,
+        arrvl_offloading: fmtDate(row.arrival_offloading_date),
+        offloading_date: fmtDate(row.offloading_date),
+        arrvl_mine_return: fmtDate(row.arrival_loading_return_date),
+        return_loading: fmtDate(row.loading_return_start_date),
+        return_dispatching: fmtDate(row.dispatch_return_date),
+        return_offloading: fmtDate(row.arrival_return_date),
+        return_empty_container: fmtDate(row.return_empty_container_date),
+        remarks: row.remarks || "",
+        transit_days: calcDays(row.loading_end_date, row.offloading_date),
+      });
+
+      const clientStatusColor = STATUS_ROW_COLORS[row.trip_status] ?? "FFFFFF";
+      clientRow.eachCell({ includeEmpty: true }, (cell) => {
         cell.fill = {
           type: "pattern",
           pattern: "solid",
-          fgColor: { argb: `FF${statusColor}` },
+          fgColor: { argb: `FF${clientStatusColor}` },
         };
       });
     });
@@ -478,7 +624,7 @@ export default function TrackingPage() {
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `Edupo_Control_Tower_${new Date().toISOString().slice(0, 10)}.xlsx`;
+    a.download = `Edupo_Trucks_Report_${new Date().toISOString().slice(0, 10)}.xlsx`;
     a.click();
     window.URL.revokeObjectURL(url);
   };
@@ -584,11 +730,15 @@ export default function TrackingPage() {
       title: "Route / Location",
       key: "route",
       width: 250,
-      render: (_, r) => (
+      render: (_, r) => {
+        const isReturn = RETURN_STATUSES.has(r.trip_status);
+        const from = isReturn && r.return_origin ? r.return_origin : r.origin;
+        const to   = isReturn && r.return_destination ? r.return_destination : r.destination;
+        return (
         <Flex vertical gap={0}>
           <Space separator={<Text type="secondary">→</Text>}>
-            <Text>{r.origin}</Text>
-            <Text>{r.destination}</Text>
+            <Text>{from}</Text>
+            <Text>{to}</Text>
           </Space>
           <div onClick={() => openStatusModal(r)} style={{ cursor: "pointer" }}>
             <EnvironmentOutlined style={{ marginRight: 4, color: "#fa8c16" }} />
@@ -597,7 +747,8 @@ export default function TrackingPage() {
             </Text>
           </div>
         </Flex>
-      ),
+        );
+      },
     },
     {
       title: "Days",
@@ -667,6 +818,13 @@ export default function TrackingPage() {
               </Button>
               <Button type="primary" icon={<DownloadOutlined />} onClick={handleExport}>
                 Export Excel
+              </Button>
+              <Button
+                icon={<DownloadOutlined />}
+                onClick={handleClientExport}
+                disabled={selectedRowKeys.length === 0}
+              >
+                Client Export{selectedRowKeys.length > 0 ? ` (${selectedRowKeys.length})` : ""}
               </Button>
             </Space>
           </div>

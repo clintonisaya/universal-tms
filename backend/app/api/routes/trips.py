@@ -255,21 +255,32 @@ def read_trips(
 
     # Enrich trips with waybill data and location_update_time
     enriched: list[dict] = []
-    # Batch-fetch waybills for trips that have waybill_id
+    # Batch-fetch go waybills
     waybill_ids = [t.waybill_id for t in trips if t.waybill_id]
     waybill_map: dict[uuid.UUID, Waybill] = {}
     if waybill_ids:
         wbs = session.exec(select(Waybill).where(Waybill.id.in_(waybill_ids))).all()
         waybill_map = {wb.id: wb for wb in wbs}
+    # Batch-fetch return waybills
+    return_waybill_ids = [t.return_waybill_id for t in trips if t.return_waybill_id]
+    return_waybill_map: dict[uuid.UUID, Waybill] = {}
+    if return_waybill_ids:
+        rwbs = session.exec(select(Waybill).where(Waybill.id.in_(return_waybill_ids))).all()
+        return_waybill_map = {rwb.id: rwb for rwb in rwbs}
 
     for trip in trips:
         trip_data = TripPublic.model_validate(trip)
-        # Waybill enrichment
+        # Go waybill enrichment
         if trip.waybill_id and trip.waybill_id in waybill_map:
             wb = waybill_map[trip.waybill_id]
             trip_data.waybill_rate = wb.agreed_rate
             trip_data.waybill_currency = wb.currency
             trip_data.waybill_risk_level = wb.risk_level
+        # Return waybill enrichment
+        if trip.return_waybill_id and trip.return_waybill_id in return_waybill_map:
+            rwb = return_waybill_map[trip.return_waybill_id]
+            trip_data.return_waybill_number = rwb.waybill_number
+            trip_data.return_route_name = f"{rwb.origin} → {rwb.destination}"
         # Location update time: when the trip record was last touched by a user
         trip_data.location_update_time = trip.updated_at or trip.created_at
         enriched.append(trip_data)
@@ -300,6 +311,7 @@ def read_trip(
         rwb = session.get(Waybill, trip.return_waybill_id)
         if rwb:
             trip_data.return_waybill_number = rwb.waybill_number
+            trip_data.return_route_name = f"{rwb.origin} → {rwb.destination}"
     return trip_data
 
 
