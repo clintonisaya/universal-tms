@@ -350,8 +350,17 @@ export function UpdateTripStatusModal({
         current_location = country;
       }
 
+      // If departed_border_at was filled, the backend already auto-advanced the trip
+      // to In Transit / In Transit (Return). Use that advanced status in the PATCH
+      // so we don't overwrite the auto-advance back to "At Border".
+      let effectiveStatus: TripStatus = values.status;
+      if (values.border_departed_border_at) {
+        if (selectedStatus === "At Border") effectiveStatus = "In Transit";
+        else if (selectedStatus === "At Border (Return)") effectiveStatus = "In Transit (Return)";
+      }
+
       const payload: TripUpdate = {
-        status: values.status,
+        status: effectiveStatus,
         current_location,
       };
 
