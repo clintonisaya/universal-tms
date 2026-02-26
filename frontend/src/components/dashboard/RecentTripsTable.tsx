@@ -132,12 +132,16 @@ export function RecentTripsTable({ data, loading }: RecentTripsTableProps) {
             dataIndex: "waybill_rate",
             key: "rate",
             width: 120,
-            render: (_: unknown, record: Trip) =>
-              record.waybill_rate != null ? (
-                <Text>{formatCurrency(record.waybill_rate, record.waybill_currency)}</Text>
+            render: (_: unknown, record: Trip) => {
+              const isReturn = RETURN_STATUSES.has(record.status);
+              const rate = isReturn ? record.return_waybill_rate : record.waybill_rate;
+              const currency = isReturn ? record.return_waybill_currency : record.waybill_currency;
+              return rate != null ? (
+                <Text>{formatCurrency(rate, currency)}</Text>
               ) : (
                 <Text type="secondary">-</Text>
-              ),
+              );
+            },
           } as ColumnsType<Trip>[number],
         ]
       : []),

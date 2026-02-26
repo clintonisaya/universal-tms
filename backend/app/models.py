@@ -588,6 +588,8 @@ class TripPublic(TripBase):
     waybill_rate: Decimal | None = None
     waybill_currency: str | None = None
     waybill_risk_level: str | None = None
+    return_waybill_rate: Decimal | None = None
+    return_waybill_currency: str | None = None
     waybill_number: str | None = None
     return_waybill_number: str | None = None
     return_route_name: str | None = None

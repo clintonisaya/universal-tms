@@ -65,6 +65,8 @@ export interface Trip {
   waybill_rate: number | null;
   waybill_currency: string | null;
   waybill_risk_level: string | null;
+  return_waybill_rate: number | null;
+  return_waybill_currency: string | null;
   waybill_number: string | null;
   return_waybill_number: string | null;
   return_route_name: string | null;

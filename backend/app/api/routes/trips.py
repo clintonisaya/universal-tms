@@ -281,6 +281,8 @@ def read_trips(
             rwb = return_waybill_map[trip.return_waybill_id]
             trip_data.return_waybill_number = rwb.waybill_number
             trip_data.return_route_name = f"{rwb.origin} → {rwb.destination}"
+            trip_data.return_waybill_rate = rwb.agreed_rate
+            trip_data.return_waybill_currency = rwb.currency
         # Location update time: when the trip record was last touched by a user
         trip_data.location_update_time = trip.updated_at or trip.created_at
         enriched.append(trip_data)
@@ -312,6 +314,8 @@ def read_trip(
         if rwb:
             trip_data.return_waybill_number = rwb.waybill_number
             trip_data.return_route_name = f"{rwb.origin} → {rwb.destination}"
+            trip_data.return_waybill_rate = rwb.agreed_rate
+            trip_data.return_waybill_currency = rwb.currency
     return trip_data
 
 
