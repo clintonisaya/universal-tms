@@ -721,14 +721,18 @@ export function TripDetailDrawer({ open, onClose, tripId, onEdit }: TripDetailDr
                   const isClosed = trip.status === "Completed" || trip.status === "Cancelled";
                   const { total: expensesTotal, unconvertedCount } = convertedTotal(activeCurrency);
 
-                  // Convert a waybill rate from its currency to activeCurrency
+                  // Convert a waybill rate from its currency to activeCurrency.
+                  // API returns rates as decimal strings (e.g. "5400.00"), so Number()
+                  // coercion is required — without it "5400.00" + "2139.00" = "5400.002139.00".
                   const convertWaybillRate = (amount: number | null, currency: string | null): number | null => {
                     if (amount === null) return null;
+                    const num = Number(amount);
+                    if (isNaN(num)) return null;
                     const cur = currency || "USD";
-                    if (cur === activeCurrency) return amount;
-                    if (activeCurrency === "TZS" && cur === "USD") return amount * singleRate;
-                    if (activeCurrency === "USD" && cur === "TZS") return amount / singleRate;
-                    return amount;
+                    if (cur === activeCurrency) return num;
+                    if (activeCurrency === "TZS" && cur === "USD") return num * singleRate;
+                    if (activeCurrency === "USD" && cur === "TZS") return num / singleRate;
+                    return num;
                   };
 
                   const goIncome = convertWaybillRate(trip.waybill_rate, trip.waybill_currency);
