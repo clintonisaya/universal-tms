@@ -481,7 +481,7 @@ export default function TrackingPage() {
     window.URL.revokeObjectURL(url);
   };
 
-  // Client Excel Export — selected trips only, border columns resolved from selected data
+  // Client Excel Export — selected trips only, dynamic border columns across all selected rows
   const handleClientExport = async () => {
     const keySet = new Set(selectedRowKeys.map(String));
     const selectedRows = filteredData.filter((r) => keySet.has(String(r.row_id)));
@@ -503,66 +503,51 @@ export default function TrackingPage() {
       return Math.round(diff / (1000 * 60 * 60 * 24 * 10)) / 10;
     };
 
-    // Build border template from the first selected trip that has go-direction crossings.
-    // Since the user selects trips on the same route, all selected rows share the same borders.
-    const firstWithBorders = selectedRows.find((r) =>
-      (r.border_crossings || []).some((bc: any) => bc.direction === "go")
+    // Max go-border count across ALL selected rows (same approach as normal export)
+    const maxBorders = selectedRows.reduce(
+      (max, row) => Math.max(max, (row.border_crossings || []).filter((bc: any) => bc.direction === "go").length),
+      0
     );
-    const goBorderTemplate: { sideA: string; sideB: string; displayName: string }[] = (
-      firstWithBorders?.border_crossings || []
-    )
-      .filter((bc: any) => bc.direction === "go")
-      .map((bc: any) => ({
-        sideA: bc.side_a_name ?? "Side A",
-        sideB: bc.side_b_name ?? "Side B",
-        displayName: bc.border_display_name ?? "",
-      }));
 
-    const multipleB = goBorderTemplate.length > 1;
-
-    // Dynamically generate one group of columns per border
+    // Dynamically generate 7 columns per border: Entry, Arrived, Docs Submitted, Docs Received, Crossing, Dispatch, Days
     const borderCols: Partial<ExcelJS.Column>[] = [];
-    goBorderTemplate.forEach((b, i) => {
-      const suffix = multipleB ? ` (${b.displayName || i + 1})` : "";
+    for (let i = 0; i < maxBorders; i++) {
+      const n = i + 1;
+      const suffix = maxBorders > 1 ? ` ${n}` : "";
       borderCols.push(
-        { header: `${b.sideA} Arrived${suffix}`, key: `bc${i}_arr_a`, width: 18 },
-        { header: `Docs Submitted${suffix}`, key: `bc${i}_sub_a`, width: 18 },
-        { header: `Docs Received${suffix}`, key: `bc${i}_clr_a`, width: 18 },
-        { header: `${b.sideB} Arrvl${suffix}`, key: `bc${i}_arr_b`, width: 16 },
-        { header: `${b.sideB} Dispatch${suffix}`, key: `bc${i}_dep`, width: 18 },
-        { header: `Border Days${suffix}`, key: `bc${i}_days`, width: 14 },
+        { header: `Border Entry${suffix}`,     key: `bc${i}_name`,  width: 22 },
+        { header: `Border Arrived${suffix}`,   key: `bc${i}_arr_a`, width: 18 },
+        { header: `Docs Submitted${suffix}`,   key: `bc${i}_sub_a`, width: 18 },
+        { header: `Docs Received${suffix}`,    key: `bc${i}_clr_a`, width: 18 },
+        { header: `Border Crossing${suffix}`,  key: `bc${i}_arr_b`, width: 18 },
+        { header: `Border Dispatch${suffix}`,  key: `bc${i}_dep`,   width: 18 },
+        { header: `Border Days${suffix}`,      key: `bc${i}_days`,  width: 14 },
       );
-    });
+    }
 
     const reportDate = new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric" });
 
     worksheet.columns = [
-      { header: "Truck", key: "truck", width: 16 },
-      { header: "Trailer", key: "trailer", width: 16 },
-      { header: "Type of Business", key: "type_of_business", width: 18 },
-      { header: "Client", key: "client", width: 25 },
-      { header: "Cargo Details", key: "cargo_details", width: 30 },
-      { header: "Origin", key: "origin", width: 22 },
-      { header: "Destination", key: "destination", width: 22 },
-      { header: "Border Entry", key: "border_entry", width: 22 },
-      { header: "Loading Date", key: "loading_date", width: 16 },
-      { header: "Report Date", key: "report_date", width: 16 },
-      { header: "Current Position", key: "current_position", width: 22 },
-      { header: "TOTAL DAYS", key: "total_days", width: 12 },
-      { header: "Status", key: "status", width: 22 },
+      { header: "Truck",             key: "truck",            width: 16 },
+      { header: "Trailer",           key: "trailer",          width: 16 },
+      { header: "Type of Business",  key: "type_of_business", width: 18 },
+      { header: "Client",            key: "client",           width: 25 },
+      { header: "Cargo Details",     key: "cargo_details",    width: 30 },
+      { header: "Origin",            key: "origin",           width: 22 },
+      { header: "Destination",       key: "destination",      width: 22 },
+      { header: "Report Date",       key: "report_date",      width: 16 },
+      { header: "Loading Date",      key: "loading_date",     width: 16 },
+      { header: "Current Position",  key: "current_position", width: 22 },
+      { header: "Status",            key: "status",           width: 22 },
       ...borderCols,
-      { header: "Arrvl at Offloading place", key: "arrvl_offloading", width: 22 },
-      { header: "Offloading Date", key: "offloading_date", width: 16 },
-      { header: "Arrival loading return", key: "arrvl_mine_return", width: 22 },
-      { header: "Return loading", key: "return_loading", width: 16 },
-      { header: "Return dispatching date", key: "return_dispatching", width: 22 },
-      { header: "Return offloading", key: "return_offloading", width: 18 },
-      { header: "Return empty container", key: "return_empty_container", width: 22 },
-      { header: "Transit Days", key: "transit_days", width: 14 },
-      { header: "Remark", key: "remarks", width: 30 },
+      { header: "Arrvl at Offloading place", key: "arrvl_offloading", width: 24 },
+      { header: "Offloading Date",           key: "offloading_date",  width: 16 },
+      { header: "TOTAL DAYS",                key: "total_days",       width: 12 },
+      { header: "Transit Days",              key: "transit_days",     width: 14 },
+      { header: "Remark",                    key: "remarks",          width: 30 },
     ] as Partial<ExcelJS.Column>[];
 
-    // Header styling
+    // Header styling — dark blue background, white bold text, frozen top row
     const headerRow = worksheet.getRow(1);
     headerRow.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF1F4E79" } };
     headerRow.font = { bold: true, color: { argb: "FFFFFFFF" } };
@@ -571,51 +556,42 @@ export default function TrackingPage() {
     selectedRows.forEach((row) => {
       const goCrossings = (row.border_crossings || []).filter((bc: any) => bc.direction === "go");
 
-      // Build border cell data keyed by column key
+      // Build border cell data for all border slots
       const borderData: Record<string, string | number> = {};
-      goBorderTemplate.forEach((_, i) => {
+      for (let i = 0; i < maxBorders; i++) {
         const bc = goCrossings[i];
+        borderData[`bc${i}_name`]  = bc ? bc.border_display_name || "" : "";
         borderData[`bc${i}_arr_a`] = bc ? fmtDate(bc.arrived_side_a_at) : "";
         borderData[`bc${i}_sub_a`] = bc ? fmtDate(bc.documents_submitted_side_a_at) : "";
         borderData[`bc${i}_clr_a`] = bc ? fmtDate(bc.documents_cleared_side_a_at) : "";
         borderData[`bc${i}_arr_b`] = bc ? fmtDate(bc.arrived_side_b_at) : "";
-        borderData[`bc${i}_dep`] = bc ? fmtDate(bc.departed_border_at) : "";
-        borderData[`bc${i}_days`] = bc ? calcDays(bc.arrived_side_a_at, bc.departed_border_at) : "";
-      });
+        borderData[`bc${i}_dep`]   = bc ? fmtDate(bc.departed_border_at) : "";
+        borderData[`bc${i}_days`]  = bc ? calcDays(bc.arrived_side_a_at, bc.departed_border_at) : "";
+      }
 
       const clientRow = worksheet.addRow({
-        truck: row.truck_plate || "",
-        trailer: row.trailer_plate || "",
+        truck:            row.truck_plate || "",
+        trailer:          row.trailer_plate || "",
         type_of_business: row.return_waybill_id ? "Return" : "Going",
-        client: row.client_name || "",
-        cargo_details: row.cargo_description || "",
-        origin: row.origin || "",
-        destination: row.destination || "",
-        border_entry: goCrossings[0]?.border_display_name || "",
-        loading_date: fmtDate(row.loading_start_date),
-        report_date: reportDate,
+        client:           row.client_name || "",
+        cargo_details:    row.cargo_description || "",
+        origin:           row.origin || "",
+        destination:      row.destination || "",
+        report_date:      reportDate,
+        loading_date:     fmtDate(row.loading_start_date),
         current_position: row.current_location || "",
-        total_days: row.duration_days || "",
-        status: row.trip_status || "",
+        status:           row.trip_status || "",
         ...borderData,
         arrvl_offloading: fmtDate(row.arrival_offloading_date),
-        offloading_date: fmtDate(row.offloading_date),
-        arrvl_mine_return: fmtDate(row.arrival_loading_return_date),
-        return_loading: fmtDate(row.loading_return_start_date),
-        return_dispatching: fmtDate(row.dispatch_return_date),
-        return_offloading: fmtDate(row.arrival_return_date),
-        return_empty_container: fmtDate(row.return_empty_container_date),
-        remarks: row.remarks || "",
-        transit_days: calcDays(row.loading_end_date, row.offloading_date),
+        offloading_date:  fmtDate(row.offloading_date),
+        total_days:       row.duration_days || "",
+        transit_days:     calcDays(row.loading_end_date, row.offloading_date),
+        remarks:          row.remarks || "",
       });
 
-      const clientStatusColor = STATUS_ROW_COLORS[row.trip_status] ?? "FFFFFF";
+      const statusColor = STATUS_ROW_COLORS[row.trip_status] ?? "FFFFFF";
       clientRow.eachCell({ includeEmpty: true }, (cell) => {
-        cell.fill = {
-          type: "pattern",
-          pattern: "solid",
-          fgColor: { argb: `FF${clientStatusColor}` },
-        };
+        cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: `FF${statusColor}` } };
       });
     });
 
