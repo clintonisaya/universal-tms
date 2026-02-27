@@ -167,29 +167,32 @@ const RETURN_STATUSES = new Set([
   "Returned", "Waiting for PODs",
 ]);
 
+// Excel row background colors aligned with TripStatusTag Ant Design color palette.
+// Go leg → shade-2 (more vivid). Return leg → shade-1 (lighter).
+// Purple statuses (Dispatch, At Border × 2 legs) use graduated shades to differentiate.
 const STATUS_ROW_COLORS: Record<string, string> = {
-  // Pre-dispatch
-  "Waiting":                "E3F2FD",  // light blue
-  "Not Dispatched":         "F5F5F5",  // light gray
+  // default tag → gray
+  "Waiting":                "F5F5F5",  // gray-3
+  "Not Dispatched":         "FAFAFA",  // gray-2
   // Go leg
-  "Dispatch":               "FFF9C4",  // pale yellow
-  "Wait to Load":           "FFF3CD",  // light amber
-  "Loading":                "FFE082",  // amber / gold
-  "In Transit":             "C8E6C9",  // light green
-  "At Border":              "FFCCBC",  // light coral / orange
-  "Offloading":             "B2DFDB",  // light teal
-  // Return leg
-  "Dispatch (Return)":      "F3E5F5",  // very light purple
-  "Wait to Load (Return)":  "EDE7F6",  // light purple
-  "Loading (Return)":       "E1D5F0",  // medium-light purple
-  "In Transit (Return)":    "DCEDC8",  // light lime green
-  "At Border (Return)":     "FFE0B2",  // light orange
-  "Offloading (Return)":    "B3E5FC",  // light sky blue
+  "Dispatch":               "EFDBFF",  // purple → purple-2
+  "Wait to Load":           "F4FFB8",  // lime   → lime-2
+  "Loading":                "FFF1B8",  // gold   → gold-2
+  "In Transit":             "BAE0FF",  // processing (blue) → blue-2
+  "At Border":              "D3ADF7",  // purple → purple-3 (deeper — truck waiting)
+  "Offloading":             "B5F5EC",  // cyan   → cyan-2
+  // Return leg (one shade lighter than go)
+  "Dispatch (Return)":      "F9F0FF",  // purple → purple-1
+  "Wait to Load (Return)":  "FCFFE6",  // lime   → lime-1
+  "Loading (Return)":       "FFFBE6",  // gold   → gold-1
+  "In Transit (Return)":    "E6F4FF",  // processing (blue) → blue-1
+  "At Border (Return)":     "EFDBFF",  // purple → purple-2
+  "Offloading (Return)":    "E6FFFB",  // cyan   → cyan-1
   // Terminal
-  "Returned":               "E8EAF6",  // indigo tint
-  "Waiting for PODs":       "FCE4EC",  // light pink
-  "Completed":              "95DE64",  // deep green
-  "Cancelled":              "FFCDD2",  // light red
+  "Returned":               "F0F5FF",  // geekblue → geekblue-1
+  "Waiting for PODs":       "FFE7BA",  // warning (orange) → orange-2
+  "Completed":              "D9F7BE",  // success (green)  → green-2
+  "Cancelled":              "FFCCC7",  // error   (red)    → red-2
 };
 
 export default function TrackingPage() {
