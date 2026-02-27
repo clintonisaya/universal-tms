@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import {
   Collapse,
   Drawer,
@@ -17,6 +17,7 @@ import {
   Upload,
   Alert,
   Tooltip,
+  Popconfirm,
 } from "antd";
 import type { UploadFile } from "antd";
 import {
@@ -333,6 +334,36 @@ export function TripDetailDrawer({ open, onClose, tripId, onEdit }: TripDetailDr
     setIsCancelModalOpen(true);
   };
 
+  const handleDeleteExpense = async (expense: ExpenseRequest) => {
+    try {
+      const response = await fetch(`/api/v1/expenses/${expense.id}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      if (response.ok) {
+        message.success("Expense deleted");
+        fetchExpenses();
+      } else {
+        const error = await response.json();
+        message.error(error.detail || "Failed to delete expense");
+      }
+    } catch {
+      message.error("Network error");
+    }
+  };
+
+  // Derive a single exchange rate from the rate map (most recent month/year)
+  const singleRate = useMemo(() => {
+    let bestYear = 0, bestMonth = 0, bestRate = 2500;
+    for (const [key, rate] of Object.entries(exchangeRateMap)) {
+      const [yearStr, monthStr] = key.split("-");
+      const year = parseInt(yearStr), month = parseInt(monthStr);
+      if (year > bestYear || (year === bestYear && month > bestMonth)) {
+        bestYear = year; bestMonth = month; bestRate = rate;
+      }
+    }
+    return bestRate;
+  }, [exchangeRateMap]);
 
   const expenseColumns: ColumnsType<ExpenseRequest> = [
     {
@@ -371,6 +402,33 @@ export function TripDetailDrawer({ open, onClose, tripId, onEdit }: TripDetailDr
       key: "status",
       width: 200,
       render: (status: ExpenseStatus) => <ExpenseStatusBadge status={status} compact />,
+    },
+    {
+      title: "Created",
+      dataIndex: "created_at",
+      key: "created_at",
+      width: 110,
+      render: (date: string | null) => date ? new Date(date).toLocaleDateString() : "-",
+    },
+    {
+      title: "",
+      key: "actions",
+      width: 50,
+      render: (_: unknown, record: ExpenseRequest) => {
+        const isClosed = trip?.status === "Completed" || trip?.status === "Cancelled";
+        return record.status === "Pending Manager" && !isClosed ? (
+          <Popconfirm
+            title="Delete expense?"
+            description="This cannot be undone."
+            onConfirm={() => handleDeleteExpense(record)}
+            okText="Delete"
+            cancelText="No"
+            okButtonProps={{ danger: true }}
+          >
+            <Button type="text" danger icon={<DeleteOutlined />} size="small" />
+          </Popconfirm>
+        ) : null;
+      },
     },
   ];
 
@@ -435,8 +493,12 @@ export function TripDetailDrawer({ open, onClose, tripId, onEdit }: TripDetailDr
 
   // Determine which currencies are actually present in countable expenses
   const availableCurrencies = [...new Set(countableExpenses.map((e) => e.currency || "TZS"))];
-  // Always show TZS; show USD only if any countable expense is in USD
-  const toggleCurrencies = availableCurrencies.includes("USD") ? ["TZS", "USD"] : ["TZS"];
+  // Show USD when any expense is in USD OR when any waybill rate is priced in USD
+  const toggleCurrencies = (
+    availableCurrencies.includes("USD") ||
+    trip?.waybill_currency === "USD" ||
+    trip?.return_waybill_currency === "USD"
+  ) ? ["TZS", "USD"] : ["TZS"];
 
   const activeCurrency = toggleCurrencies.includes(displayCurrency)
     ? displayCurrency
@@ -659,76 +721,175 @@ export function TripDetailDrawer({ open, onClose, tripId, onEdit }: TripDetailDr
               {
                 key: "financials",
                 label: "Financials",
-                children: (
-                  <Space orientation="vertical" size="middle" style={{ width: "100%" }}>
-                    <div
-                      style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "center",
-                      }}
-                    >
-                      {(() => {
-                        const { total, unconvertedCount } = convertedTotal(activeCurrency);
-                        return (
-                          <Space align="center" wrap>
-                            <Text strong>Total Expenses:</Text>
-                            <Text strong style={{ fontSize: 15 }}>
-                              {activeCurrency}{" "}
-                              {total.toLocaleString("en-US", { minimumFractionDigits: 2 })}
-                            </Text>
-                            {/* Currency toggle */}
-                            {toggleCurrencies.length > 1 && (
-                              <Space size={4}>
-                                {toggleCurrencies.map((cur) => (
-                                  <Button
-                                    key={cur}
-                                    size="small"
-                                    type={activeCurrency === cur ? "primary" : "default"}
-                                    onClick={() => setDisplayCurrency(cur)}
-                                  >
-                                    {cur}
-                                  </Button>
-                                ))}
-                              </Space>
-                            )}
+                children: (() => {
+                  const isClosed = trip.status === "Completed" || trip.status === "Cancelled";
+                  const { total: expensesTotal, unconvertedCount } = convertedTotal(activeCurrency);
+
+                  // Convert a waybill rate from its currency to activeCurrency
+                  const convertWaybillRate = (amount: number | null, currency: string | null): number | null => {
+                    if (amount === null) return null;
+                    const cur = currency || "USD";
+                    if (cur === activeCurrency) return amount;
+                    if (activeCurrency === "TZS" && cur === "USD") return amount * singleRate;
+                    if (activeCurrency === "USD" && cur === "TZS") return amount / singleRate;
+                    return amount;
+                  };
+
+                  const goIncome = convertWaybillRate(trip.waybill_rate, trip.waybill_currency);
+                  const returnIncome = convertWaybillRate(trip.return_waybill_rate, trip.return_waybill_currency);
+                  const hasIncome = goIncome !== null || returnIncome !== null;
+                  const combinedIncome = (goIncome ?? 0) + (returnIncome ?? 0);
+                  const netProfit = combinedIncome - expensesTotal;
+
+                  const fmtAmt = (val: number) =>
+                    val.toLocaleString("en-US", {
+                      minimumFractionDigits: activeCurrency === "USD" ? 2 : 0,
+                      maximumFractionDigits: activeCurrency === "USD" ? 2 : 0,
+                    });
+
+                  return (
+                    <Space orientation="vertical" size="middle" style={{ width: "100%" }}>
+                      {/* Trip closed alert */}
+                      {isClosed && (
+                        <Alert
+                          message="Trip Closed"
+                          description={`This trip is ${trip.status.toLowerCase()}. No expense modifications are allowed.`}
+                          type="info"
+                          showIcon
+                        />
+                      )}
+
+                      {/* Currency toggle */}
+                      <div style={{ display: "flex", justifyContent: "flex-end" }}>
+                        <Space size={4}>
+                          <Text type="secondary" style={{ fontSize: 12 }}>View in:</Text>
+                          {toggleCurrencies.map((cur) => (
+                            <Button
+                              key={cur}
+                              size="small"
+                              type={activeCurrency === cur ? "primary" : "default"}
+                              onClick={() => setDisplayCurrency(cur)}
+                            >
+                              {cur}
+                            </Button>
+                          ))}
+                          {activeCurrency === "USD" && (
                             <Text type="secondary" style={{ fontSize: 11 }}>
-                              {unconvertedCount > 0
-                                ? `(${unconvertedCount} expense${unconvertedCount > 1 ? "s" : ""} excluded — no exchange rate set)`
-                                : "(excl. Voided & Rejected)"}
+                              1 USD = {singleRate.toLocaleString("en-US")} TZS
+                            </Text>
+                          )}
+                        </Space>
+                      </div>
+
+                      {/* Trip Income section */}
+                      {hasIncome && (
+                        <Descriptions
+                          bordered
+                          size="small"
+                          column={1}
+                          title={<Text strong>Trip Income</Text>}
+                        >
+                          {trip.waybill_rate && (
+                            <Descriptions.Item
+                              label={
+                                <Space>
+                                  <span>Go Waybill</span>
+                                  {trip.waybill_currency && trip.waybill_currency !== "TZS" && (
+                                    <Text type="secondary" style={{ fontSize: 11 }}>
+                                      ({trip.waybill_currency} {Number(trip.waybill_rate).toLocaleString("en-US")})
+                                    </Text>
+                                  )}
+                                </Space>
+                              }
+                            >
+                              <Text style={{ color: "#52c41a", fontWeight: 500 }}>
+                                {activeCurrency} {fmtAmt(goIncome ?? 0)}
+                              </Text>
+                            </Descriptions.Item>
+                          )}
+                          {trip.return_waybill_rate && (
+                            <Descriptions.Item
+                              label={
+                                <Space>
+                                  <span>Return Waybill</span>
+                                  {trip.return_waybill_currency && trip.return_waybill_currency !== "TZS" && (
+                                    <Text type="secondary" style={{ fontSize: 11 }}>
+                                      ({trip.return_waybill_currency} {Number(trip.return_waybill_rate).toLocaleString("en-US")})
+                                    </Text>
+                                  )}
+                                </Space>
+                              }
+                            >
+                              <Text style={{ color: "#52c41a", fontWeight: 500 }}>
+                                {activeCurrency} {fmtAmt(returnIncome ?? 0)}
+                              </Text>
+                            </Descriptions.Item>
+                          )}
+                          {trip.return_waybill_rate && (
+                            <Descriptions.Item label={<Text strong>Combined Income</Text>}>
+                              <Text strong style={{ color: "#52c41a", fontSize: 15 }}>
+                                {activeCurrency} {fmtAmt(combinedIncome)}
+                              </Text>
+                            </Descriptions.Item>
+                          )}
+                        </Descriptions>
+                      )}
+
+                      {/* Expense list header */}
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                        <Space align="center" wrap>
+                          <Text strong>Total Expenses:</Text>
+                          <Text strong style={{ color: "#ff4d4f", fontSize: 15 }}>
+                            {activeCurrency} {fmtAmt(expensesTotal)}
+                          </Text>
+                          <Text type="secondary" style={{ fontSize: 11 }}>
+                            {unconvertedCount > 0
+                              ? `(${unconvertedCount} expense${unconvertedCount > 1 ? "s" : ""} excluded — no exchange rate set)`
+                              : "(excl. Voided & Rejected)"}
+                          </Text>
+                        </Space>
+                        <Space>
+                          <Button
+                            type="primary"
+                            icon={<PlusOutlined />}
+                            onClick={() => setIsAddExpenseOpen(true)}
+                            size="small"
+                            disabled={isClosed}
+                          >
+                            Add Expense
+                          </Button>
+                          <Button icon={<ReloadOutlined />} onClick={fetchExpenses} size="small">
+                            Refresh
+                          </Button>
+                        </Space>
+                      </div>
+
+                      {/* Net Profit (only when income is known) */}
+                      {hasIncome && (
+                        <div style={{ display: "flex", justifyContent: "flex-end" }}>
+                          <Space>
+                            <Text strong>Net Profit:</Text>
+                            <Text
+                              strong
+                              style={{ color: netProfit >= 0 ? "#52c41a" : "#ff4d4f", fontSize: 15 }}
+                            >
+                              {netProfit >= 0 ? "+" : ""}{activeCurrency} {fmtAmt(netProfit)}
                             </Text>
                           </Space>
-                        );
-                      })()}
-                      <Space>
-                        <Button
-                          type="primary"
-                          icon={<PlusOutlined />}
-                          onClick={() => setIsAddExpenseOpen(true)}
-                          size="small"
-                        >
-                          Add Expense
-                        </Button>
-                        <Button
-                          icon={<ReloadOutlined />}
-                          onClick={fetchExpenses}
-                          size="small"
-                        >
-                          Refresh
-                        </Button>
-                      </Space>
-                    </div>
+                        </div>
+                      )}
 
-                    <Table<ExpenseRequest>
-                      columns={expenseColumns}
-                      dataSource={expenses}
-                      rowKey="id"
-                      loading={expensesLoading}
-                      pagination={false}
-                      size="small"
-                    />
-                  </Space>
-                ),
+                      <Table<ExpenseRequest>
+                        columns={expenseColumns}
+                        dataSource={expenses}
+                        rowKey="id"
+                        loading={expensesLoading}
+                        pagination={false}
+                        size="small"
+                      />
+                    </Space>
+                  );
+                })(),
               },
               {
                 key: "border-crossings",

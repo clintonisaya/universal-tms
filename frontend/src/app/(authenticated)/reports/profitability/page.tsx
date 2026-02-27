@@ -30,6 +30,7 @@ import {
   useResizableColumns,
 } from "@/components/ui/tableUtils";
 import { TripStatusTag } from "@/components/ui/TripStatusTag";
+import { TripDetailDrawer } from "@/components/trips/TripDetailDrawer";
 import type { TripStatus } from "@/types/trip";
 
 const { Title, Text } = Typography;
@@ -75,6 +76,15 @@ export default function TripProfitabilityPage() {
   const [pageSize, setPageSize] = useState(20);
   const [sortBy, setSortBy] = useState<string>("margin");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
+
+  // Trip detail drawer
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [selectedTripId, setSelectedTripId] = useState<string | null>(null);
+
+  const openTripDrawer = (tripId: string) => {
+    setSelectedTripId(tripId);
+    setDrawerOpen(true);
+  };
 
   // Currency display
   const [displayCurrency, setDisplayCurrency] = useState<"TZS" | "USD">("TZS");
@@ -211,7 +221,7 @@ export default function TripProfitabilityPage() {
       width: 130,
       render: (num: string, record) => (
         <a
-          onClick={() => router.push(`/ops/trips/${record.trip_id}`)}
+          onClick={() => openTripDrawer(record.trip_id)}
           style={{ fontWeight: 600, color: "#1890ff", cursor: "pointer" }}
         >
           {num}
@@ -346,7 +356,7 @@ export default function TripProfitabilityPage() {
           icon={<EyeOutlined />}
           title="View Trip Details"
           aria-label="View Trip Details"
-          onClick={() => router.push(`/ops/trips/${record.trip_id}`)}
+          onClick={() => openTripDrawer(record.trip_id)}
         />
       ),
     },
@@ -551,6 +561,13 @@ export default function TripProfitabilityPage() {
           background: inherit !important;
         }
       `}</style>
+
+      <TripDetailDrawer
+        open={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        tripId={selectedTripId}
+        onEdit={(id) => router.push(`/ops/trips/${id}`)}
+      />
     </div>
   );
 }
