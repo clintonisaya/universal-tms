@@ -504,6 +504,9 @@ export function TripDetailDrawer({ open, onClose, tripId, onEdit }: TripDetailDr
     ? displayCurrency
     : toggleCurrencies[0];
 
+  // Only admin, manager, and superuser can see financial data
+  const showFinancials = user?.role === "admin" || user?.role === "manager" || user?.is_superuser;
+
   return (
     <>
       <Drawer
@@ -718,7 +721,7 @@ export function TripDetailDrawer({ open, onClose, tripId, onEdit }: TripDetailDr
                   </Space>
                 ),
               },
-              {
+              ...(showFinancials ? [{
                 key: "financials",
                 label: "Financials",
                 children: (() => {
@@ -890,7 +893,7 @@ export function TripDetailDrawer({ open, onClose, tripId, onEdit }: TripDetailDr
                     </Space>
                   );
                 })(),
-              },
+              }] : []),
               {
                 key: "border-crossings",
                 label: `Border Crossings${borderCrossings.length > 0 ? ` (${borderCrossings.length})` : ""}`,

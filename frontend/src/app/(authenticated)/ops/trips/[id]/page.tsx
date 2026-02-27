@@ -578,6 +578,29 @@ export default function TripDetailPage() {
                       </Space>
                     </div>
 
+                    {/* Net Profit (income − expenses) */}
+                    {hasIncome && (
+                      <div style={{ display: "flex", justifyContent: "flex-end" }}>
+                        <Space>
+                          <Text strong>Net Profit:</Text>
+                          <Text
+                            strong
+                            style={{
+                              color: (combinedIncome - totalExpensesDisplay) >= 0 ? "#52c41a" : "#ff4d4f",
+                              fontSize: 15,
+                            }}
+                          >
+                            {(combinedIncome - totalExpensesDisplay) >= 0 ? "+" : ""}
+                            {displayCurrency}{" "}
+                            {(combinedIncome - totalExpensesDisplay).toLocaleString("en-US", {
+                              minimumFractionDigits: displayCurrency === "USD" ? 2 : 0,
+                              maximumFractionDigits: displayCurrency === "USD" ? 2 : 0,
+                            })}
+                          </Text>
+                        </Space>
+                      </div>
+                    )}
+
                     <Table<ExpenseRequest>
                       columns={expenseColumns}
                       dataSource={expenses}
