@@ -405,8 +405,8 @@ export default function TripProfitabilityPage() {
         <Col xs={24} sm={12} lg={4}>
           <Card>
             <Statistic
-              title="Total Trip Expense"
-              value={toDisplay(summary?.total_expenses || 0)}
+              title="Total Expense"
+              value={toDisplay((summary?.total_expenses || 0) + (summary?.total_office_expenses || 0))}
               prefix={cur}
               precision={displayCurrency === "USD" ? 2 : 0}
               styles={{ content: { color: "#ff4d4f" } }}
@@ -416,8 +416,8 @@ export default function TripProfitabilityPage() {
         <Col xs={24} sm={12} lg={4}>
           <Card>
             <Statistic
-              title="Total Expense"
-              value={toDisplay((summary?.total_expenses || 0) + (summary?.total_office_expenses || 0))}
+              title="Total Trip Expense"
+              value={toDisplay(summary?.total_expenses || 0)}
               prefix={cur}
               precision={displayCurrency === "USD" ? 2 : 0}
               styles={{ content: { color: "#ff4d4f" } }}
