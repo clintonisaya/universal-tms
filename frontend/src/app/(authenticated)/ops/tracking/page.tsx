@@ -349,7 +349,7 @@ export default function TrackingPage() {
       { header: "Arrival at Loading",       key: "arrival_loading_date",    width: 20 },
       { header: "Loading Start",            key: "loading_start_date",      width: 20 },
       { header: "Loading End",                   key: "loading_end_date",        width: 20 },
-      { header: "Current Location / Remark",     key: "current_location",        width: 28 },
+      { header: "Current Location",              key: "current_location",        width: 28 },
       ...goBorderCols,
       { header: "Arrival at Offloading",    key: "arrival_offloading_date", width: 22 },
       { header: "Offloading Date",          key: "offloading_date",         width: 20 },
@@ -359,6 +359,7 @@ export default function TrackingPage() {
       { header: "Days at Loading",          key: "days_loading",            width: 16 },
       ...daysBorderGoCols,
       ...daysBorderReturnCols,
+      { header: "Remark",                   key: "remarks",                 width: 30 },
     ] as Partial<ExcelJS.Column>[];
 
     worksheet.getRow(1).font = { bold: true };
@@ -407,6 +408,7 @@ export default function TrackingPage() {
         truck_plate:      row.truck_plate || "-",
         trailer_plate:    row.trailer_plate || "-",
         current_location: row.current_location || "-",
+        remarks:          row.remarks || "-",
       };
 
       const statusColor = STATUS_ROW_COLORS[row.trip_status] ?? "FFFFFF";
@@ -556,8 +558,8 @@ export default function TrackingPage() {
       { header: "Return dispatching date", key: "return_dispatching", width: 22 },
       { header: "Return offloading", key: "return_offloading", width: 18 },
       { header: "Return empty container", key: "return_empty_container", width: 22 },
-      { header: "Remarks", key: "remarks", width: 30 },
       { header: "Transit Days", key: "transit_days", width: 14 },
+      { header: "Remark", key: "remarks", width: 30 },
     ] as Partial<ExcelJS.Column>[];
 
     // Header styling
