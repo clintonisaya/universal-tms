@@ -288,11 +288,17 @@ def get_current_exchange_rate(session: SessionDep) -> Decimal:
 
 
 def normalize_to_tzs(amount: Decimal, currency: str, exchange_rate: Decimal | None, default_rate: Decimal) -> Decimal:
-    """Convert USD to TZS using stored exchange rate or default."""
+    """Convert USD to TZS using stored exchange rate or default.
+
+    The stored exchange_rate must be > 1 to be valid (a real TZS/USD rate is
+    always > 1, e.g. 2500). Values of 0 or 1 are sentinel/unset values and
+    must fall back to default_rate to avoid silently under-converting amounts.
+    This mirrors the frontend resolveRate() guard: `if (ownRate && ownRate > 1)`.
+    """
     if currency == "TZS":
         return amount
-    # USD - use stored rate or default
-    rate = exchange_rate if exchange_rate else default_rate
+    # Only use the stored rate if it is a real rate (> 1 TZS per foreign unit)
+    rate = exchange_rate if (exchange_rate and exchange_rate > Decimal("1")) else default_rate
     return amount * rate
 
 
