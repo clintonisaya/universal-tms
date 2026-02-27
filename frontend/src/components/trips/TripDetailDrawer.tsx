@@ -437,15 +437,14 @@ export function TripDetailDrawer({ open, onClose, tripId, onEdit }: TripDetailDr
     (e) => e.status !== "Voided" && e.status !== "Rejected"
   );
 
-  // Resolve the best available exchange rate for an expense:
-  // 1. Use expense's own exchange_rate if it's a real rate (> 1)
-  // 2. Fall back to finance exchange rate table keyed by expense's created_at month/year
-  // exchange_rate = TZS per 1 unit of the expense's foreign currency (e.g. 1 USD = 2500 TZS)
-  const resolveRate = (e: ExpenseRequest): number | null => {
+  // Resolve the best available exchange rate for an expense (always returns a number):
+  // 1. Expense's own exchange_rate if set (> 1)
+  // 2. Finance exchange rate table for the expense's created_at month/year
+  // 3. singleRate (most recent rate from the table, default 2500) — never returns null
+  const resolveRate = (e: ExpenseRequest): number => {
     const ownRate = e.exchange_rate ? Number(e.exchange_rate) : null;
     if (ownRate && ownRate > 1) return ownRate;
 
-    // Fall back to finance exchange rate table
     if (e.created_at) {
       const d = new Date(e.created_at);
       const key = `${d.getFullYear()}-${d.getMonth() + 1}`;
@@ -453,10 +452,8 @@ export function TripDetailDrawer({ open, onClose, tripId, onEdit }: TripDetailDr
       if (financeRate && financeRate > 1) return financeRate;
     }
 
-    // Try latest available rate as last resort
-    const rates = Object.values(exchangeRateMap).filter((r) => r > 1);
-    if (rates.length > 0) return Math.max(...rates); // most recent tends to be highest index — use last entry instead
-    return null;
+    // Always fall back to singleRate so no expense is silently excluded
+    return singleRate;
   };
 
   const convertedTotal = (targetCurrency: string): { total: number; unconvertedCount: number } => {
@@ -470,19 +467,15 @@ export function TripDetailDrawer({ open, onClose, tripId, onEdit }: TripDetailDr
       if (cur === targetCurrency) {
         total += amount;
       } else {
-        const rate = resolveRate(e);
-        if (rate) {
-          if (targetCurrency === "TZS") {
-            // Foreign → TZS: multiply
-            total += amount * rate;
-          } else if (targetCurrency === "USD" && cur === "TZS") {
-            // TZS → USD: divide
-            total += amount / rate;
-          } else {
-            // Other currency pair — no conversion rule
-            unconvertedCount += 1;
-          }
+        const rate = resolveRate(e); // always a valid number
+        if (targetCurrency === "TZS") {
+          // USD (or other) → TZS: multiply by rate
+          total += amount * rate;
+        } else if (targetCurrency === "USD" && cur === "TZS") {
+          // TZS → USD: divide by rate
+          total += amount / rate;
         } else {
+          // Unsupported currency pair (e.g. EUR) — count but don't convert
           unconvertedCount += 1;
         }
       }
