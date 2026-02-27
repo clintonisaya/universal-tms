@@ -903,10 +903,6 @@ export default function TrackingPage() {
             scroll={{ x: 1300 }}
             sticky={{ offsetHeader: 64 }}
             size="small"
-            onRow={(record) => {
-              const color = STATUS_ROW_COLORS[record.trip_status];
-              return color ? { style: { backgroundColor: `#${color}` } } : {};
-            }}
             rowSelection={getStandardRowSelection(
               currentPage,
               pageSize,
