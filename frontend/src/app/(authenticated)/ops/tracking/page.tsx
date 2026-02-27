@@ -185,7 +185,7 @@ const STATUS_ROW_COLORS: Record<string, string> = {
   "Returned": "EDE7F6",
   "Waiting for PODs": "EDE7F6",
   "Cancelled": "FFCDD2",
-  "Completed": "F5F5F5",
+  "Completed": "95DE64",
 };
 
 export default function TrackingPage() {
@@ -631,9 +631,23 @@ export default function TrackingPage() {
     window.URL.revokeObjectURL(url);
   };
 
+  const TERMINAL_WAYBILL_STATUSES = new Set(["Completed", "Invoiced"]);
+
+  const isWaybillFinalised = (record: TrackingRow): boolean => {
+    const goDone = TERMINAL_WAYBILL_STATUSES.has(record.waybill_status ?? "");
+    const retDone =
+      !record.return_waybill_id ||
+      TERMINAL_WAYBILL_STATUSES.has(record.return_waybill_status ?? "");
+    return goDone && retDone;
+  };
+
   const openStatusModal = (record: TrackingRow) => {
     if (!record.trip_id) {
       message.info("No trip assigned to this waybill yet.");
+      return;
+    }
+    if (isWaybillFinalised(record)) {
+      message.info("All waybills on this trip are completed — status cannot be changed.");
       return;
     }
     setSelectedTripId(record.trip_id);
@@ -736,18 +750,26 @@ export default function TrackingPage() {
         const isReturn = RETURN_STATUSES.has(r.trip_status);
         const from = isReturn && r.return_origin ? r.return_origin : r.origin;
         const to   = isReturn && r.return_destination ? r.return_destination : r.destination;
+        const finalised = isWaybillFinalised(r);
         return (
         <Flex vertical gap={0}>
           <Space separator={<Text type="secondary">→</Text>}>
             <Text>{from}</Text>
             <Text>{to}</Text>
           </Space>
-          <div onClick={() => openStatusModal(r)} style={{ cursor: "pointer" }}>
-            <EnvironmentOutlined style={{ marginRight: 4, color: "#fa8c16" }} />
-            <Text type="secondary" underline>
-              {r.current_location || "Update Loc"}
-            </Text>
-          </div>
+          {finalised ? (
+            <div>
+              <EnvironmentOutlined style={{ marginRight: 4, color: "#8c8c8c" }} />
+              <Text type="secondary">{r.current_location || "-"}</Text>
+            </div>
+          ) : (
+            <div onClick={() => openStatusModal(r)} style={{ cursor: "pointer" }}>
+              <EnvironmentOutlined style={{ marginRight: 4, color: "#fa8c16" }} />
+              <Text type="secondary" underline>
+                {r.current_location || "Update Loc"}
+              </Text>
+            </div>
+          )}
         </Flex>
         );
       },
@@ -881,6 +903,10 @@ export default function TrackingPage() {
             scroll={{ x: 1300 }}
             sticky={{ offsetHeader: 64 }}
             size="small"
+            onRow={(record) => {
+              const color = STATUS_ROW_COLORS[record.trip_status];
+              return color ? { style: { backgroundColor: `#${color}` } } : {};
+            }}
             rowSelection={getStandardRowSelection(
               currentPage,
               pageSize,
