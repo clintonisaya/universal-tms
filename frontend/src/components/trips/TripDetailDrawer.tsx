@@ -522,7 +522,7 @@ export function TripDetailDrawer({ open, onClose, tripId, onEdit }: TripDetailDr
         }
         open={open}
         onClose={onClose}
-        styles={{ wrapper: { width: 1200 } }}
+        styles={{ wrapper: { width: "min(1500px, 90vw)" } }}
         destroyOnHidden={false}
         extra={
           trip && (
@@ -838,7 +838,7 @@ export function TripDetailDrawer({ open, onClose, tripId, onEdit }: TripDetailDr
                         </Descriptions>
                       )}
 
-                      {/* Expense list header */}
+                      {/* Expense list header — Total Expenses + Net Profit left, buttons right */}
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                         <Space align="center" wrap>
                           <Text strong>Total Expenses:</Text>
@@ -850,6 +850,18 @@ export function TripDetailDrawer({ open, onClose, tripId, onEdit }: TripDetailDr
                               ? `(${unconvertedCount} expense${unconvertedCount > 1 ? "s" : ""} excluded — no exchange rate set)`
                               : "(excl. Voided & Rejected)"}
                           </Text>
+                          {hasIncome && (
+                            <>
+                              <Text type="secondary" style={{ fontSize: 13, margin: "0 4px" }}>|</Text>
+                              <Text strong>Net Profit:</Text>
+                              <Text
+                                strong
+                                style={{ color: netProfit >= 0 ? "#52c41a" : "#ff4d4f", fontSize: 15 }}
+                              >
+                                {netProfit >= 0 ? "+" : ""}{activeCurrency} {fmtAmt(netProfit)}
+                              </Text>
+                            </>
+                          )}
                         </Space>
                         <Space>
                           <Button
@@ -866,21 +878,6 @@ export function TripDetailDrawer({ open, onClose, tripId, onEdit }: TripDetailDr
                           </Button>
                         </Space>
                       </div>
-
-                      {/* Net Profit (only when income is known) */}
-                      {hasIncome && (
-                        <div style={{ display: "flex", justifyContent: "flex-end" }}>
-                          <Space>
-                            <Text strong>Net Profit:</Text>
-                            <Text
-                              strong
-                              style={{ color: netProfit >= 0 ? "#52c41a" : "#ff4d4f", fontSize: 15 }}
-                            >
-                              {netProfit >= 0 ? "+" : ""}{activeCurrency} {fmtAmt(netProfit)}
-                            </Text>
-                          </Space>
-                        </div>
-                      )}
 
                       <Table<ExpenseRequest>
                         columns={expenseColumns}

@@ -548,7 +548,7 @@ export default function TripDetailPage() {
                         alignItems: "center",
                       }}
                     >
-                      <Space>
+                      <Space align="center" wrap>
                         <Text strong>Total Expenses:</Text>
                         <Text strong style={{ color: "#ff4d4f" }}>
                           {displayCurrency}{" "}
@@ -558,6 +558,26 @@ export default function TripDetailPage() {
                           })}
                         </Text>
                         <Text type="secondary" style={{ fontSize: 11 }}>(excl. Voided & Rejected)</Text>
+                        {hasIncome && (
+                          <>
+                            <Text type="secondary" style={{ fontSize: 13, margin: "0 4px" }}>|</Text>
+                            <Text strong>Net Profit:</Text>
+                            <Text
+                              strong
+                              style={{
+                                color: (combinedIncome - totalExpensesDisplay) >= 0 ? "#52c41a" : "#ff4d4f",
+                                fontSize: 15,
+                              }}
+                            >
+                              {(combinedIncome - totalExpensesDisplay) >= 0 ? "+" : ""}
+                              {displayCurrency}{" "}
+                              {(combinedIncome - totalExpensesDisplay).toLocaleString("en-US", {
+                                minimumFractionDigits: displayCurrency === "USD" ? 2 : 0,
+                                maximumFractionDigits: displayCurrency === "USD" ? 2 : 0,
+                              })}
+                            </Text>
+                          </>
+                        )}
                       </Space>
                       <Space>
                         <Button icon={<ReloadOutlined />} onClick={fetchExpenses}>
@@ -577,29 +597,6 @@ export default function TripDetailPage() {
                         </Tooltip>
                       </Space>
                     </div>
-
-                    {/* Net Profit (income − expenses) */}
-                    {hasIncome && (
-                      <div style={{ display: "flex", justifyContent: "flex-end" }}>
-                        <Space>
-                          <Text strong>Net Profit:</Text>
-                          <Text
-                            strong
-                            style={{
-                              color: (combinedIncome - totalExpensesDisplay) >= 0 ? "#52c41a" : "#ff4d4f",
-                              fontSize: 15,
-                            }}
-                          >
-                            {(combinedIncome - totalExpensesDisplay) >= 0 ? "+" : ""}
-                            {displayCurrency}{" "}
-                            {(combinedIncome - totalExpensesDisplay).toLocaleString("en-US", {
-                              minimumFractionDigits: displayCurrency === "USD" ? 2 : 0,
-                              maximumFractionDigits: displayCurrency === "USD" ? 2 : 0,
-                            })}
-                          </Text>
-                        </Space>
-                      </div>
-                    )}
 
                     <Table<ExpenseRequest>
                       columns={expenseColumns}
