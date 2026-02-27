@@ -167,32 +167,36 @@ const RETURN_STATUSES = new Set([
   "Returned", "Waiting for PODs",
 ]);
 
-// Excel row background colors aligned with TripStatusTag Ant Design color palette.
-// Go leg → shade-2 (more vivid). Return leg → shade-1 (lighter).
-// Purple statuses (Dispatch, At Border × 2 legs) use graduated shades to differentiate.
+// Excel row background colors — semantic color system:
+//   🔵 Blue   = Truck is moving       🟡 Yellow = Someone waiting
+//   🟢 Green  = Trip done             🔴 Red    = Problem / stop
+//   🟣 Purple = Border / regulatory   🩵 Cyan   = Physical cargo handling
 const STATUS_ROW_COLORS: Record<string, string> = {
-  // default tag → gray
-  "Waiting":                "F5F5F5",  // gray-3
-  "Not Dispatched":         "FAFAFA",  // gray-2
-  // Go leg
-  "Dispatch":               "EFDBFF",  // purple → purple-2
-  "Wait to Load":           "F4FFB8",  // lime   → lime-2
-  "Loading":                "FFF1B8",  // gold   → gold-2
-  "In Transit":             "BAE0FF",  // processing (blue) → blue-2
-  "At Border":              "D3ADF7",  // purple → purple-3 (deeper — truck waiting)
-  "Offloading":             "B5F5EC",  // cyan   → cyan-2
-  // Return leg (one shade lighter than go)
-  "Dispatch (Return)":      "F9F0FF",  // purple → purple-1
-  "Wait to Load (Return)":  "FCFFE6",  // lime   → lime-1
-  "Loading (Return)":       "FFFBE6",  // gold   → gold-1
-  "In Transit (Return)":    "E6F4FF",  // processing (blue) → blue-1
-  "At Border (Return)":     "EFDBFF",  // purple → purple-2
-  "Offloading (Return)":    "E6FFFB",  // cyan   → cyan-1
-  // Terminal
-  "Returned":               "F0F5FF",  // geekblue → geekblue-1
-  "Waiting for PODs":       "FFE7BA",  // warning (orange) → orange-2
-  "Completed":              "D9F7BE",  // success (green)  → green-2
-  "Cancelled":              "FFCCC7",  // error   (red)    → red-2
+  // Neutral — pre-dispatch
+  "Waiting":                "F5F5F5",
+  "Not Dispatched":         "FAFAFA",
+  // 🟣 Purple — Border / regulatory
+  "Dispatch":               "D3ADF7",  // Soft Purple
+  "At Border":              "B37FEB",  // Medium Purple
+  "Dispatch (Return)":      "F9F0FF",  // Lightest purple (return = lighter)
+  "At Border (Return)":     "EFDBFF",  // Light purple
+  // 🟡 Yellow — Waiting / standby
+  "Wait to Load":           "FFE58F",  // Strong Yellow
+  "Wait to Load (Return)":  "FFF7CC",  // Soft Yellow
+  "Waiting for PODs":       "FFD666",  // Amber
+  // 🩵 Cyan — Physical cargo handling
+  "Loading":                "87E8DE",  // Medium Cyan
+  "Offloading":             "B5F5EC",  // Light Cyan
+  "Loading (Return)":       "D2F5F0",  // Lighter cyan
+  "Offloading (Return)":    "E6FFFB",  // Lightest cyan
+  // 🔵 Blue — Truck is moving
+  "In Transit":             "91CAFF",  // Medium Blue
+  "In Transit (Return)":    "D6E4FF",  // Light Blue
+  // 🟢 Green — Trip done
+  "Returned":               "D9F7BE",  // Light Green
+  "Completed":              "95DE64",  // Fresh Green
+  // 🔴 Red — Problem / stop
+  "Cancelled":              "FF7875",  // Soft Red
 };
 
 export default function TrackingPage() {
