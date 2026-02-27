@@ -601,6 +601,21 @@ def get_trip_profitability(
         amt_tzs = normalize_to_tzs(row.amount, row.currency, row.exchange_rate, default_rate)
         trip_expenses[trip_id] = trip_expenses.get(trip_id, Decimal("0")) + amt_tzs
 
+    # Get all approved office expenses (no trip linked)
+    office_expense_stmt = (
+        select(
+            ExpenseRequest.amount,
+            ExpenseRequest.currency,
+            ExpenseRequest.exchange_rate,
+        )
+        .where(ExpenseRequest.status.in_(approved_statuses))
+        .where(ExpenseRequest.trip_id.is_(None))
+    )
+    office_expense_rows = session.exec(office_expense_stmt).all()
+    total_office_expenses_tzs = Decimal("0")
+    for row in office_expense_rows:
+        total_office_expenses_tzs += normalize_to_tzs(row.amount, row.currency, row.exchange_rate, default_rate)
+
     # Build profitability data
     profitability_data = []
     for trip, go_waybill in trip_rows:
@@ -688,7 +703,7 @@ def get_trip_profitability(
     # Summary stats
     total_income = sum(d["income"] for d in profitability_data)
     total_expenses_sum = sum(d["expenses"] for d in profitability_data)
-    total_profit = total_income - total_expenses_sum
+    total_profit = total_income - total_expenses_sum - float(total_office_expenses_tzs)
     avg_margin = (total_profit / total_income * 100) if total_income > 0 else 0.0
     total_profit_per_day = sum(d["profit_per_day"] for d in profitability_data)
 
@@ -698,6 +713,7 @@ def get_trip_profitability(
         "summary": {
             "total_income": total_income,
             "total_expenses": total_expenses_sum,
+            "total_office_expenses": float(total_office_expenses_tzs),
             "total_profit": total_profit,
             "average_margin_pct": round(avg_margin, 2),
             "total_profit_per_day": round(total_profit_per_day, 2),
