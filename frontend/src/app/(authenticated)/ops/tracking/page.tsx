@@ -168,24 +168,28 @@ const RETURN_STATUSES = new Set([
 ]);
 
 const STATUS_ROW_COLORS: Record<string, string> = {
-  "In Transit": "D9F2DC",
-  "In Transit (Return)": "D9F2DC",
-  "Offloading": "D9F2DC",
-  "Offloading (Return)": "D9F2DC",
-  "Loading": "FFF3CD",
-  "Loading (Return)": "FFF3CD",
-  "Wait to Load": "FFF3CD",
-  "Wait to Load (Return)": "FFF3CD",
-  "Dispatch": "FFF3CD",
-  "Dispatch (Return)": "FFF3CD",
-  "At Border": "FFE0B2",
-  "At Border (Return)": "FFE0B2",
-  "Not Dispatched": "DDEEFF",
-  "Waiting": "DDEEFF",
-  "Returned": "EDE7F6",
-  "Waiting for PODs": "EDE7F6",
-  "Cancelled": "FFCDD2",
-  "Completed": "95DE64",
+  // Pre-dispatch
+  "Waiting":                "E3F2FD",  // light blue
+  "Not Dispatched":         "F5F5F5",  // light gray
+  // Go leg
+  "Dispatch":               "FFF9C4",  // pale yellow
+  "Wait to Load":           "FFF3CD",  // light amber
+  "Loading":                "FFE082",  // amber / gold
+  "In Transit":             "C8E6C9",  // light green
+  "At Border":              "FFCCBC",  // light coral / orange
+  "Offloading":             "B2DFDB",  // light teal
+  // Return leg
+  "Dispatch (Return)":      "F3E5F5",  // very light purple
+  "Wait to Load (Return)":  "EDE7F6",  // light purple
+  "Loading (Return)":       "E1D5F0",  // medium-light purple
+  "In Transit (Return)":    "DCEDC8",  // light lime green
+  "At Border (Return)":     "FFE0B2",  // light orange
+  "Offloading (Return)":    "B3E5FC",  // light sky blue
+  // Terminal
+  "Returned":               "E8EAF6",  // indigo tint
+  "Waiting for PODs":       "FCE4EC",  // light pink
+  "Completed":              "95DE64",  // deep green
+  "Cancelled":              "FFCDD2",  // light red
 };
 
 export default function TrackingPage() {
