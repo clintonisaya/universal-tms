@@ -580,13 +580,8 @@ def get_trip_profitability(
         for rw in session.exec(rw_stmt).all():
             return_waybills[rw.id] = rw
 
-    # All countable trip expenses: Pending Manager (submitted), Pending Finance (approved),
-    # and Paid — mirrors what the trip drawer shows (excludes only Voided and Rejected)
-    countable_statuses = [
-        ExpenseStatus.pending_manager.value,
-        ExpenseStatus.pending_finance.value,
-        ExpenseStatus.paid.value,
-    ]
+    # Only approved expenses count: Pending Finance (manager-approved) and Paid
+    approved_statuses = [ExpenseStatus.pending_finance.value, ExpenseStatus.paid.value]
     expense_stmt = (
         select(
             ExpenseRequest.trip_id,
@@ -594,26 +589,26 @@ def get_trip_profitability(
             ExpenseRequest.currency,
             ExpenseRequest.exchange_rate,
         )
-        .where(ExpenseRequest.status.in_(countable_statuses))
+        .where(ExpenseRequest.status.in_(approved_statuses))
         .where(ExpenseRequest.trip_id.isnot(None))
     )
     expense_rows = session.exec(expense_stmt).all()
 
-    # Build expense totals per trip — USD amounts are normalized to TZS
+    # Build expense totals per trip — USD amounts normalized to TZS
     trip_expenses: dict[str, Decimal] = {}
     for row in expense_rows:
         trip_id = str(row.trip_id)
         amt_tzs = normalize_to_tzs(row.amount, row.currency, row.exchange_rate, default_rate)
         trip_expenses[trip_id] = trip_expenses.get(trip_id, Decimal("0")) + amt_tzs
 
-    # All countable office expenses (no trip linked) — same status filter
+    # Approved office expenses (no trip linked) — same filter
     office_expense_stmt = (
         select(
             ExpenseRequest.amount,
             ExpenseRequest.currency,
             ExpenseRequest.exchange_rate,
         )
-        .where(ExpenseRequest.status.in_(countable_statuses))
+        .where(ExpenseRequest.status.in_(approved_statuses))
         .where(ExpenseRequest.trip_id.is_(None))
     )
     office_expense_rows = session.exec(office_expense_stmt).all()
