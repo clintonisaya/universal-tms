@@ -558,10 +558,7 @@ export default function TrackingPage() {
       { header: "Remark",                    key: "remarks",          width: 30 },
     ] as Partial<ExcelJS.Column>[];
 
-    // Header styling — dark blue background, white bold text, frozen top row
-    const headerRow = worksheet.getRow(1);
-    headerRow.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF1F4E79" } };
-    headerRow.font = { bold: true, color: { argb: "FFFFFFFF" } };
+    worksheet.getRow(1).font = { bold: true };
     worksheet.views = [{ state: "frozen", ySplit: 1 }];
 
     selectedRows.forEach((row) => {
