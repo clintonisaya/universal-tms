@@ -51,6 +51,7 @@ interface TripProfitability {
 interface ProfitabilitySummary {
   total_income: number;
   total_expenses: number;
+  total_office_expenses: number;
   total_profit: number;
   average_margin_pct: number;
   total_profit_per_day: number;
@@ -390,7 +391,7 @@ export default function TripProfitabilityPage() {
     >
       {/* Summary Cards */}
       <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
-        <Col xs={24} sm={12} lg={5}>
+        <Col xs={24} sm={12} lg={4}>
           <Card>
             <Statistic
               title="Total Revenue"
@@ -401,10 +402,10 @@ export default function TripProfitabilityPage() {
             />
           </Card>
         </Col>
-        <Col xs={24} sm={12} lg={5}>
+        <Col xs={24} sm={12} lg={4}>
           <Card>
             <Statistic
-              title="Total Expenses"
+              title="Total Trip Expense"
               value={toDisplay(summary?.total_expenses || 0)}
               prefix={cur}
               precision={displayCurrency === "USD" ? 2 : 0}
@@ -412,7 +413,18 @@ export default function TripProfitabilityPage() {
             />
           </Card>
         </Col>
-        <Col xs={24} sm={12} lg={5}>
+        <Col xs={24} sm={12} lg={4}>
+          <Card>
+            <Statistic
+              title="Total Expense"
+              value={toDisplay((summary?.total_expenses || 0) + (summary?.total_office_expenses || 0))}
+              prefix={cur}
+              precision={displayCurrency === "USD" ? 2 : 0}
+              styles={{ content: { color: "#ff4d4f" } }}
+            />
+          </Card>
+        </Col>
+        <Col xs={24} sm={12} lg={4}>
           <Card>
             <Statistic
               title="Total Profit"
