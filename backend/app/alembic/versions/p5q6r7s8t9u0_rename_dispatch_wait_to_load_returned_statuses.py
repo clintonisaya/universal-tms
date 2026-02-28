@@ -21,12 +21,19 @@ depends_on = None
 
 def upgrade() -> None:
     # ── tripstatus enum (trip.status) ────────────────────────────────────────
-    # Add the 5 new enum values (IF NOT EXISTS is safe on repeated runs)
-    op.execute("ALTER TYPE tripstatus ADD VALUE IF NOT EXISTS 'Dispatched'")
-    op.execute("ALTER TYPE tripstatus ADD VALUE IF NOT EXISTS 'Waiting for Loading'")
-    op.execute("ALTER TYPE tripstatus ADD VALUE IF NOT EXISTS 'Dispatched (Return)'")
-    op.execute("ALTER TYPE tripstatus ADD VALUE IF NOT EXISTS 'Waiting for Loading (Return)'")
-    op.execute("ALTER TYPE tripstatus ADD VALUE IF NOT EXISTS 'Arrived at Yard'")
+    # Guard: tripstatus enum was dropped in b2c3d4e5f6g7; trip.status is VARCHAR.
+    # Only ALTER the enum if it still exists (legacy DBs that skipped that migration).
+    op.execute("""
+        DO $$ BEGIN
+            IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'tripstatus') THEN
+                ALTER TYPE tripstatus ADD VALUE IF NOT EXISTS 'Dispatched';
+                ALTER TYPE tripstatus ADD VALUE IF NOT EXISTS 'Waiting for Loading';
+                ALTER TYPE tripstatus ADD VALUE IF NOT EXISTS 'Dispatched (Return)';
+                ALTER TYPE tripstatus ADD VALUE IF NOT EXISTS 'Waiting for Loading (Return)';
+                ALTER TYPE tripstatus ADD VALUE IF NOT EXISTS 'Arrived at Yard';
+            END IF;
+        END $$;
+    """)
 
     # Migrate existing trip rows
     op.execute("UPDATE trip SET status = 'Dispatched'                    WHERE status = 'Dispatch'")
