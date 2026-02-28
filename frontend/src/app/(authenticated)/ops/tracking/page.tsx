@@ -695,6 +695,10 @@ export default function TrackingPage() {
       message.info("No trip assigned to this waybill yet.");
       return;
     }
+    if (record.trip_status === "Completed" || record.trip_status === "Cancelled") {
+      message.info("Trip is already completed — status cannot be changed.");
+      return;
+    }
     if (isWaybillFinalised(record)) {
       message.info("All waybills on this trip are Invoiced — status cannot be changed.");
       return;
