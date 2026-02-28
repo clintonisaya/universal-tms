@@ -305,7 +305,7 @@ export default function TrackingPage() {
       if (!start || !end) return "-";
       const diff = new Date(end).getTime() - new Date(start).getTime();
       if (isNaN(diff) || diff < 0) return "-";
-      return Math.round(diff / (1000 * 60 * 60 * 24 * 10)) / 10;
+      return Math.round(diff / (1000 * 60 * 60 * 24));
     };
 
     const goBorderCols: ColDef[] = [];
@@ -520,7 +520,7 @@ export default function TrackingPage() {
       if (!start || !end) return "";
       const diff = new Date(end).getTime() - new Date(start).getTime();
       if (isNaN(diff) || diff < 0) return "";
-      return Math.round(diff / (1000 * 60 * 60 * 24 * 10)) / 10;
+      return Math.round(diff / (1000 * 60 * 60 * 24));
     };
 
     // Max border count across ALL selected rows, both go and return directions
