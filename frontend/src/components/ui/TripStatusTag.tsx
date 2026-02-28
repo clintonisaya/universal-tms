@@ -12,7 +12,7 @@ const TRIP_STATUS_COLORS: Record<TripStatus, string> = {
   "At Border": "purple",
   Offloading: "cyan",
   Offloaded: "cyan",
-  "On Way Return": "processing",
+  "Returning to Yard": "processing",
   "Waiting (Return)": "lime",
   "Dispatch (Return)": "purple",
   "Wait to Load (Return)": "lime",

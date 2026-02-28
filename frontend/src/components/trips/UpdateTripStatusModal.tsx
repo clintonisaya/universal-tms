@@ -37,7 +37,7 @@ const GO_STATUSES: TripStatus[] = [
   "At Border",
   "Offloading",
   // "Offloaded" is auto-set when offloading_date is filled — not manually selectable
-  "On Way Return",
+  "Returning to Yard",
 ];
 
 // Return leg statuses — only shown when return_waybill_id is set
@@ -49,7 +49,7 @@ const RETURN_STATUSES: TripStatus[] = [
   "In Transit (Return)",
   "At Border (Return)",
   "Offloading (Return)",
-  // "On Way Return" is auto-set when offloading_return_date is filled — not manually selectable here
+  // "Returning to Yard" is auto-set when offloading_return_date is filled — not manually selectable here
 ];
 
 // Terminal statuses — always visible regardless of direction
@@ -72,7 +72,7 @@ const STATUS_ORDER: TripStatus[] = [
   "At Border",
   "Offloading",
   "Offloaded",
-  "On Way Return",
+  "Returning to Yard",
   "Waiting (Return)",
   "Dispatch (Return)",
   "Wait to Load (Return)",
@@ -102,7 +102,7 @@ function getPipelineStepIndex(status: TripStatus | undefined): number {
   if (direct >= 0) return direct;
   // Map intermediate/return statuses to nearest pipeline step
   if (["Dispatch", "Wait to Load", "At Border"].includes(status)) return 2; // In Transit area
-  if (["Offloaded", "On Way Return", "Waiting (Return)"].includes(status)) return 3; // Post-offloading pre-return
+  if (["Offloaded", "Returning to Yard", "Waiting (Return)"].includes(status)) return 3; // Post-offloading pre-return
   if (["Dispatch (Return)", "Wait to Load (Return)", "Loading (Return)", "In Transit (Return)", "At Border (Return)", "Offloading (Return)", "Returned"].includes(status)) return 4; // Post-offloading
   return 0;
 }
@@ -125,7 +125,7 @@ function getStatusDate(trip: Trip | null, status: TripStatus): string | null {
     case "Loading":      return trip.loading_end_date;
     case "Offloading":   return trip.offloading_date;
     case "Offloaded":      return trip.offloading_date;
-    case "On Way Return":  return trip.arrival_return_date;
+    case "Returning to Yard":  return trip.arrival_return_date;
     case "Dispatch (Return)":    return (trip as any).dispatch_return_date;
     case "Wait to Load (Return)": return (trip as any).arrival_loading_return_date;
     case "Loading (Return)":     return (trip as any).loading_return_end_date;
@@ -216,7 +216,7 @@ export function UpdateTripStatusModal({
         if (selectedStatus === "Dispatch (Return)" && (tripData as any).dispatch_return_date) {
             fields.dispatch_return_date = dayjs((tripData as any).dispatch_return_date);
         }
-        if ((selectedStatus === "On Way Return" || selectedStatus === "Returned") && tripData.arrival_return_date) {
+        if ((selectedStatus === "Returning to Yard" || selectedStatus === "Returned") && tripData.arrival_return_date) {
             fields.arrival_return_date = dayjs(tripData.arrival_return_date);
         }
         if (selectedStatus === "Offloading (Return)" && (tripData as any).offloading_return_date) {
@@ -781,7 +781,7 @@ export function UpdateTripStatusModal({
         )}
 
         {/* On Way Return — arrival date (no return waybill; auto-advances to Waiting for PODs) */}
-        {selectedStatus === "On Way Return" && (
+        {selectedStatus === "Returning to Yard" && (
           <Form.Item
             name="arrival_return_date"
             label="Arrival at Yard"

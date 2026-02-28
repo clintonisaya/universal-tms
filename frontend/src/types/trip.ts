@@ -15,7 +15,7 @@ export type TripStatus =
   | "At Border"
   | "Offloading"
   | "Offloaded"           // auto-set when offloading_date recorded
-  | "On Way Return"       // truck heading back, no return waybill
+  | "Returning to Yard"   // truck heading back to yard
   // Return leg statuses — only when return_waybill_id is set
   | "Waiting (Return)"    // first return status, waiting for return cargo
   | "Dispatch (Return)"

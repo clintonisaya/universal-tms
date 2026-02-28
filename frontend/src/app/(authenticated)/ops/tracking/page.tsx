@@ -145,7 +145,7 @@ const STATUS_COLORS: Record<string, string> = {
   "At Border": "purple",
   Offloading: "cyan",
   Offloaded: "cyan",
-  "On Way Return": "processing",
+  "Returning to Yard": "processing",
   "Waiting (Return)": "lime",
   // Return leg statuses (Story 2.25)
   "Dispatch (Return)": "purple",
@@ -199,7 +199,7 @@ const STATUS_ROW_COLORS: Record<string, string> = {
   // 🔵 Blue — Truck is moving
   "In Transit":             "91CAFF",  // Medium Blue
   "In Transit (Return)":    "D6E4FF",  // Light Blue
-  "On Way Return":          "ADC6FF",  // Periwinkle Blue (heading back)
+  "Returning to Yard":      "ADC6FF",  // Periwinkle Blue (heading back)
   // 🟢 Green — Trip done
   "Returned":               "D9F7BE",  // Light Green
   "Completed":              "95DE64",  // Fresh Green
