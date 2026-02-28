@@ -441,8 +441,10 @@ def update_trip(
             new_status = TripStatus.offloaded
             update_dict["status"] = TripStatus.offloaded.value
 
-        # Auto-advance "Returned" → "Waiting for PODs" when arrival date is provided
-        if new_status == TripStatus.returned and update_dict.get("arrival_return_date"):
+        # Auto-advance to "Waiting for PODs" when arrival_return_date is provided
+        # — applies to both "Offloading (Return)" and "Returned" so filling the
+        #   arrival date in either step lands the trip directly at Waiting for PODs
+        if new_status in (TripStatus.offloading_return, TripStatus.returned) and update_dict.get("arrival_return_date"):
             new_status = TripStatus.waiting_for_pods
             update_dict["status"] = TripStatus.waiting_for_pods.value
 
