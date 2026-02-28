@@ -451,7 +451,7 @@ export default function TrackingPage() {
         arrival_offloading_date: fmtDate(row.arrival_offloading_date),
         offloading_date:         fmtDate(row.offloading_date),
         arrival_return_date:     "-",
-        duration_days:           row.duration_days,
+        duration_days:           calcDays(row.dispatch_date, row.arrival_return_date),
         days_loading:            calcDays(row.arrival_loading_date, row.loading_end_date),
         ...goBorderData,
       });
@@ -479,7 +479,7 @@ export default function TrackingPage() {
           arrival_offloading_date: "-",
           offloading_date:         "-",
           arrival_return_date:     fmtDate(row.arrival_return_date),
-          duration_days:           row.return_duration_days ?? "-",
+          duration_days:           calcDays(row.dispatch_date, row.arrival_return_date),
           days_loading:            calcDays(row.arrival_loading_return_date, row.loading_return_end_date),
           ...returnBorderData,
         });
@@ -637,7 +637,7 @@ export default function TrackingPage() {
         ...buildBorderData(goCrossings, "go"),
         arrvl_offloading: fmtDate(row.arrival_offloading_date),
         offloading_date:  fmtDate(row.offloading_date),
-        total_days:       row.duration_days || "",
+        total_days:       calcDays(row.dispatch_date, row.arrival_return_date),
         transit_days:     calcDays(row.loading_end_date, row.offloading_date),
         remarks:          row.remarks || "",       // go-leg remark (frozen at offloading)
       });
@@ -660,8 +660,8 @@ export default function TrackingPage() {
           ...buildBorderData(returnCrossings, "return"),
           arrvl_offloading: fmtDate(row.arrival_return_date),
           offloading_date:  "",
-          total_days:       row.return_duration_days || "",
-          transit_days:     calcDays(row.loading_return_end_date, row.arrival_return_date),
+          total_days:       calcDays(row.dispatch_date, row.arrival_return_date),
+          transit_days:     calcDays(row.loading_return_start_date, row.arrival_return_date),
           remarks:          row.return_remarks || "", // return-leg remark (independent)
         });
         applyRowColor(retRow, retStatus);
