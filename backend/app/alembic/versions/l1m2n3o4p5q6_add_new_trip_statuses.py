@@ -19,9 +19,18 @@ depends_on = None
 
 
 def upgrade() -> None:
-    op.execute("ALTER TYPE tripstatus ADD VALUE IF NOT EXISTS 'Offloaded'")
-    op.execute("ALTER TYPE tripstatus ADD VALUE IF NOT EXISTS 'On Way Return'")
-    op.execute("ALTER TYPE tripstatus ADD VALUE IF NOT EXISTS 'Waiting (Return)'")
+    # Guard: on a fresh database the enum is created by create_all() from the
+    # SQLModel model definitions (which already include these values), so the
+    # ALTER is only needed on existing databases where the enum already exists.
+    op.execute("""
+        DO $$ BEGIN
+            IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'tripstatus') THEN
+                ALTER TYPE tripstatus ADD VALUE IF NOT EXISTS 'Offloaded';
+                ALTER TYPE tripstatus ADD VALUE IF NOT EXISTS 'On Way Return';
+                ALTER TYPE tripstatus ADD VALUE IF NOT EXISTS 'Waiting (Return)';
+            END IF;
+        END $$;
+    """)
 
 
 def downgrade() -> None:
