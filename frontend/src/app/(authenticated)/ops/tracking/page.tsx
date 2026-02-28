@@ -597,7 +597,11 @@ export default function TrackingPage() {
 
     const applyRowColor = (excelRow: ExcelJS.Row, resolvedStatus: string) => {
       // "Invoiced" shares the same cell color as "Completed" — financially closed
-      const colorKey = resolvedStatus === "Invoiced" ? "Completed" : resolvedStatus;
+      // "Offloaded | Waiting for PODs" uses the "Waiting for PODs" amber color
+      const colorKey =
+        resolvedStatus === "Invoiced" ? "Completed" :
+        resolvedStatus === "Offloaded | Waiting for PODs" ? "Waiting for PODs" :
+        resolvedStatus;
       const color = STATUS_ROW_COLORS[colorKey] ?? "FFFFFF";
       excelRow.eachCell({ includeEmpty: true }, (cell) => {
         cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: `FF${color}` } };
@@ -609,10 +613,10 @@ export default function TrackingPage() {
       const returnCrossings = (row.border_crossings || []).filter((bc: any) => bc.direction === "return");
 
       // Resolve single status per leg — no double "WB | Trip" format
-      // Go: waybill Completed (cargo delivered) → show "Waiting for PODs"; Invoiced → show "Invoiced"
+      // Go: waybill Completed (cargo delivered) → show "Offloaded | Waiting for PODs"; Invoiced → show "Invoiced"
       const goStatus: string =
         row.waybill_status === "Invoiced"  ? "Invoiced" :
-        row.waybill_status === "Completed" ? "Waiting for PODs" :
+        row.waybill_status === "Completed" ? "Offloaded | Waiting for PODs" :
         row.trip_status;
       // Return: always the current trip status (e.g. "Loading (Return)")
       const retStatus: string = row.trip_status;
