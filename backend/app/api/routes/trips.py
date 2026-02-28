@@ -453,6 +453,25 @@ def update_trip(
                 detail="Return waybill must be attached before updating to return leg statuses"
             )
 
+        # Protect Invoiced waybills — once invoiced, a waybill's status must not be
+        # changed by trip-status automation.  Only admin/manager may override this via
+        # explicit waybill editing; trip-level status changes are blocked for regular ops.
+        if new_status not in CLOSED_STATUSES:  # allow completing / cancelling the trip itself
+            go_wb_obj = session.get(Waybill, trip.waybill_id) if trip.waybill_id else None
+            ret_wb_obj = session.get(Waybill, trip.return_waybill_id) if trip.return_waybill_id else None
+
+            go_invoiced = go_wb_obj is not None and go_wb_obj.status == WaybillStatus.invoiced
+            ret_invoiced = ret_wb_obj is not None and ret_wb_obj.status == WaybillStatus.invoiced
+            # Mirror the frontend isWaybillFinalised logic: all relevant waybills are invoiced
+            all_waybills_invoiced = go_invoiced and (
+                trip.return_waybill_id is None or ret_invoiced
+            )
+            if all_waybills_invoiced and current_user.role not in REOPEN_ROLES:
+                raise HTTPException(
+                    status_code=403,
+                    detail="Cannot update trip status: all waybills are Invoiced. Contact a Manager or Admin.",
+                )
+
         # Check if this is a reopen operation (Completed/Cancelled -> active)
         is_reopen = current_status in CLOSED_STATUSES and new_status not in CLOSED_STATUSES
         if is_reopen:
@@ -555,9 +574,10 @@ def update_trip(
         update_dict["updated_at"] = datetime.now(timezone.utc)
 
         # Story 2.25: Update go waybill status (dual waybill sync)
+        # Never touch a waybill that has already been Invoiced — it is financially locked.
         if trip.waybill_id and new_status in TRIP_TO_GO_WAYBILL_STATUS:
             go_waybill = session.get(Waybill, trip.waybill_id)
-            if go_waybill:
+            if go_waybill and go_waybill.status != WaybillStatus.invoiced:
                 if new_status == TripStatus.cancelled:
                     if cancel_go_waybill:
                         go_waybill.status = WaybillStatus.open
@@ -567,9 +587,10 @@ def update_trip(
                     session.add(go_waybill)
 
         # Story 2.25: Update return waybill status (if attached)
+        # Never touch a waybill that has already been Invoiced — it is financially locked.
         if trip.return_waybill_id and new_status in TRIP_TO_RETURN_WAYBILL_STATUS:
             return_waybill = session.get(Waybill, trip.return_waybill_id)
-            if return_waybill:
+            if return_waybill and return_waybill.status != WaybillStatus.invoiced:
                 if new_status == TripStatus.cancelled:
                     if cancel_return_waybill:
                         return_waybill.status = WaybillStatus.open
@@ -583,10 +604,10 @@ def update_trip(
         new_waybill_id = update_dict["waybill_id"]
         old_waybill_id = trip.waybill_id
 
-        # Release the old waybill if it's being replaced
+        # Release the old waybill if it's being replaced — never touch an Invoiced waybill.
         if old_waybill_id and old_waybill_id != new_waybill_id:
             old_wb = session.get(Waybill, old_waybill_id)
-            if old_wb:
+            if old_wb and old_wb.status != WaybillStatus.invoiced:
                 old_wb.status = WaybillStatus.open
                 session.add(old_wb)
 
