@@ -586,9 +586,9 @@ export default function TrackingPage() {
       return data;
     };
 
-    const applyRowColor = (excelRow: ExcelJS.Row, tripStatus: string, waybillStatus?: string | null) => {
-      const waybillDone = waybillStatus === "Completed" || waybillStatus === "Invoiced";
-      const colorKey = waybillDone ? "Completed" : tripStatus;
+    const applyRowColor = (excelRow: ExcelJS.Row, resolvedStatus: string) => {
+      // "Invoiced" shares the same cell color as "Completed" — financially closed
+      const colorKey = resolvedStatus === "Invoiced" ? "Completed" : resolvedStatus;
       const color = STATUS_ROW_COLORS[colorKey] ?? "FFFFFF";
       excelRow.eachCell({ includeEmpty: true }, (cell) => {
         cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: `FF${color}` } };
@@ -598,6 +598,15 @@ export default function TrackingPage() {
     selectedRows.forEach((row) => {
       const goCrossings     = (row.border_crossings || []).filter((bc: any) => bc.direction === "go");
       const returnCrossings = (row.border_crossings || []).filter((bc: any) => bc.direction === "return");
+
+      // Resolve single status per leg — no double "WB | Trip" format
+      // Go: waybill Completed (cargo delivered) → show "Waiting for PODs"; Invoiced → show "Invoiced"
+      const goStatus: string =
+        row.waybill_status === "Invoiced"  ? "Invoiced" :
+        row.waybill_status === "Completed" ? "Waiting for PODs" :
+        row.trip_status;
+      // Return: always the current trip status (e.g. "Loading (Return)")
+      const retStatus: string = row.trip_status;
 
       // --- GO ROW ---
       const goRow = worksheet.addRow({
@@ -610,7 +619,7 @@ export default function TrackingPage() {
         destination:      row.destination || "",
         report_date:      reportDate,
         current_position: row.current_location || "",
-        status:           row.waybill_status ? `${row.waybill_status} | ${row.trip_status}` : row.trip_status,
+        status:           goStatus,
         loading_date:     fmtDate(row.loading_start_date),
         ...buildBorderData(goCrossings),
         arrvl_offloading: fmtDate(row.arrival_offloading_date),
@@ -619,7 +628,7 @@ export default function TrackingPage() {
         transit_days:     calcDays(row.loading_end_date, row.offloading_date),
         remarks:          row.remarks || "",
       });
-      applyRowColor(goRow, row.trip_status, row.waybill_status);
+      applyRowColor(goRow, goStatus);
 
       // --- RETURN ROW (only if return waybill exists) ---
       if (row.return_waybill_id) {
@@ -633,7 +642,7 @@ export default function TrackingPage() {
           destination:      row.return_destination || "",
           report_date:      reportDate,
           current_position: row.current_location || "",
-          status:           row.return_waybill_status ? `${row.return_waybill_status} | ${row.trip_status}` : row.trip_status,
+          status:           retStatus,
           loading_date:     fmtDate(row.loading_return_start_date),
           ...buildBorderData(returnCrossings),
           arrvl_offloading: fmtDate(row.arrival_return_date),
@@ -642,7 +651,7 @@ export default function TrackingPage() {
           transit_days:     calcDays(row.loading_return_end_date, row.arrival_return_date),
           remarks:          row.remarks || "",
         });
-        applyRowColor(retRow, row.trip_status, row.return_waybill_status);
+        applyRowColor(retRow, retStatus);
       }
     });
 
