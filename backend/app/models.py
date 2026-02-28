@@ -156,7 +156,7 @@ class TruckStatus(str, Enum):
     idle = "Idle"
     waiting = "Waiting"
     dispatch = "Dispatched"
-    wait_to_load = "Waiting for Loading"
+    wait_to_load = "Arrived at Loading Point"
     loading = "Loading"
     in_transit = "In Transit"
     at_border = "At Border"
@@ -282,7 +282,7 @@ class TrailerStatus(str, Enum):
     idle = "Idle"
     waiting = "Waiting"
     dispatch = "Dispatched"
-    wait_to_load = "Waiting for Loading"
+    wait_to_load = "Arrived at Loading Point"
     loading = "Loading"
     in_transit = "In Transit"
     at_border = "At Border"
@@ -424,24 +424,29 @@ class WaybillsPublic(SQLModel):
 
 
 class TripStatus(str, Enum):
-    """Trip status values - Story 2.1, extended with return leg in Story 2.25"""
+    """Trip status values - Story 2.1, extended with return leg in Story 2.25, expanded in Story 2.27"""
     waiting = "Waiting"
     dispatch = "Dispatched"
-    wait_to_load = "Waiting for Loading"
+    wait_to_load = "Arrived at Loading Point"   # renamed from "Waiting for Loading"
     loading = "Loading"
+    loaded = "Loaded"                           # Auto-set when loading_end_date recorded
     in_transit = "In Transit"
     at_border = "At Border"
+    arrived_at_destination = "Arrived at Destination"   # Manual, fills arrival_offloading_date
     offloading = "Offloading"
-    offloaded = "Offloaded"           # Auto-set when offloading_date is recorded
-    on_way_return = "Returning to Yard"   # Truck heading back to yard
+    offloaded = "Offloaded"                     # Auto-set when offloading_date is recorded
+    returning_empty = "Returning Empty"         # renamed from "Returning to Yard" (no return WB)
     # Return leg statuses — only valid when return_waybill_id is set
-    waiting_return = "Waiting (Return)"  # First return status, waiting for return cargo
+    waiting_return = "Waiting (Return)"         # First return status, waiting for return cargo
     dispatch_return = "Dispatched (Return)"
-    wait_to_load_return = "Waiting for Loading (Return)"
+    wait_to_load_return = "Arrived at Loading Point (Return)"  # renamed
     loading_return = "Loading (Return)"
+    loaded_return = "Loaded (Return)"           # Auto-set when loading_return_end_date recorded
     in_transit_return = "In Transit (Return)"
     at_border_return = "At Border (Return)"
+    arrived_at_destination_return = "Arrived at Destination (Return)"  # Manual, fills arrival_destination_return_date
     offloading_return = "Offloading (Return)"
+    offloaded_return = "Offloaded (Return)"     # Auto-set when offloading_return_date recorded
     # End of journey
     returned = "Arrived at Yard"
     waiting_for_pods = "Waiting for PODs"
@@ -503,6 +508,7 @@ class TripUpdate(SQLModel):
     loading_return_start_date: datetime | None = Field(default=None, description="Return cargo loading started")
     loading_return_end_date: datetime | None = Field(default=None, description="Return cargo loading completed")
     offloading_return_date: datetime | None = Field(default=None, description="Return cargo offloaded at client destination")
+    arrival_destination_return_date: datetime | None = Field(default=None, description="Arrival at return destination (Arrived at Destination (Return))")
     # Cancellation control flags (Story 2.25) — used when status=Cancelled with dual waybills
     cancel_go_waybill: bool | None = Field(default=None, description="Reset go waybill to Open on cancel (default: True)")
     cancel_return_waybill: bool | None = Field(default=None, description="Reset return waybill to Open on cancel (default: True)")
@@ -555,6 +561,7 @@ class Trip(TripBase, table=True):
     loading_return_start_date: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
     loading_return_end_date: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
     offloading_return_date: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
+    arrival_destination_return_date: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
     # Client report fields
     return_empty_container_date: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
     remarks: str | None = Field(default=None)
@@ -588,9 +595,12 @@ class TripPublic(TripBase):
     arrival_loading_return_date: datetime | None = None
     loading_return_start_date: datetime | None = None
     loading_return_end_date: datetime | None = None
+    offloading_return_date: datetime | None = None
+    arrival_destination_return_date: datetime | None = None
     # Client report fields
     return_empty_container_date: datetime | None = None
     remarks: str | None = None
+    return_remarks: str | None = None
     # Enrichment fields from waybill join (Story 4.6)
     waybill_rate: Decimal | None = None
     waybill_currency: str | None = None

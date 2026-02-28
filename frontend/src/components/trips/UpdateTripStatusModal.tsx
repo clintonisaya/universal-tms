@@ -31,25 +31,29 @@ const { Text } = Typography;
 // Go leg statuses — only shown when no return waybill attached
 const GO_STATUSES: TripStatus[] = [
   "Dispatched",
-  "Waiting for Loading",
+  "Arrived at Loading Point",
   "Loading",
+  // "Loaded" is auto-set when loading_end_date is filled — not manually selectable
   "In Transit",
   "At Border",
+  "Arrived at Destination",
   "Offloading",
   // "Offloaded" is auto-set when offloading_date is filled — not manually selectable
-  "Returning to Yard",
+  "Returning Empty",
 ];
 
 // Return leg statuses — only shown when return_waybill_id is set
 const RETURN_STATUSES: TripStatus[] = [
   "Waiting (Return)",
   "Dispatched (Return)",
-  "Waiting for Loading (Return)",
+  "Arrived at Loading Point (Return)",
   "Loading (Return)",
+  // "Loaded (Return)" is auto-set when loading_return_end_date is filled — not manually selectable
   "In Transit (Return)",
   "At Border (Return)",
+  "Arrived at Destination (Return)",
   "Offloading (Return)",
-  // "Returning to Yard" is auto-set when offloading_return_date is filled — not manually selectable here
+  // "Offloaded (Return)" is auto-set when offloading_return_date is filled — not manually selectable
 ];
 
 // Terminal statuses — always visible regardless of direction
@@ -66,20 +70,25 @@ const CLOSED_STATUSES: TripStatus[] = ["Completed", "Cancelled"];
 const STATUS_ORDER: TripStatus[] = [
   "Waiting",
   "Dispatched",
-  "Waiting for Loading",
+  "Arrived at Loading Point",
   "Loading",
+  "Loaded",
   "In Transit",
   "At Border",
+  "Arrived at Destination",
   "Offloading",
   "Offloaded",
-  "Returning to Yard",
+  "Returning Empty",
   "Waiting (Return)",
   "Dispatched (Return)",
-  "Waiting for Loading (Return)",
+  "Arrived at Loading Point (Return)",
   "Loading (Return)",
+  "Loaded (Return)",
   "In Transit (Return)",
   "At Border (Return)",
+  "Arrived at Destination (Return)",
   "Offloading (Return)",
+  "Offloaded (Return)",
   "Arrived at Yard",
   "Waiting for PODs",
   "Completed",
@@ -101,9 +110,13 @@ function getPipelineStepIndex(status: TripStatus | undefined): number {
   const direct = TRIP_PIPELINE_STEPS.indexOf(status);
   if (direct >= 0) return direct;
   // Map intermediate/return statuses to nearest pipeline step
-  if (["Dispatched", "Waiting for Loading", "At Border"].includes(status)) return 2; // In Transit area
-  if (["Offloaded", "Returning to Yard", "Waiting (Return)"].includes(status)) return 3; // Post-offloading pre-return
-  if (["Dispatched (Return)", "Waiting for Loading (Return)", "Loading (Return)", "In Transit (Return)", "At Border (Return)", "Offloading (Return)", "Arrived at Yard"].includes(status)) return 4; // Post-offloading
+  if (["Dispatched", "Arrived at Loading Point", "At Border", "Arrived at Destination", "Loaded"].includes(status)) return 2; // In Transit area
+  if (["Offloaded", "Returning Empty", "Waiting (Return)"].includes(status)) return 3; // Post-offloading pre-return
+  if ([
+    "Dispatched (Return)", "Arrived at Loading Point (Return)", "Loading (Return)", "Loaded (Return)",
+    "In Transit (Return)", "At Border (Return)", "Arrived at Destination (Return)",
+    "Offloading (Return)", "Offloaded (Return)", "Arrived at Yard",
+  ].includes(status)) return 4;
   return 0;
 }
 
@@ -119,20 +132,25 @@ interface UpdateTripStatusModalProps {
 function getStatusDate(trip: Trip | null, status: TripStatus): string | null {
   if (!trip) return null;
   switch (status) {
-    case "Waiting":                   return trip.created_at;
-    case "Dispatched":                return trip.dispatch_date;
-    case "Waiting for Loading":       return trip.arrival_loading_date;
-    case "Loading":                   return trip.loading_end_date;
-    case "Offloading":                return trip.offloading_date;
-    case "Offloaded":                 return trip.offloading_date;
-    case "Returning to Yard":         return trip.arrival_return_date;
-    case "Dispatched (Return)":       return (trip as any).dispatch_return_date;
-    case "Waiting for Loading (Return)": return (trip as any).arrival_loading_return_date;
-    case "Loading (Return)":          return (trip as any).loading_return_end_date;
-    case "Offloading (Return)":       return (trip as any).offloading_return_date;
-    case "Arrived at Yard":           return trip.arrival_return_date;
-    case "Completed":                 return trip.end_date;
-    default:                          return null;
+    case "Waiting":                            return trip.created_at;
+    case "Dispatched":                         return trip.dispatch_date;
+    case "Arrived at Loading Point":           return trip.arrival_loading_date;
+    case "Loading":                            return trip.loading_end_date;
+    case "Loaded":                             return trip.loading_end_date;
+    case "Arrived at Destination":             return trip.arrival_offloading_date;
+    case "Offloading":                         return trip.offloading_date;
+    case "Offloaded":                          return trip.offloading_date;
+    case "Returning Empty":                    return trip.arrival_return_date;
+    case "Dispatched (Return)":                return (trip as any).dispatch_return_date;
+    case "Arrived at Loading Point (Return)":  return (trip as any).arrival_loading_return_date;
+    case "Loading (Return)":                   return (trip as any).loading_return_end_date;
+    case "Loaded (Return)":                    return (trip as any).loading_return_end_date;
+    case "Arrived at Destination (Return)":    return (trip as any).arrival_destination_return_date;
+    case "Offloading (Return)":                return (trip as any).offloading_return_date;
+    case "Offloaded (Return)":                 return (trip as any).offloading_return_date;
+    case "Arrived at Yard":                    return trip.arrival_return_date;
+    case "Completed":                          return trip.end_date;
+    default:                                   return null;
   }
 }
 
@@ -198,31 +216,36 @@ export function UpdateTripStatusModal({
   useEffect(() => {
     if (selectedStatus && tripData) {
         const fields: any = {};
-        
+
         if (selectedStatus === "Dispatched" && tripData.dispatch_date) {
             fields.dispatch_date = dayjs(tripData.dispatch_date);
         }
-        if (selectedStatus === "Waiting for Loading" && tripData.arrival_loading_date) {
+        if (selectedStatus === "Arrived at Loading Point" && tripData.arrival_loading_date) {
             fields.arrival_loading_date = dayjs(tripData.arrival_loading_date);
         }
         if (selectedStatus === "Loading") {
             if (tripData.loading_start_date) fields.loading_start_date = dayjs(tripData.loading_start_date);
             if (tripData.loading_end_date) fields.loading_end_date = dayjs(tripData.loading_end_date);
         }
+        if (selectedStatus === "Arrived at Destination" && tripData.arrival_offloading_date) {
+            fields.arrival_offloading_date = dayjs(tripData.arrival_offloading_date);
+        }
         if (selectedStatus === "Offloading") {
-            if (tripData.arrival_offloading_date) fields.arrival_offloading_date = dayjs(tripData.arrival_offloading_date);
             if (tripData.offloading_date) fields.offloading_date = dayjs(tripData.offloading_date);
         }
         if (selectedStatus === "Dispatched (Return)" && (tripData as any).dispatch_return_date) {
             fields.dispatch_return_date = dayjs((tripData as any).dispatch_return_date);
         }
-        if ((selectedStatus === "Returning to Yard" || selectedStatus === "Arrived at Yard") && tripData.arrival_return_date) {
+        if ((selectedStatus === "Returning Empty" || selectedStatus === "Arrived at Yard") && tripData.arrival_return_date) {
             fields.arrival_return_date = dayjs(tripData.arrival_return_date);
         }
         if (selectedStatus === "Offloading (Return)" && (tripData as any).offloading_return_date) {
             fields.offloading_return_date = dayjs((tripData as any).offloading_return_date);
         }
-        if (selectedStatus === "Waiting for Loading (Return)" && (tripData as any).arrival_loading_return_date) {
+        if (selectedStatus === "Arrived at Destination (Return)" && (tripData as any).arrival_destination_return_date) {
+            fields.arrival_destination_return_date = dayjs((tripData as any).arrival_destination_return_date);
+        }
+        if (selectedStatus === "Arrived at Loading Point (Return)" && (tripData as any).arrival_loading_return_date) {
             fields.arrival_loading_return_date = dayjs((tripData as any).arrival_loading_return_date);
         }
         if (selectedStatus === "Loading (Return)") {
@@ -407,6 +430,9 @@ export function UpdateTripStatusModal({
       }
       if (values.arrival_loading_return_date) {
         payload.arrival_loading_return_date = values.arrival_loading_return_date.format("YYYY-MM-DD");
+      }
+      if (values.arrival_destination_return_date) {
+        payload.arrival_destination_return_date = values.arrival_destination_return_date.format("YYYY-MM-DD");
       }
       if (values.loading_return_start_date) {
         payload.loading_return_start_date = values.loading_return_start_date.format("YYYY-MM-DD");
@@ -703,8 +729,8 @@ export function UpdateTripStatusModal({
           </Form.Item>
         )}
 
-        {/* Waiting for Loading — Arrival at Loading Point */}
-        {selectedStatus === "Waiting for Loading" && (
+        {/* Arrived at Loading Point — Arrival at Loading Point */}
+        {selectedStatus === "Arrived at Loading Point" && (
           <Form.Item
             name="arrival_loading_date"
             label="Arrival at Loading Point"
@@ -718,7 +744,7 @@ export function UpdateTripStatusModal({
           </Form.Item>
         )}
 
-        {/* Loading Dates — Start and End */}
+        {/* Loading Dates — Start and End (filling end date auto-advances to Loaded) */}
         {selectedStatus === "Loading" && (
           <Row gutter={12}>
             <Col span={12}>
@@ -737,7 +763,7 @@ export function UpdateTripStatusModal({
             <Col span={12}>
               <Form.Item
                 name="loading_end_date"
-                label="Loading End Date"
+                label="Loading Complete Date (auto-advances to Loaded)"
               >
                 <DatePicker
                   format="DD/MM/YYYY"
@@ -749,39 +775,37 @@ export function UpdateTripStatusModal({
           </Row>
         )}
 
-        {/* Offloading Dates */}
-        {selectedStatus === "Offloading" && (
-          <Row gutter={12}>
-            <Col span={12}>
-              <Form.Item
-                name="arrival_offloading_date"
-                label="Arrival at Offloading"
-                rules={[{ required: true, message: "Required" }]}
-              >
-                <DatePicker
-                  format="DD/MM/YYYY"
-                  style={{ width: "100%" }}
-                  placeholder="Arrival date"
-                />
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item
-                name="offloading_date"
-                label="Offloading Date"
-              >
-                <DatePicker
-                  format="DD/MM/YYYY"
-                  style={{ width: "100%" }}
-                  placeholder="Offloading date"
-                />
-              </Form.Item>
-            </Col>
-          </Row>
+        {/* Arrived at Destination — fills arrival_offloading_date */}
+        {selectedStatus === "Arrived at Destination" && (
+          <Form.Item
+            name="arrival_offloading_date"
+            label="Arrival at Destination"
+            rules={[{ required: true, message: "Please enter arrival date" }]}
+          >
+            <DatePicker
+              format="DD/MM/YYYY"
+              style={{ width: "100%" }}
+              placeholder="Date arrived at destination"
+            />
+          </Form.Item>
         )}
 
-        {/* On Way Return — arrival date (no return waybill; auto-advances to Waiting for PODs) */}
-        {selectedStatus === "Returning to Yard" && (
+        {/* Offloading Date — filling it auto-advances to Offloaded */}
+        {selectedStatus === "Offloading" && (
+          <Form.Item
+            name="offloading_date"
+            label="Offloading Date (auto-advances to Offloaded)"
+          >
+            <DatePicker
+              format="DD/MM/YYYY"
+              style={{ width: "100%" }}
+              placeholder="Offloading date"
+            />
+          </Form.Item>
+        )}
+
+        {/* Returning Empty — optional arrival date (auto-advances to Waiting for PODs) */}
+        {selectedStatus === "Returning Empty" && (
           <Form.Item
             name="arrival_return_date"
             label="Arrival at Yard"
@@ -824,23 +848,8 @@ export function UpdateTripStatusModal({
           </Form.Item>
         )}
 
-        {/* Offloading (Return) — return cargo delivered at client destination */}
-        {selectedStatus === "Offloading (Return)" && (
-          <Form.Item
-            name="offloading_return_date"
-            label="Return Offloading Date"
-            rules={[{ required: true, message: "Please enter return offloading date" }]}
-          >
-            <DatePicker
-              format="DD/MM/YYYY"
-              style={{ width: "100%" }}
-              placeholder="Date return cargo was offloaded at client destination"
-            />
-          </Form.Item>
-        )}
-
-        {/* Waiting for Loading (Return) — Arrival at Return Loading Point */}
-        {selectedStatus === "Waiting for Loading (Return)" && (
+        {/* Arrived at Loading Point (Return) — Arrival at Return Loading Point */}
+        {selectedStatus === "Arrived at Loading Point (Return)" && (
           <Form.Item
             name="arrival_loading_return_date"
             label="Arrival at Return Loading Point"
@@ -854,7 +863,7 @@ export function UpdateTripStatusModal({
           </Form.Item>
         )}
 
-        {/* Loading (Return) — Start and End */}
+        {/* Loading (Return) — Start and End (filling end date auto-advances to Loaded (Return)) */}
         {selectedStatus === "Loading (Return)" && (
           <Row gutter={12}>
             <Col span={12}>
@@ -871,7 +880,7 @@ export function UpdateTripStatusModal({
               </Form.Item>
             </Col>
             <Col span={12}>
-              <Form.Item name="loading_return_end_date" label="Return Loading End">
+              <Form.Item name="loading_return_end_date" label="Return Loading Complete (auto-advances to Loaded (Return))">
                 <DatePicker
                   format="DD/MM/YYYY"
                   style={{ width: "100%" }}
@@ -880,6 +889,35 @@ export function UpdateTripStatusModal({
               </Form.Item>
             </Col>
           </Row>
+        )}
+
+        {/* Arrived at Destination (Return) — fills arrival_destination_return_date */}
+        {selectedStatus === "Arrived at Destination (Return)" && (
+          <Form.Item
+            name="arrival_destination_return_date"
+            label="Arrival at Return Destination"
+            rules={[{ required: true, message: "Please enter arrival date" }]}
+          >
+            <DatePicker
+              format="DD/MM/YYYY"
+              style={{ width: "100%" }}
+              placeholder="Date arrived at return destination"
+            />
+          </Form.Item>
+        )}
+
+        {/* Offloading (Return) — filling date auto-advances to Offloaded (Return) */}
+        {selectedStatus === "Offloading (Return)" && (
+          <Form.Item
+            name="offloading_return_date"
+            label="Return Offloading Date (auto-advances to Offloaded (Return))"
+          >
+            <DatePicker
+              format="DD/MM/YYYY"
+              style={{ width: "100%" }}
+              placeholder="Date return cargo was offloaded"
+            />
+          </Form.Item>
         )}
 
         {/* In Transit (Return) — loading end date if not already set */}
@@ -905,7 +943,7 @@ export function UpdateTripStatusModal({
         )}
 
         {/* Remarks — go leg remark (frozen after offloading); return leg gets its own field */}
-        {![...RETURN_STATUSES, "Arrived at Yard", "Waiting for PODs"].includes(selectedStatus as TripStatus) && (
+        {![...RETURN_STATUSES, "Offloaded (Return)", "Arrived at Yard", "Waiting for PODs"].includes(selectedStatus as TripStatus) && (
           <Form.Item name="remarks" label="Remarks">
             <Input.TextArea
               rows={2}
@@ -914,7 +952,7 @@ export function UpdateTripStatusModal({
             />
           </Form.Item>
         )}
-        {[...RETURN_STATUSES, "Arrived at Yard", "Waiting for PODs"].includes(selectedStatus as TripStatus) && (
+        {[...RETURN_STATUSES, "Offloaded (Return)", "Arrived at Yard", "Waiting for PODs"].includes(selectedStatus as TripStatus) && (
           <Form.Item name="return_remarks" label="Remarks (Return)">
             <Input.TextArea
               rows={2}

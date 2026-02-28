@@ -71,15 +71,19 @@ function formatRelativeTime(dateStr: string | null | undefined): string {
 }
 
 const RETURN_STATUSES = new Set([
-  "Dispatched (Return)", "Waiting for Loading (Return)", "Loading (Return)",
-  "In Transit (Return)", "At Border (Return)", "Offloading (Return)",
+  "Dispatched (Return)", "Arrived at Loading Point (Return)", "Loading (Return)",
+  "Loaded (Return)", "In Transit (Return)", "At Border (Return)",
+  "Arrived at Destination (Return)", "Offloading (Return)", "Offloaded (Return)",
   "Arrived at Yard", "Waiting for PODs",
 ]);
 
 const STATUS_FILTERS: { text: string; value: string }[] = [
-  "Waiting", "Dispatched", "Waiting for Loading", "Loading", "In Transit", "At Border",
-  "Offloading", "Dispatched (Return)", "Waiting for Loading (Return)", "Loading (Return)",
-  "In Transit (Return)", "At Border (Return)", "Offloading (Return)",
+  "Waiting", "Dispatched", "Arrived at Loading Point", "Loading", "Loaded",
+  "In Transit", "At Border", "Arrived at Destination", "Offloading", "Offloaded",
+  "Returning Empty",
+  "Dispatched (Return)", "Arrived at Loading Point (Return)", "Loading (Return)",
+  "Loaded (Return)", "In Transit (Return)", "At Border (Return)",
+  "Arrived at Destination (Return)", "Offloading (Return)", "Offloaded (Return)",
   "Arrived at Yard", "Waiting for PODs", "Completed", "Cancelled",
 ].map((s) => ({ text: s, value: s }));
 

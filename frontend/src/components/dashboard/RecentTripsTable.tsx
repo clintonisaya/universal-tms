@@ -12,8 +12,9 @@ const { Title, Text } = Typography;
 
 
 const RETURN_STATUSES = new Set([
-  "Dispatched (Return)", "Waiting for Loading (Return)", "Loading (Return)",
-  "In Transit (Return)", "At Border (Return)", "Offloading (Return)",
+  "Dispatched (Return)", "Arrived at Loading Point (Return)", "Loading (Return)",
+  "Loaded (Return)", "In Transit (Return)", "At Border (Return)",
+  "Arrived at Destination (Return)", "Offloading (Return)", "Offloaded (Return)",
   "Arrived at Yard", "Waiting for PODs",
 ]);
 

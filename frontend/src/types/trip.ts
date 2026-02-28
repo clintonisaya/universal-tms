@@ -9,21 +9,26 @@ import type { Truck } from "./truck";
 export type TripStatus =
   | "Waiting"
   | "Dispatched"
-  | "Waiting for Loading"
+  | "Arrived at Loading Point"        // renamed from "Waiting for Loading"
   | "Loading"
+  | "Loaded"                          // auto-set when loading_end_date recorded
   | "In Transit"
   | "At Border"
+  | "Arrived at Destination"          // manual, fills arrival_offloading_date
   | "Offloading"
   | "Offloaded"                       // auto-set when offloading_date recorded
-  | "Returning to Yard"               // truck heading back to yard
+  | "Returning Empty"                 // renamed from "Returning to Yard" (no return WB)
   // Return leg statuses — only when return_waybill_id is set
   | "Waiting (Return)"                // first return status, waiting for return cargo
   | "Dispatched (Return)"
-  | "Waiting for Loading (Return)"
+  | "Arrived at Loading Point (Return)"  // renamed from "Waiting for Loading (Return)"
   | "Loading (Return)"
+  | "Loaded (Return)"                 // auto-set when loading_return_end_date recorded
   | "In Transit (Return)"
   | "At Border (Return)"
+  | "Arrived at Destination (Return)" // manual, fills arrival_destination_return_date
   | "Offloading (Return)"
+  | "Offloaded (Return)"              // auto-set when offloading_return_date recorded
   // End of journey
   | "Arrived at Yard"
   | "Waiting for PODs"
@@ -62,6 +67,8 @@ export interface Trip {
   arrival_loading_return_date: string | null;
   loading_return_start_date: string | null;
   loading_return_end_date: string | null;
+  offloading_return_date: string | null;
+  arrival_destination_return_date: string | null;
   arrival_return_date: string | null;
   trip_duration_days: number | null;
   // Waybill enrichment fields (Story 4.6)
@@ -115,6 +122,7 @@ export interface TripUpdate {
   loading_return_start_date?: string | null;
   loading_return_end_date?: string | null;
   offloading_return_date?: string | null;
+  arrival_destination_return_date?: string | null;
   arrival_return_date?: string | null;
   // Trip extra fields
   return_empty_container_date?: string | null;
