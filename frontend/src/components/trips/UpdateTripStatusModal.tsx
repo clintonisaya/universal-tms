@@ -36,10 +36,13 @@ const GO_STATUSES: TripStatus[] = [
   "In Transit",
   "At Border",
   "Offloading",
+  "Offloaded",
+  "On Way Return",
 ];
 
 // Return leg statuses — only shown when return_waybill_id is set
 const RETURN_STATUSES: TripStatus[] = [
+  "Waiting (Return)",
   "Dispatch (Return)",
   "Wait to Load (Return)",
   "Loading (Return)",
@@ -67,6 +70,9 @@ const STATUS_ORDER: TripStatus[] = [
   "In Transit",
   "At Border",
   "Offloading",
+  "Offloaded",
+  "On Way Return",
+  "Waiting (Return)",
   "Dispatch (Return)",
   "Wait to Load (Return)",
   "Loading (Return)",
@@ -95,6 +101,7 @@ function getPipelineStepIndex(status: TripStatus | undefined): number {
   if (direct >= 0) return direct;
   // Map intermediate/return statuses to nearest pipeline step
   if (["Dispatch", "Wait to Load", "At Border"].includes(status)) return 2; // In Transit area
+  if (["Offloaded", "On Way Return", "Waiting (Return)"].includes(status)) return 3; // Post-offloading pre-return
   if (["Dispatch (Return)", "Wait to Load (Return)", "Loading (Return)", "In Transit (Return)", "At Border (Return)", "Offloading (Return)", "Returned"].includes(status)) return 4; // Post-offloading
   return 0;
 }
@@ -116,6 +123,7 @@ function getStatusDate(trip: Trip | null, status: TripStatus): string | null {
     case "Wait to Load": return trip.arrival_loading_date;
     case "Loading":      return trip.loading_end_date;
     case "Offloading":   return trip.offloading_date;
+    case "Offloaded":    return trip.offloading_date;
     case "Dispatch (Return)":    return (trip as any).dispatch_return_date;
     case "Wait to Load (Return)": return (trip as any).arrival_loading_return_date;
     case "Loading (Return)":     return (trip as any).loading_return_end_date;

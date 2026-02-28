@@ -432,7 +432,10 @@ class TripStatus(str, Enum):
     in_transit = "In Transit"
     at_border = "At Border"
     offloading = "Offloading"
-    # Return leg statuses (Story 2.25) — only valid when return_waybill_id is set
+    offloaded = "Offloaded"           # Auto-set when offloading_date is recorded
+    on_way_return = "On Way Return"   # Truck heading back without a return waybill
+    # Return leg statuses — only valid when return_waybill_id is set
+    waiting_return = "Waiting (Return)"  # First return status, waiting for return cargo
     dispatch_return = "Dispatch (Return)"
     wait_to_load_return = "Wait to Load (Return)"
     loading_return = "Loading (Return)"

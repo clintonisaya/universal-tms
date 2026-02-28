@@ -142,6 +142,9 @@ const STATUS_COLORS: Record<string, string> = {
   "In Transit": "processing",
   "At Border": "purple",
   Offloading: "cyan",
+  Offloaded: "cyan",
+  "On Way Return": "processing",
+  "Waiting (Return)": "lime",
   // Return leg statuses (Story 2.25)
   "Dispatch (Return)": "purple",
   "Wait to Load (Return)": "lime",
@@ -162,7 +165,7 @@ const RISK_COLORS: Record<string, string> = {
 };
 
 const RETURN_STATUSES = new Set([
-  "Dispatch (Return)", "Wait to Load (Return)", "Loading (Return)",
+  "Waiting (Return)", "Dispatch (Return)", "Wait to Load (Return)", "Loading (Return)",
   "In Transit (Return)", "At Border (Return)", "Offloading (Return)",
   "Returned", "Waiting for PODs",
 ]);
@@ -183,15 +186,18 @@ const STATUS_ROW_COLORS: Record<string, string> = {
   // 🟡 Yellow — Waiting / standby
   "Wait to Load":           "FFE58F",  // Strong Yellow
   "Wait to Load (Return)":  "FFF7CC",  // Soft Yellow
+  "Waiting (Return)":       "FFFBE6",  // Lightest Yellow (first return status, waiting for cargo)
   "Waiting for PODs":       "FFD666",  // Amber
   // 🩵 Cyan — Physical cargo handling
   "Loading":                "87E8DE",  // Medium Cyan
   "Offloading":             "B5F5EC",  // Light Cyan
+  "Offloaded":              "BAE7FF",  // Light Blue-Cyan (done offloading, about to move)
   "Loading (Return)":       "D2F5F0",  // Lighter cyan
   "Offloading (Return)":    "E6FFFB",  // Lightest cyan
   // 🔵 Blue — Truck is moving
   "In Transit":             "91CAFF",  // Medium Blue
   "In Transit (Return)":    "D6E4FF",  // Light Blue
+  "On Way Return":          "ADC6FF",  // Periwinkle Blue (heading back)
   // 🟢 Green — Trip done
   "Returned":               "D9F7BE",  // Light Green
   "Completed":              "95DE64",  // Fresh Green

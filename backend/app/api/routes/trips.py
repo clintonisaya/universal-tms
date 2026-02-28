@@ -58,8 +58,9 @@ CLOSED_STATUSES = {TripStatus.completed, TripStatus.cancelled}
 router = APIRouter(prefix="/trips", tags=["trips"])
 
 
-# Return leg statuses (Story 2.25) — require return_waybill_id to be set
+# Return leg statuses — require return_waybill_id to be set
 RETURN_LEG_STATUSES = {
+    TripStatus.waiting_return,
     TripStatus.dispatch_return,
     TripStatus.wait_to_load_return,
     TripStatus.loading_return,
@@ -77,6 +78,9 @@ TRIP_TO_TRUCK_STATUS = {
     TripStatus.in_transit: TruckStatus.in_transit,
     TripStatus.at_border: TruckStatus.at_border,
     TripStatus.offloading: TruckStatus.offloaded,
+    TripStatus.offloaded: TruckStatus.offloaded,
+    TripStatus.on_way_return: TruckStatus.in_transit,
+    TripStatus.waiting_return: TruckStatus.offloaded,
     # Return leg statuses map to equivalent go-leg truck statuses
     TripStatus.dispatch_return: TruckStatus.dispatch,
     TripStatus.wait_to_load_return: TruckStatus.wait_to_load,
@@ -98,6 +102,9 @@ TRIP_TO_TRAILER_STATUS = {
     TripStatus.in_transit: TrailerStatus.in_transit,
     TripStatus.at_border: TrailerStatus.at_border,
     TripStatus.offloading: TrailerStatus.offloaded,
+    TripStatus.offloaded: TrailerStatus.offloaded,
+    TripStatus.on_way_return: TrailerStatus.in_transit,
+    TripStatus.waiting_return: TrailerStatus.offloaded,
     # Return leg statuses map to equivalent go-leg trailer statuses
     TripStatus.dispatch_return: TrailerStatus.dispatch,
     TripStatus.wait_to_load_return: TrailerStatus.wait_to_load,
@@ -120,6 +127,9 @@ TRIP_TO_GO_WAYBILL_STATUS = {
     TripStatus.in_transit: WaybillStatus.in_progress,
     TripStatus.at_border: WaybillStatus.in_progress,
     TripStatus.offloading: WaybillStatus.completed,     # Cargo delivered — go waybill done
+    TripStatus.offloaded: WaybillStatus.completed,
+    TripStatus.on_way_return: WaybillStatus.completed,
+    TripStatus.waiting_return: WaybillStatus.completed,
     TripStatus.dispatch_return: WaybillStatus.completed,
     TripStatus.wait_to_load_return: WaybillStatus.completed,
     TripStatus.loading_return: WaybillStatus.completed,
@@ -134,6 +144,7 @@ TRIP_TO_GO_WAYBILL_STATUS = {
 
 # Return waybill status sync: active during return leg, completed when trip ends
 TRIP_TO_RETURN_WAYBILL_STATUS = {
+    TripStatus.waiting_return: WaybillStatus.open,       # Return waybill exists but not started
     TripStatus.dispatch_return: WaybillStatus.in_progress,
     TripStatus.wait_to_load_return: WaybillStatus.in_progress,
     TripStatus.loading_return: WaybillStatus.in_progress,
@@ -424,6 +435,11 @@ def update_trip(
     if "status" in update_dict:
         new_status = TripStatus(update_dict["status"])
         current_status = TripStatus(trip.status) if isinstance(trip.status, str) else trip.status
+
+        # Auto-advance "Offloading" → "Offloaded" when offloading_date is provided
+        if new_status == TripStatus.offloading and update_dict.get("offloading_date"):
+            new_status = TripStatus.offloaded
+            update_dict["status"] = TripStatus.offloaded.value
 
         # Auto-advance "Returned" → "Waiting for PODs" when arrival date is provided
         if new_status == TripStatus.returned and update_dict.get("arrival_return_date"):
