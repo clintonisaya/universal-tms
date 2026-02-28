@@ -571,11 +571,17 @@ export default function TrackingPage() {
     worksheet.getRow(1).font = { bold: true };
     worksheet.views = [{ state: "frozen", ySplit: 1 }];
 
-    const buildBorderData = (crossings: any[]): Record<string, string | number> => {
+    const buildBorderData = (crossings: any[], direction: "go" | "return" = "go"): Record<string, string | number> => {
       const data: Record<string, string | number> = {};
       for (let i = 0; i < maxBorders; i++) {
         const bc = crossings[i];
-        data[`bc${i}_name`]  = bc ? bc.border_display_name || "" : "";
+        // For return leg the truck crosses in the opposite direction: Side B → Side A
+        const borderName = bc
+          ? direction === "return"
+            ? `${bc.side_b_name || ""} / ${bc.side_a_name || ""}`.trim().replace(/^\/ | \/$/, "")
+            : bc.border_display_name || ""
+          : "";
+        data[`bc${i}_name`]  = borderName;
         data[`bc${i}_arr_a`] = bc ? fmtDate(bc.arrived_side_a_at) : "";
         data[`bc${i}_sub_a`] = bc ? fmtDate(bc.documents_submitted_side_a_at) : "";
         data[`bc${i}_clr_a`] = bc ? fmtDate(bc.documents_cleared_side_a_at) : "";
@@ -621,7 +627,7 @@ export default function TrackingPage() {
         current_position: row.current_location || "",
         status:           goStatus,
         loading_date:     fmtDate(row.loading_start_date),
-        ...buildBorderData(goCrossings),
+        ...buildBorderData(goCrossings, "go"),
         arrvl_offloading: fmtDate(row.arrival_offloading_date),
         offloading_date:  fmtDate(row.offloading_date),
         total_days:       row.duration_days || "",
@@ -644,7 +650,7 @@ export default function TrackingPage() {
           current_position: row.current_location || "",
           status:           retStatus,
           loading_date:     fmtDate(row.loading_return_start_date),
-          ...buildBorderData(returnCrossings),
+          ...buildBorderData(returnCrossings, "return"),
           arrvl_offloading: fmtDate(row.arrival_return_date),
           offloading_date:  "",
           total_days:       row.return_duration_days || "",
