@@ -123,7 +123,8 @@ function getStatusDate(trip: Trip | null, status: TripStatus): string | null {
     case "Wait to Load": return trip.arrival_loading_date;
     case "Loading":      return trip.loading_end_date;
     case "Offloading":   return trip.offloading_date;
-    case "Offloaded":    return trip.offloading_date;
+    case "Offloaded":      return trip.offloading_date;
+    case "On Way Return":  return trip.arrival_return_date;
     case "Dispatch (Return)":    return (trip as any).dispatch_return_date;
     case "Wait to Load (Return)": return (trip as any).arrival_loading_return_date;
     case "Loading (Return)":     return (trip as any).loading_return_end_date;
@@ -214,7 +215,7 @@ export function UpdateTripStatusModal({
         if (selectedStatus === "Dispatch (Return)" && (tripData as any).dispatch_return_date) {
             fields.dispatch_return_date = dayjs((tripData as any).dispatch_return_date);
         }
-        if (selectedStatus === "Returned" && tripData.arrival_return_date) {
+        if ((selectedStatus === "On Way Return" || selectedStatus === "Returned") && tripData.arrival_return_date) {
             fields.arrival_return_date = dayjs(tripData.arrival_return_date);
         }
         if (selectedStatus === "Offloading (Return)" && tripData.arrival_return_date) {
@@ -773,6 +774,20 @@ export function UpdateTripStatusModal({
               </Form.Item>
             </Col>
           </Row>
+        )}
+
+        {/* On Way Return — arrival date (no return waybill; auto-advances to Waiting for PODs) */}
+        {selectedStatus === "On Way Return" && (
+          <Form.Item
+            name="arrival_return_date"
+            label="Arrival at Yard"
+          >
+            <DatePicker
+              format="DD/MM/YYYY"
+              style={{ width: "100%" }}
+              placeholder="Date truck arrived back (auto-advances to Waiting for PODs)"
+            />
+          </Form.Item>
         )}
 
         {/* Return Date */}

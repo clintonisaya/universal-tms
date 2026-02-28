@@ -150,9 +150,9 @@ TRIP_TO_RETURN_WAYBILL_STATUS = {
     TripStatus.loading_return: WaybillStatus.in_progress,
     TripStatus.in_transit_return: WaybillStatus.in_progress,
     TripStatus.at_border_return: WaybillStatus.in_progress,
-    TripStatus.offloading_return: WaybillStatus.in_progress,
-    TripStatus.returned: WaybillStatus.in_progress,
-    TripStatus.waiting_for_pods: WaybillStatus.in_progress,
+    TripStatus.offloading_return: WaybillStatus.completed,  # Return cargo delivered — waybill done
+    TripStatus.returned: WaybillStatus.completed,
+    TripStatus.waiting_for_pods: WaybillStatus.completed,
     TripStatus.completed: WaybillStatus.completed,
     TripStatus.cancelled: WaybillStatus.open,
 }
@@ -443,6 +443,16 @@ def update_trip(
 
         # Auto-advance "Returned" → "Waiting for PODs" when arrival date is provided
         if new_status == TripStatus.returned and update_dict.get("arrival_return_date"):
+            new_status = TripStatus.waiting_for_pods
+            update_dict["status"] = TripStatus.waiting_for_pods.value
+
+        # Auto-advance "On Way Return" → "Waiting for PODs" when arrival_return_date is provided
+        # and the trip has no return waybill (truck returned empty, no return cargo to track)
+        if (
+            new_status == TripStatus.on_way_return
+            and update_dict.get("arrival_return_date")
+            and not trip.return_waybill_id
+        ):
             new_status = TripStatus.waiting_for_pods
             update_dict["status"] = TripStatus.waiting_for_pods.value
 
