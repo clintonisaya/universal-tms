@@ -441,11 +441,11 @@ def update_trip(
             new_status = TripStatus.offloaded
             update_dict["status"] = TripStatus.offloaded.value
 
-        # Auto-advance "Offloading (Return)" → "Returned" when offloading_return_date is provided
-        # (cargo delivered at client destination; truck then drives back to yard)
+        # Auto-advance "Offloading (Return)" → "On Way Return" when offloading_return_date is provided
+        # (cargo delivered at client destination; truck now heading back to yard)
         if new_status == TripStatus.offloading_return and update_dict.get("offloading_return_date"):
-            new_status = TripStatus.returned
-            update_dict["status"] = TripStatus.returned.value
+            new_status = TripStatus.on_way_return
+            update_dict["status"] = TripStatus.on_way_return.value
 
         # Auto-advance to "Waiting for PODs" when arrival_return_date is provided
         # — applies to both "Offloading (Return)" and "Returned" so filling the
