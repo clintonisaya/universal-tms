@@ -36,7 +36,7 @@ const GO_STATUSES: TripStatus[] = [
   "In Transit",
   "At Border",
   "Offloading",
-  "Offloaded",
+  // "Offloaded" is auto-set when offloading_date is filled — not manually selectable
   "On Way Return",
 ];
 
@@ -49,12 +49,13 @@ const RETURN_STATUSES: TripStatus[] = [
   "In Transit (Return)",
   "At Border (Return)",
   "Offloading (Return)",
+  // "On Way Return" is auto-set when offloading_return_date is filled — not manually selectable here
 ];
 
 // Terminal statuses — always visible regardless of direction
 const TERMINAL_STATUSES: TripStatus[] = [
   "Returned",
-  "Waiting for PODs",
+  // "Waiting for PODs" is auto-set when arrival_return_date is filled — not manually selectable
   "Completed",
   "Cancelled",
 ];
