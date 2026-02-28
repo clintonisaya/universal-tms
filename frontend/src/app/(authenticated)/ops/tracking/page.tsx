@@ -303,8 +303,10 @@ export default function TrackingPage() {
     );
 
     const calcDays = (start: string | null | undefined, end: string | null | undefined): number | string => {
-      if (!start || !end) return "-";
-      const diff = new Date(end).getTime() - new Date(start).getTime();
+      if (!start) return "-";
+      const s = new Date(start);
+      const e = end ? new Date(end) : new Date(); // live count until end date is set
+      const diff = e.getTime() - s.getTime();
       if (isNaN(diff) || diff < 0) return "-";
       return Math.round(diff / (1000 * 60 * 60 * 24));
     };
@@ -521,8 +523,10 @@ export default function TrackingPage() {
       d ? new Date(d).toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric" }) : "";
 
     const calcDays = (start: string | null | undefined, end: string | null | undefined): number | string => {
-      if (!start || !end) return "";
-      const diff = new Date(end).getTime() - new Date(start).getTime();
+      if (!start) return "";
+      const s = new Date(start);
+      const e = end ? new Date(end) : new Date(); // live count until end date is set
+      const diff = e.getTime() - s.getTime();
       if (isNaN(diff) || diff < 0) return "";
       return Math.round(diff / (1000 * 60 * 60 * 24));
     };
