@@ -661,7 +661,7 @@ export default function TrackingPage() {
           arrvl_offloading: fmtDate(row.arrival_return_date),
           offloading_date:  "",
           total_days:       calcDays(row.dispatch_date, row.arrival_return_date),
-          transit_days:     calcDays(row.loading_return_start_date, row.arrival_return_date),
+          transit_days:     calcDays(row.loading_return_end_date, row.arrival_return_date),
           remarks:          row.return_remarks || "", // return-leg remark (independent)
         });
         applyRowColor(retRow, retStatus);
