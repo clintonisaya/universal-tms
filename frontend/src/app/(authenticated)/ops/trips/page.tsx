@@ -71,16 +71,16 @@ function formatRelativeTime(dateStr: string | null | undefined): string {
 }
 
 const RETURN_STATUSES = new Set([
-  "Dispatch (Return)", "Wait to Load (Return)", "Loading (Return)",
+  "Dispatched (Return)", "Waiting for Loading (Return)", "Loading (Return)",
   "In Transit (Return)", "At Border (Return)", "Offloading (Return)",
-  "Returned", "Waiting for PODs",
+  "Arrived at Yard", "Waiting for PODs",
 ]);
 
 const STATUS_FILTERS: { text: string; value: string }[] = [
-  "Waiting", "Dispatch", "Wait to Load", "Loading", "In Transit", "At Border",
-  "Offloading", "Dispatch (Return)", "Wait to Load (Return)", "Loading (Return)",
+  "Waiting", "Dispatched", "Waiting for Loading", "Loading", "In Transit", "At Border",
+  "Offloading", "Dispatched (Return)", "Waiting for Loading (Return)", "Loading (Return)",
   "In Transit (Return)", "At Border (Return)", "Offloading (Return)",
-  "Returned", "Waiting for PODs", "Completed", "Cancelled",
+  "Arrived at Yard", "Waiting for PODs", "Completed", "Cancelled",
 ].map((s) => ({ text: s, value: s }));
 
 const DIRECTION_FILTERS = [

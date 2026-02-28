@@ -30,8 +30,8 @@ const { Text } = Typography;
 
 // Go leg statuses — only shown when no return waybill attached
 const GO_STATUSES: TripStatus[] = [
-  "Dispatch",
-  "Wait to Load",
+  "Dispatched",
+  "Waiting for Loading",
   "Loading",
   "In Transit",
   "At Border",
@@ -43,8 +43,8 @@ const GO_STATUSES: TripStatus[] = [
 // Return leg statuses — only shown when return_waybill_id is set
 const RETURN_STATUSES: TripStatus[] = [
   "Waiting (Return)",
-  "Dispatch (Return)",
-  "Wait to Load (Return)",
+  "Dispatched (Return)",
+  "Waiting for Loading (Return)",
   "Loading (Return)",
   "In Transit (Return)",
   "At Border (Return)",
@@ -54,7 +54,7 @@ const RETURN_STATUSES: TripStatus[] = [
 
 // Terminal statuses — always visible regardless of direction
 const TERMINAL_STATUSES: TripStatus[] = [
-  "Returned",
+  "Arrived at Yard",
   // "Waiting for PODs" is auto-set when arrival_return_date is filled — not manually selectable
   "Completed",
   "Cancelled",
@@ -65,8 +65,8 @@ const CLOSED_STATUSES: TripStatus[] = ["Completed", "Cancelled"];
 // Status order for timeline display — full lifecycle including return leg
 const STATUS_ORDER: TripStatus[] = [
   "Waiting",
-  "Dispatch",
-  "Wait to Load",
+  "Dispatched",
+  "Waiting for Loading",
   "Loading",
   "In Transit",
   "At Border",
@@ -74,13 +74,13 @@ const STATUS_ORDER: TripStatus[] = [
   "Offloaded",
   "Returning to Yard",
   "Waiting (Return)",
-  "Dispatch (Return)",
-  "Wait to Load (Return)",
+  "Dispatched (Return)",
+  "Waiting for Loading (Return)",
   "Loading (Return)",
   "In Transit (Return)",
   "At Border (Return)",
   "Offloading (Return)",
-  "Returned",
+  "Arrived at Yard",
   "Waiting for PODs",
   "Completed",
 ];
@@ -101,9 +101,9 @@ function getPipelineStepIndex(status: TripStatus | undefined): number {
   const direct = TRIP_PIPELINE_STEPS.indexOf(status);
   if (direct >= 0) return direct;
   // Map intermediate/return statuses to nearest pipeline step
-  if (["Dispatch", "Wait to Load", "At Border"].includes(status)) return 2; // In Transit area
+  if (["Dispatched", "Waiting for Loading", "At Border"].includes(status)) return 2; // In Transit area
   if (["Offloaded", "Returning to Yard", "Waiting (Return)"].includes(status)) return 3; // Post-offloading pre-return
-  if (["Dispatch (Return)", "Wait to Load (Return)", "Loading (Return)", "In Transit (Return)", "At Border (Return)", "Offloading (Return)", "Returned"].includes(status)) return 4; // Post-offloading
+  if (["Dispatched (Return)", "Waiting for Loading (Return)", "Loading (Return)", "In Transit (Return)", "At Border (Return)", "Offloading (Return)", "Arrived at Yard"].includes(status)) return 4; // Post-offloading
   return 0;
 }
 
@@ -119,20 +119,20 @@ interface UpdateTripStatusModalProps {
 function getStatusDate(trip: Trip | null, status: TripStatus): string | null {
   if (!trip) return null;
   switch (status) {
-    case "Waiting":      return trip.created_at;
-    case "Dispatch":     return trip.dispatch_date;
-    case "Wait to Load": return trip.arrival_loading_date;
-    case "Loading":      return trip.loading_end_date;
-    case "Offloading":   return trip.offloading_date;
-    case "Offloaded":      return trip.offloading_date;
-    case "Returning to Yard":  return trip.arrival_return_date;
-    case "Dispatch (Return)":    return (trip as any).dispatch_return_date;
-    case "Wait to Load (Return)": return (trip as any).arrival_loading_return_date;
-    case "Loading (Return)":     return (trip as any).loading_return_end_date;
-    case "Offloading (Return)":  return (trip as any).offloading_return_date;
-    case "Returned":     return trip.arrival_return_date;
-    case "Completed":    return trip.end_date;
-    default:             return null;
+    case "Waiting":                   return trip.created_at;
+    case "Dispatched":                return trip.dispatch_date;
+    case "Waiting for Loading":       return trip.arrival_loading_date;
+    case "Loading":                   return trip.loading_end_date;
+    case "Offloading":                return trip.offloading_date;
+    case "Offloaded":                 return trip.offloading_date;
+    case "Returning to Yard":         return trip.arrival_return_date;
+    case "Dispatched (Return)":       return (trip as any).dispatch_return_date;
+    case "Waiting for Loading (Return)": return (trip as any).arrival_loading_return_date;
+    case "Loading (Return)":          return (trip as any).loading_return_end_date;
+    case "Offloading (Return)":       return (trip as any).offloading_return_date;
+    case "Arrived at Yard":           return trip.arrival_return_date;
+    case "Completed":                 return trip.end_date;
+    default:                          return null;
   }
 }
 
@@ -199,10 +199,10 @@ export function UpdateTripStatusModal({
     if (selectedStatus && tripData) {
         const fields: any = {};
         
-        if (selectedStatus === "Dispatch" && tripData.dispatch_date) {
+        if (selectedStatus === "Dispatched" && tripData.dispatch_date) {
             fields.dispatch_date = dayjs(tripData.dispatch_date);
         }
-        if (selectedStatus === "Wait to Load" && tripData.arrival_loading_date) {
+        if (selectedStatus === "Waiting for Loading" && tripData.arrival_loading_date) {
             fields.arrival_loading_date = dayjs(tripData.arrival_loading_date);
         }
         if (selectedStatus === "Loading") {
@@ -213,16 +213,16 @@ export function UpdateTripStatusModal({
             if (tripData.arrival_offloading_date) fields.arrival_offloading_date = dayjs(tripData.arrival_offloading_date);
             if (tripData.offloading_date) fields.offloading_date = dayjs(tripData.offloading_date);
         }
-        if (selectedStatus === "Dispatch (Return)" && (tripData as any).dispatch_return_date) {
+        if (selectedStatus === "Dispatched (Return)" && (tripData as any).dispatch_return_date) {
             fields.dispatch_return_date = dayjs((tripData as any).dispatch_return_date);
         }
-        if ((selectedStatus === "Returning to Yard" || selectedStatus === "Returned") && tripData.arrival_return_date) {
+        if ((selectedStatus === "Returning to Yard" || selectedStatus === "Arrived at Yard") && tripData.arrival_return_date) {
             fields.arrival_return_date = dayjs(tripData.arrival_return_date);
         }
         if (selectedStatus === "Offloading (Return)" && (tripData as any).offloading_return_date) {
             fields.offloading_return_date = dayjs((tripData as any).offloading_return_date);
         }
-        if (selectedStatus === "Wait to Load (Return)" && (tripData as any).arrival_loading_return_date) {
+        if (selectedStatus === "Waiting for Loading (Return)" && (tripData as any).arrival_loading_return_date) {
             fields.arrival_loading_return_date = dayjs((tripData as any).arrival_loading_return_date);
         }
         if (selectedStatus === "Loading (Return)") {
@@ -689,7 +689,7 @@ export function UpdateTripStatusModal({
         )}
 
         {/* Dispatch Date */}
-        {selectedStatus === "Dispatch" && (
+        {selectedStatus === "Dispatched" && (
           <Form.Item
             name="dispatch_date"
             label="Dispatch Date"
@@ -703,8 +703,8 @@ export function UpdateTripStatusModal({
           </Form.Item>
         )}
 
-        {/* Wait to Load — Arrival at Loading Point */}
-        {selectedStatus === "Wait to Load" && (
+        {/* Waiting for Loading — Arrival at Loading Point */}
+        {selectedStatus === "Waiting for Loading" && (
           <Form.Item
             name="arrival_loading_date"
             label="Arrival at Loading Point"
@@ -794,8 +794,8 @@ export function UpdateTripStatusModal({
           </Form.Item>
         )}
 
-        {/* Return Date */}
-        {selectedStatus === "Returned" && (
+        {/* Arrived at Yard Date */}
+        {selectedStatus === "Arrived at Yard" && (
           <Form.Item
             name="arrival_return_date"
             label="Arrival at Yard"
@@ -809,8 +809,8 @@ export function UpdateTripStatusModal({
           </Form.Item>
         )}
 
-        {/* Dispatch (Return) Date */}
-        {selectedStatus === "Dispatch (Return)" && (
+        {/* Dispatched (Return) Date */}
+        {selectedStatus === "Dispatched (Return)" && (
           <Form.Item
             name="dispatch_return_date"
             label="Dispatch Date (Return)"
@@ -839,8 +839,8 @@ export function UpdateTripStatusModal({
           </Form.Item>
         )}
 
-        {/* Wait to Load (Return) — Arrival at Return Loading Point */}
-        {selectedStatus === "Wait to Load (Return)" && (
+        {/* Waiting for Loading (Return) — Arrival at Return Loading Point */}
+        {selectedStatus === "Waiting for Loading (Return)" && (
           <Form.Item
             name="arrival_loading_return_date"
             label="Arrival at Return Loading Point"
@@ -893,8 +893,8 @@ export function UpdateTripStatusModal({
           </Form.Item>
         )}
 
-        {/* Return Empty Container Date — available on Returned / Waiting for PODs */}
-        {(selectedStatus === "Returned" || selectedStatus === "Waiting for PODs") && (
+        {/* Return Empty Container Date — available on Arrived at Yard / Waiting for PODs */}
+        {(selectedStatus === "Arrived at Yard" || selectedStatus === "Waiting for PODs") && (
           <Form.Item name="return_empty_container_date" label="Return Empty Container Date">
             <DatePicker
               format="DD/MM/YYYY"
@@ -905,7 +905,7 @@ export function UpdateTripStatusModal({
         )}
 
         {/* Remarks — go leg remark (frozen after offloading); return leg gets its own field */}
-        {![...RETURN_STATUSES, "Returned", "Waiting for PODs"].includes(selectedStatus as TripStatus) && (
+        {![...RETURN_STATUSES, "Arrived at Yard", "Waiting for PODs"].includes(selectedStatus as TripStatus) && (
           <Form.Item name="remarks" label="Remarks">
             <Input.TextArea
               rows={2}
@@ -914,7 +914,7 @@ export function UpdateTripStatusModal({
             />
           </Form.Item>
         )}
-        {[...RETURN_STATUSES, "Returned", "Waiting for PODs"].includes(selectedStatus as TripStatus) && (
+        {[...RETURN_STATUSES, "Arrived at Yard", "Waiting for PODs"].includes(selectedStatus as TripStatus) && (
           <Form.Item name="return_remarks" label="Remarks (Return)">
             <Input.TextArea
               rows={2}

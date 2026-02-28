@@ -8,24 +8,24 @@ import type { Truck } from "./truck";
 
 export type TripStatus =
   | "Waiting"
-  | "Dispatch"
-  | "Wait to Load"
+  | "Dispatched"
+  | "Waiting for Loading"
   | "Loading"
   | "In Transit"
   | "At Border"
   | "Offloading"
-  | "Offloaded"           // auto-set when offloading_date recorded
-  | "Returning to Yard"   // truck heading back to yard
+  | "Offloaded"                       // auto-set when offloading_date recorded
+  | "Returning to Yard"               // truck heading back to yard
   // Return leg statuses — only when return_waybill_id is set
-  | "Waiting (Return)"    // first return status, waiting for return cargo
-  | "Dispatch (Return)"
-  | "Wait to Load (Return)"
+  | "Waiting (Return)"                // first return status, waiting for return cargo
+  | "Dispatched (Return)"
+  | "Waiting for Loading (Return)"
   | "Loading (Return)"
   | "In Transit (Return)"
   | "At Border (Return)"
   | "Offloading (Return)"
   // End of journey
-  | "Returned"
+  | "Arrived at Yard"
   | "Waiting for PODs"
   | "Completed"
   | "Cancelled";

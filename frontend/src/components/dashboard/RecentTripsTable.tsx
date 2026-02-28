@@ -12,9 +12,9 @@ const { Title, Text } = Typography;
 
 
 const RETURN_STATUSES = new Set([
-  "Dispatch (Return)", "Wait to Load (Return)", "Loading (Return)",
+  "Dispatched (Return)", "Waiting for Loading (Return)", "Loading (Return)",
   "In Transit (Return)", "At Border (Return)", "Offloading (Return)",
-  "Returned", "Waiting for PODs",
+  "Arrived at Yard", "Waiting for PODs",
 ]);
 
 function getRiskColor(risk: string | null | undefined): string {

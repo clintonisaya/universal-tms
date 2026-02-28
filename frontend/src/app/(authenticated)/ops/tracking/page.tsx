@@ -138,8 +138,8 @@ const STATUS_COLORS: Record<string, string> = {
   Invoiced: "geekblue",
   // Trip Statuses
   Waiting: "default",
-  Dispatch: "purple",
-  "Wait to Load": "lime",
+  Dispatched: "purple",
+  "Waiting for Loading": "lime",
   Loading: "gold",
   "In Transit": "processing",
   "At Border": "purple",
@@ -148,13 +148,13 @@ const STATUS_COLORS: Record<string, string> = {
   "Returning to Yard": "processing",
   "Waiting (Return)": "lime",
   // Return leg statuses (Story 2.25)
-  "Dispatch (Return)": "purple",
-  "Wait to Load (Return)": "lime",
+  "Dispatched (Return)": "purple",
+  "Waiting for Loading (Return)": "lime",
   "Loading (Return)": "gold",
   "In Transit (Return)": "processing",
   "At Border (Return)": "purple",
   "Offloading (Return)": "cyan",
-  Returned: "geekblue",
+  "Arrived at Yard": "geekblue",
   "Waiting for PODs": "warning",
   Cancelled: "error",
   "Not Dispatched": "default",
@@ -167,9 +167,9 @@ const RISK_COLORS: Record<string, string> = {
 };
 
 const RETURN_STATUSES = new Set([
-  "Waiting (Return)", "Dispatch (Return)", "Wait to Load (Return)", "Loading (Return)",
+  "Waiting (Return)", "Dispatched (Return)", "Waiting for Loading (Return)", "Loading (Return)",
   "In Transit (Return)", "At Border (Return)", "Offloading (Return)",
-  "Returned", "Waiting for PODs",
+  "Arrived at Yard", "Waiting for PODs",
 ]);
 
 // Excel row background colors — semantic color system:
@@ -181,13 +181,13 @@ const STATUS_ROW_COLORS: Record<string, string> = {
   "Waiting":                "F5F5F5",
   "Not Dispatched":         "FAFAFA",
   // 🟣 Purple — Border / regulatory
-  "Dispatch":               "D3ADF7",  // Soft Purple
-  "At Border":              "B37FEB",  // Medium Purple
-  "Dispatch (Return)":      "F9F0FF",  // Lightest purple (return = lighter)
-  "At Border (Return)":     "EFDBFF",  // Light purple
+  "Dispatched":                     "D3ADF7",  // Soft Purple
+  "At Border":                      "B37FEB",  // Medium Purple
+  "Dispatched (Return)":            "F9F0FF",  // Lightest purple (return = lighter)
+  "At Border (Return)":             "EFDBFF",  // Light purple
   // 🟡 Yellow — Waiting / standby
-  "Wait to Load":           "FFE58F",  // Strong Yellow
-  "Wait to Load (Return)":  "FFF7CC",  // Soft Yellow
+  "Waiting for Loading":            "FFE58F",  // Strong Yellow
+  "Waiting for Loading (Return)":   "FFF7CC",  // Soft Yellow
   "Waiting (Return)":       "FFFBE6",  // Lightest Yellow (first return status, waiting for cargo)
   "Waiting for PODs":       "FFD666",  // Amber
   // 🩵 Cyan — Physical cargo handling
@@ -201,7 +201,7 @@ const STATUS_ROW_COLORS: Record<string, string> = {
   "In Transit (Return)":    "D6E4FF",  // Light Blue
   "Returning to Yard":      "ADC6FF",  // Periwinkle Blue (heading back)
   // 🟢 Green — Trip done
-  "Returned":               "D9F7BE",  // Light Green
+  "Arrived at Yard":        "D9F7BE",  // Light Green
   "Completed":              "95DE64",  // Fresh Green
   // 🔴 Red — Problem / stop
   "Cancelled":              "FF7875",  // Soft Red
