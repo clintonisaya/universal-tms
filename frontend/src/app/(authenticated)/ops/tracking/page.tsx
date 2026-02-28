@@ -680,14 +680,14 @@ export default function TrackingPage() {
     window.URL.revokeObjectURL(url);
   };
 
-  const TERMINAL_WAYBILL_STATUSES = new Set(["Completed", "Invoiced"]);
-
+  // Only "Invoiced" locks the record — "Completed" is a normal mid-trip waybill state
+  // (go waybill becomes Completed at offloading, trip can still continue to return leg)
   const isWaybillFinalised = (record: TrackingRow): boolean => {
-    const goDone = TERMINAL_WAYBILL_STATUSES.has(record.waybill_status ?? "");
-    const retDone =
+    const goLocked = record.waybill_status === "Invoiced";
+    const retLocked =
       !record.return_waybill_id ||
-      TERMINAL_WAYBILL_STATUSES.has(record.return_waybill_status ?? "");
-    return goDone && retDone;
+      record.return_waybill_status === "Invoiced";
+    return goLocked && retLocked;
   };
 
   const openStatusModal = (record: TrackingRow) => {
@@ -696,7 +696,7 @@ export default function TrackingPage() {
       return;
     }
     if (isWaybillFinalised(record)) {
-      message.info("All waybills on this trip are completed — status cannot be changed.");
+      message.info("All waybills on this trip are Invoiced — status cannot be changed.");
       return;
     }
     setSelectedTripId(record.trip_id);
