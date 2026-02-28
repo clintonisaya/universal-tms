@@ -507,7 +507,8 @@ class TripUpdate(SQLModel):
     cancel_return_waybill: bool | None = Field(default=None, description="Reset return waybill to Open on cancel (default: True)")
     # Client report fields
     return_empty_container_date: datetime | None = Field(default=None, description="Date empty container was returned")
-    remarks: str | None = Field(default=None, description="Free-text remarks for client report")
+    remarks: str | None = Field(default=None, description="Go-leg remarks for client report (frozen after offloading)")
+    return_remarks: str | None = Field(default=None, description="Return-leg remarks for client report")
 
 
 # Properties to receive for truck swap
@@ -555,6 +556,7 @@ class Trip(TripBase, table=True):
     # Client report fields
     return_empty_container_date: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
     remarks: str | None = Field(default=None)
+    return_remarks: str | None = Field(default=None)
 
     # Relationships
     truck: Truck | None = Relationship()

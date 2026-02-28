@@ -236,6 +236,9 @@ export function UpdateTripStatusModal({
         if ((tripData as any).remarks) {
             fields.remarks = (tripData as any).remarks;
         }
+        if ((tripData as any).return_remarks) {
+            fields.return_remarks = (tripData as any).return_remarks;
+        }
 
         form.setFieldsValue(fields);
     }
@@ -411,6 +414,9 @@ export function UpdateTripStatusModal({
       }
       if (values.remarks !== undefined) {
         payload.remarks = values.remarks || null;
+      }
+      if (values.return_remarks !== undefined) {
+        payload.return_remarks = values.return_remarks || null;
       }
 
       const response = await fetch(`/api/v1/trips/${tripId}`, {
@@ -879,14 +885,25 @@ export function UpdateTripStatusModal({
           </Form.Item>
         )}
 
-        {/* Remarks — always available */}
-        <Form.Item name="remarks" label="Remarks">
-          <Input.TextArea
-            rows={2}
-            placeholder="Optional notes for client report"
-            maxLength={500}
-          />
-        </Form.Item>
+        {/* Remarks — go leg remark (frozen after offloading); return leg gets its own field */}
+        {![...RETURN_STATUSES, "Returned", "Waiting for PODs"].includes(selectedStatus as TripStatus) && (
+          <Form.Item name="remarks" label="Remarks">
+            <Input.TextArea
+              rows={2}
+              placeholder="Optional notes for client report (go leg)"
+              maxLength={500}
+            />
+          </Form.Item>
+        )}
+        {[...RETURN_STATUSES, "Returned", "Waiting for PODs"].includes(selectedStatus as TripStatus) && (
+          <Form.Item name="return_remarks" label="Remarks (Return)">
+            <Input.TextArea
+              rows={2}
+              placeholder="Optional notes for client report (return leg)"
+              maxLength={500}
+            />
+          </Form.Item>
+        )}
 
         <Divider style={{ margin: "12px 0" }}>Location</Divider>
 

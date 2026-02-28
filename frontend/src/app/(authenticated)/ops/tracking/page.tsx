@@ -126,6 +126,7 @@ interface TrackingRow {
   // Trip extra fields
   return_empty_container_date: string | null;
   remarks: string | null;
+  return_remarks: string | null;
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -376,7 +377,8 @@ export default function TrackingPage() {
       { header: "Days at Loading",          key: "days_loading",            width: 16 },
       ...daysBorderGoCols,
       ...daysBorderReturnCols,
-      { header: "Remark",                   key: "remarks",                 width: 30 },
+      { header: "Remark (Go)",              key: "remarks",                 width: 30 },
+      { header: "Remark (Return)",          key: "return_remarks",          width: 30 },
     ] as Partial<ExcelJS.Column>[];
 
     worksheet.getRow(1).font = { bold: true };
@@ -426,6 +428,7 @@ export default function TrackingPage() {
         trailer_plate:    row.trailer_plate || "-",
         current_location: row.current_location || "-",
         remarks:          row.remarks || "-",
+        return_remarks:   row.return_remarks || "-",
       };
 
       const statusColor = STATUS_ROW_COLORS[row.trip_status] ?? "FFFFFF";
@@ -632,7 +635,7 @@ export default function TrackingPage() {
         offloading_date:  fmtDate(row.offloading_date),
         total_days:       row.duration_days || "",
         transit_days:     calcDays(row.loading_end_date, row.offloading_date),
-        remarks:          row.remarks || "",
+        remarks:          row.remarks || "",       // go-leg remark (frozen at offloading)
       });
       applyRowColor(goRow, goStatus);
 
@@ -655,7 +658,7 @@ export default function TrackingPage() {
           offloading_date:  "",
           total_days:       row.return_duration_days || "",
           transit_days:     calcDays(row.loading_return_end_date, row.arrival_return_date),
-          remarks:          row.remarks || "",
+          remarks:          row.return_remarks || "", // return-leg remark (independent)
         });
         applyRowColor(retRow, retStatus);
       }

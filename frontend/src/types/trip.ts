@@ -118,6 +118,7 @@ export interface TripUpdate {
   // Trip extra fields
   return_empty_container_date?: string | null;
   remarks?: string | null;
+  return_remarks?: string | null;
   // Cancellation control flags (Story 2.25)
   cancel_go_waybill?: boolean;
   cancel_return_waybill?: boolean;
