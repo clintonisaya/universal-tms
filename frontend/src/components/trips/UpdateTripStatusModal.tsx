@@ -128,7 +128,7 @@ function getStatusDate(trip: Trip | null, status: TripStatus): string | null {
     case "Dispatch (Return)":    return (trip as any).dispatch_return_date;
     case "Wait to Load (Return)": return (trip as any).arrival_loading_return_date;
     case "Loading (Return)":     return (trip as any).loading_return_end_date;
-    case "Offloading (Return)":  return trip.arrival_return_date;
+    case "Offloading (Return)":  return (trip as any).offloading_return_date;
     case "Returned":     return trip.arrival_return_date;
     case "Completed":    return trip.end_date;
     default:             return null;
@@ -218,8 +218,8 @@ export function UpdateTripStatusModal({
         if ((selectedStatus === "On Way Return" || selectedStatus === "Returned") && tripData.arrival_return_date) {
             fields.arrival_return_date = dayjs(tripData.arrival_return_date);
         }
-        if (selectedStatus === "Offloading (Return)" && tripData.arrival_return_date) {
-            fields.arrival_return_date = dayjs(tripData.arrival_return_date);
+        if (selectedStatus === "Offloading (Return)" && (tripData as any).offloading_return_date) {
+            fields.offloading_return_date = dayjs((tripData as any).offloading_return_date);
         }
         if (selectedStatus === "Wait to Load (Return)" && (tripData as any).arrival_loading_return_date) {
             fields.arrival_loading_return_date = dayjs((tripData as any).arrival_loading_return_date);
@@ -394,6 +394,9 @@ export function UpdateTripStatusModal({
       }
       if (values.offloading_date) {
         payload.offloading_date = values.offloading_date.format("YYYY-MM-DD");
+      }
+      if (values.offloading_return_date) {
+        payload.offloading_return_date = values.offloading_return_date.format("YYYY-MM-DD");
       }
       if (values.arrival_return_date) {
         payload.arrival_return_date = values.arrival_return_date.format("YYYY-MM-DD");
@@ -820,17 +823,17 @@ export function UpdateTripStatusModal({
           </Form.Item>
         )}
 
-        {/* Offloading (Return) — arrival back at origin */}
+        {/* Offloading (Return) — return cargo delivered at client destination */}
         {selectedStatus === "Offloading (Return)" && (
           <Form.Item
-            name="arrival_return_date"
-            label="Arrival at Origin (Return Offloading)"
-            rules={[{ required: true, message: "Please enter arrival date" }]}
+            name="offloading_return_date"
+            label="Return Offloading Date"
+            rules={[{ required: true, message: "Please enter return offloading date" }]}
           >
             <DatePicker
               format="DD/MM/YYYY"
               style={{ width: "100%" }}
-              placeholder="Date arrived back at origin for offloading"
+              placeholder="Date return cargo was offloaded at client destination"
             />
           </Form.Item>
         )}

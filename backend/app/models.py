@@ -496,12 +496,13 @@ class TripUpdate(SQLModel):
     loading_end_date: datetime | None = Field(default=None, description="Loading completed date")
     arrival_offloading_date: datetime | None = Field(default=None, description="Arrival at offloading point")
     offloading_date: datetime | None = Field(default=None, description="Offloading completed date")
-    arrival_return_date: datetime | None = Field(default=None, description="Arrival back at origin for return offloading")
+    arrival_return_date: datetime | None = Field(default=None, description="Date truck returned to yard (home base)")
     # Return leg tracking date fields (Story 2.25)
     dispatch_return_date: datetime | None = Field(default=None, description="Date dispatched for return journey")
     arrival_loading_return_date: datetime | None = Field(default=None, description="Arrival at return loading point")
     loading_return_start_date: datetime | None = Field(default=None, description="Return cargo loading started")
     loading_return_end_date: datetime | None = Field(default=None, description="Return cargo loading completed")
+    offloading_return_date: datetime | None = Field(default=None, description="Return cargo offloaded at client destination")
     # Cancellation control flags (Story 2.25) — used when status=Cancelled with dual waybills
     cancel_go_waybill: bool | None = Field(default=None, description="Reset go waybill to Open on cancel (default: True)")
     cancel_return_waybill: bool | None = Field(default=None, description="Reset return waybill to Open on cancel (default: True)")
@@ -553,6 +554,7 @@ class Trip(TripBase, table=True):
     arrival_loading_return_date: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
     loading_return_start_date: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
     loading_return_end_date: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
+    offloading_return_date: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
     # Client report fields
     return_empty_container_date: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
     remarks: str | None = Field(default=None)

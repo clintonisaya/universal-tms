@@ -191,6 +191,7 @@ def get_waybill_tracking_report(
             "arrival_loading_return_date": _iso(trip.arrival_loading_return_date),
             "loading_return_start_date": _iso(trip.loading_return_start_date),
             "loading_return_end_date": _iso(trip.loading_return_end_date),
+            "offloading_return_date": _iso(trip.offloading_return_date),
             "arrival_return_date": _iso(trip.arrival_return_date),
             # Client report fields
             "return_empty_container_date": _iso(trip.return_empty_container_date),
@@ -251,6 +252,7 @@ def get_waybill_tracking_report(
             "arrival_loading_return_date": None,
             "loading_return_start_date": None,
             "loading_return_end_date": None,
+            "offloading_return_date": None,
             "arrival_return_date": None,
             "return_empty_container_date": None,
             "remarks": None,

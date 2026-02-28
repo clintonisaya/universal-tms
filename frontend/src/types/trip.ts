@@ -114,6 +114,7 @@ export interface TripUpdate {
   arrival_loading_return_date?: string | null;
   loading_return_start_date?: string | null;
   loading_return_end_date?: string | null;
+  offloading_return_date?: string | null;
   arrival_return_date?: string | null;
   // Trip extra fields
   return_empty_container_date?: string | null;

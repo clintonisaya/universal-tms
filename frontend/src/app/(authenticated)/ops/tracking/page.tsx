@@ -103,6 +103,7 @@ interface TrackingRow {
   arrival_loading_return_date: string | null;
   loading_return_start_date: string | null;
   loading_return_end_date: string | null;
+  offloading_return_date: string | null;
   arrival_return_date: string | null;
 
   // Border crossings (Story 2.26)
@@ -372,7 +373,8 @@ export default function TrackingPage() {
       { header: "Arrival at Offloading",    key: "arrival_offloading_date", width: 22 },
       { header: "Offloading Date",          key: "offloading_date",         width: 20 },
       ...returnBorderCols,
-      { header: "Arrival at Return Dest.",  key: "arrival_return_date",     width: 26 },
+      { header: "Return Offloading Date",   key: "offloading_return_date",  width: 26 },
+      { header: "Arrival at Yard",          key: "arrival_return_date",     width: 22 },
       { header: "Total Days",               key: "duration_days",           width: 14 },
       { header: "Days at Loading",          key: "days_loading",            width: 16 },
       ...daysBorderGoCols,
@@ -450,6 +452,7 @@ export default function TrackingPage() {
         loading_end_date:        fmtDate(row.loading_end_date),
         arrival_offloading_date: fmtDate(row.arrival_offloading_date),
         offloading_date:         fmtDate(row.offloading_date),
+        offloading_return_date:  "-",
         arrival_return_date:     "-",
         duration_days:           calcDays(row.dispatch_date, row.arrival_return_date),
         days_loading:            calcDays(row.arrival_loading_date, row.loading_end_date),
@@ -478,6 +481,7 @@ export default function TrackingPage() {
           loading_end_date:        fmtDate(row.loading_return_end_date),
           arrival_offloading_date: "-",
           offloading_date:         "-",
+          offloading_return_date:  fmtDate(row.offloading_return_date),
           arrival_return_date:     fmtDate(row.arrival_return_date),
           duration_days:           calcDays(row.dispatch_date, row.arrival_return_date),
           days_loading:            calcDays(row.arrival_loading_return_date, row.loading_return_end_date),
@@ -658,10 +662,10 @@ export default function TrackingPage() {
           status:           retStatus,
           loading_date:     fmtDate(row.loading_return_start_date),
           ...buildBorderData(returnCrossings, "return"),
-          arrvl_offloading: fmtDate(row.arrival_return_date),
+          arrvl_offloading: fmtDate(row.offloading_return_date),
           offloading_date:  "",
           total_days:       calcDays(row.dispatch_date, row.arrival_return_date),
-          transit_days:     calcDays(row.loading_return_end_date, row.arrival_return_date),
+          transit_days:     calcDays(row.loading_return_end_date, row.offloading_return_date),
           remarks:          row.return_remarks || "", // return-leg remark (independent)
         });
         applyRowColor(retRow, retStatus);
