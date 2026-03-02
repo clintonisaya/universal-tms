@@ -605,7 +605,11 @@ export function UpdateTripStatusModal({
                 </Text>
               </span>
             ),
-            children: <Timeline items={timelineItems} style={{ paddingTop: 8 }} />,
+            children: (
+              <div style={{ maxHeight: 220, overflowY: "auto", paddingRight: 4 }}>
+                <Timeline items={timelineItems} style={{ paddingTop: 8 }} />
+              </div>
+            ),
           }]}
         />
       )}
