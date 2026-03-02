@@ -484,6 +484,11 @@ def update_trip(
             new_status = TripStatus.waiting_for_pods
             update_dict["status"] = TripStatus.waiting_for_pods.value
 
+        # Auto-advance "Waiting for PODs" → "Completed" when pods_confirmed_date is provided
+        if new_status == TripStatus.waiting_for_pods and update_dict.get("pods_confirmed_date"):
+            new_status = TripStatus.completed
+            update_dict["status"] = TripStatus.completed.value
+
         # Story 2.25: Block return leg statuses if no return waybill is attached
         if new_status in RETURN_LEG_STATUSES and not trip.return_waybill_id:
             raise HTTPException(

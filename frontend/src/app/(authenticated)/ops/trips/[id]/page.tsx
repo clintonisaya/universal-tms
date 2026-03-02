@@ -17,6 +17,7 @@ import {
   Tooltip,
   Upload,
   Breadcrumb,
+  Timeline,
 } from "antd";
 import type { UploadFile } from "antd";
 import Link from "next/link";
@@ -28,6 +29,8 @@ import {
   UploadOutlined,
   DownloadOutlined,
   PaperClipOutlined,
+  CheckCircleOutlined,
+  ClockCircleOutlined,
 } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
 import type { TripDetailed, TripStatus } from "@/types/trip";
@@ -354,6 +357,62 @@ export default function TripDetailPage() {
       ? trip.return_route_name
       : trip.route_name;
 
+  const STATUS_HISTORY_ORDER: TripStatus[] = [
+    "Waiting", "Dispatched", "Arrived at Loading Point", "Loading", "Loaded",
+    "In Transit", "At Border", "Arrived at Destination", "Offloading", "Offloaded",
+    "Returning Empty", "Waiting (Return)", "Dispatched (Return)",
+    "Arrived at Loading Point (Return)", "Loading (Return)", "Loaded (Return)",
+    "In Transit (Return)", "At Border (Return)", "Arrived at Destination (Return)",
+    "Offloading (Return)", "Offloaded (Return)", "Arrived at Yard",
+    "Waiting for PODs", "Completed",
+  ];
+
+  const historyItems = (() => {
+    const dateOf = (status: TripStatus): string | null => {
+      switch (status) {
+        case "Waiting": return trip.created_at;
+        case "Dispatched": return trip.dispatch_date;
+        case "Arrived at Loading Point": return trip.arrival_loading_date;
+        case "Loading": case "Loaded": return trip.loading_end_date;
+        case "Arrived at Destination": return trip.arrival_offloading_date;
+        case "Offloading": case "Offloaded": return trip.offloading_date;
+        case "Returning Empty": case "Arrived at Yard": return trip.arrival_return_date;
+        case "Dispatched (Return)": return trip.dispatch_return_date;
+        case "Arrived at Loading Point (Return)": return trip.arrival_loading_return_date;
+        case "Loading (Return)": case "Loaded (Return)": return trip.loading_return_end_date;
+        case "Arrived at Destination (Return)": return trip.arrival_destination_return_date;
+        case "Offloading (Return)": case "Offloaded (Return)": return trip.offloading_return_date;
+        case "Completed": return trip.end_date;
+        default: return null;
+      }
+    };
+    const currentIdx = STATUS_HISTORY_ORDER.indexOf(trip.status);
+    return STATUS_HISTORY_ORDER.slice(0, currentIdx + 1).map((status, i) => {
+      const date = dateOf(status);
+      const done = i < currentIdx;
+      return {
+        dot: done
+          ? <CheckCircleOutlined style={{ fontSize: 14, color: "#52c41a" }} />
+          : <ClockCircleOutlined style={{ fontSize: 14, color: "#faad14" }} />,
+        children: (
+          <div>
+            <Text strong style={{ fontSize: 13 }}>{status}</Text>
+            {date && (
+              <Text type="secondary" style={{ fontSize: 12, display: "block" }}>
+                {new Date(date).toLocaleDateString("en-GB")}
+              </Text>
+            )}
+            {status === "Loading" && trip.loading_start_date && (
+              <Text type="secondary" style={{ fontSize: 12, display: "block" }}>
+                Started: {new Date(trip.loading_start_date).toLocaleDateString("en-GB")}
+              </Text>
+            )}
+          </div>
+        ),
+      };
+    });
+  })();
+
   return (
     <div
       style={{
@@ -609,6 +668,13 @@ export default function TripDetailPage() {
                       size="small"
                     />
                   </Space>
+                ),
+              },
+              {
+                key: "status-history",
+                label: `Status History (${historyItems.length})`,
+                children: (
+                  <Timeline items={historyItems} style={{ paddingTop: 12 }} />
                 ),
               },
               {

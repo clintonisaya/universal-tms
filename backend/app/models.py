@@ -516,6 +516,7 @@ class TripUpdate(SQLModel):
     return_empty_container_date: datetime | None = Field(default=None, description="Date empty container was returned")
     remarks: str | None = Field(default=None, description="Go-leg remarks for client report (frozen after offloading)")
     return_remarks: str | None = Field(default=None, description="Return-leg remarks for client report")
+    pods_confirmed_date: datetime | None = Field(default=None, description="Date PODs were confirmed — auto-advances trip to Completed")
 
 
 # Properties to receive for truck swap
@@ -566,6 +567,7 @@ class Trip(TripBase, table=True):
     return_empty_container_date: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
     remarks: str | None = Field(default=None)
     return_remarks: str | None = Field(default=None)
+    pods_confirmed_date: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
 
     # Relationships
     truck: Truck | None = Relationship()
@@ -601,6 +603,7 @@ class TripPublic(TripBase):
     return_empty_container_date: datetime | None = None
     remarks: str | None = None
     return_remarks: str | None = None
+    pods_confirmed_date: datetime | None = None
     # Enrichment fields from waybill join (Story 4.6)
     waybill_rate: Decimal | None = None
     waybill_currency: str | None = None

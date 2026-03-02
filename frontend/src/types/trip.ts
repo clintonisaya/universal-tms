@@ -83,6 +83,7 @@ export interface Trip {
   location_update_time: string | null;
   // Trip-level document attachments
   attachments: string[];
+  pods_confirmed_date: string | null;
 }
 
 export interface TripDetailed extends Trip {
@@ -128,6 +129,7 @@ export interface TripUpdate {
   return_empty_container_date?: string | null;
   remarks?: string | null;
   return_remarks?: string | null;
+  pods_confirmed_date?: string | null;
   // Cancellation control flags (Story 2.25)
   cancel_go_waybill?: boolean;
   cancel_return_waybill?: boolean;

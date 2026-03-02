@@ -17,6 +17,7 @@ import {
   Timeline,
   Typography,
   Steps,
+  Collapse,
 } from "antd";
 import {
   CheckCircleOutlined,
@@ -59,7 +60,7 @@ const RETURN_STATUSES: TripStatus[] = [
 // Terminal statuses — always visible regardless of direction
 const TERMINAL_STATUSES: TripStatus[] = [
   "Arrived at Yard",
-  // "Waiting for PODs" is auto-set when arrival_return_date is filled — not manually selectable
+  "Waiting for PODs",
   "Completed",
   "Cancelled",
 ];
@@ -258,6 +259,9 @@ export function UpdateTripStatusModal({
         if ((tripData as any).return_empty_container_date) {
             fields.return_empty_container_date = dayjs((tripData as any).return_empty_container_date);
         }
+        if ((tripData as any).pods_confirmed_date) {
+            fields.pods_confirmed_date = dayjs((tripData as any).pods_confirmed_date);
+        }
         if ((tripData as any).remarks) {
             fields.remarks = (tripData as any).remarks;
         }
@@ -443,6 +447,9 @@ export function UpdateTripStatusModal({
       if (values.return_empty_container_date) {
         payload.return_empty_container_date = values.return_empty_container_date.format("YYYY-MM-DD");
       }
+      if (values.pods_confirmed_date) {
+        payload.pods_confirmed_date = values.pods_confirmed_date.format("YYYY-MM-DD");
+      }
       if (values.remarks !== undefined) {
         payload.remarks = values.remarks || null;
       }
@@ -582,20 +589,24 @@ export function UpdateTripStatusModal({
       />
       <Divider style={{ margin: "8px 0 12px" }} />
 
-      {/* Previous Status Timeline */}
+      {/* Previous Status Timeline — collapsed by default to keep modal compact */}
       {timelineItems.length > 0 && (
-        <>
-          <div style={{ marginBottom: 8 }}>
-            <Text strong style={{ fontSize: 13 }}>Status History</Text>
-            {tripDuration && (
-              <Text type="secondary" style={{ fontSize: 12, marginLeft: 12 }}>
-                Trip Duration: {tripDuration}
-              </Text>
-            )}
-          </div>
-          <Timeline items={timelineItems} style={{ marginBottom: 8, paddingTop: 8 }} />
-          <Divider style={{ margin: "8px 0 16px" }} />
-        </>
+        <Collapse
+          size="small"
+          style={{ marginBottom: 12 }}
+          items={[{
+            key: "history",
+            label: (
+              <span>
+                <Text strong style={{ fontSize: 13 }}>Status History</Text>
+                <Text type="secondary" style={{ fontSize: 12, marginLeft: 8 }}>
+                  ({timelineItems.length} entries{tripDuration ? ` · ${tripDuration}` : ""})
+                </Text>
+              </span>
+            ),
+            children: <Timeline items={timelineItems} style={{ paddingTop: 8 }} />,
+          }]}
+        />
       )}
 
       <Form form={form} layout="vertical" onFinish={handleSubmit}>
@@ -931,13 +942,28 @@ export function UpdateTripStatusModal({
           </Form.Item>
         )}
 
-        {/* Return Empty Container Date — available on Arrived at Yard / Waiting for PODs */}
-        {(selectedStatus === "Arrived at Yard" || selectedStatus === "Waiting for PODs") && (
+        {/* Return Empty Container Date — available on Returning Empty / Arrived at Yard */}
+        {(selectedStatus === "Returning Empty" || selectedStatus === "Arrived at Yard") && (
           <Form.Item name="return_empty_container_date" label="Return Empty Container Date">
             <DatePicker
               format="DD/MM/YYYY"
               style={{ width: "100%" }}
-              placeholder="Date empty container was returned"
+              placeholder="Return empty container date if any"
+            />
+          </Form.Item>
+        )}
+
+        {/* PODs Confirmed Date — only on Waiting for PODs; auto-advances trip to Completed */}
+        {selectedStatus === "Waiting for PODs" && (
+          <Form.Item
+            name="pods_confirmed_date"
+            label="PODs Confirmed Date"
+            extra="Filling this date automatically completes and closes the trip."
+          >
+            <DatePicker
+              format="DD/MM/YYYY"
+              style={{ width: "100%" }}
+              placeholder="Date PODs were confirmed"
             />
           </Form.Item>
         )}
