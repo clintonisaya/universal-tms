@@ -46,6 +46,7 @@ interface TripProfitability {
   net_profit: number;
   margin_pct: number;
   profit_per_day: number;
+  duration_days: number;
   start_date: string | null;
 }
 
@@ -343,6 +344,21 @@ export default function TripProfitabilityPage() {
       },
       sorter: true,
       defaultSortOrder: "ascend",
+    },
+    {
+      title: "Days",
+      dataIndex: "duration_days",
+      key: "duration_days",
+      width: 80,
+      align: "center" as const,
+      render: (val: number) => {
+        const color = val > 15 ? "error" : val > 7 ? "warning" : "success";
+        return (
+          <Tooltip title="Overall trip duration">
+            <Tag color={color}>{val}d</Tag>
+          </Tooltip>
+        );
+      },
     },
     {
       title: "Actions",
