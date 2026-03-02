@@ -47,6 +47,7 @@ interface TripProfitability {
   margin_pct: number;
   profit_per_day: number;
   duration_days: number;
+  return_duration_days: number;
   start_date: string | null;
 }
 
@@ -349,14 +350,21 @@ export default function TripProfitabilityPage() {
       title: "Days",
       dataIndex: "duration_days",
       key: "duration_days",
-      width: 80,
+      width: 110,
       align: "center" as const,
-      render: (val: number) => {
+      render: (val: number, record: TripProfitability) => {
         const color = val > 15 ? "error" : val > 7 ? "warning" : "success";
         return (
-          <Tooltip title="Overall trip duration">
-            <Tag color={color}>{val}d</Tag>
-          </Tooltip>
+          <Space size={4}>
+            <Tooltip title="Overall trip duration">
+              <Tag color={color}>{val}d</Tag>
+            </Tooltip>
+            {record.return_duration_days > 0 && (
+              <Tooltip title="Return leg duration">
+                <Tag color="default">Ret: {record.return_duration_days}d</Tag>
+              </Tooltip>
+            )}
+          </Space>
         );
       },
     },

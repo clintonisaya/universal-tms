@@ -150,21 +150,35 @@ export function RecentTripsTable({ data, loading }: RecentTripsTableProps) {
     {
       title: "Days",
       key: "days",
-      width: 70,
+      width: 110,
       align: "center" as const,
       render: (_: unknown, record: Trip) => {
+        const now = Date.now();
         const days =
           record.trip_duration_days != null
             ? record.trip_duration_days
             : record.dispatch_date
-            ? Math.max(1, Math.floor((Date.now() - new Date(record.dispatch_date).getTime()) / 86400000) + 1)
+            ? Math.max(1, Math.floor((now - new Date(record.dispatch_date).getTime()) / 86400000) + 1)
             : null;
         if (days == null) return <Text type="secondary">-</Text>;
+        const retDays = record.dispatch_return_date
+          ? Math.max(1, Math.floor(
+              ((record.arrival_return_date ? new Date(record.arrival_return_date).getTime() : now) -
+                new Date(record.dispatch_return_date).getTime()) / 86400000
+            ) + 1)
+          : 0;
         const color = days > 15 ? "error" : days > 7 ? "warning" : "success";
         return (
-          <Tooltip title="Overall trip duration">
-            <Tag color={color}>{days}d</Tag>
-          </Tooltip>
+          <Space size={4}>
+            <Tooltip title="Overall trip duration">
+              <Tag color={color}>{days}d</Tag>
+            </Tooltip>
+            {retDays > 0 && (
+              <Tooltip title="Return leg duration">
+                <Tag color="default">Ret: {retDays}d</Tag>
+              </Tooltip>
+            )}
+          </Space>
         );
       },
     },

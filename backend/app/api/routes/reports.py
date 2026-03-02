@@ -685,6 +685,17 @@ def get_trip_profitability(
         
         profit_per_day = float(net_profit) / duration_days
 
+        # Return leg duration
+        return_duration_days = 0
+        if trip.return_waybill_id and trip.dispatch_return_date:
+            ret_start = trip.dispatch_return_date
+            ret_end = trip.arrival_return_date or datetime.now(timezone.utc)
+            if ret_start.tzinfo is None:
+                ret_start = ret_start.replace(tzinfo=timezone.utc)
+            if ret_end.tzinfo is None:
+                ret_end = ret_end.replace(tzinfo=timezone.utc)
+            return_duration_days = max(1, (ret_end - ret_start).days + 1)
+
         profitability_data.append({
             "trip_id": trip_id,
             "trip_number": trip.trip_number,
@@ -698,6 +709,7 @@ def get_trip_profitability(
             "start_date": trip.start_date.isoformat() if trip.start_date else None,
             "profit_per_day": round(profit_per_day, 2),
             "duration_days": duration_days,
+            "return_duration_days": return_duration_days,
         })
 
     # Sort
