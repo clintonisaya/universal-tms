@@ -566,6 +566,7 @@ export function UpdateTripStatusModal({
       confirmLoading={loadingResources}
       width={900}
       forceRender
+      styles={{ body: { maxHeight: "75vh", overflowY: "auto", paddingBottom: 8 } }}
     >
       {/* AC-2: Status flow pipeline indicator */}
       <Steps
