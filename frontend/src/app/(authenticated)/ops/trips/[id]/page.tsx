@@ -17,7 +17,7 @@ import {
   Tooltip,
   Upload,
   Breadcrumb,
-  Timeline,
+  Steps,
 } from "antd";
 import type { UploadFile } from "antd";
 import Link from "next/link";
@@ -29,8 +29,6 @@ import {
   UploadOutlined,
   DownloadOutlined,
   PaperClipOutlined,
-  CheckCircleOutlined,
-  ClockCircleOutlined,
 } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
 import type { TripDetailed, TripStatus } from "@/types/trip";
@@ -389,26 +387,15 @@ export default function TripDetailPage() {
     const currentIdx = STATUS_HISTORY_ORDER.indexOf(trip.status);
     return STATUS_HISTORY_ORDER.slice(0, currentIdx + 1).map((status, i) => {
       const date = dateOf(status);
-      const done = i < currentIdx;
+      const isLoading = status === "Loading" && trip.loading_start_date;
+      const description = [
+        date ? new Date(date).toLocaleDateString("en-GB") : undefined,
+        isLoading ? `Start: ${new Date(trip.loading_start_date!).toLocaleDateString("en-GB")}` : undefined,
+      ].filter(Boolean).join(" · ") || undefined;
       return {
-        dot: done
-          ? <CheckCircleOutlined style={{ fontSize: 14, color: "#52c41a" }} />
-          : <ClockCircleOutlined style={{ fontSize: 14, color: "#faad14" }} />,
-        children: (
-          <div>
-            <Text strong style={{ fontSize: 13 }}>{status}</Text>
-            {date && (
-              <Text type="secondary" style={{ fontSize: 12, display: "block" }}>
-                {new Date(date).toLocaleDateString("en-GB")}
-              </Text>
-            )}
-            {status === "Loading" && trip.loading_start_date && (
-              <Text type="secondary" style={{ fontSize: 12, display: "block" }}>
-                Started: {new Date(trip.loading_start_date).toLocaleDateString("en-GB")}
-              </Text>
-            )}
-          </div>
-        ),
+        title: status,
+        description,
+        status: (i < currentIdx ? "finish" : "process") as "finish" | "process",
       };
     });
   })();
@@ -674,7 +661,15 @@ export default function TripDetailPage() {
                 key: "status-history",
                 label: `Status History (${historyItems.length})`,
                 children: (
-                  <Timeline items={historyItems} style={{ paddingTop: 12 }} />
+                  <div style={{ overflowX: "auto", paddingBottom: 12 }}>
+                    <Steps
+                      labelPlacement="vertical"
+                      size="small"
+                      current={historyItems.length - 1}
+                      items={historyItems}
+                      style={{ minWidth: historyItems.length * 130 }}
+                    />
+                  </div>
                 ),
               },
               {
