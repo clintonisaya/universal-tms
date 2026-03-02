@@ -312,6 +312,7 @@ export default function TrailersPage() {
       <Modal
         title="Register New Trailer"
         open={isCreateModalOpen}
+        width={660}
         onCancel={() => {
           setIsCreateModalOpen(false);
           createForm.resetFields();
@@ -391,6 +392,7 @@ export default function TrailersPage() {
       <Modal
         title="Edit Trailer"
         open={isEditModalOpen}
+        width={660}
         onCancel={() => {
           setIsEditModalOpen(false);
           setEditingTrailer(null);

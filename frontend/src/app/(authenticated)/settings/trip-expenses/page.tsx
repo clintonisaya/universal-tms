@@ -429,6 +429,7 @@ export default function TripExpenseTypesPage() {
       <Modal
         title="Edit Category"
         open={isCategoryModalOpen}
+        width={600}
         onCancel={() => {
           setIsCategoryModalOpen(false);
           setEditingItem(null);
@@ -470,6 +471,7 @@ export default function TripExpenseTypesPage() {
             : "Add Expense Type"
         }
         open={isExpenseTypeModalOpen}
+        width={600}
         onCancel={() => {
           setIsExpenseTypeModalOpen(false);
           setEditingItem(null);

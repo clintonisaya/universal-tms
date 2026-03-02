@@ -1128,7 +1128,7 @@ export function TripDetailDrawer({ open, onClose, tripId, onEdit }: TripDetailDr
         okText="Attach Waybill"
         confirmLoading={attachingWaybill}
         okButtonProps={{ disabled: !selectedReturnWaybillId }}
-        width={700}
+        width={860}
       >
         <Space orientation="vertical" style={{ width: "100%" }}>
           <Text type="secondary">

@@ -267,6 +267,7 @@ export default function CargoTypesPage() {
       <Modal
         title="Add Cargo Type"
         open={isCreateModalOpen}
+        width={600}
         onCancel={() => {
           setIsCreateModalOpen(false);
           createForm.resetFields();
@@ -323,6 +324,7 @@ export default function CargoTypesPage() {
       <Modal
         title="Edit Cargo Type"
         open={isEditModalOpen}
+        width={600}
         onCancel={() => {
           setIsEditModalOpen(false);
           setEditingCargoType(null);

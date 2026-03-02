@@ -310,6 +310,7 @@ export default function BorderPostsPage() {
       <Modal
         title="Add Border Post"
         open={isCreateModalOpen}
+        width={660}
         onCancel={() => {
           setIsCreateModalOpen(false);
           createForm.resetFields();
@@ -372,6 +373,7 @@ export default function BorderPostsPage() {
       <Modal
         title="Edit Border Post"
         open={isEditModalOpen}
+        width={660}
         onCancel={() => {
           setIsEditModalOpen(false);
           setEditingPost(null);

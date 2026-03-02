@@ -344,6 +344,7 @@ export default function DriversPage() {
       <Modal
         title="Register New Driver"
         open={isCreateModalOpen}
+        width={720}
         onCancel={() => {
           setIsCreateModalOpen(false);
           createForm.resetFields();
@@ -451,6 +452,7 @@ export default function DriversPage() {
       <Modal
         title="Edit Driver"
         open={isEditModalOpen}
+        width={720}
         onCancel={() => {
           setIsEditModalOpen(false);
           setEditingDriver(null);

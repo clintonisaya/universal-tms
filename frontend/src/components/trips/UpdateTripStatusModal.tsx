@@ -564,7 +564,7 @@ export function UpdateTripStatusModal({
       onCancel={onClose}
       footer={null}
       confirmLoading={loadingResources}
-      width={800}
+      width={900}
       forceRender
     >
       {/* AC-2: Status flow pipeline indicator */}

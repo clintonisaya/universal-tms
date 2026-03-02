@@ -349,6 +349,7 @@ export default function LocationsPage() {
       <Modal
         title={editingItem ? "Edit Country" : "Add Country"}
         open={isCountryModalOpen}
+        width={660}
         onCancel={() => {
           setIsCountryModalOpen(false);
           setEditingItem(null);
@@ -395,6 +396,7 @@ export default function LocationsPage() {
             : `Add City to ${selectedCountryName}`
         }
         open={isCityModalOpen}
+        width={600}
         onCancel={() => {
           setIsCityModalOpen(false);
           setEditingItem(null);

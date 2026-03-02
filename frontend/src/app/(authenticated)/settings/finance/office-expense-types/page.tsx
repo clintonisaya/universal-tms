@@ -324,6 +324,7 @@ export default function OfficeExpenseTypesPage() {
       <Modal
         title="Add Office Expense Type"
         open={isCreateModalOpen}
+        width={660}
         onCancel={() => {
           setIsCreateModalOpen(false);
           createForm.resetFields();
@@ -401,6 +402,7 @@ export default function OfficeExpenseTypesPage() {
       <Modal
         title="Edit Office Expense Type"
         open={isEditModalOpen}
+        width={660}
         onCancel={() => {
           setIsEditModalOpen(false);
           setEditingType(null);

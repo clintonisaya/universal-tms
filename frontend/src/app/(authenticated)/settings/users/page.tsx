@@ -518,7 +518,7 @@ const UsersContent = () => {
         open={isModalOpen}
         onCancel={() => setIsModalOpen(false)}
         footer={null}
-        width={720}
+        width={900}
         destroyOnHidden={false}
         forceRender
         styles={{ body: { background: "#fafafa", padding: "20px 24px" } }}
@@ -602,7 +602,7 @@ const UsersContent = () => {
         open={isResetPasswordModalOpen}
         onCancel={() => setIsResetPasswordModalOpen(false)}
         footer={null}
-        width={420}
+        width={560}
         destroyOnHidden
       >
         <Form

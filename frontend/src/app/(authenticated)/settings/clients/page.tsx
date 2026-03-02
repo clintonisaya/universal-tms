@@ -268,6 +268,7 @@ export default function ClientsPage() {
       <Modal
         title="Add Client"
         open={isCreateModalOpen}
+        width={600}
         onCancel={() => {
           setIsCreateModalOpen(false);
           createForm.resetFields();
@@ -329,6 +330,7 @@ export default function ClientsPage() {
       <Modal
         title="Edit Client"
         open={isEditModalOpen}
+        width={600}
         onCancel={() => {
           setIsEditModalOpen(false);
           setEditingClient(null);

@@ -221,7 +221,7 @@ export function ExpenseDetailModal({ open, onClose, expense }: ExpenseDetailModa
       open={open}
       onCancel={onClose}
       footer={null}
-      width={700}
+      width={900}
       styles={{ body: { maxHeight: "70vh", overflowY: "auto" } }}
     >
       {/* Status Badge */}

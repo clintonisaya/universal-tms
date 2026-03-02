@@ -150,7 +150,7 @@ export function AmendAttachmentModal({ expense, open, onClose }: AmendAttachment
           )}
         </Space>
       }
-      width={560}
+      width={720}
       destroyOnHidden
     >
       <Spin spinning={loading}>

@@ -287,6 +287,7 @@ export default function VehicleStatusesPage() {
       <Modal
         title="Add Vehicle Status"
         open={isCreateModalOpen}
+        width={600}
         onCancel={() => {
           setIsCreateModalOpen(false);
           createForm.resetFields();
@@ -352,6 +353,7 @@ export default function VehicleStatusesPage() {
       <Modal
         title="Edit Vehicle Status"
         open={isEditModalOpen}
+        width={600}
         onCancel={() => {
           setIsEditModalOpen(false);
           setEditingStatus(null);

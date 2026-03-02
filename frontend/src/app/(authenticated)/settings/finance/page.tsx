@@ -258,6 +258,7 @@ export default function ExchangeRateSettingsPage() {
       <Modal
         title={editingRate ? "Edit Exchange Rate" : "Set Exchange Rate"}
         open={modalOpen}
+        width={600}
         onCancel={() => setModalOpen(false)}
         footer={null}
         destroyOnHidden

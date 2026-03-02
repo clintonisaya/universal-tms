@@ -173,7 +173,7 @@ export function ExpenseHistoryModal({
       open={open}
       onCancel={onClose}
       footer={null}
-      width={560}
+      width={720}
     >
       <Descriptions bordered size="small" column={2} style={{ marginBottom: 16 }}>
         <Descriptions.Item label="Category">{expense.category}</Descriptions.Item>

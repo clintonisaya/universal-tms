@@ -301,6 +301,7 @@ export default function TrucksPage() {
       <Modal
         title="Register New Truck"
         open={isCreateModalOpen}
+        width={660}
         onCancel={() => {
           createForm.resetFields();
           setIsCreateModalOpen(false);
@@ -377,6 +378,7 @@ export default function TrucksPage() {
       <Modal
         title="Edit Truck"
         open={isEditModalOpen}
+        width={660}
         onCancel={() => {
           editForm.resetFields();
           setIsEditModalOpen(false);

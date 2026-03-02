@@ -392,6 +392,7 @@ export default function ExpensesPage() {
       <Modal
         title="Select Trip for Expense"
         open={tripSelectModalOpen}
+        width={600}
         onCancel={() => {
           setTripSelectModalOpen(false);
           setSelectedTripId(null);
