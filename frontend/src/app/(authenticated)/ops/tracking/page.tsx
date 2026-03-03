@@ -635,8 +635,9 @@ export default function TrackingPage() {
       const returnCrossings = (row.border_crossings || []).filter((bc: any) => bc.direction === "return");
 
       // Resolve single status per leg — no double "WB | Trip" format
-      // Go: waybill Completed (cargo delivered) → show "Offloaded | Waiting for PODs"; Invoiced → show "Invoiced"
+      // Trip terminal statuses take priority; then waybill overrides for in-progress trips
       const goStatus: string =
+        row.trip_status === "Completed" || row.trip_status === "Cancelled" ? row.trip_status :
         row.waybill_status === "Invoiced"  ? "Invoiced" :
         row.waybill_status === "Completed" ? "Offloaded | Waiting for PODs" :
         row.trip_status;
