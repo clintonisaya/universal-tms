@@ -158,11 +158,17 @@ export function RecentTripsTable({ data, loading }: RecentTripsTableProps) {
       align: "center" as const,
       render: (_: unknown, record: Trip) => {
         const now = Date.now();
+        // Mirror tracking report: arrival_return_date → end_date → now
+        const endTime = record.arrival_return_date
+          ? new Date(record.arrival_return_date).getTime()
+          : record.end_date
+          ? new Date(record.end_date).getTime()
+          : now;
         const days =
           record.trip_duration_days != null
             ? record.trip_duration_days
             : record.dispatch_date
-            ? Math.max(1, Math.floor((now - new Date(record.dispatch_date).getTime()) / 86400000) + 1)
+            ? Math.max(1, Math.floor((endTime - new Date(record.dispatch_date).getTime()) / 86400000) + 1)
             : null;
         if (days == null) return <Text type="secondary">-</Text>;
         const retDays = record.dispatch_return_date
