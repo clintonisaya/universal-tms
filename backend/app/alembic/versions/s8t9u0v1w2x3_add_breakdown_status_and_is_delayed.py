@@ -20,10 +20,15 @@ depends_on = None
 
 
 def upgrade():
-    # Enum values cannot be added inside a transaction in PostgreSQL
-    op.execute("COMMIT")
-    op.execute("ALTER TYPE tripstatus ADD VALUE IF NOT EXISTS 'Breakdown'")
-    op.execute("BEGIN")
+    # PostgreSQL 12+ supports ALTER TYPE ... ADD VALUE inside a transaction.
+    # Use a DO block with IF EXISTS guard, consistent with all other migrations.
+    op.execute("""
+        DO $$ BEGIN
+            IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'tripstatus') THEN
+                ALTER TYPE tripstatus ADD VALUE IF NOT EXISTS 'Breakdown';
+            END IF;
+        END $$;
+    """)
 
     op.add_column(
         "trip",
