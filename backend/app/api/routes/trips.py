@@ -740,12 +740,12 @@ def attach_return_waybill(
     if not trip:
         raise HTTPException(status_code=404, detail="Trip not found")
 
-    # Validate trip is at Offloading status
+    # Validate trip is at Offloading or Offloaded status
     current_status = TripStatus(trip.status) if isinstance(trip.status, str) else trip.status
-    if current_status != TripStatus.offloading:
+    if current_status not in (TripStatus.offloading, TripStatus.offloaded):
         raise HTTPException(
             status_code=422,
-            detail="Return waybill can only be attached when trip status is 'Offloading'"
+            detail="Return waybill can only be attached when trip status is 'Offloading' or 'Offloaded'"
         )
 
     # Validate waybill exists

@@ -520,7 +520,7 @@ export function TripDetailDrawer({ open, onClose, tripId, onEdit }: TripDetailDr
         extra={
           trip && (
             <Space>
-              {trip.status === "Offloading" && !trip.return_waybill_id && (
+              {(trip.status === "Offloading" || trip.status === "Offloaded") && !trip.return_waybill_id && (
                 <Button type="default" onClick={handleOpenAttachWaybill}>
                   Attach Return Waybill
                 </Button>
