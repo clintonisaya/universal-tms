@@ -5,6 +5,7 @@ import {
   Modal,
   Form,
   Select,
+  Switch,
   Input,
   Button,
   Space,
@@ -67,6 +68,8 @@ const TERMINAL_STATUSES: TripStatus[] = [
 
 const CLOSED_STATUSES: TripStatus[] = ["Completed", "Cancelled"];
 
+const SPECIAL_STATUSES: TripStatus[] = ["Breakdown"];
+
 // Status order for timeline display — full lifecycle including return leg
 const STATUS_ORDER: TripStatus[] = [
   "Waiting",
@@ -108,6 +111,7 @@ const TRIP_PIPELINE_STEPS: TripStatus[] = [
 // Map any TripStatus to its nearest pipeline step index
 function getPipelineStepIndex(status: TripStatus | undefined): number {
   if (!status) return 0;
+  if (status === "Breakdown") return 0;
   const direct = TRIP_PIPELINE_STEPS.indexOf(status);
   if (direct >= 0) return direct;
   // Map intermediate/return statuses to nearest pipeline step
@@ -183,7 +187,7 @@ export function UpdateTripStatusModal({
   const isTripClosed = currentStatus && CLOSED_STATUSES.includes(currentStatus);
   const isReopening = isTripClosed && selectedStatus && !CLOSED_STATUSES.includes(selectedStatus);
 
-  // Go leg: show go statuses + terminals. Return leg: show return statuses + terminals.
+  // Go leg: show go statuses + terminals + special. Return leg: show return statuses + terminals + special.
   const TRIP_STATUSES: TripStatus[] = hasReturnWaybill
     ? [...RETURN_STATUSES, ...TERMINAL_STATUSES]
     : [...GO_STATUSES, ...TERMINAL_STATUSES];
@@ -202,6 +206,7 @@ export function UpdateTripStatusModal({
           status: initialValues.status,
           city: parts[0] || "",
           country: parts.length > 1 ? parts.slice(1).join(", ") : "",
+          is_delayed: initialValues.is_delayed ?? false,
         });
         setSelectedStatus(initialValues.status as TripStatus);
         // If the trip is already at a border when the modal opens, load border data immediately
@@ -268,6 +273,8 @@ export function UpdateTripStatusModal({
         if ((tripData as any).return_remarks) {
             fields.return_remarks = (tripData as any).return_remarks;
         }
+        // is_delayed can change after tripData loads — keep form in sync
+        fields.is_delayed = (tripData as any).is_delayed ?? false;
 
         form.setFieldsValue(fields);
     }
@@ -456,6 +463,7 @@ export function UpdateTripStatusModal({
       if (values.return_remarks !== undefined) {
         payload.return_remarks = values.return_remarks || null;
       }
+      payload.is_delayed = values.is_delayed ?? false;
 
       const response = await fetch(`/api/v1/trips/${tripId}`, {
         method: "PATCH",
@@ -572,13 +580,13 @@ export function UpdateTripStatusModal({
       <Steps
         size="small"
         current={getPipelineStepIndex(currentStatus)}
-        status={currentStatus === "Cancelled" ? "error" : "process"}
+        status={currentStatus === "Cancelled" || currentStatus === "Breakdown" ? "error" : "process"}
         style={{ marginBottom: 16 }}
         items={TRIP_PIPELINE_STEPS.map((s, i) => {
           const idx = getPipelineStepIndex(currentStatus);
           return {
             title: s,
-            status: currentStatus === "Cancelled" && i === idx
+            status: (currentStatus === "Cancelled" || currentStatus === "Breakdown") && i === idx
               ? "error"
               : i < idx
                 ? "finish"
@@ -641,12 +649,26 @@ export function UpdateTripStatusModal({
           rules={[{ required: true, message: "Please select a status" }]}
         >
           <Select placeholder="Select status" onChange={handleStatusChange}>
-            {TRIP_STATUSES.map((status) => (
-              <Select.Option key={status} value={status}>
-                {status}
-              </Select.Option>
-            ))}
+            <Select.OptGroup label={hasReturnWaybill ? "Return Leg" : "Go Leg"}>
+              {TRIP_STATUSES.filter(s => !TERMINAL_STATUSES.includes(s) && !SPECIAL_STATUSES.includes(s)).map((status) => (
+                <Select.Option key={status} value={status}>{status}</Select.Option>
+              ))}
+            </Select.OptGroup>
+            <Select.OptGroup label="Terminal">
+              {TERMINAL_STATUSES.map((status) => (
+                <Select.Option key={status} value={status}>{status}</Select.Option>
+              ))}
+            </Select.OptGroup>
+            <Select.OptGroup label="Special">
+              {SPECIAL_STATUSES.map((status) => (
+                <Select.Option key={status} value={status}>{status}</Select.Option>
+              ))}
+            </Select.OptGroup>
           </Select>
+        </Form.Item>
+
+        <Form.Item name="is_delayed" label="Mark as Delayed" valuePropName="checked">
+          <Switch />
         </Form.Item>
 
         {/* Border Crossing Sub-Form (Story 2.26) */}

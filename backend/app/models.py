@@ -436,6 +436,7 @@ class TripStatus(str, Enum):
     offloading = "Offloading"
     offloaded = "Offloaded"                     # Auto-set when offloading_date is recorded
     returning_empty = "Returning Empty"         # renamed from "Returning to Yard" (no return WB)
+    breakdown = "Breakdown"                     # Recoverable breakdown — selectable from any point
     # Return leg statuses — only valid when return_waybill_id is set
     waiting_return = "Waiting (Return)"         # First return status, waiting for return cargo
     dispatch_return = "Dispatched (Return)"
@@ -472,6 +473,7 @@ class TripBase(SQLModel):
         ),
         description="Current trip status"
     )
+    is_delayed: bool = Field(default=False, description="Whether the trip is currently delayed")
 
 
 # Properties to receive on creation
@@ -517,6 +519,7 @@ class TripUpdate(SQLModel):
     remarks: str | None = Field(default=None, description="Go-leg remarks for client report (frozen after offloading)")
     return_remarks: str | None = Field(default=None, description="Return-leg remarks for client report")
     pods_confirmed_date: datetime | None = Field(default=None, description="Date PODs were confirmed — auto-advances trip to Completed")
+    is_delayed: bool | None = Field(default=None, description="Set or clear the delayed flag")
 
 
 # Properties to receive for truck swap

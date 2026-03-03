@@ -18,6 +18,7 @@ export type TripStatus =
   | "Offloading"
   | "Offloaded"                       // auto-set when offloading_date recorded
   | "Returning Empty"                 // renamed from "Returning to Yard" (no return WB)
+  | "Breakdown"                       // recoverable breakdown — selectable from any point
   // Return leg statuses — only when return_waybill_id is set
   | "Waiting (Return)"                // first return status, waiting for return cargo
   | "Dispatched (Return)"
@@ -84,6 +85,7 @@ export interface Trip {
   // Trip-level document attachments
   attachments: string[];
   pods_confirmed_date: string | null;
+  is_delayed: boolean;
 }
 
 export interface TripDetailed extends Trip {
@@ -133,6 +135,7 @@ export interface TripUpdate {
   // Cancellation control flags (Story 2.25)
   cancel_go_waybill?: boolean;
   cancel_return_waybill?: boolean;
+  is_delayed?: boolean;
 }
 
 export interface TripsResponse {

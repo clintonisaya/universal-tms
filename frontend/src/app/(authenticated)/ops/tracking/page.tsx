@@ -34,6 +34,7 @@ import { uniqBy } from "lodash";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTracking, useInvalidateQueries } from "@/hooks/useApi";
 import { UpdateTripStatusModal } from "@/components/trips/UpdateTripStatusModal";
+import { TripStatusTag } from "@/components/ui/TripStatusTag";
 import { getStandardRowSelection } from "@/components/ui/tableUtils";
 
 const { Title, Text } = Typography;
@@ -128,6 +129,7 @@ interface TrackingRow {
   return_empty_container_date: string | null;
   remarks: string | null;
   return_remarks: string | null;
+  is_delayed: boolean;
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -148,6 +150,7 @@ const STATUS_COLORS: Record<string, string> = {
   Offloading: "cyan",
   Offloaded: "cyan",
   "Returning Empty": "processing",
+  Breakdown: "error",
   "Waiting (Return)": "lime",
   // Return leg statuses
   "Dispatched (Return)": "purple",
@@ -727,6 +730,7 @@ export default function TrackingPage() {
       status: record.trip_status,
       current_location: record.current_location,
       return_waybill_id: record.return_waybill_id,
+      is_delayed: record.is_delayed,
     });
     setIsStatusModalOpen(true);
   };
@@ -781,9 +785,7 @@ export default function TrackingPage() {
               Ret: {r.return_waybill_status}
             </Tag>
           )}
-          <Tag color={STATUS_COLORS[r.trip_status]} style={{ fontSize: 12 }}>
-            Trip: {r.trip_status}
-          </Tag>
+          <TripStatusTag status={r.trip_status as any} isDelayed={r.is_delayed} />
         </Flex>
       ),
     },

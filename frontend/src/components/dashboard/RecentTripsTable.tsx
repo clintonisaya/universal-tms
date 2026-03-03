@@ -111,7 +111,7 @@ export function RecentTripsTable({ data, loading }: RecentTripsTableProps) {
       dataIndex: "status",
       key: "status",
       width: 120,
-      render: (status: TripStatus) => <TripStatusTag status={status} />,
+      render: (status: TripStatus, record: Trip) => <TripStatusTag status={status} isDelayed={record.is_delayed} />,
     },
         {
       title: "Last Updated",

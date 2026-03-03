@@ -1,6 +1,6 @@
 "use client";
 
-import { Tag } from "antd";
+import { Tag, Space } from "antd";
 import type { TripStatus } from "@/types/trip";
 
 const TRIP_STATUS_COLORS: Record<TripStatus, string> = {
@@ -15,6 +15,7 @@ const TRIP_STATUS_COLORS: Record<TripStatus, string> = {
   Offloading: "cyan",
   Offloaded: "cyan",
   "Returning Empty": "processing",
+  Breakdown: "error",
   "Waiting (Return)": "lime",
   "Dispatched (Return)": "purple",
   "Arrived at Loading Point (Return)": "lime",
@@ -31,6 +32,18 @@ const TRIP_STATUS_COLORS: Record<TripStatus, string> = {
   Cancelled: "error",
 };
 
-export function TripStatusTag({ status }: { status: TripStatus }) {
-  return <Tag color={TRIP_STATUS_COLORS[status] ?? "default"}>{status}</Tag>;
+interface TripStatusTagProps {
+  status: TripStatus;
+  isDelayed?: boolean;
+}
+
+export function TripStatusTag({ status, isDelayed }: TripStatusTagProps) {
+  const tag = <Tag color={TRIP_STATUS_COLORS[status] ?? "default"}>{status}</Tag>;
+  if (!isDelayed) return tag;
+  return (
+    <Space size={4}>
+      {tag}
+      <Tag color="warning">Delayed</Tag>
+    </Space>
+  );
 }

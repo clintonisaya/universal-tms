@@ -79,14 +79,18 @@ def get_waybill_tracking_report(
         if not trip:
             return duration_days, return_duration_days
 
-        start_date = trip.dispatch_date or trip.start_date or trip.created_at
-        if start_date:
-            end_date = trip.arrival_return_date or trip.end_date or datetime.now(timezone.utc)
-            if start_date.tzinfo is None:
-                start_date = start_date.replace(tzinfo=timezone.utc)
-            if end_date.tzinfo is None:
-                end_date = end_date.replace(tzinfo=timezone.utc)
-            duration_days = max(1, (end_date - start_date).days + 1)
+        # Prefer stored trip_duration_days (set at completion — authoritative, no +1 offset)
+        if trip.trip_duration_days is not None:
+            duration_days = max(1, trip.trip_duration_days)
+        else:
+            start_date = trip.dispatch_date or trip.start_date or trip.created_at
+            if start_date:
+                end_date = trip.arrival_return_date or trip.end_date or datetime.now(timezone.utc)
+                if start_date.tzinfo is None:
+                    start_date = start_date.replace(tzinfo=timezone.utc)
+                if end_date.tzinfo is None:
+                    end_date = end_date.replace(tzinfo=timezone.utc)
+                duration_days = max(1, (end_date - start_date).days + 1)
 
         if trip.return_waybill_id and trip.dispatch_return_date:
             ret_start = trip.dispatch_return_date
@@ -197,6 +201,7 @@ def get_waybill_tracking_report(
             "return_empty_container_date": _iso(trip.return_empty_container_date),
             "remarks": trip.remarks,
             "return_remarks": trip.return_remarks,
+            "is_delayed": trip.is_delayed,
             # Border crossings (bulk-fetched, no N+1)
             "border_crossings": crossings_by_trip.get(str(trip.id), []),
         }
@@ -257,6 +262,7 @@ def get_waybill_tracking_report(
             "return_empty_container_date": None,
             "remarks": None,
             "return_remarks": None,
+            "is_delayed": False,
             "border_crossings": [],
         })
 
@@ -665,24 +671,21 @@ def get_trip_profitability(
         margin_pct = (float(net_profit) / float(income) * 100) if income > 0 else 0.0
 
         # Trip Duration & Profit per Day
-        duration_days = 1
-        
-        # Determine Start Date (Dispatch > Start > Created)
-        start_date = trip.dispatch_date or trip.start_date or trip.created_at
-        
-        if start_date:
-            # Determine End Date (Return > End > Now)
-            end_date = trip.arrival_return_date or trip.end_date or datetime.now(timezone.utc)
-            
-            # Ensure aware datetimes for subtraction
-            if start_date.tzinfo is None:
-                start_date = start_date.replace(tzinfo=timezone.utc)
-            if end_date.tzinfo is None:
-                end_date = end_date.replace(tzinfo=timezone.utc)
-                
-            delta = end_date - start_date
-            duration_days = max(1, delta.days + 1) # +1 to include partial days as 1 full day, or at least 1 day
-        
+        # Prefer stored trip_duration_days (authoritative value set at completion)
+        if trip.trip_duration_days is not None:
+            duration_days = max(1, trip.trip_duration_days)
+        else:
+            duration_days = 1
+            start_date = trip.dispatch_date or trip.start_date or trip.created_at
+            if start_date:
+                end_date = trip.arrival_return_date or trip.end_date or datetime.now(timezone.utc)
+                if start_date.tzinfo is None:
+                    start_date = start_date.replace(tzinfo=timezone.utc)
+                if end_date.tzinfo is None:
+                    end_date = end_date.replace(tzinfo=timezone.utc)
+                delta = end_date - start_date
+                duration_days = max(1, delta.days + 1)
+
         profit_per_day = float(net_profit) / duration_days
 
         # Return leg duration

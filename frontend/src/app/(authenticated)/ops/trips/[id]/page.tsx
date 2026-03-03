@@ -427,7 +427,7 @@ export default function TripDetailPage() {
               <Title level={2} style={{ margin: 0 }}>
                 Trip: {effectiveRoute}
               </Title>
-              <TripStatusTag status={trip.status} />
+              <TripStatusTag status={trip.status} isDelayed={trip.is_delayed} />
               <Button
                 type="link"
                 onClick={() => setIsStatusModalOpen(true)}
@@ -457,7 +457,7 @@ export default function TripDetailPage() {
                       {effectiveRoute}
                     </Descriptions.Item>
                     <Descriptions.Item label="Status">
-                      <TripStatusTag status={trip.status} />
+                      <TripStatusTag status={trip.status} isDelayed={trip.is_delayed} />
                     </Descriptions.Item>
                     <Descriptions.Item label="Detailed Status/Location">
                       {trip.current_location || "-"}
@@ -817,6 +817,7 @@ export default function TripDetailPage() {
           status: trip.status,
           current_location: trip.current_location,
           return_waybill_id: trip.return_waybill_id,
+          is_delayed: trip.is_delayed,
         }}
       />
     </div>
