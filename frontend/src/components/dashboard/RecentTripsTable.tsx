@@ -164,11 +164,13 @@ export function RecentTripsTable({ data, loading }: RecentTripsTableProps) {
           : record.end_date
           ? new Date(record.end_date).getTime()
           : now;
+        // Mirror backend calc_durations: dispatch_date → start_date → created_at
+        const startStr = record.dispatch_date || record.start_date || record.created_at;
         const days =
           record.trip_duration_days != null
             ? record.trip_duration_days
-            : record.dispatch_date
-            ? Math.max(1, Math.floor((endTime - new Date(record.dispatch_date).getTime()) / 86400000) + 1)
+            : startStr
+            ? Math.max(1, Math.floor((endTime - new Date(startStr).getTime()) / 86400000) + 1)
             : null;
         if (days == null) return <Text type="secondary">-</Text>;
         const retDays = record.dispatch_return_date
