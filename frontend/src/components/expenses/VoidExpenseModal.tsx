@@ -342,11 +342,34 @@ export function VoidExpenseModal({ expense, open, onClose, onSuccess }: VoidExpe
       return [
         submitted,
         {
+          title: "Manager Approved",
+          status: "finish" as const,
+          description: expense.approved_by ? (
+            <Space direction="vertical" size={0}>
+              <Text type="secondary" style={{ fontSize: 12 }}>
+                {expense.approved_by.full_name || expense.approved_by.username} · {formatDate(expense.approved_at)}
+              </Text>
+              {expense.manager_comment && (
+                <Text italic style={{ fontSize: 12 }}>"{expense.manager_comment}"</Text>
+              )}
+            </Space>
+          ) : undefined,
+        },
+        {
           title: "Voided",
           status: "error" as const,
-          description: expense.manager_comment ? (
-            <Text italic style={{ fontSize: 12 }}>"{expense.manager_comment}"</Text>
-          ) : undefined,
+          description: (
+            <Space direction="vertical" size={0}>
+              {expense.voided_by && (
+                <Text type="secondary" style={{ fontSize: 12 }}>
+                  {expense.voided_by.full_name || expense.voided_by.username} · {formatDate(expense.voided_at)}
+                </Text>
+              )}
+              {expense.void_reason && (
+                <Text italic style={{ fontSize: 12 }}>"{expense.void_reason}"</Text>
+              )}
+            </Space>
+          ),
         },
       ];
     }

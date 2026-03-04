@@ -1103,6 +1103,39 @@ export function ExpenseReviewModal({
       ];
     }
 
+    if (expense.status === "Voided") {
+      // Manager approved first, then it was voided at Finance stage
+      const managerApprovedClean = {
+        title: "Manager Approved",
+        status: "finish" as const,
+        description: expense.approved_by ? (
+          <Text type="secondary" style={{ fontSize: 12 }}>
+            {expense.approved_by.full_name || expense.approved_by.username} · {formatDate(expense.approved_at)}
+          </Text>
+        ) : undefined,
+      };
+      return [
+        submitted,
+        managerApprovedClean,
+        {
+          title: "Voided",
+          status: "error" as const,
+          description: (
+            <Space direction="vertical" size={0}>
+              {expense.voided_by && (
+                <Text type="secondary" style={{ fontSize: 12 }}>
+                  {expense.voided_by.full_name || expense.voided_by.username} · {formatDate(expense.voided_at)}
+                </Text>
+              )}
+              {expense.void_reason && (
+                <Text italic style={{ fontSize: 12 }}>&quot;{expense.void_reason}&quot;</Text>
+              )}
+            </Space>
+          ),
+        },
+      ];
+    }
+
     // Pending Finance or Paid
     const managerApproved = {
       title: "Manager Approved",

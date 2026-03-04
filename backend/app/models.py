@@ -679,6 +679,9 @@ class ExpenseRequestBase(SQLModel):
     paid_by_id: uuid.UUID | None = Field(default=None, foreign_key="users.id", description="User who processed the payment")
     approved_by_id: uuid.UUID | None = Field(default=None, foreign_key="users.id", description="User who approved the expense")
     approved_at: datetime | None = Field(default=None, sa_type=DateTime(timezone=True), description="Date expense was approved")
+    voided_by_id: uuid.UUID | None = Field(default=None, foreign_key="users.id", description="User who voided the expense")
+    voided_at: datetime | None = Field(default=None, sa_type=DateTime(timezone=True), description="Date expense was voided")
+    void_reason: str | None = Field(default=None, max_length=500, description="Reason for voiding the expense")
     expense_metadata: dict | None = Field(default=None, description="Additional expense metadata (item details, payment info, etc.)")
     attachments: list[str] | None = Field(default=[], description="List of URLs for attached receipts/documents")
 
@@ -725,6 +728,7 @@ class ExpenseRequest(ExpenseRequestBase, table=True):
     created_by: User | None = Relationship(sa_relationship_kwargs={"foreign_keys": "[ExpenseRequest.created_by_id]"})
     paid_by: User | None = Relationship(sa_relationship_kwargs={"foreign_keys": "[ExpenseRequest.paid_by_id]"})
     approved_by: User | None = Relationship(sa_relationship_kwargs={"foreign_keys": "[ExpenseRequest.approved_by_id]"})
+    voided_by: User | None = Relationship(sa_relationship_kwargs={"foreign_keys": "[ExpenseRequest.voided_by_id]"})
 
 
 # Properties to return via API
@@ -741,6 +745,7 @@ class ExpenseRequestPublicDetailed(ExpenseRequestPublic):
     created_by: UserPublic | None = None
     paid_by: UserPublic | None = None
     approved_by: UserPublic | None = None
+    voided_by: UserPublic | None = None
 
 
 class ExpenseRequestsPublic(SQLModel):

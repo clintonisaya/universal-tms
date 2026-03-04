@@ -247,6 +247,7 @@ def read_expenses(
             selectinload(ExpenseRequest.trip),
             selectinload(ExpenseRequest.paid_by),
             selectinload(ExpenseRequest.approved_by),
+            selectinload(ExpenseRequest.voided_by),
         )
     )
     expenses = session.exec(query).all()
@@ -327,12 +328,19 @@ async def batch_update_expenses(
 
         # Update
         expense.status = bulk_in.status
-        if bulk_in.comment:
-            expense.manager_comment = bulk_in.comment
-        # Record approver when moving to Pending Finance (manager approval)
-        if bulk_in.status == ExpenseStatus.pending_finance:
-            expense.approved_by_id = current_user.id
-            expense.approved_at = datetime.now(timezone.utc)
+        if bulk_in.status == ExpenseStatus.voided:
+            # Void reason is stored separately to preserve any manager approval remark
+            if bulk_in.comment:
+                expense.void_reason = bulk_in.comment
+            expense.voided_by_id = current_user.id
+            expense.voided_at = datetime.now(timezone.utc)
+        else:
+            if bulk_in.comment:
+                expense.manager_comment = bulk_in.comment
+            # Record approver when moving to Pending Finance (manager approval)
+            if bulk_in.status == ExpenseStatus.pending_finance:
+                expense.approved_by_id = current_user.id
+                expense.approved_at = datetime.now(timezone.utc)
         expense.updated_at = datetime.now(timezone.utc)
         session.add(expense)
         updated_count += 1

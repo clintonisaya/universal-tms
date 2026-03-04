@@ -62,6 +62,9 @@ export interface ExpenseRequest {
   paid_by_id?: string | null;
   approved_by_id?: string | null;
   approved_at?: string | null;
+  voided_by_id?: string | null;
+  voided_at?: string | null;
+  void_reason?: string | null;
   expense_metadata?: ExpenseMetadata | null;
   attachments?: string[];
   created_by_id: string;
@@ -74,6 +77,7 @@ export interface ExpenseRequestDetailed extends ExpenseRequest {
   created_by: UserSummary | null;
   paid_by: UserSummary | null;
   approved_by: UserSummary | null;
+  voided_by: UserSummary | null;
 }
 
 export interface ExpenseRequestCreate {
