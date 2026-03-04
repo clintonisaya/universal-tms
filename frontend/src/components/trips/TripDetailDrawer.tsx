@@ -432,9 +432,9 @@ export function TripDetailDrawer({ open, onClose, tripId, onEdit }: TripDetailDr
     },
   ];
 
-  // Exclude Voided and Rejected — only count active/processed expenses
+  // Exclude Voided, Rejected and Returned — only count active/processed expenses
   const countableExpenses = expenses.filter(
-    (e) => e.status !== "Voided" && e.status !== "Rejected"
+    (e) => e.status !== "Voided" && e.status !== "Rejected" && e.status !== "Returned"
   );
 
   // Resolve the best available exchange rate for an expense (always returns a number):
@@ -845,7 +845,7 @@ export function TripDetailDrawer({ open, onClose, tripId, onEdit }: TripDetailDr
                           <Text type="secondary" style={{ fontSize: 11 }}>
                             {unconvertedCount > 0
                               ? `(${unconvertedCount} expense${unconvertedCount > 1 ? "s" : ""} excluded — no exchange rate set)`
-                              : "(excl. Voided & Rejected)"}
+                              : "(excl. Voided, Rejected & Returned)"}
                           </Text>
                           {hasIncome && (
                             <>

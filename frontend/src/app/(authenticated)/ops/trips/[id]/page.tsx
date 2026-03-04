@@ -289,7 +289,7 @@ export default function TripDetailPage() {
 
   // Fix: use Number() to guard against string amounts from API
   const countableExpenses = expenses.filter(
-    (e) => e.status !== "Voided" && e.status !== "Rejected"
+    (e) => e.status !== "Voided" && e.status !== "Rejected" && e.status !== "Returned"
   );
   const totalExpenses = countableExpenses.reduce((sum, e) => sum + Number(e.amount), 0);
 
@@ -604,7 +604,7 @@ export default function TripDetailPage() {
                             maximumFractionDigits: displayCurrency === "USD" ? 2 : 0,
                           })}
                         </Text>
-                        <Text type="secondary" style={{ fontSize: 11 }}>(excl. Voided & Rejected)</Text>
+                        <Text type="secondary" style={{ fontSize: 11 }}>(excl. Voided, Rejected & Returned)</Text>
                         {hasIncome && (
                           <>
                             <Text type="secondary" style={{ fontSize: 13, margin: "0 4px" }}>|</Text>
