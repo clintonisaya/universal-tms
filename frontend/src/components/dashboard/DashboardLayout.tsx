@@ -291,7 +291,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
         collapsed={collapsed}
         onCollapse={setCollapsed}
         style={{
-          background: "#1F1F1F",
+          background: "#131313",
           boxShadow: "2px 0 8px rgba(0,0,0,0.15)",
           zIndex: 10,
           overflow: "auto",
@@ -309,7 +309,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
           alignItems: "center",
           justifyContent: "center",
           borderBottom: "1px solid rgba(255, 255, 255, 0.08)",
-          backgroundColor: "#1F1F1F"
+          backgroundColor: "#131313"
         }}>
           <Space>
             {!collapsed && (
@@ -332,10 +332,10 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
           theme={{
             components: {
               Menu: {
-                darkItemBg: "#1F1F1F",
-                darkSubMenuItemBg: "#181818",
-                darkItemSelectedBg: "rgba(212, 175, 55, 0.15)", // Gold at 15% opacity
-                darkItemSelectedColor: "#D4AF37", // Gold Text
+                darkItemBg: "#131313",
+                darkSubMenuItemBg: "#0D0D0D",
+                darkItemSelectedBg: "rgba(30, 58, 255, 0.15)", // Blue at 15% opacity
+                darkItemSelectedColor: "#7B8FFF", // Light Blue Text
                 itemBorderRadius: 4,
                 itemMarginInline: 8,
               }
@@ -357,7 +357,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
           />
         </ConfigProvider>
       </Sider>
-      <Layout style={{ background: "#f5f7fa" }}>
+      <Layout style={{ background: "#F0F4FF" }}>
         <Header
           style={{
             padding: "0 24px",
