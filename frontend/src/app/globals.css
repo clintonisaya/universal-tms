@@ -2,7 +2,7 @@
 @import "tailwindcss";
 
 :root {
-  --background: #f5f7fa;
+  --background: #F0F4FF;
   --foreground: #1F1F1F;
 }
 
@@ -94,7 +94,7 @@ tr:hover > td .row-actions {
 
 .react-resizable-handle:hover::before,
 .react-resizable-handle:active::before {
-  background-color: #1677ff;
+  background-color: #1E3AFF;
   width: 2px;
 }
 

@@ -12,8 +12,8 @@ const themeConfig: ThemeConfig = {
         fontSizeHeading5: 14, // Slightly larger for emphasis
 
         // Brand Colors
-        colorPrimary: '#D4AF37', // Brand Gold
-        colorInfo: '#D4AF37',
+        colorPrimary: '#1E3AFF', // Brand Blue
+        colorInfo: '#1E3AFF',
 
         // Neutralizing Text for better readability
         colorTextBase: '#262626', // Slightly softer black
@@ -29,14 +29,14 @@ const themeConfig: ThemeConfig = {
     components: {
         Layout: {
             headerBg: '#ffffff',
-            bodyBg: '#f8f9fa', // Cleaner, brighter background
-            siderBg: '#1F1F1F',
+            bodyBg: '#F0F4FF', // Light blue tint background
+            siderBg: '#131313',
         },
         Table: {
             headerBg: '#ffffff', // Clean white headers
             headerColor: '#8c8c8c', // Muted headers to let data stand out
             headerSplitColor: '#f0f0f0',
-            rowHoverBg: '#FFFDF5', // Subtle gold tint on hover
+            rowHoverBg: '#EEF1FF', // Subtle blue tint on hover
             cellPaddingBlock: 8, // Maintaining density
             cellPaddingInline: 12,
             borderColor: '#f0f0f0',
@@ -53,11 +53,11 @@ const themeConfig: ThemeConfig = {
             contentFontSize: 13,
         },
         Input: {
-            activeBorderColor: '#D4AF37',
-            hoverBorderColor: '#EAC159',
+            activeBorderColor: '#1E3AFF',
+            hoverBorderColor: '#4D65FF',
         },
         Select: {
-            colorPrimary: '#D4AF37',
+            colorPrimary: '#1E3AFF',
         },
         Typography: {
             fontFamilyCode: '"Fira Code", monospace',
