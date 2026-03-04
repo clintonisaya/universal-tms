@@ -1,2 +1,7 @@
 # Auto detect text files and perform LF normalization
 * text=auto
+
+ _bmad/ merge=ours
+  _bmad-output/ merge=ours
+  .agent/ merge=ours
+  .claude/ merge=ours
