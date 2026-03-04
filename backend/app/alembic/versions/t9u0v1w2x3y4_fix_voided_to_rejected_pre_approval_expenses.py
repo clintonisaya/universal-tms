@@ -33,7 +33,7 @@ depends_on = None
 
 def upgrade() -> None:
     op.execute("""
-        UPDATE expenserequest
+        UPDATE expense_request
         SET status = 'Rejected'
         WHERE status = 'Voided'
           AND approved_by_id IS NULL
@@ -45,7 +45,7 @@ def downgrade() -> None:
     # records were originally 'Voided' vs legitimately rejected.
     # Only use this if you are certain no real rejections exist in the data.
     op.execute("""
-        UPDATE expenserequest
+        UPDATE expense_request
         SET status = 'Voided'
         WHERE status = 'Rejected'
           AND approved_by_id IS NULL
