@@ -32,21 +32,20 @@ depends_on = None
 
 
 def upgrade() -> None:
+    # DB stores Python Enum member names (snake_case), e.g. 'voided', 'rejected'.
     op.execute("""
         UPDATE expense_request
-        SET status = 'Rejected'
-        WHERE status = 'Voided'
+        SET status = 'rejected'
+        WHERE status = 'voided'
           AND approved_by_id IS NULL
     """)
 
 
 def downgrade() -> None:
-    # NOTE: this rollback is lossy — we cannot distinguish which 'Rejected'
-    # records were originally 'Voided' vs legitimately rejected.
-    # Only use this if you are certain no real rejections exist in the data.
+    # NOTE: lossy — cannot distinguish pre-existing 'rejected' from reclassified ones.
     op.execute("""
         UPDATE expense_request
-        SET status = 'Voided'
-        WHERE status = 'Rejected'
+        SET status = 'voided'
+        WHERE status = 'rejected'
           AND approved_by_id IS NULL
     """)
