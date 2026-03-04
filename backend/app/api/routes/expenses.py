@@ -37,8 +37,8 @@ router = APIRouter(prefix="/expenses", tags=["expenses"])
 def generate_expense_number(session: SessionDep, trip_id: uuid.UUID | None, trip: Trip | None) -> str:
     """Generate a human-readable expense number.
 
-    Trip expenses:     E{trip_number}{seq:03d}  (e.g. ETDLD937F-2026781001)
-    Non-trip expenses: EXP-{YYYY}-{seq:04d}     (e.g. EXP-2026-0001)
+    Trip expenses:     E{trip_number}-{seq:03d}  (e.g. ET512EZD-2026001-001)
+    Non-trip expenses: EX-{YYYY}-{seq:04d}      (e.g. EX-2026-0001)
     """
     if trip_id and trip:
         # Count existing expenses for this trip

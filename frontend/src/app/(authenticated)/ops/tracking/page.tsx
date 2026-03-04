@@ -242,7 +242,7 @@ export default function TrackingPage() {
   // Standard Table States
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(100);
+  const [pageSize, setPageSize] = useState(50);
 
   // Apply filters when data changes
   useEffect(() => {

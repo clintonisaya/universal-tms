@@ -1,6 +1,9 @@
+import logging
 import requests
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic.networks import EmailStr
+
+logger = logging.getLogger(__name__)
 
 from app.api.deps import get_current_active_superuser, SessionDep, CurrentUser
 from app.core.config import settings
@@ -57,6 +60,6 @@ def location_autocomplete(
         response.raise_for_status()
         return response.json()
     except requests.RequestException as e:
-        print(f"Radar API Error: {e}")
+        logger.warning("Radar API error for query '%s': %s", query, e)
         # Return empty list on error to gracefully degrade to free text
         return {"addresses": []}

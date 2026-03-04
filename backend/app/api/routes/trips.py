@@ -1144,20 +1144,17 @@ async def upload_trip_attachment(
     object_name = f"trips/{trip.id}/{unique_id}_{clean_filename}"
 
     uploaded_key = storage.upload_file(content, object_name, file.content_type)
-    print(f"DEBUG: Uploaded key: {uploaded_key}")
     if not uploaded_key:
         raise HTTPException(status_code=500, detail="Failed to upload file to storage")
 
     current_attachments = list(trip.attachments) if trip.attachments else []
     current_attachments.append(uploaded_key)
-    print(f"DEBUG: Current attachments before save: {current_attachments}")
     trip.attachments = current_attachments
     flag_modified(trip, "attachments")
     trip.updated_at = datetime.now(timezone.utc)
     session.add(trip)
     session.commit()
     session.refresh(trip)
-    print(f"DEBUG: Trip attachments after refresh: {trip.attachments}")
     return trip
 
 

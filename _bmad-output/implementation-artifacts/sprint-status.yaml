@@ -120,3 +120,32 @@ development_status:
   5-17-keyboard-navigation-modal-chains: ready-for-dev
   5-18-form-field-label-association: ready-for-dev
   epic-5-retrospective: optional
+
+  # Epic 6: System Hardening & Quality (from Party Mode Audit 2026-03-04)
+  epic-6: in-progress
+  6-1-critical-quick-fixes: done
+  6-2-atomic-number-generation: ready-for-dev
+  6-3-waybill-data-integrity: ready-for-dev
+  6-4-trip-status-state-machine: ready-for-dev
+  6-5-status-dropdown-filtering: ready-for-dev
+  6-6-delayed-trip-visuals: ready-for-dev
+  6-7-status-history-improvements: ready-for-dev
+  6-8-breakdown-documentation: ready-for-dev
+  6-9-trip-remarks-visibility: ready-for-dev
+  6-10-shared-status-constants: ready-for-dev
+  6-11-expense-constants-centralization: ready-for-dev
+  6-12-payments-multicurrency-pagination: ready-for-dev
+  6-13-audit-trail-created-by: ready-for-dev
+  6-14-reports-data-integrity: ready-for-dev
+  6-15-db-constraints-indexes: ready-for-dev
+  6-16-driver-expiry-warnings: ready-for-dev
+  6-17-filter-state-persistence: ready-for-dev
+  6-18-maintenance-edit-delete: ready-for-dev
+  6-19-tracking-server-side-pagination: ready-for-dev
+  6-20-tracking-missing-data-fields: ready-for-dev
+  6-21-empty-states-with-cta: ready-for-dev
+  6-22-waybill-interaction-consistency: ready-for-dev
+  6-23-status-modal-stale-data: ready-for-dev
+  6-24-expense-review-modal-improvements: ready-for-dev
+  6-25-cancellation-modal-null-return-waybill: ready-for-dev
+  epic-6-retrospective: optional
