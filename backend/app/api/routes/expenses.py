@@ -69,9 +69,11 @@ def generate_expense_number(session: SessionDep, trip_id: uuid.UUID | None, trip
 # Valid status transitions by role
 # Format: {current_status: {role: [allowed_new_statuses]}}
 STATUS_TRANSITIONS = {
+    # Pending Manager: manager/admin can approve, reject, or return — NOT void.
+    # Voided is reserved for post-approval cancellations (Pending Finance / Paid).
     ExpenseStatus.pending_manager: {
-        UserRole.manager: [ExpenseStatus.pending_finance, ExpenseStatus.rejected, ExpenseStatus.returned, ExpenseStatus.voided],
-        UserRole.admin: [ExpenseStatus.pending_finance, ExpenseStatus.rejected, ExpenseStatus.returned, ExpenseStatus.voided],
+        UserRole.manager: [ExpenseStatus.pending_finance, ExpenseStatus.rejected, ExpenseStatus.returned],
+        UserRole.admin: [ExpenseStatus.pending_finance, ExpenseStatus.rejected, ExpenseStatus.returned],
     },
     ExpenseStatus.pending_finance: {
         UserRole.finance: [ExpenseStatus.paid, ExpenseStatus.returned, ExpenseStatus.voided],

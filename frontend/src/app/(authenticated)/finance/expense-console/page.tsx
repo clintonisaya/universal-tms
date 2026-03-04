@@ -150,7 +150,7 @@ export default function ExpenseConsolePage() {
       width: canVoid && canAmendAttachment ? 200 : canVoid || canAmendAttachment ? 120 : 0,
       render: (_, record) => (
         <Space>
-          {canVoid && record.status !== "Voided" && record.status !== "Rejected" && (
+          {canVoid && record.status !== "Voided" && record.status !== "Rejected" && record.status !== "Pending Manager" && (
             <Button
               size="small"
               danger
