@@ -8,6 +8,7 @@ import {
   InputNumber,
   Select,
   Button,
+  Space,
   message,
   Row,
   Col,
@@ -27,6 +28,7 @@ import {
 import type { UploadFile } from "antd/es/upload/interface";
 import { amountInputProps } from "@/lib/utils";
 import {
+  PlusOutlined,
   UploadOutlined,
   DeleteOutlined,
   DownloadOutlined,
@@ -108,6 +110,7 @@ export function EditExpenseModal({
   const [expenseTypesLoading, setExpenseTypesLoading] = useState(false);
   const [currentExchangeRate, setCurrentExchangeRate] = useState<number | null>(null);
   const [items, setItems] = useState<ExpenseItem[]>([]);
+  const [count, setCount] = useState(1);
 
   // Attachment state
   const [fileList, setFileList] = useState<UploadFile[]>([]);
@@ -192,17 +195,33 @@ export function EditExpenseModal({
         account_no: metadata.bank_details?.account_no || "",
       });
 
-      // Initialize single item from expense (expense_type_id will be matched after types load)
-      setItems([{
-        key: '0',
-        expense_type_id: undefined,
-        amount: Number(expense.amount) || 0,
-        currency: expense.currency || 'TZS',
-        invoice_state: (metadata.invoice_state as "With Invoice" | "Without Invoice") || 'With Invoice',
-        details: metadata.item_details || expense.description,
-        exchange_rate: Number(expense.exchange_rate) || 1,
-        category: expense.category,
-      }]);
+      // Initialize item(s) from expense metadata
+      const savedItems = metadata.items as any[] | undefined;
+      if (savedItems && savedItems.length > 0) {
+        setItems(savedItems.map((it: any, idx: number) => ({
+          key: `${idx}`,
+          expense_type_id: it.expense_type_id,
+          amount: Number(it.amount) || 0,
+          currency: it.currency || 'TZS',
+          invoice_state: (it.invoice_state as "With Invoice" | "Without Invoice") || 'With Invoice',
+          details: it.item_details,
+          exchange_rate: Number(it.exchange_rate) || 1,
+          category: it.category,
+        })));
+        setCount(savedItems.length);
+      } else {
+        setItems([{
+          key: '0',
+          expense_type_id: undefined,
+          amount: Number(expense.amount) || 0,
+          currency: expense.currency || 'TZS',
+          invoice_state: (metadata.invoice_state as "With Invoice" | "Without Invoice") || 'With Invoice',
+          details: metadata.item_details || expense.description,
+          exchange_rate: Number(expense.exchange_rate) || 1,
+          category: expense.category,
+        }]);
+        setCount(1);
+      }
     }
   }, [expense, open, form]);
 
@@ -230,10 +249,10 @@ export function EditExpenseModal({
     }
 
     if (matchedTypeId && items[0]?.expense_type_id !== matchedTypeId) {
-      setItems(prev => [{
-        ...prev[0],
-        expense_type_id: matchedTypeId,
-      }]);
+      setItems(prev => [
+        { ...prev[0], expense_type_id: matchedTypeId },
+        ...prev.slice(1),
+      ]);
     }
   }, [expense, tripExpenseTypes, officeExpenseTypes, isTripExpense, items]);
 
@@ -352,6 +371,22 @@ export function EditExpenseModal({
     setItems(newData);
   };
 
+  const handleAddRow = () => {
+    const firstItem = items[0];
+    const newData: ExpenseItem = {
+      key: `${count}`,
+      currency: firstItem?.currency || 'TZS',
+      invoice_state: 'With Invoice',
+      exchange_rate: firstItem?.currency === 'USD' ? (firstItem?.exchange_rate || 1) : 1,
+    };
+    setItems([...items, newData]);
+    setCount(count + 1);
+  };
+
+  const handleDeleteRow = (key: React.Key) => {
+    setItems(items.filter(item => item.key !== key));
+  };
+
   const totalAmount = useMemo(() => {
     return items.reduce((sum, item) => sum + (item.amount || 0), 0);
   }, [items]);
@@ -359,31 +394,64 @@ export function EditExpenseModal({
   const handleSubmit = async (values: any) => {
     if (!expense || items.length === 0) return;
 
-    const item = items[0];
-    if (!item.amount || item.amount <= 0) {
-      message.error("Please enter a valid amount");
-      return;
+    // Validate all items
+    for (const item of items) {
+      if (!item.amount || item.amount <= 0) {
+        msg.error("Please enter a valid amount for all items");
+        return;
+      }
     }
 
     setSubmitting(true);
     try {
-      // Get expense type name
-      let itemName: string | undefined;
-      if (item.expense_type_id) {
+      const getItemName = (item: ExpenseItem): string | undefined => {
+        if (!item.expense_type_id) return undefined;
         if (isTripExpense) {
-          const selectedType = tripExpenseTypes.find(t => t.id === item.expense_type_id);
-          itemName = selectedType?.name;
-        } else {
-          const selectedType = officeExpenseTypes.find(t => t.id === item.expense_type_id);
-          itemName = selectedType?.name;
+          return tripExpenseTypes.find(t => t.id === item.expense_type_id)?.name;
         }
-      }
+        return officeExpenseTypes.find(t => t.id === item.expense_type_id)?.name;
+      };
 
-      // Update expense details
-      const updatePayload: any = {
+      const firstItem = items[0];
+      const firstItemName = getItemName(firstItem);
+      const totalAmt = items.reduce((sum, item) => sum + (item.amount || 0), 0);
+
+      // Build metadata storing all items
+      const metadataItems = items.map(item => ({
+        expense_type_id: item.expense_type_id,
+        item_name: getItemName(item),
+        item_details: item.details,
         amount: item.amount,
-        description: values.remarks || item.details,
-        category: item.category || expense.category,
+        currency: item.currency,
+        invoice_state: item.invoice_state,
+        exchange_rate: item.exchange_rate,
+        category: item.category,
+      }));
+
+      const bankDetails = values.payment_method === 'Transfer' ? {
+        bank_name: values.bank_name,
+        account_name: values.account_name,
+        account_no: values.account_no,
+      } : null;
+
+      const updatedMetadata: any = {
+        ...(expense.expense_metadata || {}),
+        items: metadataItems,
+        // Keep legacy single-item fields for compatibility
+        item_name: firstItemName,
+        item_details: firstItem.details,
+        invoice_state: firstItem.invoice_state,
+        payment_method: values.payment_method,
+        remarks: values.remarks,
+        bank_details: bankDetails,
+      };
+
+      // Update the existing expense (item[0] data + total amount + metadata)
+      const updatePayload: any = {
+        amount: totalAmt,
+        description: values.remarks || firstItem.details,
+        category: firstItem.category || expense.category,
+        expense_metadata: updatedMetadata,
       };
 
       const updateResponse = await fetch(`/api/v1/expenses/${expense.id}`, {
@@ -431,7 +499,12 @@ export function EditExpenseModal({
             }
           }
         }
-        msg.success("Expense updated and resubmitted for approval");
+        const itemCount = items.length;
+        msg.success(
+          itemCount > 1
+            ? `Expense updated with ${itemCount} items and resubmitted for approval`
+            : "Expense updated and resubmitted for approval"
+        );
         form.resetFields();
         setItems([]);
         setFileList([]);
@@ -548,6 +621,20 @@ export function EditExpenseModal({
         />
       ),
     },
+    {
+      title: "",
+      width: 50,
+      align: "center" as const,
+      render: (_: any, record: ExpenseItem) => (
+        <Button
+          type="text"
+          danger
+          icon={<DeleteOutlined />}
+          disabled={items.length === 1}
+          onClick={() => handleDeleteRow(record.key)}
+        />
+      ),
+    },
   ];
 
   if (!expense) return null;
@@ -660,7 +747,12 @@ export function EditExpenseModal({
 
                   {/* Items Table */}
                   <div style={{ marginBottom: 16 }}>
-                    <Text strong style={{ marginBottom: 8, display: 'block' }}>Expense Item</Text>
+                    <Space style={{ marginBottom: 8 }}>
+                      <Text strong>Expense Items</Text>
+                      <Button type="primary" size="small" icon={<PlusOutlined />} onClick={handleAddRow}>
+                        Add Item
+                      </Button>
+                    </Space>
                     <Table
                       dataSource={items}
                       columns={columns}

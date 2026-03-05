@@ -298,18 +298,6 @@ async def batch_update_expenses(
 
     updated_count = 0
 
-    # Check if any expenses are linked to closed trips
-    for expense in expenses:
-        if expense.trip_id:
-            trip = session.get(Trip, expense.trip_id)
-            if trip and is_trip_closed(trip):
-                trip_status = trip.status.value if hasattr(trip.status, "value") else str(trip.status)
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"Cannot modify expense {expense.expense_number}: Trip {trip.trip_number} is {trip_status}. "
-                           f"No expense changes allowed on completed or cancelled trips."
-                )
-
     for expense in expenses:
         # Check transition permission
         current_status = ExpenseStatus(expense.status) if isinstance(expense.status, str) else expense.status
@@ -435,10 +423,6 @@ async def update_expense(
     if not expense:
         raise HTTPException(status_code=404, detail="Expense not found")
 
-    # Check if associated trip is closed (Completed/Cancelled)
-    if expense.trip_id:
-        check_trip_not_closed(session, expense.trip_id)
-
     update_dict = expense_in.model_dump(exclude_unset=True)
 
     # Handle status transition separately
@@ -529,10 +513,6 @@ async def process_payment(
     if not expense:
         raise HTTPException(status_code=404, detail="Expense not found")
 
-    # Check if associated trip is closed (Completed/Cancelled)
-    if expense.trip_id:
-        check_trip_not_closed(session, expense.trip_id)
-
     # Validate status
     current_status = ExpenseStatus(expense.status) if isinstance(expense.status, str) else expense.status
     if current_status != ExpenseStatus.pending_finance:
@@ -600,10 +580,6 @@ async def upload_attachment(
     expense = session.get(ExpenseRequest, id)
     if not expense:
         raise HTTPException(status_code=404, detail="Expense not found")
-
-    # Check if associated trip is closed (Completed/Cancelled)
-    if expense.trip_id:
-        check_trip_not_closed(session, expense.trip_id)
 
     # Admin/Manager can amend attachments on any expense (Expense Console use case).
     # Regular users (ops, finance) can only upload when status allows modification.

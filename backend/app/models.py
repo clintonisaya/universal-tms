@@ -703,6 +703,7 @@ class ExpenseRequestUpdate(SQLModel):
     category: ExpenseCategory | None = Field(default=None)
     description: str | None = Field(default=None, min_length=1, max_length=500)
     status: ExpenseStatus | None = Field(default=None)
+    expense_metadata: dict | None = Field(default=None)
 
 
 # Database model
