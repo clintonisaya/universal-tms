@@ -9,7 +9,6 @@ import {
   Select,
   Button,
   Space,
-  message,
   Row,
   Col,
   DatePicker,
@@ -196,7 +195,7 @@ export function EditExpenseModal({
       });
 
       // Initialize item(s) from expense metadata
-      const savedItems = metadata.items as any[] | undefined;
+      const savedItems = (metadata as any).items as any[] | undefined;
       if (savedItems && savedItems.length > 0) {
         setItems(savedItems.map((it: any, idx: number) => ({
           key: `${idx}`,
