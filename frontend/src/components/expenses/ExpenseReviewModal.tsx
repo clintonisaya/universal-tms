@@ -38,6 +38,8 @@ import {
   FileWordOutlined,
   FileUnknownOutlined,
   SearchOutlined,
+  PlusOutlined,
+  DeleteOutlined,
 } from "@ant-design/icons";
 import type { ExpenseRequestDetailed, ExpenseCategory } from "@/types/expense";
 import type { TripExpenseType } from "@/types/trip-expense-type";
@@ -145,7 +147,8 @@ export function ExpenseReviewModal({
   const paymentMethodValue = Form.useWatch("method", paymentForm);
 
   // Editable state for returned expenses
-  const [editItem, setEditItem] = useState<EditableItem | null>(null);
+  const [editItems, setEditItems] = useState<EditableItem[]>([]);
+  const [editCount, setEditCount] = useState(1);
   const [editHeader, setEditHeader] = useState<EditableHeader | null>(null);
   const [tripExpenseTypes, setTripExpenseTypes] = useState<TripExpenseType[]>([]);
   const [officeExpenseTypes, setOfficeExpenseTypes] = useState<OfficeExpenseType[]>([]);
@@ -168,15 +171,30 @@ export function ExpenseReviewModal({
   useEffect(() => {
     if (open && expense && editable) {
       const meta = expense.expense_metadata || {};
-      setEditItem({
-        expense_type_id: undefined, // will be matched after types load
-        amount: Number(expense.amount) || 0,
-        currency: expense.currency || "TZS",
-        invoice_state: meta.invoice_state || "With Invoice",
-        details: meta.item_details || expense.description || "",
-        exchange_rate: Number(expense.exchange_rate) || 1,
-        category: expense.category,
-      });
+      const savedItems = (meta as any).items as any[] | undefined;
+      if (savedItems && savedItems.length > 0) {
+        setEditItems(savedItems.map((it: any) => ({
+          expense_type_id: it.expense_type_id,
+          amount: Number(it.amount) || 0,
+          currency: it.currency || "TZS",
+          invoice_state: it.invoice_state || "With Invoice",
+          details: it.item_details || "",
+          exchange_rate: Number(it.exchange_rate) || 1,
+          category: it.category,
+        })));
+        setEditCount(savedItems.length);
+      } else {
+        setEditItems([{
+          expense_type_id: undefined,
+          amount: Number(expense.amount) || 0,
+          currency: expense.currency || "TZS",
+          invoice_state: meta.invoice_state || "With Invoice",
+          details: meta.item_details || expense.description || "",
+          exchange_rate: Number(expense.exchange_rate) || 1,
+          category: expense.category,
+        }]);
+        setEditCount(1);
+      }
       setEditHeader({
         payment_method: meta.payment_method || "Cash",
         remarks: meta.remarks || expense.description || "",
@@ -228,9 +246,9 @@ export function ExpenseReviewModal({
     }
   }, [open, editable, isTripExpense]);
 
-  // Match expense type by name after types load
+  // Match expense type by name after types load (first item only)
   useEffect(() => {
-    if (!expense || !editItem || editItem.expense_type_id) return;
+    if (!expense || editItems.length === 0 || editItems[0].expense_type_id) return;
     const meta = expense.expense_metadata || {};
     const itemName = meta.item_name || meta.item_details || expense.description;
     if (!itemName) return;
@@ -240,9 +258,9 @@ export function ExpenseReviewModal({
       (t) => t.name.toLowerCase() === itemName.toLowerCase()
     );
     if (match) {
-      setEditItem((prev) => (prev ? { ...prev, expense_type_id: match.id } : prev));
+      setEditItems((prev) => [{ ...prev[0], expense_type_id: match.id }, ...prev.slice(1)]);
     }
-  }, [tripExpenseTypes, officeExpenseTypes, expense, editItem?.expense_type_id, isTripExpense]);
+  }, [tripExpenseTypes, officeExpenseTypes, expense, editItems[0]?.expense_type_id, isTripExpense]);
 
   // Grouped options for expense type dropdowns
   const groupedExpenseOptions = useMemo(() => {
@@ -291,22 +309,19 @@ export function ExpenseReviewModal({
   if (!expense && !loading) return null;
 
   // --- Edit helpers ---
-  const handleItemField = (field: keyof EditableItem, value: any) => {
-    setEditItem((prev) => {
-      if (!prev) return prev;
-      const updated = { ...prev, [field]: value };
+  const handleItemFieldAt = (index: number, field: keyof EditableItem, value: any) => {
+    setEditItems((prev) => {
+      const next = [...prev];
+      const updated = { ...next[index], [field]: value };
 
       if (field === "expense_type_id") {
         const types = isTripExpense ? tripExpenseTypes : officeExpenseTypes;
         const selected = types.find((t) => t.id === value);
         if (selected) {
           updated.details = selected.name;
-          if (isTripExpense) {
-            updated.category =
-              CATEGORY_MAPPING[(selected as TripExpenseType).category] || "Other";
-          } else {
-            updated.category = "Office";
-          }
+          updated.category = isTripExpense
+            ? CATEGORY_MAPPING[(selected as TripExpenseType).category] || "Other"
+            : "Office";
         }
       }
 
@@ -318,8 +333,30 @@ export function ExpenseReviewModal({
         }
       }
 
-      return updated;
+      next[index] = updated;
+      return next;
     });
+  };
+
+  const handleAddRow = () => {
+    const first = editItems[0];
+    setEditItems((prev) => [
+      ...prev,
+      {
+        expense_type_id: undefined,
+        amount: 0,
+        currency: first?.currency || "TZS",
+        invoice_state: "With Invoice",
+        details: "",
+        exchange_rate: first?.currency === "USD" ? (first?.exchange_rate || 1) : 1,
+        category: first?.category || "Other",
+      },
+    ]);
+    setEditCount((c) => c + 1);
+  };
+
+  const handleDeleteRow = (index: number) => {
+    setEditItems((prev) => prev.filter((_, i) => i !== index));
   };
 
   // --- Action Handlers ---
@@ -394,27 +431,56 @@ export function ExpenseReviewModal({
     if (!expense) return;
 
     // If editable, save changes first then resubmit
-    if (editable && editItem) {
-      if (!editItem.amount || editItem.amount <= 0) {
-        message.error("Please enter a valid amount");
-        return;
+    if (editable && editItems.length > 0) {
+      for (const item of editItems) {
+        if (!item.amount || item.amount <= 0) {
+          message.error("Please enter a valid amount for all items");
+          return;
+        }
       }
 
       setProcessing(true);
       try {
-        // Get expense type name for metadata
-        let itemName: string | undefined;
-        if (editItem.expense_type_id) {
-          const types = isTripExpense ? tripExpenseTypes : officeExpenseTypes;
-          const selected = types.find((t) => t.id === editItem.expense_type_id);
-          itemName = selected?.name;
-        }
+        const types = isTripExpense ? tripExpenseTypes : officeExpenseTypes;
+        const getItemName = (item: EditableItem) => {
+          if (!item.expense_type_id) return undefined;
+          return types.find((t) => t.id === item.expense_type_id)?.name;
+        };
 
-        // Update expense
+        const firstItem = editItems[0];
+        const total = editItems.reduce((sum, it) => sum + (it.amount || 0), 0);
+
+        const metadataItems = editItems.map((item) => ({
+          expense_type_id: item.expense_type_id,
+          item_name: getItemName(item),
+          item_details: item.details,
+          amount: item.amount,
+          currency: item.currency,
+          invoice_state: item.invoice_state,
+          exchange_rate: item.exchange_rate,
+          category: item.category,
+        }));
+
+        const bankDetails = editHeader?.payment_method === "Transfer" ? {
+          bank_name: editHeader.bank_name,
+          account_name: editHeader.account_name,
+          account_no: editHeader.account_no,
+        } : null;
+
         const updatePayload: any = {
-          amount: editItem.amount,
-          description: editHeader?.remarks || editItem.details,
-          category: editItem.category || expense.category,
+          amount: total,
+          description: editHeader?.remarks || firstItem.details,
+          category: firstItem.category || expense.category,
+          expense_metadata: {
+            ...(expense.expense_metadata || {}),
+            items: metadataItems,
+            item_name: getItemName(firstItem),
+            item_details: firstItem.details,
+            invoice_state: firstItem.invoice_state,
+            payment_method: editHeader?.payment_method,
+            remarks: editHeader?.remarks,
+            bank_details: bankDetails,
+          },
         };
 
         const updateResponse = await fetch(`/api/v1/expenses/${expense.id}`, {
@@ -439,7 +505,11 @@ export function ExpenseReviewModal({
         });
 
         if (resubmitResponse.ok) {
-          message.success("Expense updated and resubmitted for approval");
+          message.success(
+            editItems.length > 1
+              ? `Expense updated with ${editItems.length} items and resubmitted for approval`
+              : "Expense updated and resubmitted for approval"
+          );
           onClose();
           onActionComplete?.();
         } else {
@@ -527,8 +597,9 @@ export function ExpenseReviewModal({
   const paymentMethodDisplay = meta?.payment_method || expense?.payment_method;
 
   // Editable total for footer
-  const displayAmount = editable && editItem ? editItem.amount : (expense?.amount ?? 0);
-  const displayCurrency = editable && editItem ? editItem.currency : (expense?.currency ?? "TZS");
+  const editTotal = editItems.reduce((sum, it) => sum + (it.amount || 0), 0);
+  const displayAmount = editable && editItems.length > 0 ? editTotal : (expense?.amount ?? 0);
+  const displayCurrency = editable && editItems.length > 0 ? (editItems[0]?.currency ?? "TZS") : (expense?.currency ?? "TZS");
 
   // AC-2: Expense approval pipeline Steps
   const EXPENSE_STEPS = ["Submitted", "Manager Review", "Finance Payment", "Paid"];
@@ -720,143 +791,146 @@ export function ExpenseReviewModal({
 
       {/* Items Table */}
       <div style={{ marginBottom: 24 }}>
-        {editable && editItem ? (
-          <Table
-            dataSource={[{ key: "1", ...editItem }]}
-            columns={[
-              {
-                title: "No.",
-                key: "no",
-                width: 60,
-                align: "center" as const,
-                render: () => 1,
-              },
-              {
-                title: "Payment Item",
-                dataIndex: "expense_type_id",
-                key: "expense_type_id",
-                width: 250,
-                render: (val: string) => (
-                  <Select
-                    showSearch
-                    style={{ width: "100%" }}
-                    placeholder="Select Item"
-                    optionFilterProp="label"
-                    value={val}
-                    onChange={(v) => handleItemField("expense_type_id", v)}
-                    options={groupedExpenseOptions as any}
-                    loading={expenseTypesLoading}
-                    allowClear
-                  />
-                ),
-              },
-              {
-                title: "Amount",
-                dataIndex: "amount",
-                key: "amount",
-                width: 140,
-                render: (val: number) => (
-                  // in columns:
-<InputNumber
-  style={{ width: "100%" }}
-  min={0}
-  value={val}
-  onChange={(v) => handleItemField("amount", v)}
-  {...amountInputProps}
-/>
-                ),
-              },
-              {
-                title: "Currency",
-                dataIndex: "currency",
-                key: "currency",
-                width: 100,
-                render: (val: string) => (
-                  <Select
-                    style={{ width: "100%" }}
-                    value={val}
-                    onChange={(v) => handleItemField("currency", v)}
-                  >
-                    <Select.Option value="TZS">TZS</Select.Option>
-                    <Select.Option value="USD">USD</Select.Option>
-                  </Select>
-                ),
-              },
-              {
-                title: "Invoice State",
-                dataIndex: "invoice_state",
-                key: "invoice_state",
-                width: 130,
-                render: (val: string) => (
-                  <Select
-                    style={{ width: "100%" }}
-                    value={val}
-                    onChange={(v) => handleItemField("invoice_state", v)}
-                  >
-                    <Select.Option value="With Invoice">
-                      With Invoice
-                    </Select.Option>
-                    <Select.Option value="Without Invoice">
-                      Without Invoice
-                    </Select.Option>
-                  </Select>
-                ),
-              },
-              {
-                title: "Details",
-                dataIndex: "details",
-                key: "details",
-                render: (val: string) => (
-                  <Input
-                    value={val}
-                    onChange={(e) =>
-                      handleItemField("details", e.target.value)
-                    }
-                  />
-                ),
-              },
-              {
-                title: (
-                  <Tooltip
-                    title={
-                      currentExchangeRate
-                        ? `Current rate: ${currentExchangeRate}`
-                        : "No rate set"
-                    }
-                  >
-                    <span style={{ cursor: "help" }}>Ex. Rate</span>
-                  </Tooltip>
-                ),
-                dataIndex: "exchange_rate",
-                key: "exchange_rate",
-                width: 100,
-                render: (val: number) => (
-                  <InputNumber
-                    style={{ width: "100%" }}
-                    min={0}
-                    value={val}
-                    disabled={editItem.currency === "TZS"}
-                    onChange={(v) => handleItemField("exchange_rate", v)}
-                  />
-                ),
-              },
-            ]}
-            pagination={false}
-            size="middle"
-            bordered
-            scroll={{ x: 1000 }}
-            footer={() => (
-              <div
-                style={{
-                  textAlign: "right",
-                  fontWeight: "bold",
-                  fontSize: 16,
-                }}
-              >
-                Total: {formatCurrency(editItem.amount, editItem.currency)}
-              </div>
-            )}
-          />
+        {editable && editItems.length > 0 ? (
+          <>
+            <Space style={{ marginBottom: 8 }}>
+              <Button type="primary" size="small" icon={<PlusOutlined />} onClick={handleAddRow}>
+                Add Item
+              </Button>
+            </Space>
+            <Table
+              dataSource={editItems.map((item, idx) => ({ key: idx, ...item }))}
+              columns={[
+                {
+                  title: "No.",
+                  key: "no",
+                  width: 50,
+                  align: "center" as const,
+                  render: (_: any, __: any, idx: number) => idx + 1,
+                },
+                {
+                  title: "Payment Item",
+                  dataIndex: "expense_type_id",
+                  key: "expense_type_id",
+                  width: 250,
+                  render: (val: string, _: any, idx: number) => (
+                    <Select
+                      showSearch
+                      style={{ width: "100%" }}
+                      placeholder="Select Item"
+                      optionFilterProp="label"
+                      value={val}
+                      onChange={(v) => handleItemFieldAt(idx, "expense_type_id", v)}
+                      options={groupedExpenseOptions as any}
+                      loading={expenseTypesLoading}
+                      allowClear
+                    />
+                  ),
+                },
+                {
+                  title: "Amount",
+                  dataIndex: "amount",
+                  key: "amount",
+                  width: 140,
+                  render: (val: number, _: any, idx: number) => (
+                    <InputNumber
+                      style={{ width: "100%" }}
+                      min={0}
+                      value={val}
+                      onChange={(v) => handleItemFieldAt(idx, "amount", v)}
+                      {...amountInputProps}
+                    />
+                  ),
+                },
+                {
+                  title: "Currency",
+                  dataIndex: "currency",
+                  key: "currency",
+                  width: 100,
+                  render: (val: string, _: any, idx: number) => (
+                    <Select
+                      style={{ width: "100%" }}
+                      value={val}
+                      onChange={(v) => handleItemFieldAt(idx, "currency", v)}
+                    >
+                      <Select.Option value="TZS">TZS</Select.Option>
+                      <Select.Option value="USD">USD</Select.Option>
+                    </Select>
+                  ),
+                },
+                {
+                  title: "Invoice State",
+                  dataIndex: "invoice_state",
+                  key: "invoice_state",
+                  width: 130,
+                  render: (val: string, _: any, idx: number) => (
+                    <Select
+                      style={{ width: "100%" }}
+                      value={val}
+                      onChange={(v) => handleItemFieldAt(idx, "invoice_state", v)}
+                    >
+                      <Select.Option value="With Invoice">With Invoice</Select.Option>
+                      <Select.Option value="Without Invoice">Without Invoice</Select.Option>
+                    </Select>
+                  ),
+                },
+                {
+                  title: "Details",
+                  dataIndex: "details",
+                  key: "details",
+                  render: (val: string, _: any, idx: number) => (
+                    <Input
+                      value={val}
+                      onChange={(e) => handleItemFieldAt(idx, "details", e.target.value)}
+                    />
+                  ),
+                },
+                {
+                  title: (
+                    <Tooltip title={currentExchangeRate ? `Current rate: ${currentExchangeRate}` : "No rate set"}>
+                      <span style={{ cursor: "help" }}>Ex. Rate</span>
+                    </Tooltip>
+                  ),
+                  dataIndex: "exchange_rate",
+                  key: "exchange_rate",
+                  width: 100,
+                  render: (val: number, record: any, idx: number) => (
+                    <InputNumber
+                      style={{ width: "100%" }}
+                      min={0}
+                      value={val}
+                      disabled={record.currency === "TZS"}
+                      onChange={(v) => handleItemFieldAt(idx, "exchange_rate", v)}
+                    />
+                  ),
+                },
+                {
+                  title: "",
+                  key: "delete",
+                  width: 50,
+                  align: "center" as const,
+                  render: (_: any, __: any, idx: number) => (
+                    <Button
+                      type="text"
+                      danger
+                      icon={<DeleteOutlined />}
+                      disabled={editItems.length === 1}
+                      onClick={() => handleDeleteRow(idx)}
+                    />
+                  ),
+                },
+              ]}
+              pagination={false}
+              size="middle"
+              bordered
+              scroll={{ x: 1050 }}
+              footer={() => (
+                <div style={{ textAlign: "right", fontWeight: "bold", fontSize: 16 }}>
+                  Total: {formatCurrency(editTotal, editItems[0]?.currency ?? "TZS")}
+                </div>
+              )}
+            />
+          </>
         ) : (
           <Table
             dataSource={[
