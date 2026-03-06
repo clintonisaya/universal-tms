@@ -17,6 +17,8 @@ from app.api.deps import CurrentUser, SessionDep
 from app.models import (
     BorderPost,
     Message,
+    Trip,
+    TripStatus,
     UserRole,
     Waybill,
     WaybillBorder,
@@ -156,25 +158,39 @@ def update_waybill(
 
     # Update ordered border crossings if provided (Story 2.26)
     if border_ids is not None:
-        # Delete existing borders for this waybill
         existing_borders = session.exec(
             select(WaybillBorder).where(WaybillBorder.waybill_id == id)
         ).all()
-        for wb in existing_borders:
-            session.delete(wb)
-        session.flush()
+        existing_map = {wb.border_post_id: wb for wb in existing_borders}
+        new_id_set = set(border_ids)
 
-        # Re-insert with new order
-        for seq, border_post_id in enumerate(border_ids, start=1):
-            border_post = session.get(BorderPost, border_post_id)
-            if not border_post:
+        # Validate all new border posts exist before making any changes
+        for border_post_id in new_id_set:
+            if not session.get(BorderPost, border_post_id):
                 raise HTTPException(status_code=404, detail=f"Border post {border_post_id} not found")
-            wb_border = WaybillBorder(
-                waybill_id=id,
-                border_post_id=border_post_id,
-                sequence=seq,
-            )
-            session.add(wb_border)
+
+        # Remove borders no longer in the list
+        to_remove = set(existing_map.keys()) - new_id_set
+        for border_post_id in to_remove:
+            session.delete(existing_map[border_post_id])
+
+        # Add new borders not already present
+        to_add = new_id_set - set(existing_map.keys())
+        for border_post_id in to_add:
+            session.add(WaybillBorder(waybill_id=id, border_post_id=border_post_id, sequence=0))
+
+        # Update sequence for all borders in the new order
+        session.flush()
+        for seq, border_post_id in enumerate(border_ids, start=1):
+            wb = session.exec(
+                select(WaybillBorder).where(
+                    WaybillBorder.waybill_id == id,
+                    WaybillBorder.border_post_id == border_post_id,
+                )
+            ).first()
+            if wb:
+                wb.sequence = seq
+                session.add(wb)
 
     session.commit()
     session.refresh(waybill)
@@ -225,7 +241,27 @@ def delete_waybill(
     waybill = session.get(Waybill, id)
     if not waybill:
         raise HTTPException(status_code=404, detail="Waybill not found")
-        
+
+    # AC-2: Cannot delete non-Open waybill
+    if waybill.status != WaybillStatus.open:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Cannot delete waybill with status '{waybill.status}'. Only Open waybills can be deleted.",
+        )
+
+    # AC-1: Cannot delete waybill linked to an active trip
+    active_trip = session.exec(
+        select(Trip).where(
+            (Trip.waybill_id == id) | (Trip.return_waybill_id == id),
+            Trip.status.notin_([TripStatus.completed, TripStatus.cancelled]),
+        )
+    ).first()
+    if active_trip:
+        raise HTTPException(
+            status_code=409,
+            detail="Waybill is linked to an active trip and cannot be deleted.",
+        )
+
     session.delete(waybill)
     session.commit()
     return Message(message="Waybill deleted successfully")

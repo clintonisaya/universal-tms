@@ -85,6 +85,8 @@ export default function WaybillsPage() {
       if (response.ok) {
         message.success("Waybill deleted successfully");
         invalidateWaybills();
+      } else if (response.status === 409) {
+        message.error("This waybill is linked to an active trip and cannot be deleted.");
       } else {
         const error = await response.json();
         message.error(error.detail || "Failed to delete waybill");
@@ -193,10 +195,10 @@ export default function WaybillsPage() {
             />
             <Popconfirm
               title="Delete waybill"
-              description="Are you sure you want to delete this waybill?"
+              description="This action cannot be undone. The waybill must have no active trips to be deleted."
               onConfirm={() => handleDelete(record)}
-              okText="Yes"
-              cancelText="No"
+              okText="Delete"
+              cancelText="Cancel"
               okButtonProps={{ danger: true }}
             >
               <Button type="text" danger icon={<DeleteOutlined />} size="small" />
