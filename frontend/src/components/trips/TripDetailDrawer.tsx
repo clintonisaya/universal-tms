@@ -507,7 +507,7 @@ export function TripDetailDrawer({ open, onClose, tripId, onEdit }: TripDetailDr
           trip ? (
             <Space>
               <span>Trip: {trip.route_name}</span>
-              <TripStatusTag status={trip.status} />
+              <TripStatusTag status={trip.status} isDelayed={trip.is_delayed} />
             </Space>
           ) : (
             "Trip Details"
@@ -568,7 +568,7 @@ export function TripDetailDrawer({ open, onClose, tripId, onEdit }: TripDetailDr
                         </Tag>
                       </Descriptions.Item>
                       <Descriptions.Item label="Status">
-                        <TripStatusTag status={trip.status} />
+                        <TripStatusTag status={trip.status} isDelayed={trip.is_delayed} />
                       </Descriptions.Item>
                       <Descriptions.Item label="Detailed Status/Location">
                         {trip.current_location || "-"}

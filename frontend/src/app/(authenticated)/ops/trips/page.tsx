@@ -12,6 +12,7 @@ import {
   Tooltip,
   Popconfirm,
   App,
+  theme,
 } from "antd";
 import {
   PlusOutlined,
@@ -20,6 +21,7 @@ import {
   DeleteOutlined,
   EyeOutlined,
   EditOutlined,
+  MessageOutlined,
 } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
 import type { Trip, TripStatus } from "@/types/trip";
@@ -95,6 +97,7 @@ const DIRECTION_FILTERS = [
 function TripsPageContent() {
   const router = useRouter();
   const { message } = App.useApp();
+  const { token } = theme.useToken();
   const { user } = useAuth();
   const { invalidateTrips } = useInvalidateQueries();
 
@@ -211,9 +214,28 @@ function TripsPageContent() {
       title: "Status",
       dataIndex: "status",
       key: "status",
-      width: 120,
-      render: (status: TripStatus) => <TripStatusTag status={status} />,
+      width: 140,
+      render: (status: TripStatus, record: Trip) => (
+        <TripStatusTag status={status} isDelayed={record.is_delayed} />
+      ),
       ...getColumnFilterProps("status", STATUS_FILTERS),
+    },
+    {
+      title: "",
+      key: "remarks",
+      width: 32,
+      render: (_: unknown, record: Trip) =>
+        record.remarks ? (
+          <Tooltip
+            title={
+              record.remarks.length > 100
+                ? record.remarks.slice(0, 100) + "…"
+                : record.remarks
+            }
+          >
+            <MessageOutlined style={{ color: token.colorTextSecondary }} />
+          </Tooltip>
+        ) : null,
     },
     {
       title: "Last Updated",
@@ -350,6 +372,9 @@ function TripsPageContent() {
             rowKey="id"
             loading={loading}
             sticky={{ offsetHeader: 64 }}
+            onRow={(record) => ({
+              style: record.is_delayed ? { backgroundColor: "#fffbe6" } : undefined,
+            })}
             onChange={(_, filters) => setTableFilters(filters as Record<string, any>)}
             locale={{
               emptyText: hasActiveFilters ? (

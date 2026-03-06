@@ -17,7 +17,7 @@ import {
   Tooltip,
   Upload,
   Breadcrumb,
-  Steps,
+  Timeline,
 } from "antd";
 import type { UploadFile } from "antd";
 import Link from "next/link";
@@ -365,38 +365,51 @@ export default function TripDetailPage() {
     "Waiting for PODs", "Completed",
   ];
 
+  // Status color by category for Timeline dot
+  const getStatusColor = (status: TripStatus): string => {
+    if (status === "Completed") return "green";
+    if (status === "Cancelled") return "red";
+    if (status === "Breakdown") return "orange";
+    if (status === "Arrived at Yard" || status === "Waiting for PODs") return "cyan";
+    if (status.includes("(Return)")) return "purple";
+    return "blue"; // go leg
+  };
+
+  // Date associated with each status (operational date ops recorded)
+  const dateOfStatus = (status: TripStatus): string | null => {
+    switch (status) {
+      case "Waiting": return trip.created_at;
+      case "Dispatched": return trip.dispatch_date;
+      case "Arrived at Loading Point": return trip.arrival_loading_date;
+      case "Loading": case "Loaded": return trip.loading_end_date;
+      case "Arrived at Destination": return trip.arrival_offloading_date;
+      case "Offloading": case "Offloaded": return trip.offloading_date;
+      case "Returning Empty": case "Arrived at Yard": return trip.arrival_return_date;
+      case "Dispatched (Return)": return trip.dispatch_return_date;
+      case "Arrived at Loading Point (Return)": return trip.arrival_loading_return_date;
+      case "Loading (Return)": case "Loaded (Return)": return trip.loading_return_end_date;
+      case "Arrived at Destination (Return)": return trip.arrival_destination_return_date;
+      case "Offloading (Return)": case "Offloaded (Return)": return trip.offloading_return_date;
+      case "Completed": return trip.end_date;
+      default: return null; // pure workflow checkpoint — no date recorded
+    }
+  };
+
   const historyItems = (() => {
-    const dateOf = (status: TripStatus): string | null => {
-      switch (status) {
-        case "Waiting": return trip.created_at;
-        case "Dispatched": return trip.dispatch_date;
-        case "Arrived at Loading Point": return trip.arrival_loading_date;
-        case "Loading": case "Loaded": return trip.loading_end_date;
-        case "Arrived at Destination": return trip.arrival_offloading_date;
-        case "Offloading": case "Offloaded": return trip.offloading_date;
-        case "Returning Empty": case "Arrived at Yard": return trip.arrival_return_date;
-        case "Dispatched (Return)": return trip.dispatch_return_date;
-        case "Arrived at Loading Point (Return)": return trip.arrival_loading_return_date;
-        case "Loading (Return)": case "Loaded (Return)": return trip.loading_return_end_date;
-        case "Arrived at Destination (Return)": return trip.arrival_destination_return_date;
-        case "Offloading (Return)": case "Offloaded (Return)": return trip.offloading_return_date;
-        case "Completed": return trip.end_date;
-        default: return null;
-      }
-    };
     const currentIdx = STATUS_HISTORY_ORDER.indexOf(trip.status);
-    return STATUS_HISTORY_ORDER.slice(0, currentIdx + 1).map((status, i) => {
-      const date = dateOf(status);
-      const isLoading = status === "Loading" && trip.loading_start_date;
-      const description = [
-        date ? new Date(date).toLocaleDateString("en-GB") : undefined,
-        isLoading ? `Start: ${new Date(trip.loading_start_date!).toLocaleDateString("en-GB")}` : undefined,
-      ].filter(Boolean).join(" · ") || undefined;
-      return {
-        title: status,
-        description,
-        status: (i < currentIdx ? "finish" : "process") as "finish" | "process",
-      };
+    const ordered = STATUS_HISTORY_ORDER.slice(0, currentIdx + 1);
+    // Newest-first (AC-5)
+    return [...ordered].reverse().map((status) => {
+      const date = dateOfStatus(status);
+      const isCurrent = status === trip.status;
+      const dateLabel = date
+        ? new Date(date).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })
+        : null;
+      // Extra info for Loading start date
+      const extra = status === "Loading" && trip.loading_start_date
+        ? `Start: ${new Date(trip.loading_start_date).toLocaleDateString("en-GB")}`
+        : null;
+      return { status, date, dateLabel, extra, isCurrent };
     });
   })();
 
@@ -661,15 +674,29 @@ export default function TripDetailPage() {
                 key: "status-history",
                 label: `Status History (${historyItems.length})`,
                 children: (
-                  <div style={{ overflowX: "auto", paddingBottom: 12 }}>
-                    <Steps
-                      labelPlacement="vertical"
-                      size="small"
-                      current={historyItems.length - 1}
-                      items={historyItems}
-                      style={{ minWidth: historyItems.length * 130 }}
-                    />
-                  </div>
+                  <Timeline
+                    mode="left"
+                    style={{ paddingTop: 8, maxWidth: 560 }}
+                    items={historyItems.map(({ status, date, dateLabel, extra, isCurrent }) => ({
+                      color: getStatusColor(status as TripStatus),
+                      label: dateLabel ? (
+                        <Text type="secondary" style={{ fontSize: 12 }}>
+                          {dateLabel}
+                          {extra && <><br /><Text type="secondary" style={{ fontSize: 11 }}>{extra}</Text></>}
+                        </Text>
+                      ) : (
+                        <Tooltip title="This status does not record a date.">
+                          <Text type="secondary" style={{ fontSize: 12 }}>—</Text>
+                        </Tooltip>
+                      ),
+                      children: (
+                        <Text strong={isCurrent} style={{ fontSize: 13 }}>
+                          {status}
+                          {/* TODO: Story 6.13 adds audit trail — updated_by will be available after that */}
+                        </Text>
+                      ),
+                    }))}
+                  />
                 ),
               },
               {
