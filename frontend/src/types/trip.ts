@@ -86,6 +86,8 @@ export interface Trip {
   attachments: string[];
   pods_confirmed_date: string | null;
   is_delayed: boolean;
+  remarks: string | null;
+  return_remarks: string | null;
 }
 
 export interface TripDetailed extends Trip {
