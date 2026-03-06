@@ -2,12 +2,16 @@
 Waybill Management - Story 2.7
 CRUD endpoints for waybill management.
 """
+import logging
 import uuid
 from datetime import datetime, timezone
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Query
+from sqlalchemy import text
 from sqlmodel import func, select
+
+logger = logging.getLogger(__name__)
 
 from app.api.deps import CurrentUser, SessionDep
 from app.models import (
@@ -35,12 +39,15 @@ router = APIRouter(prefix="/waybills", tags=["waybills"])
 def generate_waybill_number(session: SessionDep) -> str:
     """Generate a unique waybill number: WB-YYYY-SEQ"""
     year = datetime.now().year
-    
+
+    # Acquire advisory lock — prevents concurrent requests generating the same number
+    session.execute(text("SELECT pg_advisory_xact_lock(1002)"))
+
     # Find last sequence for this year
     pattern = f"WB-{year}-%"
     statement = select(Waybill.waybill_number).where(Waybill.waybill_number.like(pattern)).order_by(Waybill.waybill_number.desc()).limit(1)
     last_waybill_number = session.exec(statement).first()
-    
+
     sequence = 1
     if last_waybill_number:
         # Extract sequence from end (last 4 digits) - WB-YYYY-0001
@@ -48,8 +55,8 @@ def generate_waybill_number(session: SessionDep) -> str:
             last_seq = int(last_waybill_number.split("-")[-1])
             sequence = last_seq + 1
         except ValueError:
-            pass # Fallback to 1 if parsing fails
-            
+            logger.error("Failed to parse last waybill number: %s", last_waybill_number)
+
     return f"WB-{year}-{sequence:04d}"
 
 

@@ -2,13 +2,17 @@
 Expense Request Submission - Story 2.2
 CRUD endpoints for expense management with RBAC and status workflow.
 """
+import logging
 import uuid
 from datetime import datetime, timezone
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Query, UploadFile, File
+from sqlalchemy import text
 from sqlmodel import func, select
 from sqlalchemy.orm import selectinload
+
+logger = logging.getLogger(__name__)
 
 from app.api.deps import CurrentUser, SessionDep
 from app.core.socket import sio
@@ -41,14 +45,17 @@ def generate_expense_number(session: SessionDep, trip_id: uuid.UUID | None, trip
     Non-trip expenses: EX-{YYYY}-{seq:04d}      (e.g. EX-2026-0001)
     """
     if trip_id and trip:
-        # Count existing expenses for this trip
+        # Acquire advisory lock per-trip to prevent duplicate sequence numbers
+        session.execute(text("SELECT pg_advisory_xact_lock(1003)"))
         count_stmt = select(func.count()).select_from(ExpenseRequest).where(ExpenseRequest.trip_id == trip_id)
         existing_count = session.exec(count_stmt).one()
         seq = existing_count + 1
         return f"E{trip.trip_number}-{seq:03d}"
     else:
-        # Non-trip (Office): EX-YYYY-SEQ - Story 2.17 Scenario 4
+        # Non-trip (Office): EX-YYYY-SEQ
         year = datetime.now().year
+        # Acquire advisory lock to prevent concurrent office expense number collision
+        session.execute(text("SELECT pg_advisory_xact_lock(1004)"))
         pattern = f"EX-{year}-%"
         last_stmt = (
             select(ExpenseRequest.expense_number)
@@ -63,7 +70,7 @@ def generate_expense_number(session: SessionDep, trip_id: uuid.UUID | None, trip
                 last_seq = int(last_number.split("-")[-1])
                 seq = last_seq + 1
             except ValueError:
-                pass
+                logger.error("Failed to parse last office expense number: %s", last_number)
         return f"EX-{year}-{seq:04d}"
 
 # Valid status transitions by role

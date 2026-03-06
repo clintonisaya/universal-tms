@@ -2,13 +2,17 @@
 Trip Creation & Dispatch - Story 2.1
 CRUD endpoints for trip management with transactional integrity.
 """
+import logging
 import uuid
 from datetime import datetime, timezone
 from typing import Any
 
 from fastapi import APIRouter, File, HTTPException, Query, UploadFile
+from sqlalchemy import text
 from sqlmodel import func, or_, select
 from sqlalchemy.orm.attributes import flag_modified
+
+logger = logging.getLogger(__name__)
 
 from app.api.deps import CurrentUser, SessionDep
 from app.core.storage import storage
@@ -208,6 +212,9 @@ def generate_trip_number(session: SessionDep, plate_number: str) -> str:
     sanitized_plate = plate_number.replace(" ", "").upper()
     year = datetime.now().year
 
+    # Acquire advisory lock — prevents concurrent requests generating the same number
+    session.execute(text("SELECT pg_advisory_xact_lock(1001)"))
+
     # Find last sequence for THIS vehicle in THIS year
     pattern = f"{sanitized_plate}-{year}%"
     statement = (
@@ -225,7 +232,7 @@ def generate_trip_number(session: SessionDep, plate_number: str) -> str:
             last_seq = int(last_trip_number[-3:])
             sequence = last_seq + 1
         except ValueError:
-            pass  # Fallback to 1 if parsing fails
+            logger.error("Failed to parse last trip number: %s", last_trip_number)
 
     return f"{sanitized_plate}-{year}{sequence:03d}"
 
