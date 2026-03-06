@@ -164,6 +164,192 @@ TRIP_TO_GO_WAYBILL_STATUS = {
     TripStatus.cancelled: WaybillStatus.open,
 }
 
+# All non-terminal status values — used by Breakdown recovery transitions
+_NON_TERMINAL_VALUES: list[str] = [
+    TripStatus.waiting.value,
+    TripStatus.dispatch.value,
+    TripStatus.wait_to_load.value,
+    TripStatus.loading.value,
+    TripStatus.loaded.value,
+    TripStatus.in_transit.value,
+    TripStatus.at_border.value,
+    TripStatus.arrived_at_destination.value,
+    TripStatus.offloading.value,
+    TripStatus.offloaded.value,
+    TripStatus.returning_empty.value,
+    TripStatus.returned.value,
+    TripStatus.waiting_for_pods.value,
+    TripStatus.waiting_return.value,
+    TripStatus.dispatch_return.value,
+    TripStatus.wait_to_load_return.value,
+    TripStatus.loading_return.value,
+    TripStatus.loaded_return.value,
+    TripStatus.in_transit_return.value,
+    TripStatus.at_border_return.value,
+    TripStatus.arrived_at_destination_return.value,
+    TripStatus.offloading_return.value,
+    TripStatus.offloaded_return.value,
+]
+
+# Allowed status transitions.
+# Rules:
+#   - Each status lists its valid NEXT statuses (forward) AND previous status (backward one step).
+#   - Self-transitions are allowed implicitly (ops updating dates without changing status).
+#   - In Transit ↔ At Border (and return variants) are interchangeable.
+#   - Breakdown is reachable from any non-terminal status and recovers to any non-terminal.
+#   - Cancelled is reachable from any non-terminal status.
+#   - Terminal statuses (Completed, Cancelled) have no outbound transitions.
+#     Exception: admin/manager reopen is handled by role-check, bypasses this map.
+VALID_TRANSITIONS: dict[str, list[str]] = {
+    # --- Go Leg ---
+    TripStatus.waiting.value: [
+        TripStatus.dispatch.value,                       # forward
+        TripStatus.breakdown.value, TripStatus.cancelled.value,
+    ],
+    TripStatus.dispatch.value: [
+        TripStatus.wait_to_load.value,                   # forward
+        TripStatus.waiting.value,                        # backward
+        TripStatus.breakdown.value, TripStatus.cancelled.value,
+    ],
+    TripStatus.wait_to_load.value: [
+        TripStatus.loading.value,                        # forward
+        TripStatus.dispatch.value,                       # backward
+        TripStatus.breakdown.value, TripStatus.cancelled.value,
+    ],
+    TripStatus.loading.value: [
+        TripStatus.in_transit.value,                     # forward (Loaded is auto — skip)
+        TripStatus.wait_to_load.value,                   # backward
+        TripStatus.breakdown.value, TripStatus.cancelled.value,
+    ],
+    TripStatus.loaded.value: [                           # AUTO status
+        TripStatus.in_transit.value,                     # forward
+        TripStatus.loading.value,                        # backward
+        TripStatus.breakdown.value, TripStatus.cancelled.value,
+    ],
+    TripStatus.in_transit.value: [
+        TripStatus.at_border.value,                      # forward (interchangeable)
+        TripStatus.arrived_at_destination.value,         # forward direct (no border)
+        TripStatus.loaded.value,                         # backward
+        TripStatus.breakdown.value, TripStatus.cancelled.value,
+    ],
+    TripStatus.at_border.value: [
+        TripStatus.in_transit.value,                     # interchangeable / backward
+        TripStatus.arrived_at_destination.value,         # forward
+        TripStatus.breakdown.value, TripStatus.cancelled.value,
+    ],
+    TripStatus.arrived_at_destination.value: [
+        TripStatus.offloading.value,                     # forward
+        TripStatus.at_border.value,                      # backward
+        TripStatus.in_transit.value,                     # backward alt (if no border)
+        TripStatus.breakdown.value, TripStatus.cancelled.value,
+    ],
+    TripStatus.offloading.value: [
+        TripStatus.returning_empty.value,                # forward (Offloaded is auto — skip)
+        TripStatus.arrived_at_destination.value,         # backward
+        TripStatus.breakdown.value, TripStatus.cancelled.value,
+    ],
+    TripStatus.offloaded.value: [                        # AUTO status
+        TripStatus.returning_empty.value,                # forward
+        TripStatus.offloading.value,                     # backward
+        TripStatus.breakdown.value, TripStatus.cancelled.value,
+    ],
+    TripStatus.returning_empty.value: [
+        TripStatus.returned.value,                       # forward (Arrived at Yard)
+        TripStatus.offloaded.value,                      # backward
+        TripStatus.breakdown.value, TripStatus.cancelled.value,
+    ],
+    TripStatus.returned.value: [                         # "Arrived at Yard" — bridge status
+        TripStatus.waiting_for_pods.value,               # forward (no return waybill path)
+        TripStatus.waiting_return.value,                 # forward (return leg path)
+        TripStatus.returning_empty.value,                # backward (go leg context)
+        TripStatus.offloaded_return.value,               # backward (return leg context)
+        TripStatus.breakdown.value, TripStatus.cancelled.value,
+    ],
+    TripStatus.waiting_for_pods.value: [
+        TripStatus.completed.value,                      # forward (also auto on pods_confirmed_date)
+        TripStatus.returned.value,                       # backward
+        TripStatus.breakdown.value, TripStatus.cancelled.value,
+    ],
+    TripStatus.completed.value: [],                      # Terminal — no outbound (reopen via role check)
+    TripStatus.cancelled.value: [],                      # Terminal
+    # --- Breakdown — recoverable to any non-terminal ---
+    TripStatus.breakdown.value: _NON_TERMINAL_VALUES,
+    # --- Return Leg ---
+    TripStatus.waiting_return.value: [
+        TripStatus.dispatch_return.value,                # forward
+        TripStatus.returned.value,                       # backward (bridge)
+        TripStatus.breakdown.value, TripStatus.cancelled.value,
+    ],
+    TripStatus.dispatch_return.value: [
+        TripStatus.wait_to_load_return.value,            # forward
+        TripStatus.waiting_return.value,                 # backward
+        TripStatus.breakdown.value, TripStatus.cancelled.value,
+    ],
+    TripStatus.wait_to_load_return.value: [
+        TripStatus.loading_return.value,                 # forward
+        TripStatus.dispatch_return.value,                # backward
+        TripStatus.breakdown.value, TripStatus.cancelled.value,
+    ],
+    TripStatus.loading_return.value: [
+        TripStatus.in_transit_return.value,              # forward (Loaded (Return) is auto)
+        TripStatus.wait_to_load_return.value,            # backward
+        TripStatus.breakdown.value, TripStatus.cancelled.value,
+    ],
+    TripStatus.loaded_return.value: [                    # AUTO status
+        TripStatus.in_transit_return.value,              # forward
+        TripStatus.loading_return.value,                 # backward
+        TripStatus.breakdown.value, TripStatus.cancelled.value,
+    ],
+    TripStatus.in_transit_return.value: [
+        TripStatus.at_border_return.value,               # forward (interchangeable)
+        TripStatus.arrived_at_destination_return.value,  # forward direct
+        TripStatus.loaded_return.value,                  # backward
+        TripStatus.breakdown.value, TripStatus.cancelled.value,
+    ],
+    TripStatus.at_border_return.value: [
+        TripStatus.in_transit_return.value,              # interchangeable / backward
+        TripStatus.arrived_at_destination_return.value,  # forward
+        TripStatus.breakdown.value, TripStatus.cancelled.value,
+    ],
+    TripStatus.arrived_at_destination_return.value: [
+        TripStatus.offloading_return.value,              # forward
+        TripStatus.at_border_return.value,               # backward
+        TripStatus.in_transit_return.value,              # backward alt
+        TripStatus.breakdown.value, TripStatus.cancelled.value,
+    ],
+    TripStatus.offloading_return.value: [
+        TripStatus.returned.value,                       # forward (Offloaded (Return) is auto — skip to Arrived at Yard)
+        TripStatus.arrived_at_destination_return.value,  # backward
+        TripStatus.breakdown.value, TripStatus.cancelled.value,
+    ],
+    TripStatus.offloaded_return.value: [                 # AUTO status
+        TripStatus.returned.value,                       # forward (Arrived at Yard)
+        TripStatus.offloading_return.value,              # backward
+        TripStatus.breakdown.value, TripStatus.cancelled.value,
+    ],
+}
+
+
+def validate_status_transition(current: TripStatus, requested: TripStatus) -> None:
+    """Validate that a status transition is allowed.
+
+    Raises HTTPException(422) if the transition is not in VALID_TRANSITIONS.
+    Self-transitions (same → same) are always allowed for date updates.
+    """
+    if current == requested:
+        return  # Self-transition — always allowed (ops updating dates at same status)
+    current_val = current.value if isinstance(current, TripStatus) else str(current)
+    requested_val = requested.value if isinstance(requested, TripStatus) else str(requested)
+    allowed = VALID_TRANSITIONS.get(current_val)
+    if allowed is None:
+        return  # Unknown current status — allow defensively
+    if requested_val not in allowed:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Invalid status transition from '{current_val}' to '{requested_val}'",
+        )
+
+
 # Return waybill status sync: active during return leg, completed when offloaded
 TRIP_TO_RETURN_WAYBILL_STATUS = {
     TripStatus.waiting_return: WaybillStatus.open,       # Return waybill exists but not started
@@ -463,6 +649,11 @@ def update_trip(
     if "status" in update_dict:
         new_status = TripStatus(update_dict["status"])
         current_status = TripStatus(trip.status) if isinstance(trip.status, str) else trip.status
+
+        # Validate status transition (skip for reopen — handled by role check below)
+        is_reopen = current_status in CLOSED_STATUSES and new_status not in CLOSED_STATUSES
+        if not is_reopen:
+            validate_status_transition(current_status, new_status)
 
         # Auto-advance "Loading" → "Loaded" when loading_end_date is provided
         if new_status == TripStatus.loading and update_dict.get("loading_end_date"):

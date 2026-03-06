@@ -27,8 +27,10 @@ import {
 import dayjs from "dayjs";
 import type { TripUpdate, TripStatus, Trip } from "@/types/trip";
 import type { Country } from "@/types/location";
+import { VALID_NEXT_STATUSES, ALL_RETURN_STATUSES } from "@/constants/tripStatuses";
+import { theme } from "antd";
 
-const { Text } = Typography;
+const { Text, Link } = Typography;
 
 // Go leg statuses — only shown when no return waybill attached
 const GO_STATUSES: TripStatus[] = [
@@ -171,6 +173,7 @@ export function UpdateTripStatusModal({
   tripId,
   initialValues,
 }: UpdateTripStatusModalProps) {
+  const { token } = theme.useToken();
   const [form] = Form.useForm();
   const [submitting, setSubmitting] = useState(false);
   const [countries, setCountries] = useState<Country[]>([]);
@@ -187,10 +190,19 @@ export function UpdateTripStatusModal({
   const isTripClosed = currentStatus && CLOSED_STATUSES.includes(currentStatus);
   const isReopening = isTripClosed && selectedStatus && !CLOSED_STATUSES.includes(selectedStatus);
 
-  // Go leg: show go statuses + terminals + special. Return leg: show return statuses + terminals + special.
-  const TRIP_STATUSES: TripStatus[] = hasReturnWaybill
-    ? [...RETURN_STATUSES, ...TERMINAL_STATUSES]
-    : [...GO_STATUSES, ...TERMINAL_STATUSES];
+  // Compute valid next statuses for current status, filtered by leg context
+  const validNextStatuses: TripStatus[] = (() => {
+    const all = (VALID_NEXT_STATUSES[currentStatus ?? ""] ?? []) as TripStatus[];
+    return all.filter((s) => {
+      // Filter return leg statuses when no return waybill attached
+      if (!hasReturnWaybill && ALL_RETURN_STATUSES.includes(s)) return false;
+      // When in return leg context (Arrived at Yard after return leg), hide go-leg backward option
+      if (hasReturnWaybill && currentStatus === "Arrived at Yard" && s === "Returning Empty") return false;
+      return true;
+    });
+  })();
+  const nextStepStatuses = validNextStatuses.filter((s) => s !== "Breakdown" && s !== "Cancelled");
+  const specialStatuses = validNextStatuses.filter((s) => s === "Breakdown" || s === "Cancelled");
 
   useEffect(() => {
     if (open) {
@@ -647,23 +659,43 @@ export function UpdateTripStatusModal({
           name="status"
           label="New Status"
           rules={[{ required: true, message: "Please select a status" }]}
+          extra={
+            !isTripClosed && (
+              <Link
+                style={{ fontSize: 12 }}
+                onClick={() => message.info("Date correction feature coming soon. Contact your manager to adjust a date.")}
+              >
+                Need to correct a recorded date? →
+              </Link>
+            )
+          }
         >
-          <Select placeholder="Select status" onChange={handleStatusChange}>
-            <Select.OptGroup label={hasReturnWaybill ? "Return Leg" : "Go Leg"}>
-              {TRIP_STATUSES.filter(s => !TERMINAL_STATUSES.includes(s) && !SPECIAL_STATUSES.includes(s)).map((status) => (
-                <Select.Option key={status} value={status}>{status}</Select.Option>
-              ))}
-            </Select.OptGroup>
-            <Select.OptGroup label="Terminal">
-              {TERMINAL_STATUSES.map((status) => (
-                <Select.Option key={status} value={status}>{status}</Select.Option>
-              ))}
-            </Select.OptGroup>
-            <Select.OptGroup label="Special">
-              {SPECIAL_STATUSES.map((status) => (
-                <Select.Option key={status} value={status}>{status}</Select.Option>
-              ))}
-            </Select.OptGroup>
+          <Select
+            placeholder="Select status"
+            onChange={handleStatusChange}
+            disabled={isTripClosed}
+          >
+            {nextStepStatuses.length > 0 && (
+              <Select.OptGroup label="Next Steps">
+                {nextStepStatuses.map((status) => (
+                  <Select.Option key={status} value={status}>{status}</Select.Option>
+                ))}
+              </Select.OptGroup>
+            )}
+            {specialStatuses.length > 0 && (
+              <Select.OptGroup label="Special Actions">
+                {specialStatuses.map((status) => (
+                  <Select.Option key={status} value={status}>
+                    <span style={{
+                      color: status === "Breakdown" ? token.colorWarning : token.colorError,
+                      fontWeight: 500,
+                    }}>
+                      {status}
+                    </span>
+                  </Select.Option>
+                ))}
+              </Select.OptGroup>
+            )}
           </Select>
         </Form.Item>
 
