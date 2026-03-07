@@ -410,8 +410,8 @@ class Waybill(WaybillBase, table=True):
     created_by_id: uuid.UUID | None = Field(default=None, foreign_key="users.id", index=True)
     updated_by_id: uuid.UUID | None = Field(default=None, foreign_key="users.id", index=True)
 
-    created_by: "User | None" = Relationship(sa_relationship_kwargs={"foreign_keys": "[Waybill.created_by_id]", "lazy": "selectin"})
-    updated_by: "User | None" = Relationship(sa_relationship_kwargs={"foreign_keys": "[Waybill.updated_by_id]", "lazy": "selectin"})
+    created_by: User | None = Relationship(sa_relationship_kwargs={"foreign_keys": "[Waybill.created_by_id]", "lazy": "selectin"})
+    updated_by: User | None = Relationship(sa_relationship_kwargs={"foreign_keys": "[Waybill.updated_by_id]", "lazy": "selectin"})
 
 
 class WaybillPublic(WaybillBase):
@@ -591,8 +591,8 @@ class Trip(TripBase, table=True):
     truck: Truck | None = Relationship()
     trailer: Trailer | None = Relationship()
     driver: Driver | None = Relationship()
-    created_by: "User | None" = Relationship(sa_relationship_kwargs={"foreign_keys": "[Trip.created_by_id]", "lazy": "selectin"})
-    updated_by: "User | None" = Relationship(sa_relationship_kwargs={"foreign_keys": "[Trip.updated_by_id]", "lazy": "selectin"})
+    created_by: User | None = Relationship(sa_relationship_kwargs={"foreign_keys": "[Trip.created_by_id]", "lazy": "selectin"})
+    updated_by: User | None = Relationship(sa_relationship_kwargs={"foreign_keys": "[Trip.updated_by_id]", "lazy": "selectin"})
 
 
 # Properties to return via API
