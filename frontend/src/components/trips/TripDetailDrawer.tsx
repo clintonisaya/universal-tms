@@ -27,6 +27,7 @@ import {
   DeleteOutlined,
   DownloadOutlined,
   PaperClipOutlined,
+  EditOutlined,
 } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
 import type { TripDetailed, TripStatus, PodDocument } from "@/types/trip";
@@ -601,6 +602,16 @@ export function TripDetailDrawer({ open, onClose, tripId, onEdit }: TripDetailDr
                           ? new Date(trip.created_at).toLocaleDateString()
                           : "-"}
                       </Descriptions.Item>
+                      {/* Story 6.9: Remarks — hidden when empty */}
+                      {trip.remarks && (
+                        <Descriptions.Item label="Remarks" span={2}>
+                          <Text style={{ whiteSpace: "pre-wrap" }}>{trip.remarks}</Text>
+                          <EditOutlined
+                            style={{ marginLeft: 8, cursor: "pointer", color: "#1677ff" }}
+                            onClick={() => setIsStatusModalOpen(true)}
+                          />
+                        </Descriptions.Item>
+                      )}
                     </Descriptions>
 
                     {/* Go Waybill section */}

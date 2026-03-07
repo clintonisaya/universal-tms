@@ -29,9 +29,11 @@ import {
   UploadOutlined,
   DownloadOutlined,
   PaperClipOutlined,
+  EditOutlined,
 } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
 import type { TripDetailed, TripStatus } from "@/types/trip";
+import { RETURN_DIRECTION_STATUSES, STATUS_ORDER } from "@/constants/tripStatuses";
 import type { Waybill } from "@/types/waybill";
 import type {
   ExpenseRequest,
@@ -344,26 +346,10 @@ export default function TripDetailPage() {
     return null;
   }
 
-  const RETURN_STATUSES = new Set([
-    "Dispatched (Return)", "Arrived at Loading Point (Return)", "Loading (Return)",
-    "Loaded (Return)", "In Transit (Return)", "At Border (Return)",
-    "Arrived at Destination (Return)", "Offloading (Return)", "Offloaded (Return)",
-    "Arrived at Yard", "Waiting for PODs",
-  ]);
   const effectiveRoute =
-    RETURN_STATUSES.has(trip.status) && trip.return_route_name
+    new Set(RETURN_DIRECTION_STATUSES).has(trip.status) && trip.return_route_name
       ? trip.return_route_name
       : trip.route_name;
-
-  const STATUS_HISTORY_ORDER: TripStatus[] = [
-    "Waiting", "Dispatched", "Arrived at Loading Point", "Loading", "Loaded",
-    "In Transit", "At Border", "Arrived at Destination", "Offloading", "Offloaded",
-    "Returning Empty", "Waiting (Return)", "Dispatched (Return)",
-    "Arrived at Loading Point (Return)", "Loading (Return)", "Loaded (Return)",
-    "In Transit (Return)", "At Border (Return)", "Arrived at Destination (Return)",
-    "Offloading (Return)", "Offloaded (Return)", "Arrived at Yard",
-    "Waiting for PODs", "Completed",
-  ];
 
   // Status color by category for Timeline dot
   const getStatusColor = (status: TripStatus): string => {
@@ -396,8 +382,8 @@ export default function TripDetailPage() {
   };
 
   const historyItems = (() => {
-    const currentIdx = STATUS_HISTORY_ORDER.indexOf(trip.status);
-    const ordered = STATUS_HISTORY_ORDER.slice(0, currentIdx + 1);
+    const currentIdx = STATUS_ORDER.indexOf(trip.status);
+    const ordered = STATUS_ORDER.slice(0, currentIdx + 1);
     // Newest-first (AC-5)
     return [...ordered].reverse().map((status) => {
       const date = dateOfStatus(status);
@@ -503,6 +489,16 @@ export default function TripDetailPage() {
                         ? new Date(trip.created_at).toLocaleDateString()
                         : "-"}
                     </Descriptions.Item>
+                    {/* Story 6.9: Remarks — hidden when empty */}
+                    {trip.remarks && (
+                      <Descriptions.Item label="Remarks" span={2}>
+                        <Text style={{ whiteSpace: "pre-wrap" }}>{trip.remarks}</Text>
+                        <EditOutlined
+                          style={{ marginLeft: 8, cursor: "pointer", color: "#1677ff" }}
+                          onClick={() => setIsStatusModalOpen(true)}
+                        />
+                      </Descriptions.Item>
+                    )}
                   </Descriptions>
                 ),
               },

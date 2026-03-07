@@ -39,6 +39,7 @@ import {
   useResizableColumns,
 } from "@/components/ui/tableUtils";
 import { TripStatusTag } from "@/components/ui/TripStatusTag";
+import { RETURN_DIRECTION_STATUSES, STATUS_FILTERS } from "@/constants/tripStatuses";
 
 const { Title, Text } = Typography;
 
@@ -72,22 +73,7 @@ function formatRelativeTime(dateStr: string | null | undefined): string {
   return date.toLocaleDateString();
 }
 
-const RETURN_STATUSES = new Set([
-  "Dispatched (Return)", "Arrived at Loading Point (Return)", "Loading (Return)",
-  "Loaded (Return)", "In Transit (Return)", "At Border (Return)",
-  "Arrived at Destination (Return)", "Offloading (Return)", "Offloaded (Return)",
-  "Arrived at Yard", "Waiting for PODs",
-]);
-
-const STATUS_FILTERS: { text: string; value: string }[] = [
-  "Waiting", "Dispatched", "Arrived at Loading Point", "Loading", "Loaded",
-  "In Transit", "At Border", "Arrived at Destination", "Offloading", "Offloaded",
-  "Returning Empty",
-  "Dispatched (Return)", "Arrived at Loading Point (Return)", "Loading (Return)",
-  "Loaded (Return)", "In Transit (Return)", "At Border (Return)",
-  "Arrived at Destination (Return)", "Offloading (Return)", "Offloaded (Return)",
-  "Arrived at Yard", "Waiting for PODs", "Completed", "Cancelled",
-].map((s) => ({ text: s, value: s }));
+const RETURN_STATUSES = new Set(RETURN_DIRECTION_STATUSES);
 
 const DIRECTION_FILTERS = [
   { text: "Go", value: "go" },

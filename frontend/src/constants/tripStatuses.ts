@@ -1,3 +1,5 @@
+import type { TripStatus } from "@/types/trip";
+
 /**
  * Trip status transition map — mirrors backend VALID_TRANSITIONS in trips.py.
  *
@@ -153,3 +155,103 @@ export const ALL_RETURN_STATUSES: string[] = [
   "Loading (Return)", "Loaded (Return)", "In Transit (Return)", "At Border (Return)",
   "Arrived at Destination (Return)", "Offloading (Return)", "Offloaded (Return)",
 ];
+
+// Go leg statuses shown in UpdateTripStatusModal dropdown
+export const GO_STATUSES: TripStatus[] = [
+  "Dispatched",
+  "Arrived at Loading Point",
+  "Loading",
+  // "Loaded" is auto-set when loading_end_date is filled — not manually selectable
+  "In Transit",
+  "At Border",
+  "Arrived at Destination",
+  "Offloading",
+  // "Offloaded" is auto-set when offloading_date is filled — not manually selectable
+  "Returning Empty",
+];
+
+// Return leg statuses shown in UpdateTripStatusModal dropdown (when return_waybill_id is set)
+export const RETURN_STATUSES: TripStatus[] = [
+  "Waiting (Return)",
+  "Dispatched (Return)",
+  "Arrived at Loading Point (Return)",
+  "Loading (Return)",
+  // "Loaded (Return)" is auto-set when loading_return_end_date is filled — not manually selectable
+  "In Transit (Return)",
+  "At Border (Return)",
+  "Arrived at Destination (Return)",
+  "Offloading (Return)",
+  // "Offloaded (Return)" is auto-set when offloading_return_date is filled — not manually selectable
+];
+
+// Terminal statuses — always visible regardless of direction
+export const TERMINAL_STATUSES: TripStatus[] = [
+  "Arrived at Yard",
+  "Waiting for PODs",
+  "Completed",
+  "Cancelled",
+];
+
+// Closed (end-of-life) statuses — trip cannot be updated normally
+export const CLOSED_STATUSES: TripStatus[] = ["Completed", "Cancelled"];
+
+// Special-action statuses (rendered separately in the dropdown)
+export const SPECIAL_STATUSES: TripStatus[] = ["Breakdown"];
+
+// Full status lifecycle order — used for timeline/history display
+export const STATUS_ORDER: TripStatus[] = [
+  "Waiting",
+  "Dispatched",
+  "Arrived at Loading Point",
+  "Loading",
+  "Loaded",
+  "In Transit",
+  "At Border",
+  "Arrived at Destination",
+  "Offloading",
+  "Offloaded",
+  "Returning Empty",
+  "Waiting (Return)",
+  "Dispatched (Return)",
+  "Arrived at Loading Point (Return)",
+  "Loading (Return)",
+  "Loaded (Return)",
+  "In Transit (Return)",
+  "At Border (Return)",
+  "Arrived at Destination (Return)",
+  "Offloading (Return)",
+  "Offloaded (Return)",
+  "Arrived at Yard",
+  "Waiting for PODs",
+  "Completed",
+];
+
+// Simplified pipeline for the Steps progress indicator in UpdateTripStatusModal
+export const TRIP_PIPELINE_STEPS: TripStatus[] = [
+  "Waiting",
+  "Loading",
+  "In Transit",
+  "Offloading",
+  "Waiting for PODs",
+  "Completed",
+];
+
+// Statuses that indicate the trip is currently in return/bridge direction
+// Used to determine route display and direction tag in list/detail pages
+export const RETURN_DIRECTION_STATUSES: TripStatus[] = [
+  "Dispatched (Return)", "Arrived at Loading Point (Return)", "Loading (Return)",
+  "Loaded (Return)", "In Transit (Return)", "At Border (Return)",
+  "Arrived at Destination (Return)", "Offloading (Return)", "Offloaded (Return)",
+  "Arrived at Yard", "Waiting for PODs",
+];
+
+// Status filter options for the trips list table column filter dropdown
+export const STATUS_FILTERS: { text: string; value: string }[] = [
+  "Waiting", "Dispatched", "Arrived at Loading Point", "Loading", "Loaded",
+  "In Transit", "At Border", "Arrived at Destination", "Offloading", "Offloaded",
+  "Returning Empty",
+  "Dispatched (Return)", "Arrived at Loading Point (Return)", "Loading (Return)",
+  "Loaded (Return)", "In Transit (Return)", "At Border (Return)",
+  "Arrived at Destination (Return)", "Offloading (Return)", "Offloaded (Return)",
+  "Arrived at Yard", "Waiting for PODs", "Completed", "Cancelled",
+].map((s) => ({ text: s, value: s }));

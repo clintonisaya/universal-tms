@@ -19,6 +19,7 @@ import {
   Typography,
   Steps,
   Collapse,
+  Tooltip,
 } from "antd";
 import {
   CheckCircleOutlined,
@@ -27,88 +28,16 @@ import {
 import dayjs from "dayjs";
 import type { TripUpdate, TripStatus, Trip } from "@/types/trip";
 import type { Country } from "@/types/location";
-import { VALID_NEXT_STATUSES, ALL_RETURN_STATUSES } from "@/constants/tripStatuses";
+import {
+  VALID_NEXT_STATUSES,
+  ALL_RETURN_STATUSES,
+  CLOSED_STATUSES,
+  STATUS_ORDER,
+  TRIP_PIPELINE_STEPS,
+} from "@/constants/tripStatuses";
 import { theme } from "antd";
 
 const { Text, Link } = Typography;
-
-// Go leg statuses — only shown when no return waybill attached
-const GO_STATUSES: TripStatus[] = [
-  "Dispatched",
-  "Arrived at Loading Point",
-  "Loading",
-  // "Loaded" is auto-set when loading_end_date is filled — not manually selectable
-  "In Transit",
-  "At Border",
-  "Arrived at Destination",
-  "Offloading",
-  // "Offloaded" is auto-set when offloading_date is filled — not manually selectable
-  "Returning Empty",
-];
-
-// Return leg statuses — only shown when return_waybill_id is set
-const RETURN_STATUSES: TripStatus[] = [
-  "Waiting (Return)",
-  "Dispatched (Return)",
-  "Arrived at Loading Point (Return)",
-  "Loading (Return)",
-  // "Loaded (Return)" is auto-set when loading_return_end_date is filled — not manually selectable
-  "In Transit (Return)",
-  "At Border (Return)",
-  "Arrived at Destination (Return)",
-  "Offloading (Return)",
-  // "Offloaded (Return)" is auto-set when offloading_return_date is filled — not manually selectable
-];
-
-// Terminal statuses — always visible regardless of direction
-const TERMINAL_STATUSES: TripStatus[] = [
-  "Arrived at Yard",
-  "Waiting for PODs",
-  "Completed",
-  "Cancelled",
-];
-
-const CLOSED_STATUSES: TripStatus[] = ["Completed", "Cancelled"];
-
-const SPECIAL_STATUSES: TripStatus[] = ["Breakdown"];
-
-// Status order for timeline display — full lifecycle including return leg
-const STATUS_ORDER: TripStatus[] = [
-  "Waiting",
-  "Dispatched",
-  "Arrived at Loading Point",
-  "Loading",
-  "Loaded",
-  "In Transit",
-  "At Border",
-  "Arrived at Destination",
-  "Offloading",
-  "Offloaded",
-  "Returning Empty",
-  "Waiting (Return)",
-  "Dispatched (Return)",
-  "Arrived at Loading Point (Return)",
-  "Loading (Return)",
-  "Loaded (Return)",
-  "In Transit (Return)",
-  "At Border (Return)",
-  "Arrived at Destination (Return)",
-  "Offloading (Return)",
-  "Offloaded (Return)",
-  "Arrived at Yard",
-  "Waiting for PODs",
-  "Completed",
-];
-
-// Simplified pipeline for the Steps progress indicator (AC-2)
-const TRIP_PIPELINE_STEPS: TripStatus[] = [
-  "Waiting",
-  "Loading",
-  "In Transit",
-  "Offloading",
-  "Waiting for PODs",
-  "Completed",
-];
 
 // Map any TripStatus to its nearest pipeline step index
 function getPipelineStepIndex(status: TripStatus | undefined): number {
@@ -343,6 +272,10 @@ export function UpdateTripStatusModal({
   const handleStatusChange = (value: TripStatus) => {
     setSelectedStatus(value);
     fetchBorderData(value);
+    // Clear breakdown_reason when switching away from Breakdown (AC-6)
+    if (value !== "Breakdown") {
+      form.setFieldValue("breakdown_reason", undefined);
+    }
   };
 
   const fetchResources = async () => {
@@ -469,7 +402,13 @@ export function UpdateTripStatusModal({
       if (values.pods_confirmed_date) {
         payload.pods_confirmed_date = values.pods_confirmed_date.format("YYYY-MM-DD");
       }
-      if (values.remarks !== undefined) {
+      // Story 6.8: breakdown_reason is appended to remarks with timestamp prefix
+      if (selectedStatus === "Breakdown" && values.breakdown_reason) {
+        const timestamp = dayjs().format("YYYY-MM-DD HH:mm");
+        const entry = `[Breakdown ${timestamp}]: ${values.breakdown_reason}`;
+        const existing = tripData?.remarks || "";
+        payload.remarks = existing ? `${existing}\n${entry}` : entry;
+      } else if (values.remarks !== undefined) {
         payload.remarks = values.remarks || null;
       }
       if (values.return_remarks !== undefined) {
@@ -686,18 +625,39 @@ export function UpdateTripStatusModal({
               <Select.OptGroup label="Special Actions">
                 {specialStatuses.map((status) => (
                   <Select.Option key={status} value={status}>
-                    <span style={{
-                      color: status === "Breakdown" ? token.colorWarning : token.colorError,
-                      fontWeight: 500,
-                    }}>
-                      {status}
-                    </span>
+                    {status === "Breakdown" ? (
+                      <Tooltip title="Recoverable — ops manually advances status back when truck is repaired.">
+                        <span style={{ color: token.colorWarning, fontWeight: 500 }}>
+                          ⚠️ Breakdown
+                        </span>
+                      </Tooltip>
+                    ) : (
+                      <span style={{ color: token.colorError, fontWeight: 500 }}>
+                        {status}
+                      </span>
+                    )}
                   </Select.Option>
                 ))}
               </Select.OptGroup>
             )}
           </Select>
         </Form.Item>
+
+        {/* Story 6.8: Breakdown reason — required when Breakdown selected */}
+        {selectedStatus === "Breakdown" && (
+          <Form.Item
+            name="breakdown_reason"
+            label="Breakdown Reason"
+            rules={[{ required: true, message: "Please describe the breakdown reason." }]}
+          >
+            <Input.TextArea
+              rows={3}
+              placeholder="Describe what happened and current location of the truck"
+              maxLength={500}
+              showCount
+            />
+          </Form.Item>
+        )}
 
         <Form.Item name="is_delayed" label="Mark as Delayed" valuePropName="checked">
           <Switch />
@@ -1028,7 +988,7 @@ export function UpdateTripStatusModal({
         )}
 
         {/* Remarks — go leg remark (frozen after offloading); return leg gets its own field */}
-        {![...RETURN_STATUSES, "Offloaded (Return)", "Arrived at Yard", "Waiting for PODs"].includes(selectedStatus as TripStatus) && (
+        {![...ALL_RETURN_STATUSES, "Offloaded (Return)", "Arrived at Yard", "Waiting for PODs"].includes(selectedStatus as TripStatus) && (
           <Form.Item name="remarks" label="Remarks">
             <Input.TextArea
               rows={2}
@@ -1037,7 +997,7 @@ export function UpdateTripStatusModal({
             />
           </Form.Item>
         )}
-        {[...RETURN_STATUSES, "Offloaded (Return)", "Arrived at Yard", "Waiting for PODs"].includes(selectedStatus as TripStatus) && (
+        {[...ALL_RETURN_STATUSES, "Offloaded (Return)", "Arrived at Yard", "Waiting for PODs"].includes(selectedStatus as TripStatus) && (
           <Form.Item name="return_remarks" label="Remarks (Return)">
             <Input.TextArea
               rows={2}
