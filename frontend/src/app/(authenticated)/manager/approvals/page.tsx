@@ -17,7 +17,7 @@ import {
   ArrowLeftOutlined,
 } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
-import type { ExpenseRequest, ExpenseStatus, ExpenseCategory, ExpenseRequestDetailed } from "@/types/expense";
+import type { ExpenseRequest, ExpenseStatus, ExpenseRequestDetailed } from "@/types/expense";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   getColumnSearchProps,
@@ -28,35 +28,11 @@ import {
 import { ExpenseStatusBadge } from "@/components/expenses/ExpenseStatusBadge";
 import { ExpenseReviewModal } from "@/components/expenses/ExpenseReviewModal";
 import { EmptyState } from "@/components/ui";
+import { CATEGORY_FILTERS, EXPENSE_STATUS_FILTERS, CATEGORY_OPTIONS, STATUS_OPTIONS } from "@/constants/expenseConstants";
 
 const { Title, Text } = Typography;
 
-const CATEGORY_OPTIONS: { label: string; value: ExpenseCategory }[] = [
-  { label: "Fuel", value: "Fuel" },
-  { label: "Allowance", value: "Allowance" },
-  { label: "Maintenance", value: "Maintenance" },
-  { label: "Office", value: "Office" },
-  { label: "Border", value: "Border" },
-  { label: "Other", value: "Other" },
-];
-
-const STATUS_OPTIONS: { label: string; value: ExpenseStatus }[] = [
-  { label: "Pending Manager", value: "Pending Manager" },
-  { label: "Pending Finance", value: "Pending Finance" },
-  { label: "Paid", value: "Paid" },
-  { label: "Rejected", value: "Rejected" },
-  { label: "Returned", value: "Returned" },
-];
-
-const CATEGORY_FILTERS = CATEGORY_OPTIONS.map((o) => ({
-  text: o.label,
-  value: o.value,
-}));
-
-const STATUS_FILTERS = STATUS_OPTIONS.map((o) => ({
-  text: o.label,
-  value: o.value,
-}));
+const STATUS_FILTERS = EXPENSE_STATUS_FILTERS;
 
 function ApprovalPageContent() {
   const router = useRouter();
@@ -67,7 +43,7 @@ function ApprovalPageContent() {
   const [totalCount, setTotalCount] = useState(0);
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
   const [statusFilter, setStatusFilter] = useState<ExpenseStatus>("Pending Manager");
-  const [categoryFilter, setCategoryFilter] = useState<ExpenseCategory | "">("");
+  const [categoryFilter, setCategoryFilter] = useState<string>("");
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
 

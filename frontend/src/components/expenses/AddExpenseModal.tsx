@@ -31,36 +31,9 @@ import type { Trip } from "@/types/trip";
 import type { TripExpenseType } from "@/types/trip-expense-type";
 import type { OfficeExpenseType } from "@/types/office-expense-type";
 import dayjs from "dayjs";
+import { COMPANY_NAME, EXPENSE_CATEGORIES, CATEGORY_MAPPING } from "@/constants/expenseConstants";
 
 const { Text } = Typography;
-
-const EXPENSE_CATEGORIES: ExpenseCategory[] = [
-  "Fuel",
-  "Allowance",
-  "Maintenance",
-  "Office",
-  "Border",
-  "Other",
-];
-
-// Map Trip Expense Type categories to ExpenseCategory
-const CATEGORY_MAPPING: Record<string, ExpenseCategory> = {
-  "Fuel": "Fuel",
-  "Driver Allowance": "Allowance",
-  "Cargo Charges": "Border",
-  "Transportation Costs-Others": "Other",
-  "Toll Gates": "Border",
-  "Road Toll": "Border",
-  "Port Fee": "Border",
-  "Parking Fee": "Other",
-  "Council": "Border",
-  "Bond": "Border",
-  "Agency Fee": "Border",
-  "CNPR Tax": "Border",
-  "Bonus": "Allowance",
-  "Border Expenses": "Border",
-  "Miscellaneous": "Other",
-};
 
 interface AddExpenseModalProps {
   open: boolean;
@@ -192,7 +165,7 @@ export function AddExpenseModal({
 
       // Set default values
       form.setFieldsValue({
-        company: "EDUPO COMPANY LIMITED",
+        company: COMPANY_NAME,
         application_date: dayjs(),
         payment_method: "Cash"
       });

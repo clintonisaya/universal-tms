@@ -41,6 +41,7 @@ import {
   getStandardRowSelection,
   useResizableColumns,
 } from "@/components/ui/tableUtils";
+import { CATEGORY_FILTERS } from "@/constants/expenseConstants";
 
 const { Title } = Typography;
 
@@ -58,13 +59,6 @@ const STATUS_FILTERS = Object.keys(STATUS_COLORS).map((status) => ({
   value: status,
 }));
 
-const CATEGORY_FILTERS = [
-  { text: "Fuel", value: "Fuel" },
-  { text: "Allowance", value: "Allowance" },
-  { text: "Maintenance", value: "Maintenance" },
-  { text: "Border", value: "Border" },
-  { text: "Other", value: "Other" },
-];
 
 export default function ExpensesPage() {
   const router = useRouter();

@@ -41,6 +41,7 @@ import type { ExpenseRequestDetailed, ExpenseCategory } from "@/types/expense";
 import type { TripExpenseType } from "@/types/trip-expense-type";
 import type { OfficeExpenseType } from "@/types/office-expense-type";
 import dayjs from "dayjs";
+import { COMPANY_NAME, CATEGORY_MAPPING } from "@/constants/expenseConstants";
 
 interface AttachmentInfo {
   key: string;
@@ -58,24 +59,6 @@ function getFileIcon(filename: string) {
 
 const { Text } = Typography;
 
-// Map Trip Expense Type categories to ExpenseCategory
-const CATEGORY_MAPPING: Record<string, ExpenseCategory> = {
-  "Fuel": "Fuel",
-  "Driver Allowance": "Allowance",
-  "Cargo Charges": "Border",
-  "Transportation Costs-Others": "Other",
-  "Toll Gates": "Border",
-  "Road Toll": "Border",
-  "Port Fee": "Border",
-  "Parking Fee": "Other",
-  "Council": "Border",
-  "Bond": "Border",
-  "Agency Fee": "Border",
-  "CNPR Tax": "Border",
-  "Bonus": "Allowance",
-  "Border Expenses": "Border",
-  "Miscellaneous": "Other",
-};
 
 interface EditExpenseModalProps {
   open: boolean;
@@ -185,7 +168,7 @@ export function EditExpenseModal({
       const metadata = expense.expense_metadata || {};
 
       form.setFieldsValue({
-        company: "EDUPO COMPANY LIMITED",
+        company: COMPANY_NAME,
         application_date: metadata.application_date ? dayjs(metadata.application_date) : dayjs(),
         payment_method: metadata.payment_method || "Cash",
         remarks: expense.description || metadata.remarks || "",

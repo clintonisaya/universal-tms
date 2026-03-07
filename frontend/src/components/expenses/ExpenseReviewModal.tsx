@@ -45,6 +45,7 @@ import type { ExpenseRequestDetailed, ExpenseCategory } from "@/types/expense";
 import type { TripExpenseType } from "@/types/trip-expense-type";
 import type { OfficeExpenseType } from "@/types/office-expense-type";
 import { ExpenseStatusBadge } from "./ExpenseStatusBadge";
+import { COMPANY_NAME, CATEGORY_MAPPING, EXPENSE_STEPS } from "@/constants/expenseConstants";
 
 const { Text } = Typography;
 const { TextArea } = Input;
@@ -66,24 +67,6 @@ interface ExpenseReviewModalProps {
   loading?: boolean;
 }
 
-// Map Trip Expense Type categories to ExpenseCategory
-const CATEGORY_MAPPING: Record<string, ExpenseCategory> = {
-  Fuel: "Fuel",
-  "Driver Allowance": "Allowance",
-  "Cargo Charges": "Border",
-  "Transportation Costs-Others": "Other",
-  "Toll Gates": "Border",
-  "Road Toll": "Border",
-  "Port Fee": "Border",
-  "Parking Fee": "Other",
-  Council: "Border",
-  Bond: "Border",
-  "Agency Fee": "Border",
-  "CNPR Tax": "Border",
-  Bonus: "Allowance",
-  "Border Expenses": "Border",
-  Miscellaneous: "Other",
-};
 
 interface EditableItem {
   expense_type_id?: string;
@@ -601,8 +584,7 @@ export function ExpenseReviewModal({
   const displayAmount = editable && editItems.length > 0 ? editTotal : (expense?.amount ?? 0);
   const displayCurrency = editable && editItems.length > 0 ? (editItems[0]?.currency ?? "TZS") : (expense?.currency ?? "TZS");
 
-  // AC-2: Expense approval pipeline Steps
-  const EXPENSE_STEPS = ["Submitted", "Manager Review", "Finance Payment", "Paid"];
+  // AC-2: Expense approval pipeline Steps (from shared constants)
   const expenseStepIndex: Record<string, number> = {
     "Pending Manager": 1,
     "Pending Finance": 2,
@@ -659,7 +641,7 @@ export function ExpenseReviewModal({
             <div style={{ marginBottom: 4 }}>
               <Text type="secondary" style={{ fontSize: 12 }}>Company</Text>
             </div>
-            <Input value="EDUPO COMPANY LIMITED" readOnly />
+            <Input value={COMPANY_NAME} readOnly />
           </Col>
           <Col span={8}>
             <div style={{ marginBottom: 4 }}>

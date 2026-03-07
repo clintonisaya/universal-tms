@@ -34,6 +34,7 @@ import {
 import { PrintPreviewModal } from "./PrintPreviewModal";
 import type { ExpenseRequestDetailed } from "@/types/expense";
 import dayjs from "dayjs";
+import { COMPANY_NAME } from "@/constants/expenseConstants";
 
 interface AttachmentInfo {
   key: string;
@@ -234,7 +235,7 @@ export function PaymentModal({ open, onClose, onSuccess, expense }: PaymentModal
             <div style={{ marginBottom: 4 }}>
               <Text type="secondary" style={{ fontSize: 12 }}>Company</Text>
             </div>
-            <Input value="EDUPO COMPANY LIMITED" readOnly />
+            <Input value={COMPANY_NAME} readOnly />
           </Col>
           <Col span={8}>
             <div style={{ marginBottom: 4 }}>

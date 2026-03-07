@@ -38,6 +38,7 @@ import type { ExpenseRequestDetailed } from "@/types/expense";
 import { ExpenseStatusBadge } from "./ExpenseStatusBadge";
 import { fmtAmount, fmtCurrency } from "@/lib/utils";
 import dayjs from "dayjs";
+import { COMPANY_NAME } from "@/constants/expenseConstants";
 
 const { Text } = Typography;
 
@@ -192,7 +193,7 @@ export function ProcessPaymentModal({
                 Company
               </Text>
             </div>
-            <Input value="EDUPO COMPANY LIMITED" readOnly />
+            <Input value={COMPANY_NAME} readOnly />
           </Col>
           <Col span={8}>
             <div style={{ marginBottom: 4 }}>
