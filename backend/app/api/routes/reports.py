@@ -1,6 +1,9 @@
+import logging
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 from fastapi import APIRouter, Query
 from sqlmodel import func, select
@@ -29,6 +32,29 @@ from app.models import (
 )
 
 router = APIRouter(prefix="/reports", tags=["reports"])
+
+
+def _resolve_border_location(crossings: list[dict], trip_status: str) -> str | None:
+    """AC-1 (Story 6.14): Resolve border location from actual crossing records.
+
+    Only show a border location when the trip is at/near a border.
+    Prefer the first crossing with arrived_side_a_at recorded; fall back to
+    the first planned GO crossing; return None when not at a border at all.
+    """
+    at_border = trip_status in ("At Border", "At Border (Return)")
+    if not at_border:
+        return None
+
+    go_crossings = [c for c in crossings if c.get("direction") == "go"]
+    # First: any crossing with arrival recorded (truck is physically there)
+    for c in go_crossings:
+        if c.get("arrived_side_a_at"):
+            return c.get("border_display_name") or "—"
+    # Second: first planned GO crossing (not yet arrived but trip is heading there)
+    if go_crossings:
+        return go_crossings[0].get("border_display_name") or "—"
+    return "—"
+
 
 @router.get("/waybill-tracking")
 def get_waybill_tracking_report(
@@ -178,7 +204,10 @@ def get_waybill_tracking_report(
             "trailer_type": trailer.type if trailer else None,
             # Location
             "current_location": trip.current_location,
-            "border_location": "Kasumbalesa" if trip.status in ("At Border", "At Border (Return)") else None,
+            # AC-1 (Story 6.14): Derive border_location from actual crossing records.
+            # Prefer the first GO crossing that has arrived_side_a_at recorded;
+            # fall back to any GO crossing planned; then "—" if no crossings at all.
+            "border_location": _resolve_border_location(crossings_by_trip.get(str(trip.id), []), trip.status),
             # Duration
             "duration_days": duration_days,
             "return_duration_days": return_duration_days,
@@ -293,7 +322,11 @@ def get_current_exchange_rate(session: SessionDep) -> Decimal:
     if rate:
         return rate.rate
 
-    # Default rate
+    # Default rate — no exchange rate configured in DB
+    logger.warning(
+        "No exchange rate found for %s-%s. Using fallback rate of 2500.00",
+        now.year, now.month,
+    )
     return Decimal("2500.00")
 
 
@@ -372,26 +405,28 @@ def get_financial_pulse(
     ]
 
     # Go waybill revenue (current year)
+    # AC-3: attribute revenue to dispatch_date (or end_date, then created_at as last resort)
+    _revenue_date = func.coalesce(Trip.dispatch_date, Trip.end_date, Trip.created_at)
     revenue_stmt = (
         select(
-            func.date(Trip.created_at).label("date"),
+            func.date(_revenue_date).label("date"),
             Waybill.agreed_rate,
             Waybill.currency,
         )
         .join(Waybill, Waybill.id == Trip.waybill_id)
-        .where(Trip.created_at >= year_start)
+        .where(_revenue_date >= year_start)
         .where(Trip.status.in_(_active_statuses))
     )
     # Return waybill revenue (current year) — only trips that have return waybill attached
     return_revenue_stmt = (
         select(
-            func.date(Trip.created_at).label("date"),
+            func.date(_revenue_date).label("date"),
             Waybill.agreed_rate,
             Waybill.currency,
         )
         .join(Waybill, Waybill.id == Trip.return_waybill_id)
         .where(Trip.return_waybill_id.isnot(None))
-        .where(Trip.created_at >= year_start)
+        .where(_revenue_date >= year_start)
         .where(Trip.status.in_(_active_statuses))
     )
     revenue_rows = list(session.exec(revenue_stmt).all()) + list(session.exec(return_revenue_stmt).all())
@@ -735,7 +770,10 @@ def get_trip_profitability(
     # Summary stats
     total_income = sum(d["income"] for d in profitability_data)
     total_expenses_sum = sum(d["expenses"] for d in profitability_data)
-    total_profit = total_income - total_expenses_sum - float(total_office_expenses_tzs)
+    # AC-2 (Story 6.14): Office expenses are reported separately in the summary
+    # and must NOT also be subtracted from total_profit — that would double-count them.
+    # total_profit reflects trip-level P&L only; total_office_expenses is informational overhead.
+    total_profit = total_income - total_expenses_sum
     avg_margin = (total_profit / total_income * 100) if total_income > 0 else 0.0
     total_profit_per_day = sum(d["profit_per_day"] for d in profitability_data)
 
