@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 from decimal import Decimal
 from enum import Enum
 
-from sqlalchemy import Column, DateTime, JSON, Numeric, Enum as SAEnum
+from sqlalchemy import Column, DateTime, Index, JSON, Numeric, Enum as SAEnum, UniqueConstraint
 from sqlmodel import Field, Relationship, SQLModel
 
 
@@ -817,6 +817,9 @@ class ExchangeRateUpdate(SQLModel):
 
 class ExchangeRate(ExchangeRateBase, table=True):
     __tablename__ = "exchange_rate"
+    __table_args__ = (
+        UniqueConstraint("month", "year", name="uq_exchange_rate_month_year"),
+    )
 
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     rate: Decimal = Field(sa_column=Column(Numeric(12, 2), nullable=False))
@@ -1239,6 +1242,9 @@ class BorderPostsPublic(SQLModel):
 
 class WaybillBorder(SQLModel, table=True):
     __tablename__ = "waybill_border"
+    __table_args__ = (
+        UniqueConstraint("waybill_id", "border_post_id", name="uq_waybill_border"),
+    )
 
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     waybill_id: uuid.UUID = Field(foreign_key="waybill.id", description="Linked waybill")
@@ -1270,6 +1276,9 @@ class TripBorderCrossingUpsert(SQLModel):
 
 class TripBorderCrossing(SQLModel, table=True):
     __tablename__ = "trip_border_crossing"
+    __table_args__ = (
+        Index("ix_trip_border_crossing_lookup", "trip_id", "border_post_id", "direction"),
+    )
 
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     trip_id: uuid.UUID = Field(foreign_key="trip.id", description="Linked trip")

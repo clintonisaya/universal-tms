@@ -6,6 +6,7 @@ import uuid
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Query
+from sqlalchemy.exc import IntegrityError
 from sqlmodel import select, func, and_
 
 from app.api.deps import CurrentUser, SessionDep
@@ -110,12 +111,19 @@ def create_exchange_rate(
     if existing:
         raise HTTPException(
             status_code=409,
-            detail=f"Exchange rate already exists for {rate_in.month}/{rate_in.year}. Use PUT to update.",
+            detail="Exchange rate for this month already exists. Update the existing record instead.",
         )
 
     rate = ExchangeRate(**rate_in.model_dump())
     session.add(rate)
-    session.commit()
+    try:
+        session.commit()
+    except IntegrityError:
+        session.rollback()
+        raise HTTPException(
+            status_code=409,
+            detail="Exchange rate for this month already exists. Update the existing record instead.",
+        )
     session.refresh(rate)
     return rate
 
