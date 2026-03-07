@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   Table,
   Button,
@@ -82,6 +82,7 @@ const DIRECTION_FILTERS = [
 
 function TripsPageContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { message } = App.useApp();
   const { token } = theme.useToken();
   const { user } = useAuth();
@@ -97,7 +98,11 @@ function TripsPageContent() {
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
-  const [tableFilters, setTableFilters] = useState<Record<string, any>>({});
+  // Initialise from URL so filters survive reload / share (AC-1, Story 6.17)
+  const urlStatus = searchParams.get("status");
+  const [tableFilters, setTableFilters] = useState<Record<string, any>>(
+    urlStatus ? { status: [urlStatus] } : {}
+  );
   const [tableKey, setTableKey] = useState(0);
 
   // TanStack Query for trips data — server-side pagination
@@ -113,7 +118,11 @@ function TripsPageContent() {
   const hasActiveFilters = Object.values(tableFilters).some(
     (v) => v != null && (Array.isArray(v) ? v.length > 0 : true)
   );
-  const clearAllFilters = () => { setTableFilters({}); setTableKey((k) => k + 1); };
+  const clearAllFilters = () => {
+    setTableFilters({});
+    setTableKey((k) => k + 1);
+    router.replace("?", { scroll: false });
+  };
 
   const handleDelete = async (trip: Trip) => {
     try {
@@ -205,6 +214,7 @@ function TripsPageContent() {
         <TripStatusTag status={status} isDelayed={record.is_delayed} />
       ),
       ...getColumnFilterProps("status", STATUS_FILTERS),
+      filteredValue: tableFilters.status || null,
     },
     {
       title: "",
@@ -361,7 +371,16 @@ function TripsPageContent() {
             onRow={(record) => ({
               style: record.is_delayed ? { backgroundColor: "#fffbe6" } : undefined,
             })}
-            onChange={(_, filters) => setTableFilters(filters as Record<string, any>)}
+            onChange={(_, filters) => {
+              const next = filters as Record<string, any>;
+              setTableFilters(next);
+              // Sync status filter to URL (AC-1, Story 6.17)
+              const params = new URLSearchParams(searchParams.toString());
+              const statusVal = (next.status as string[] | null)?.[0];
+              if (statusVal) params.set("status", statusVal);
+              else params.delete("status");
+              router.replace(`?${params.toString()}`, { scroll: false });
+            }}
             locale={{
               emptyText: hasActiveFilters ? (
                 <EmptyState
@@ -430,7 +449,9 @@ function TripsPageContent() {
 export default function TripsPage() {
   return (
     <App>
-      <TripsPageContent />
+      <Suspense>
+        <TripsPageContent />
+      </Suspense>
     </App>
   );
 }

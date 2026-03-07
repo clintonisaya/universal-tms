@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect, useCallback, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   Table,
   Button,
@@ -36,14 +36,20 @@ const STATUS_FILTERS = EXPENSE_STATUS_FILTERS;
 
 function ApprovalPageContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user } = useAuth();
   const { message } = App.useApp();
   const [expenses, setExpenses] = useState<ExpenseRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [totalCount, setTotalCount] = useState(0);
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
-  const [statusFilter, setStatusFilter] = useState<ExpenseStatus>("Pending Manager");
-  const [categoryFilter, setCategoryFilter] = useState<string>("");
+  // Initialise from URL (AC-3, Story 6.17)
+  const [statusFilter, setStatusFilter] = useState<ExpenseStatus>(
+    (searchParams.get("status") as ExpenseStatus) || "Pending Manager"
+  );
+  const [categoryFilter, setCategoryFilter] = useState<string>(
+    searchParams.get("category") || ""
+  );
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
 
@@ -243,7 +249,12 @@ function ApprovalPageContent() {
             <Space wrap>
               <Select
                 value={statusFilter}
-                onChange={(val) => setStatusFilter(val)}
+                onChange={(val) => {
+                  setStatusFilter(val);
+                  const params = new URLSearchParams(searchParams.toString());
+                  if (val) params.set("status", val); else params.delete("status");
+                  router.replace(`?${params.toString()}`, { scroll: false });
+                }}
                 style={{ width: 180 }}
                 options={STATUS_OPTIONS}
                 allowClear
@@ -251,7 +262,12 @@ function ApprovalPageContent() {
               />
               <Select
                 value={categoryFilter || undefined}
-                onChange={(val) => setCategoryFilter(val || "")}
+                onChange={(val) => {
+                  setCategoryFilter(val || "");
+                  const params = new URLSearchParams(searchParams.toString());
+                  if (val) params.set("category", val); else params.delete("category");
+                  router.replace(`?${params.toString()}`, { scroll: false });
+                }}
                 style={{ width: 160 }}
                 options={CATEGORY_OPTIONS}
                 allowClear
@@ -283,6 +299,7 @@ function ApprovalPageContent() {
                       onClick: () => {
                         setStatusFilter("Pending Manager");
                         setCategoryFilter("");
+                        router.replace("?", { scroll: false });
                       },
                     }}
                   />
@@ -329,7 +346,9 @@ function ApprovalPageContent() {
 export default function ApprovalPage() {
   return (
     <App>
-      <ApprovalPageContent />
+      <Suspense>
+        <ApprovalPageContent />
+      </Suspense>
     </App>
   );
 }

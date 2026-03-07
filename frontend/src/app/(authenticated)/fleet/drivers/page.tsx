@@ -16,6 +16,8 @@ import {
   Typography,
   Popconfirm,
   DatePicker,
+  Tooltip,
+  theme,
 } from "antd";
 import dayjs from "dayjs";
 import {
@@ -24,6 +26,8 @@ import {
   ArrowLeftOutlined,
   EditOutlined,
   DeleteOutlined,
+  WarningOutlined,
+  ClockCircleOutlined,
 } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
 import type {
@@ -44,7 +48,9 @@ import {
 } from "@/components/ui/tableUtils";
 import { EmptyState } from "@/components/ui";
 
-const { Title } = Typography;
+const { Title, Text } = Typography;
+
+const EXPIRY_WARNING_DAYS = 30;
 
 const STATUS_COLORS: Record<DriverStatus, string> = {
   Active: "success",
@@ -78,6 +84,38 @@ export default function DriversPage() {
 
   const [createForm] = Form.useForm<DriverFormValues>();
   const [editForm] = Form.useForm<DriverFormValues>();
+  const { token } = theme.useToken();
+
+  const renderExpiryDate = (date: string | null) => {
+    if (!date) return <Text type="secondary">—</Text>;
+    const days = dayjs(date).diff(dayjs(), "day");
+    const formatted = new Date(date).toLocaleDateString();
+    if (days < 0) {
+      return (
+        <Tooltip title="Expired — renew immediately.">
+          <Text type="danger"><WarningOutlined /> {formatted}</Text>
+        </Tooltip>
+      );
+    }
+    if (days <= EXPIRY_WARNING_DAYS) {
+      return (
+        <Tooltip title={`Expires in ${days} days.`}>
+          <Text style={{ color: token.colorWarning }}><ClockCircleOutlined /> {formatted}</Text>
+        </Tooltip>
+      );
+    }
+    return <Text>{formatted}</Text>;
+  };
+
+  const pastDateValidator = {
+    validator: (_: unknown, value: dayjs.Dayjs | null) => {
+      if (value && dayjs(value).isBefore(dayjs(), "day")) {
+        return Promise.reject("This date is in the past. Are you sure?");
+      }
+      return Promise.resolve();
+    },
+    warningOnly: true,
+  };
 
   const handleCreate = async (values: DriverCreate) => {
     setSubmitting(true);
@@ -205,7 +243,7 @@ export default function DriversPage() {
       dataIndex: "license_expiry_date",
       key: "license_expiry_date",
       width: 120,
-      render: (date: string | null) => date ? new Date(date).toLocaleDateString() : "-",
+      render: (date: string | null) => renderExpiryDate(date),
       sorter: (a, b) => (a.license_expiry_date || "").localeCompare(b.license_expiry_date || ""),
     },
     {
@@ -221,7 +259,7 @@ export default function DriversPage() {
       dataIndex: "passport_expiry_date",
       key: "passport_expiry_date",
       width: 120,
-      render: (date: string | null) => date ? new Date(date).toLocaleDateString() : "-",
+      render: (date: string | null) => renderExpiryDate(date),
       sorter: (a, b) => (a.passport_expiry_date || "").localeCompare(b.passport_expiry_date || ""),
     },
     {
@@ -395,7 +433,7 @@ export default function DriversPage() {
             <Input placeholder="e.g., DL-998877" />
           </Form.Item>
 
-          <Form.Item name="license_expiry_date" label="License Expiry Date">
+          <Form.Item name="license_expiry_date" label="License Expiry Date" rules={[pastDateValidator]}>
             <DatePicker style={{ width: "100%" }} />
           </Form.Item>
 
@@ -407,7 +445,7 @@ export default function DriversPage() {
             <Input placeholder="e.g., AB1234567" />
           </Form.Item>
 
-          <Form.Item name="passport_expiry_date" label="Passport Expiry Date">
+          <Form.Item name="passport_expiry_date" label="Passport Expiry Date" rules={[pastDateValidator]}>
             <DatePicker style={{ width: "100%" }} />
           </Form.Item>
 
@@ -503,7 +541,7 @@ export default function DriversPage() {
             <Input placeholder="e.g., DL-998877" />
           </Form.Item>
 
-          <Form.Item name="license_expiry_date" label="License Expiry Date">
+          <Form.Item name="license_expiry_date" label="License Expiry Date" rules={[pastDateValidator]}>
             <DatePicker style={{ width: "100%" }} />
           </Form.Item>
 
@@ -515,7 +553,7 @@ export default function DriversPage() {
             <Input placeholder="e.g., AB1234567" />
           </Form.Item>
 
-          <Form.Item name="passport_expiry_date" label="Passport Expiry Date">
+          <Form.Item name="passport_expiry_date" label="Passport Expiry Date" rules={[pastDateValidator]}>
             <DatePicker style={{ width: "100%" }} />
           </Form.Item>
 

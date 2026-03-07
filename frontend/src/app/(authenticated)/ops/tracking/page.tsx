@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   Table,
   Button,
@@ -221,8 +221,9 @@ const STATUS_ROW_COLORS: Record<string, string> = {
   "Cancelled":              "FF7875",  // Soft Red
 };
 
-export default function TrackingPage() {
+function TrackingPageContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user } = useAuth();
   const { invalidateTracking } = useInvalidateQueries();
 
@@ -233,6 +234,15 @@ export default function TrackingPage() {
 
   const [filteredData, setFilteredData] = useState<TrackingRow[]>([]);
   const [searchForm] = Form.useForm();
+
+  // Initialise search form from URL params on mount (AC-2, Story 6.17)
+  useEffect(() => {
+    const fields = ["waybill", "trip", "truck", "trailer", "client", "driver"];
+    const values: Record<string, string> = {};
+    fields.forEach((f) => { const v = searchParams.get(f); if (v) values[f] = v; });
+    if (Object.keys(values).length > 0) searchForm.setFieldsValue(values);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Status Update Modal State
   const [selectedTripId, setSelectedTripId] = useState<string | null>(null);
@@ -293,11 +303,16 @@ export default function TrackingPage() {
 
   const handleSearch = (values: any) => {
     applySearch(data, values);
+    // Sync to URL (AC-2, Story 6.17)
+    const params = new URLSearchParams();
+    Object.entries(values).forEach(([k, v]) => { if (v) params.set(k, v as string); });
+    router.replace(`?${params.toString()}`, { scroll: false });
   };
 
   const handleReset = () => {
     searchForm.resetFields();
     applySearch(data, {});
+    router.replace("?", { scroll: false });
   };
 
   // Excel Export
@@ -1014,5 +1029,13 @@ export default function TrackingPage() {
         />
       )}
     </div>
+  );
+}
+
+export default function TrackingPage() {
+  return (
+    <Suspense>
+      <TrackingPageContent />
+    </Suspense>
   );
 }
