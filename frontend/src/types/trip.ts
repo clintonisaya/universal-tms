@@ -5,6 +5,7 @@
 import type { Driver } from "./driver";
 import type { Trailer } from "./trailer";
 import type { Truck } from "./truck";
+import type { UserSummary } from "./expense";
 
 export type TripStatus =
   | "Waiting"
@@ -88,12 +89,17 @@ export interface Trip {
   is_delayed: boolean;
   remarks: string | null;
   return_remarks: string | null;
+  // Audit trail (Story 6.13)
+  created_by_id: string | null;
+  updated_by_id: string | null;
 }
 
 export interface TripDetailed extends Trip {
   truck: Truck | null;
   trailer: Trailer | null;
   driver: Driver | null;
+  created_by: UserSummary | null;
+  updated_by: UserSummary | null;
 }
 
 export interface TripCreate {

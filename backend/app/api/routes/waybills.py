@@ -111,7 +111,10 @@ def create_waybill(
 
     border_ids = waybill_in.border_ids
     waybill_number = generate_waybill_number(session)
-    waybill = Waybill.model_validate(waybill_in, update={"waybill_number": waybill_number})
+    waybill = Waybill.model_validate(waybill_in, update={
+        "waybill_number": waybill_number,
+        "created_by_id": current_user.id,
+    })
     session.add(waybill)
     session.flush()  # Get waybill.id before inserting borders
 
@@ -154,6 +157,7 @@ def update_waybill(
     border_ids = waybill_in.border_ids
     update_dict = waybill_in.model_dump(exclude_unset=True, exclude={"border_ids"})
     waybill.sqlmodel_update(update_dict)
+    waybill.updated_by_id = current_user.id  # Story 6.13: audit trail
     session.add(waybill)
 
     # Update ordered border crossings if provided (Story 2.26)

@@ -406,11 +406,22 @@ class Waybill(WaybillBase, table=True):
         default_factory=get_datetime_utc,
         sa_type=DateTime(timezone=True),  # type: ignore
     )
+    # Audit trail (Story 6.13)
+    created_by_id: uuid.UUID | None = Field(default=None, foreign_key="users.id", index=True)
+    updated_by_id: uuid.UUID | None = Field(default=None, foreign_key="users.id", index=True)
+
+    created_by: "User | None" = Relationship(sa_relationship_kwargs={"foreign_keys": "[Waybill.created_by_id]", "lazy": "selectin"})
+    updated_by: "User | None" = Relationship(sa_relationship_kwargs={"foreign_keys": "[Waybill.updated_by_id]", "lazy": "selectin"})
 
 
 class WaybillPublic(WaybillBase):
     id: uuid.UUID
     created_at: datetime | None = None
+    # Audit trail (Story 6.13)
+    created_by_id: uuid.UUID | None = None
+    updated_by_id: uuid.UUID | None = None
+    created_by: UserPublic | None = None
+    updated_by: UserPublic | None = None
 
 
 class WaybillsPublic(SQLModel):
@@ -572,10 +583,16 @@ class Trip(TripBase, table=True):
     return_remarks: str | None = Field(default=None)
     pods_confirmed_date: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
 
+    # Audit trail (Story 6.13)
+    created_by_id: uuid.UUID | None = Field(default=None, foreign_key="users.id", index=True)
+    updated_by_id: uuid.UUID | None = Field(default=None, foreign_key="users.id", index=True)
+
     # Relationships
     truck: Truck | None = Relationship()
     trailer: Trailer | None = Relationship()
     driver: Driver | None = Relationship()
+    created_by: "User | None" = Relationship(sa_relationship_kwargs={"foreign_keys": "[Trip.created_by_id]", "lazy": "selectin"})
+    updated_by: "User | None" = Relationship(sa_relationship_kwargs={"foreign_keys": "[Trip.updated_by_id]", "lazy": "selectin"})
 
 
 # Properties to return via API
@@ -617,6 +634,9 @@ class TripPublic(TripBase):
     return_waybill_number: str | None = None
     return_route_name: str | None = None
     location_update_time: datetime | None = None
+    # Audit trail (Story 6.13)
+    created_by_id: uuid.UUID | None = None
+    updated_by_id: uuid.UUID | None = None
 
 
 # Trip with nested entities for detailed views
@@ -624,6 +644,8 @@ class TripPublicDetailed(TripPublic):
     truck: TruckPublic | None = None
     trailer: TrailerPublic | None = None
     driver: DriverPublic | None = None
+    created_by: UserPublic | None = None
+    updated_by: UserPublic | None = None
 
 
 class TripsPublic(SQLModel):
@@ -724,9 +746,13 @@ class ExpenseRequest(ExpenseRequestBase, table=True):
         sa_type=DateTime(timezone=True),  # type: ignore
     )
 
+    # Audit trail (Story 6.13)
+    updated_by_id: uuid.UUID | None = Field(default=None, foreign_key="users.id")
+
     # Relationships
     trip: Trip | None = Relationship(sa_relationship_kwargs={"foreign_keys": "[ExpenseRequest.trip_id]"})
     created_by: User | None = Relationship(sa_relationship_kwargs={"foreign_keys": "[ExpenseRequest.created_by_id]"})
+    updated_by: User | None = Relationship(sa_relationship_kwargs={"foreign_keys": "[ExpenseRequest.updated_by_id]"})
     paid_by: User | None = Relationship(sa_relationship_kwargs={"foreign_keys": "[ExpenseRequest.paid_by_id]"})
     approved_by: User | None = Relationship(sa_relationship_kwargs={"foreign_keys": "[ExpenseRequest.approved_by_id]"})
     voided_by: User | None = Relationship(sa_relationship_kwargs={"foreign_keys": "[ExpenseRequest.voided_by_id]"})
@@ -744,6 +770,7 @@ class ExpenseRequestPublic(ExpenseRequestBase):
 class ExpenseRequestPublicDetailed(ExpenseRequestPublic):
     trip: TripPublic | None = None
     created_by: UserPublic | None = None
+    updated_by: UserPublic | None = None
     paid_by: UserPublic | None = None
     approved_by: UserPublic | None = None
     voided_by: UserPublic | None = None

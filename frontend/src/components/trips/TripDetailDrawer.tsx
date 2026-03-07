@@ -602,6 +602,15 @@ export function TripDetailDrawer({ open, onClose, tripId, onEdit }: TripDetailDr
                           ? new Date(trip.created_at).toLocaleDateString()
                           : "-"}
                       </Descriptions.Item>
+                      {/* Story 6.13: Audit trail */}
+                      <Descriptions.Item label="Created By">
+                        {trip.created_by?.full_name || trip.created_by?.username || "-"}
+                      </Descriptions.Item>
+                      {trip.updated_by && (
+                        <Descriptions.Item label="Last Updated By">
+                          {trip.updated_by.full_name || trip.updated_by.username}
+                        </Descriptions.Item>
+                      )}
                       {/* Story 6.9: Remarks — hidden when empty */}
                       {trip.remarks && (
                         <Descriptions.Item label="Remarks" span={2}>

@@ -589,7 +589,10 @@ def create_trip(
     trip_number = generate_trip_number(session, truck.plate_number)
 
     # Create trip - all operations in same session (transactional)
-    trip = Trip.model_validate(trip_in, update={"trip_number": trip_number})
+    trip = Trip.model_validate(trip_in, update={
+        "trip_number": trip_number,
+        "created_by_id": current_user.id,
+    })
     session.add(trip)
 
     # Update statuses
@@ -859,6 +862,7 @@ def update_trip(
                 session.add(new_wb)
 
     trip.sqlmodel_update(update_dict)
+    trip.updated_by_id = current_user.id  # Story 6.13: audit trail
     session.add(trip)
     session.commit()
     session.refresh(trip)

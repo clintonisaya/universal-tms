@@ -489,6 +489,15 @@ export default function TripDetailPage() {
                         ? new Date(trip.created_at).toLocaleDateString()
                         : "-"}
                     </Descriptions.Item>
+                    {/* Story 6.13: Audit trail */}
+                    <Descriptions.Item label="Created By">
+                      {trip.created_by?.full_name || trip.created_by?.username || "-"}
+                    </Descriptions.Item>
+                    {trip.updated_by && (
+                      <Descriptions.Item label="Last Updated By">
+                        {trip.updated_by.full_name || trip.updated_by.username}
+                      </Descriptions.Item>
+                    )}
                     {/* Story 6.9: Remarks — hidden when empty */}
                     {trip.remarks && (
                       <Descriptions.Item label="Remarks" span={2}>
@@ -688,7 +697,11 @@ export default function TripDetailPage() {
                       children: (
                         <Text strong={isCurrent} style={{ fontSize: 13 }}>
                           {status}
-                          {/* TODO: Story 6.13 adds audit trail — updated_by will be available after that */}
+                          {isCurrent && trip.updated_by && (
+                            <Text type="secondary" style={{ fontSize: 11, marginLeft: 8 }}>
+                              by {trip.updated_by.full_name || trip.updated_by.username}
+                            </Text>
+                          )}
                         </Text>
                       ),
                     }))}

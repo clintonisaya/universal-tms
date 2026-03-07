@@ -337,6 +337,7 @@ async def batch_update_expenses(
                 expense.approved_by_id = current_user.id
                 expense.approved_at = datetime.now(timezone.utc)
         expense.updated_at = datetime.now(timezone.utc)
+        expense.updated_by_id = current_user.id  # Story 6.13: audit trail
         session.add(expense)
         updated_count += 1
 
@@ -469,6 +470,7 @@ async def update_expense(
     # Update the expense
     expense.sqlmodel_update(update_dict)
     expense.updated_at = datetime.now(timezone.utc)
+    expense.updated_by_id = current_user.id  # Story 6.13: audit trail
     session.add(expense)
     session.commit()
     session.refresh(expense)
