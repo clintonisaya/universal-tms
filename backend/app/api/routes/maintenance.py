@@ -192,13 +192,22 @@ def delete_maintenance_event(
     event = session.get(MaintenanceEvent, id)
     if not event:
         raise HTTPException(status_code=404, detail="Maintenance event not found")
-    
-    # Get associated expense to delete
-    expense = session.get(ExpenseRequest, event.expense_id)
-    
+
+    # AC-4: Block deletion if the linked expense has already been paid
+    expense = session.get(ExpenseRequest, event.expense_id) if event.expense_id else None
+    if expense and expense.status == ExpenseStatus.paid:
+        raise HTTPException(
+            status_code=409,
+            detail="Cannot delete — the linked expense has already been paid. Void the expense first.",
+        )
+
     session.delete(event)
-    if expense:
+
+    # Also delete expense if no money has moved (Pending Manager / Pending Finance).
+    # Rejected / Returned / Voided expenses are left as orphaned historical records.
+    deletable_statuses = {ExpenseStatus.pending_manager, ExpenseStatus.pending_finance}
+    if expense and expense.status in deletable_statuses:
         session.delete(expense)
-        
+
     session.commit()
     return Message(message="Maintenance event deleted successfully")

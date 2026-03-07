@@ -8,11 +8,16 @@ import {
   Card,
   Flex,
   Typography,
+  App,
+  Space,
+  Modal,
 } from "antd";
 import {
   ReloadOutlined,
   ArrowLeftOutlined,
   PlusOutlined,
+  EditOutlined,
+  DeleteOutlined,
 } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
 import type { MaintenanceEvent } from "@/types/maintenance";
@@ -28,10 +33,11 @@ import { ExpenseStatusBadge } from "@/components/expenses/ExpenseStatusBadge";
 
 const { Title } = Typography;
 
-export default function MaintenancePage() {
+function MaintenancePageContent() {
   const router = useRouter();
   const { user } = useAuth();
-  
+  const { message } = App.useApp();
+
   // TanStack Query for maintenance data
   const { data, isLoading: loading, refetch } = useMaintenance();
   const { invalidateMaintenance } = useInvalidateQueries();
@@ -40,9 +46,37 @@ export default function MaintenancePage() {
   const totalCount = data?.count || 0;
 
   const [createDrawerOpen, setCreateDrawerOpen] = useState(false);
+  const [editingRecord, setEditingRecord] = useState<MaintenanceEvent | null>(null);
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
+
+  const canWrite = user?.role === "admin" || user?.role === "manager" || user?.role === "ops";
+  const canDelete = user?.role === "admin";
+
+  const handleDelete = (record: MaintenanceEvent) => {
+    Modal.confirm({
+      title: "Delete Maintenance Record",
+      content: `Delete maintenance at "${record.garage_name}"? This cannot be undone.`,
+      okText: "Delete",
+      okType: "danger",
+      onOk: async () => {
+        const response = await fetch(`/api/v1/maintenance/${record.id}`, {
+          method: "DELETE",
+          credentials: "include",
+        });
+        if (response.ok) {
+          message.success("Maintenance record deleted");
+          invalidateMaintenance();
+        } else if (response.status === 409) {
+          const err = await response.json();
+          message.error(err.detail || "Cannot delete — linked expense has been paid.");
+        } else {
+          message.error("Failed to delete maintenance record");
+        }
+      },
+    });
+  };
 
   const columns: ColumnsType<MaintenanceEvent> = [
     {
@@ -98,6 +132,34 @@ export default function MaintenancePage() {
         return <ExpenseStatusBadge status={status as any} compact />;
       },
     },
+    {
+      title: "",
+      key: "actions",
+      width: 100,
+      fixed: "right",
+      render: (_, record) => (
+        <Space>
+          {canWrite && (
+            <Button
+              size="small"
+              icon={<EditOutlined />}
+              onClick={() => {
+                setEditingRecord(record);
+                setCreateDrawerOpen(true);
+              }}
+            />
+          )}
+          {canDelete && (
+            <Button
+              size="small"
+              danger
+              icon={<DeleteOutlined />}
+              onClick={() => handleDelete(record)}
+            />
+          )}
+        </Space>
+      ),
+    },
   ];
 
   // Make columns resizable
@@ -116,9 +178,11 @@ export default function MaintenancePage() {
             </Flex>
             <Flex gap="small">
               <Button icon={<ReloadOutlined />} onClick={() => refetch()}>Refresh</Button>
+              {canWrite && (
               <Button type="primary" icon={<PlusOutlined />} onClick={() => setCreateDrawerOpen(true)}>
                 New Record
               </Button>
+            )}
             </Flex>
           </div>
           <Table<MaintenanceEvent>
@@ -152,9 +216,24 @@ export default function MaintenancePage() {
 
       <CreateMaintenanceDrawer
         open={createDrawerOpen}
-        onClose={() => setCreateDrawerOpen(false)}
-        onSuccess={() => invalidateMaintenance()}
+        onClose={() => {
+          setCreateDrawerOpen(false);
+          setEditingRecord(null);
+        }}
+        onSuccess={() => {
+          invalidateMaintenance();
+          setEditingRecord(null);
+        }}
+        initialValues={editingRecord}
       />
     </div>
+  );
+}
+
+export default function MaintenancePage() {
+  return (
+    <App>
+      <MaintenancePageContent />
+    </App>
   );
 }

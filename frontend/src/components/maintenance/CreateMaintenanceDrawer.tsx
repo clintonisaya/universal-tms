@@ -21,7 +21,7 @@ import { SaveOutlined } from "@ant-design/icons";
 import { amountInputProps } from "@/lib/utils";
 import type { Truck, TrucksResponse } from "@/types/truck";
 import type { Trailer, TrailersResponse } from "@/types/trailer";
-import type { MaintenanceEventCreate } from "@/types/maintenance";
+import type { MaintenanceEvent, MaintenanceEventCreate } from "@/types/maintenance";
 import dayjs from "dayjs";
 
 const { TextArea } = Input;
@@ -30,12 +30,15 @@ interface CreateMaintenanceDrawerProps {
   open: boolean;
   onClose: () => void;
   onSuccess: () => void;
+  /** When provided the drawer operates in edit mode */
+  initialValues?: MaintenanceEvent | null;
 }
 
 export function CreateMaintenanceDrawer({
   open,
   onClose,
   onSuccess,
+  initialValues,
 }: CreateMaintenanceDrawerProps) {
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
@@ -44,20 +47,40 @@ export function CreateMaintenanceDrawer({
   const [resourcesLoading, setResourcesLoading] = useState(false);
   const [assetType, setAssetType] = useState<"truck" | "trailer">("truck");
 
+  const isEditMode = !!initialValues;
+
   useEffect(() => {
     if (open) {
-      form.resetFields();
-      form.setFieldsValue({
-        start_date: dayjs(),
-        update_truck_status: false,
-        update_trailer_status: false,
-        asset_type: "truck",
-        currency: "USD",
-      });
-      setAssetType("truck");
       fetchResources();
+      if (initialValues) {
+        // Edit mode — pre-fill from existing record
+        const type = initialValues.truck_id ? "truck" : "trailer";
+        setAssetType(type);
+        form.setFieldsValue({
+          asset_type: type,
+          asset_id: initialValues.truck_id || initialValues.trailer_id,
+          garage_name: initialValues.garage_name,
+          description: initialValues.description,
+          cost: initialValues.expense?.amount ?? undefined,
+          currency: initialValues.currency,
+          start_date: dayjs(initialValues.start_date),
+          end_date: initialValues.end_date ? dayjs(initialValues.end_date) : null,
+        });
+      } else {
+        // Create mode — reset to defaults
+        form.resetFields();
+        form.setFieldsValue({
+          start_date: dayjs(),
+          update_truck_status: false,
+          update_trailer_status: false,
+          asset_type: "truck",
+          currency: "USD",
+        });
+        setAssetType("truck");
+      }
     }
-  }, [open, form]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, initialValues]);
 
   const fetchResources = async () => {
     setResourcesLoading(true);
@@ -85,36 +108,59 @@ export function CreateMaintenanceDrawer({
   const onFinish = async (values: any) => {
     setLoading(true);
     try {
-      const payload: MaintenanceEventCreate = {
-        truck_id: values.asset_type === "truck" ? values.asset_id : null,
-        trailer_id: values.asset_type === "trailer" ? values.asset_id : null,
-        garage_name: values.garage_name,
-        description: values.description,
-        cost: values.cost,
-        currency: values.currency,
-        start_date: values.start_date.toISOString(),
-        end_date: values.end_date ? values.end_date.toISOString() : null,
-        update_truck_status: values.asset_type === "truck" ? values.update_status : false,
-        update_trailer_status: values.asset_type === "trailer" ? values.update_status : false,
-      };
-
-      const response = await fetch("/api/v1/maintenance", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(payload),
-        credentials: "include",
-      });
-
-      if (response.ok) {
-        message.success("Maintenance record created successfully");
-        form.resetFields();
-        onSuccess();
-        onClose();
+      if (isEditMode && initialValues) {
+        // PATCH — update existing record
+        const payload: Record<string, unknown> = {
+          garage_name: values.garage_name,
+          description: values.description,
+          cost: values.cost,
+          currency: values.currency,
+          start_date: values.start_date.toISOString(),
+          end_date: values.end_date ? values.end_date.toISOString() : null,
+        };
+        const response = await fetch(`/api/v1/maintenance/${initialValues.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+          credentials: "include",
+        });
+        if (response.ok) {
+          message.success("Maintenance record updated successfully");
+          onSuccess();
+          onClose();
+        } else {
+          const errorData = await response.json();
+          message.error(errorData.detail || "Failed to update maintenance record");
+        }
       } else {
-        const errorData = await response.json();
-        message.error(errorData.detail || "Failed to create maintenance record");
+        // POST — create new record
+        const payload: MaintenanceEventCreate = {
+          truck_id: values.asset_type === "truck" ? values.asset_id : null,
+          trailer_id: values.asset_type === "trailer" ? values.asset_id : null,
+          garage_name: values.garage_name,
+          description: values.description,
+          cost: values.cost,
+          currency: values.currency,
+          start_date: values.start_date.toISOString(),
+          end_date: values.end_date ? values.end_date.toISOString() : null,
+          update_truck_status: values.asset_type === "truck" ? values.update_status : false,
+          update_trailer_status: values.asset_type === "trailer" ? values.update_status : false,
+        };
+        const response = await fetch("/api/v1/maintenance", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+          credentials: "include",
+        });
+        if (response.ok) {
+          message.success("Maintenance record created successfully");
+          form.resetFields();
+          onSuccess();
+          onClose();
+        } else {
+          const errorData = await response.json();
+          message.error(errorData.detail || "Failed to create maintenance record");
+        }
       }
     } catch {
       message.error("Network error");
@@ -125,7 +171,7 @@ export function CreateMaintenanceDrawer({
 
   return (
     <Drawer
-      title="New Maintenance Record"
+      title={isEditMode ? "Edit Maintenance Record" : "New Maintenance Record"}
       open={open}
       onClose={onClose}
       styles={{ wrapper: { width: 1200 } }}
@@ -139,7 +185,7 @@ export function CreateMaintenanceDrawer({
             loading={loading}
             onClick={() => form.submit()}
           >
-            Create Record
+            {isEditMode ? "Save Changes" : "Create Record"}
           </Button>
         </Space>
       }
@@ -149,12 +195,8 @@ export function CreateMaintenanceDrawer({
           <Spin size="large" />
         </div>
       ) : (
-        <Form
-          form={form}
-          layout="vertical"
-          onFinish={onFinish}
-        >
-          <div style={{ marginBottom: 24, padding: 16, background: '#f5f5f5', borderRadius: 8 }}>
+        <Form form={form} layout="vertical" onFinish={onFinish}>
+          <div style={{ marginBottom: 24, padding: 16, background: "#f5f5f5", borderRadius: 8 }}>
             <Row gutter={16}>
               <Col span={8}>
                 <Form.Item
@@ -162,7 +204,10 @@ export function CreateMaintenanceDrawer({
                   label="Maintenance For"
                   rules={[{ required: true }]}
                 >
-                  <Radio.Group onChange={(e) => setAssetType(e.target.value)}>
+                  <Radio.Group
+                    onChange={(e) => setAssetType(e.target.value)}
+                    disabled={isEditMode}
+                  >
                     <Radio value="truck">Truck</Radio>
                     <Radio value="trailer">Trailer</Radio>
                   </Radio.Group>
@@ -178,6 +223,7 @@ export function CreateMaintenanceDrawer({
                     placeholder={`Select ${assetType === "truck" ? "Truck" : "Trailer"}`}
                     showSearch
                     optionFilterProp="children"
+                    disabled={isEditMode}
                   >
                     {assetType === "truck"
                       ? trucks.map((truck) => (
@@ -255,23 +301,19 @@ export function CreateMaintenanceDrawer({
               </Form.Item>
             </Col>
             <Col span={12}>
-              <Form.Item
-                name="end_date"
-                label="End Date (Optional)"
-              >
+              <Form.Item name="end_date" label="End Date (Optional)">
                 <DatePicker showTime style={{ width: "100%" }} />
               </Form.Item>
             </Col>
           </Row>
 
-          <Form.Item
-            name="update_status"
-            valuePropName="checked"
-          >
-            <Checkbox>
-              Set {assetType === "truck" ? "Truck" : "Trailer"} Status to "Maintenance"
-            </Checkbox>
-          </Form.Item>
+          {!isEditMode && (
+            <Form.Item name="update_status" valuePropName="checked">
+              <Checkbox>
+                Set {assetType === "truck" ? "Truck" : "Trailer"} Status to "Maintenance"
+              </Checkbox>
+            </Form.Item>
+          )}
         </Form>
       )}
     </Drawer>
