@@ -23,6 +23,7 @@ import {
   DatePicker,
   Form,
   Steps,
+  Upload,
 } from "antd";
 import dayjs from "dayjs";
 import { amountInputProps, fmtAmount, fmtCurrency } from "@/lib/utils";
@@ -124,6 +125,7 @@ export function ExpenseReviewModal({
   const [processing, setProcessing] = useState(false);
   const [attachments, setAttachments] = useState<AttachmentInfo[]>([]);
   const [attachmentsLoading, setAttachmentsLoading] = useState(false);
+  const [attachmentError, setAttachmentError] = useState(false);
 
   // Inline payment form
   const [paymentForm] = Form.useForm();
@@ -229,14 +231,27 @@ export function ExpenseReviewModal({
     }
   }, [open, editable, isTripExpense]);
 
-  // Match expense type by name after types load (first item only)
+  // AC-4: Match expense type by ID first, fall back to name for legacy data
   useEffect(() => {
     if (!expense || editItems.length === 0 || editItems[0].expense_type_id) return;
     const meta = expense.expense_metadata || {};
+    const types = isTripExpense ? tripExpenseTypes : officeExpenseTypes;
+    if (types.length === 0) return;
+
+    // Try ID match from metadata first
+    const savedItems = (meta as any).items as any[] | undefined;
+    const firstSavedId = savedItems?.[0]?.expense_type_id;
+    if (firstSavedId) {
+      const idMatch = types.find((t) => t.id === firstSavedId);
+      if (idMatch) {
+        setEditItems((prev) => [{ ...prev[0], expense_type_id: idMatch.id }, ...prev.slice(1)]);
+        return;
+      }
+    }
+
+    // Fall back to name matching for legacy data without expense_type_id
     const itemName = meta.item_name || meta.item_details || expense.description;
     if (!itemName) return;
-
-    const types = isTripExpense ? tripExpenseTypes : officeExpenseTypes;
     const match = types.find(
       (t) => t.name.toLowerCase() === itemName.toLowerCase()
     );
@@ -262,31 +277,38 @@ export function ExpenseReviewModal({
       }));
   }, [tripExpenseTypes, officeExpenseTypes, isTripExpense]);
 
-  // Fetch attachments
+  // Fetch attachments — extracted for retry support (AC-2)
+  const fetchAttachments = async () => {
+    if (!expense?.id) return;
+    setAttachmentsLoading(true);
+    setAttachmentError(false);
+    try {
+      const response = await fetch(
+        `/api/v1/expenses/${expense.id}/attachments`,
+        { credentials: "include" }
+      );
+      if (response.ok) {
+        setAttachments(await response.json());
+      } else {
+        setAttachments([]);
+        setAttachmentError(true);
+      }
+    } catch {
+      setAttachments([]);
+      setAttachmentError(true);
+    } finally {
+      setAttachmentsLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (open && expense?.id && expense.attachments && expense.attachments.length > 0) {
-      const fetchAttachments = async () => {
-        setAttachmentsLoading(true);
-        try {
-          const response = await fetch(
-            `/api/v1/expenses/${expense.id}/attachments`,
-            { credentials: "include" }
-          );
-          if (response.ok) {
-            setAttachments(await response.json());
-          } else {
-            setAttachments([]);
-          }
-        } catch {
-          setAttachments([]);
-        } finally {
-          setAttachmentsLoading(false);
-        }
-      };
       fetchAttachments();
     } else {
       setAttachments([]);
+      setAttachmentError(false);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, expense?.id, expense?.attachments]);
 
   if (!expense && !loading) return null;
@@ -1013,15 +1035,71 @@ export function ExpenseReviewModal({
     </>
   ) : null;
 
+  // Upload attachment handler for returned/edit mode (AC-3)
+  const [uploadingAttachment, setUploadingAttachment] = useState(false);
+  const handleUploadAttachment = async (file: File) => {
+    if (!expense?.id) return;
+    setUploadingAttachment(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const response = await fetch(`/api/v1/expenses/${expense.id}/attachments`, {
+        method: "POST",
+        credentials: "include",
+        body: formData,
+      });
+      if (response.ok) {
+        message.success("Attachment uploaded");
+        fetchAttachments();
+      } else {
+        const err = await response.json();
+        message.error(err.detail || "Failed to upload");
+      }
+    } catch {
+      message.error("Upload failed");
+    } finally {
+      setUploadingAttachment(false);
+    }
+  };
+
   // Tab 2: Attachments
   const AttachmentsTab = (
     <div style={{ padding: "16px 0" }}>
+      {/* AC-3: Upload button when editable (returned state) */}
+      {editable && (
+        <div style={{ marginBottom: 12 }}>
+          <Upload
+            beforeUpload={(file) => {
+              handleUploadAttachment(file);
+              return false;
+            }}
+            showUploadList={false}
+            accept=".pdf,.jpg,.jpeg,.png,.gif,.webp,.doc,.docx,.xls,.xlsx"
+          >
+            <Button icon={<PlusOutlined />} loading={uploadingAttachment}>
+              Upload Attachment
+            </Button>
+          </Upload>
+        </div>
+      )}
       {attachmentsLoading ? (
         <div style={{ textAlign: "center", padding: 40 }}>
           <Spin size="default" />
         </div>
+      ) : attachmentError ? (
+        <div style={{ textAlign: "center", padding: 40 }}>
+          <Button onClick={fetchAttachments} icon={<UndoOutlined />}>
+            Could not load attachments — Retry
+          </Button>
+        </div>
       ) : attachments.length === 0 ? (
-        <Empty description="No attachments" />
+        <Empty
+          description={
+            editable
+              ? "No attachments uploaded. Add receipts or supporting documents above."
+              : "No attachments uploaded."
+          }
+        />
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           {attachments.map((item) => (
@@ -1073,9 +1151,8 @@ export function ExpenseReviewModal({
   const buildTrackingSteps = () => {
     if (!expense) return [];
 
-    // Detect "was returned and resubmitted": status is Pending Manager but manager_comment
-    // persists from the return action (resubmit only patches status, not the comment).
-    const wasReturned = expense.status === "Pending Manager" && !!expense.manager_comment;
+    // Story 6.24 AC-1: Use explicit returned_at timestamp instead of heuristic
+    const wasReturned = expense.status === "Pending Manager" && !!expense.returned_at;
 
     const submitted = {
       title: "Submitted",

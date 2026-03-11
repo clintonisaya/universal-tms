@@ -704,6 +704,7 @@ class ExpenseRequestBase(SQLModel):
     voided_by_id: uuid.UUID | None = Field(default=None, foreign_key="users.id", description="User who voided the expense")
     voided_at: datetime | None = Field(default=None, sa_type=DateTime(timezone=True), description="Date expense was voided")
     void_reason: str | None = Field(default=None, max_length=500, description="Reason for voiding the expense")
+    returned_at: datetime | None = Field(default=None, sa_type=DateTime(timezone=True), description="Date expense was last returned for revision")
     expense_metadata: dict | None = Field(default=None, description="Additional expense metadata (item details, payment info, etc.)")
     attachments: list[str] | None = Field(default=[], description="List of URLs for attached receipts/documents")
 

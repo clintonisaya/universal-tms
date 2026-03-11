@@ -336,6 +336,9 @@ async def batch_update_expenses(
             if bulk_in.status == ExpenseStatus.pending_finance:
                 expense.approved_by_id = current_user.id
                 expense.approved_at = datetime.now(timezone.utc)
+            # Story 6.24: Record when expense is returned for revision
+            if bulk_in.status == ExpenseStatus.returned:
+                expense.returned_at = datetime.now(timezone.utc)
         expense.updated_at = datetime.now(timezone.utc)
         expense.updated_by_id = current_user.id  # Story 6.13: audit trail
         session.add(expense)

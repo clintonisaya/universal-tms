@@ -65,6 +65,7 @@ export interface ExpenseRequest {
   voided_by_id?: string | null;
   voided_at?: string | null;
   void_reason?: string | null;
+  returned_at?: string | null;
   expense_metadata?: ExpenseMetadata | null;
   attachments?: string[];
   created_by_id: string;
