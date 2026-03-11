@@ -9,7 +9,7 @@ export class ApiError extends Error {
 }
 
 // Generic fetch function with error handling
-async function apiFetch<T>(url: string, options?: RequestInit): Promise<T> {
+export async function apiFetch<T>(url: string, options?: RequestInit): Promise<T> {
   const response = await fetch(url, {
     credentials: "include",
     ...options,
@@ -205,11 +205,21 @@ export function useFinancialPulse(enabled = true) {
   });
 }
 
-// Tracking report
-export function useTracking(enabled = true) {
+// Tracking report — server-side pagination & filtering (Story 6-19)
+export function useTracking(
+  params: { skip?: number; limit?: number; search?: string; status?: string; export?: boolean } = {},
+  enabled = true,
+) {
+  const qs = new URLSearchParams();
+  if (params.skip !== undefined) qs.set("skip", String(params.skip));
+  if (params.limit !== undefined) qs.set("limit", String(params.limit));
+  if (params.search) qs.set("search", params.search);
+  if (params.status) qs.set("status", params.status);
+  if (params.export) qs.set("export", "true");
+  const query = qs.toString();
   return useQuery({
-    queryKey: queryKeys.tracking,
-    queryFn: () => apiFetch<any[]>("/api/v1/reports/waybill-tracking"),
+    queryKey: [...queryKeys.tracking, query],
+    queryFn: () => apiFetch<{ data: any[]; count: number }>(`/api/v1/reports/waybill-tracking${query ? `?${query}` : ""}`),
     enabled,
   });
 }

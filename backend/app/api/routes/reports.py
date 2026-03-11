@@ -61,27 +61,59 @@ def get_waybill_tracking_report(
     session: SessionDep,
     current_user: CurrentUser,
     skip: int = Query(default=0, ge=0, description="Number of records to skip"),
-    limit: int = Query(default=200, ge=1, le=500, description="Max records to return"),
+    limit: int = Query(default=50, ge=1, le=500, description="Max records to return"),
+    search: str | None = Query(default=None, description="Search by truck plate or driver name"),
+    status: str | None = Query(default=None, description="Filter by trip status"),
+    export: bool = Query(default=False, description="If true, return all matching records (ignore skip/limit)"),
 ) -> Any:
     """
     Trip-centric tracking report — one row per trip combining go + return waybill data.
     Unlinked (open, no trip) waybills are appended as separate rows.
+
+    Returns {"data": [...], "count": total} for server-side pagination.
     """
     GoWaybill = aliased(Waybill, name="go_waybill")
     ReturnWaybill = aliased(Waybill, name="return_waybill")
 
-    # Trip-centric: one row per trip, left-join both waybills
-    trips_stmt = (
+    # Base query — trip-centric: one row per trip, left-join both waybills
+    base_stmt = (
         select(Trip, GoWaybill, ReturnWaybill, Truck, Driver, Trailer)
         .outerjoin(GoWaybill, GoWaybill.id == Trip.waybill_id)
         .outerjoin(ReturnWaybill, ReturnWaybill.id == Trip.return_waybill_id)
         .outerjoin(Truck, Truck.id == Trip.truck_id)
         .outerjoin(Driver, Driver.id == Trip.driver_id)
         .outerjoin(Trailer, Trailer.id == Trip.trailer_id)
-        .order_by(Trip.created_at.desc())
-        .offset(skip)
-        .limit(limit)
     )
+
+    # AC-2: Server-side search filter — searches across key fields
+    if search:
+        search_term = f"%{search}%"
+        base_stmt = base_stmt.where(
+            or_(
+                Truck.plate_number.ilike(search_term),
+                Driver.full_name.ilike(search_term),
+                GoWaybill.waybill_number.ilike(search_term),
+                ReturnWaybill.waybill_number.ilike(search_term),
+                Trip.trip_number.ilike(search_term),
+                GoWaybill.client_name.ilike(search_term),
+                ReturnWaybill.client_name.ilike(search_term),
+                Trailer.plate_number.ilike(search_term),
+            )
+        )
+
+    # AC-2: Server-side status filter
+    if status:
+        base_stmt = base_stmt.where(Trip.status == status)
+
+    # AC-1/AC-3: Get total count before pagination
+    count_stmt = select(func.count()).select_from(base_stmt.subquery())
+    total_count = session.execute(count_stmt).scalar() or 0
+
+    # Apply ordering + pagination (skip for export mode)
+    trips_stmt = base_stmt.order_by(Trip.created_at.desc())
+    if not export:
+        trips_stmt = trips_stmt.offset(skip).limit(limit)
+
     trip_results = session.execute(trips_stmt).all()
 
     # Collect linked waybill IDs to find unlinked ones
@@ -93,11 +125,13 @@ def get_waybill_tracking_report(
         if trip.return_waybill_id:
             linked_ids.append(trip.return_waybill_id)
 
-    # Open waybills not yet dispatched on any trip
-    unlinked_stmt = select(Waybill).where(Waybill.status == WaybillStatus.open)
-    if linked_ids:
-        unlinked_stmt = unlinked_stmt.where(Waybill.id.notin_(linked_ids))
-    unlinked_waybills = session.exec(unlinked_stmt).all()
+    # Open waybills not yet dispatched on any trip (only when no filters active)
+    unlinked_waybills = []
+    if not search and not status:
+        unlinked_stmt = select(Waybill).where(Waybill.status == WaybillStatus.open)
+        if linked_ids:
+            unlinked_stmt = unlinked_stmt.where(Waybill.id.notin_(linked_ids))
+        unlinked_waybills = session.exec(unlinked_stmt).all()
 
     def calc_durations(trip):
         duration_days = 0
@@ -295,7 +329,9 @@ def get_waybill_tracking_report(
             "border_crossings": [],
         })
 
-    return report_data
+    # Include unlinked count in total when no filters are active
+    unlinked_count = len(unlinked_waybills) if not search and not status else 0
+    return {"data": report_data, "count": total_count + unlinked_count}
 
 
 def get_current_exchange_rate(session: SessionDep) -> Decimal:

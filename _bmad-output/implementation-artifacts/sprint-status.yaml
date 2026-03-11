@@ -141,8 +141,8 @@ development_status:
   6-16-driver-expiry-warnings: ready-for-dev
   6-17-filter-state-persistence: ready-for-dev
   6-18-maintenance-edit-delete: ready-for-dev
-  6-19-tracking-server-side-pagination: ready-for-dev
-  6-20-tracking-missing-data-fields: ready-for-dev
+  6-19-tracking-server-side-pagination: review
+  6-20-tracking-missing-data-fields: review
   6-21-empty-states-with-cta: ready-for-dev
   6-22-waybill-interaction-consistency: ready-for-dev
   6-23-status-modal-stale-data: ready-for-dev

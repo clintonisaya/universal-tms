@@ -30,9 +30,8 @@ import {
 } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
 import ExcelJS from "exceljs";
-import { uniqBy } from "lodash";
 import { useAuth } from "@/contexts/AuthContext";
-import { useTracking, useInvalidateQueries } from "@/hooks/useApi";
+import { useTracking, useInvalidateQueries, apiFetch } from "@/hooks/useApi";
 import { UpdateTripStatusModal } from "@/components/trips/UpdateTripStatusModal";
 import { TripStatusTag } from "@/components/ui/TripStatusTag";
 import { getStandardRowSelection } from "@/components/ui/tableUtils";
@@ -229,10 +228,10 @@ function TrackingPageContent() {
 
   const isAuthenticated = !!user;
 
-  const { data: rawData, isLoading: loading, refetch } = useTracking(isAuthenticated);
-  const data = rawData || [];
-
-  const [filteredData, setFilteredData] = useState<TrackingRow[]>([]);
+  // Server-side pagination & filter state (Story 6-19)
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(50);
+  const [serverSearch, setServerSearch] = useState<string>("");
   const [searchForm] = Form.useForm();
 
   // Initialise search form from URL params on mount (AC-2, Story 6.17)
@@ -240,9 +239,26 @@ function TrackingPageContent() {
     const fields = ["waybill", "trip", "truck", "trailer", "client", "driver"];
     const values: Record<string, string> = {};
     fields.forEach((f) => { const v = searchParams.get(f); if (v) values[f] = v; });
-    if (Object.keys(values).length > 0) searchForm.setFieldsValue(values);
+    if (Object.keys(values).length > 0) {
+      searchForm.setFieldsValue(values);
+      // Build combined search string for server-side filter
+      const combined = Object.values(values).filter(Boolean).join(" ");
+      if (combined) setServerSearch(combined);
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Server-side paginated query
+  const { data: apiResponse, isLoading: loading, refetch } = useTracking(
+    {
+      skip: (currentPage - 1) * pageSize,
+      limit: pageSize,
+      search: serverSearch || undefined,
+    },
+    isAuthenticated,
+  );
+  const trackingData = apiResponse?.data || [];
+  const totalCount = apiResponse?.count || 0;
 
   // Status Update Modal State
   const [selectedTripId, setSelectedTripId] = useState<string | null>(null);
@@ -251,58 +267,12 @@ function TrackingPageContent() {
 
   // Standard Table States
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(50);
-
-  // Apply filters when data changes
-  useEffect(() => {
-    if (data.length > 0) {
-      applySearch(data, searchForm.getFieldsValue());
-    }
-  }, [data]);
-
-  // Combined Search Logic
-  const applySearch = (rawData: TrackingRow[], searchValues: any) => {
-    // Ensure uniqueness based on row_id to prevent key errors
-    let results = uniqBy(rawData, "row_id");
-
-    if (searchValues) {
-      const { waybill, trip, truck, trailer, client, driver } = searchValues;
-      if (waybill)
-        results = results.filter(
-          (r) =>
-            r.waybill_number?.toLowerCase().includes(waybill.toLowerCase()) ||
-            r.return_waybill_number?.toLowerCase().includes(waybill.toLowerCase())
-        );
-      if (trip)
-        results = results.filter((r) =>
-          r.trip_number?.toLowerCase().includes(trip.toLowerCase())
-        );
-      if (truck)
-        results = results.filter((r) =>
-          r.truck_plate?.toLowerCase().includes(truck.toLowerCase())
-        );
-      if (trailer)
-        results = results.filter((r) =>
-          r.trailer_plate?.toLowerCase().includes(trailer.toLowerCase())
-        );
-      if (client)
-        results = results.filter(
-          (r) =>
-            r.client_name?.toLowerCase().includes(client.toLowerCase()) ||
-            r.return_client_name?.toLowerCase().includes(client.toLowerCase())
-        );
-      if (driver)
-        results = results.filter((r) =>
-          r.driver_name?.toLowerCase().includes(driver.toLowerCase())
-        );
-    }
-
-    setFilteredData(results);
-  };
 
   const handleSearch = (values: any) => {
-    applySearch(data, values);
+    // Build combined search term for the server
+    const terms = Object.values(values).filter(Boolean) as string[];
+    setServerSearch(terms.join(" "));
+    setCurrentPage(1); // AC-4: Reset to page 1 on filter change
     // Sync to URL (AC-2, Story 6.17)
     const params = new URLSearchParams();
     Object.entries(values).forEach(([k, v]) => { if (v) params.set(k, v as string); });
@@ -311,22 +281,35 @@ function TrackingPageContent() {
 
   const handleReset = () => {
     searchForm.resetFields();
-    applySearch(data, {});
+    setServerSearch("");
+    setCurrentPage(1);
     router.replace("?", { scroll: false });
+  };
+
+  // AC-5: Fetch ALL matching records for export (not just current page)
+  const fetchAllForExport = async (): Promise<TrackingRow[]> => {
+    const qs = new URLSearchParams();
+    qs.set("export", "true");
+    if (serverSearch) qs.set("search", serverSearch);
+    const res = await apiFetch<{ data: TrackingRow[]; count: number }>(
+      `/api/v1/reports/waybill-tracking?${qs.toString()}`
+    );
+    return res.data;
   };
 
   // Excel Export
   const handleExport = async () => {
+    const exportData = await fetchAllForExport();
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet("Control Tower");
 
     type ColDef = Partial<ExcelJS.Column>;
 
-    const maxGoBorders = filteredData.reduce(
+    const maxGoBorders = exportData.reduce(
       (max, row) => Math.max(max, (row.border_crossings || []).filter((bc: any) => bc.direction === "go").length),
       0
     );
-    const maxReturnBorders = filteredData.reduce(
+    const maxReturnBorders = exportData.reduce(
       (max, row) => Math.max(max, (row.border_crossings || []).filter((bc: any) => bc.direction === "return").length),
       0
     );
@@ -406,6 +389,7 @@ function TrackingPageContent() {
       ...returnBorderCols,
       { header: "Return Offloading Date",   key: "offloading_return_date",  width: 26 },
       { header: "Arrival at Yard",          key: "arrival_return_date",     width: 22 },
+      { header: "Ret Empty Container",     key: "return_empty_container_date", width: 22 },
       { header: "Total Days",               key: "duration_days",           width: 14 },
       { header: "Days at Loading",          key: "days_loading",            width: 16 },
       ...daysBorderGoCols,
@@ -421,7 +405,7 @@ function TrackingPageContent() {
       d ? new Date(d).toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric" }) : "-";
 
     let rowNum = 0;
-    filteredData.forEach((row) => {
+    exportData.forEach((row) => {
       const goCrossings     = (row.border_crossings || []).filter((bc: any) => bc.direction === "go");
       const returnCrossings = (row.border_crossings || []).filter((bc: any) => bc.direction === "return");
 
@@ -485,6 +469,7 @@ function TrackingPageContent() {
         offloading_date:         fmtDate(row.offloading_date),
         offloading_return_date:  "-",
         arrival_return_date:     "-",
+        return_empty_container_date: fmtDate(row.return_empty_container_date),
         duration_days:           calcDays(row.dispatch_date, row.arrival_return_date),
         days_loading:            calcDays(row.arrival_loading_date, row.loading_end_date),
         ...goBorderData,
@@ -514,6 +499,7 @@ function TrackingPageContent() {
           offloading_date:         "-",
           offloading_return_date:  fmtDate(row.offloading_return_date),
           arrival_return_date:     fmtDate(row.arrival_return_date),
+          return_empty_container_date: fmtDate(row.return_empty_container_date),
           duration_days:           calcDays(row.dispatch_date, row.arrival_return_date),
           days_loading:            calcDays(row.arrival_loading_return_date, row.loading_return_end_date),
           ...returnBorderData,
@@ -539,7 +525,7 @@ function TrackingPageContent() {
   // Client Excel Export — selected trips only, dynamic border columns across all selected rows
   const handleClientExport = async () => {
     const keySet = new Set(selectedRowKeys.map(String));
-    const selectedRows = filteredData.filter((r) => keySet.has(String(r.row_id)));
+    const selectedRows = trackingData.filter((r) => keySet.has(String(r.row_id)));
     if (selectedRows.length === 0) {
       message.warning("Please select trips to export first");
       return;
@@ -751,6 +737,19 @@ function TrackingPageContent() {
     setIsStatusModalOpen(true);
   };
 
+  // AC-3 (Story 6-20): Truncated text with tooltip for long values
+  const truncatedCell = (text: string | null, maxWidth = 150) => (
+    <Tooltip title={text}>
+      <div style={{ maxWidth, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+        {text || "—"}
+      </div>
+    </Tooltip>
+  );
+
+  // AC-1/AC-2 (Story 6-20): Format date for display in table columns
+  const fmtDateCol = (d: string | null) =>
+    d ? new Date(d).toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric" }) : "—";
+
   const columns: ColumnsType<TrackingRow> = [
     {
       title: "Tracking No.",
@@ -811,9 +810,7 @@ function TrackingPageContent() {
       width: 210,
       render: (_, r) => (
         <Flex vertical gap={0}>
-          <Text strong style={{ fontSize: 13 }}>
-            {r.client_name || "-"}
-          </Text>
+          {truncatedCell(r.client_name, 190)}
           {/* Return client if different */}
           {r.return_client_name && r.return_client_name !== r.client_name && (
             <Text style={{ fontSize: 12, color: "#52c41a" }}>
@@ -821,9 +818,11 @@ function TrackingPageContent() {
               {r.return_client_name}
             </Text>
           )}
-          <Text type="secondary" style={{ fontSize: 12 }}>
-            {r.cargo_type} • {r.cargo_weight?.toLocaleString("en-US") || 0}kg
-          </Text>
+          <Tooltip title={r.cargo_description}>
+            <Text type="secondary" style={{ fontSize: 12, maxWidth: 190, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "block" }}>
+              {r.cargo_type} • {r.cargo_weight?.toLocaleString("en-US") || 0}kg{r.cargo_description ? ` — ${r.cargo_description}` : ""}
+            </Text>
+          </Tooltip>
           {r.return_cargo_weight && (
             <Text type="secondary" style={{ fontSize: 12 }}>
               Ret: {r.return_cargo_type} • {r.return_cargo_weight?.toLocaleString("en-US")}kg
@@ -844,21 +843,25 @@ function TrackingPageContent() {
         return (
         <Flex vertical gap={0}>
           <Space separator={<Text type="secondary">→</Text>}>
-            <Text>{from}</Text>
-            <Text>{to}</Text>
+            <Tooltip title={from}><Text style={{ maxWidth: 100, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "inline-block" }}>{from}</Text></Tooltip>
+            <Tooltip title={to}><Text style={{ maxWidth: 100, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "inline-block" }}>{to}</Text></Tooltip>
           </Space>
           {finalised ? (
-            <div>
-              <EnvironmentOutlined style={{ marginRight: 4, color: "#8c8c8c" }} />
-              <Text type="secondary">{r.current_location || "-"}</Text>
-            </div>
+            <Tooltip title={r.current_location}>
+              <div>
+                <EnvironmentOutlined style={{ marginRight: 4, color: "#8c8c8c" }} />
+                <Text type="secondary">{r.current_location || "-"}</Text>
+              </div>
+            </Tooltip>
           ) : (
-            <div onClick={() => openStatusModal(r)} style={{ cursor: "pointer" }}>
-              <EnvironmentOutlined style={{ marginRight: 4, color: "#fa8c16" }} />
-              <Text type="secondary" underline>
-                {r.current_location || "Update Loc"}
-              </Text>
-            </div>
+            <Tooltip title={r.current_location}>
+              <div onClick={() => openStatusModal(r)} style={{ cursor: "pointer" }}>
+                <EnvironmentOutlined style={{ marginRight: 4, color: "#fa8c16" }} />
+                <Text type="secondary" underline>
+                  {r.current_location || "Update Loc"}
+                </Text>
+              </div>
+            </Tooltip>
           )}
         </Flex>
         );
@@ -909,6 +912,18 @@ function TrackingPageContent() {
       key: "risk",
       width: 80,
       render: (_, r) => <Tag color={RISK_COLORS[r.risk_level]}>{r.risk_level}</Tag>,
+    },
+    {
+      title: "Arrival Offloading",
+      key: "arrival_offloading_date",
+      width: 130,
+      render: (_, r) => <Text type="secondary" style={{ fontSize: 12 }}>{fmtDateCol(r.arrival_offloading_date)}</Text>,
+    },
+    {
+      title: "Ret Empty Container",
+      key: "return_empty_container_date",
+      width: 140,
+      render: (_, r) => <Text type="secondary" style={{ fontSize: 12 }}>{fmtDateCol(r.return_empty_container_date)}</Text>,
     },
   ];
 
@@ -987,7 +1002,7 @@ function TrackingPageContent() {
           {/* Trip-centric Tracking Table */}
           <Table<TrackingRow>
             columns={columns}
-            dataSource={filteredData}
+            dataSource={trackingData}
             rowKey="row_id"
             loading={loading}
             scroll={{ x: 1300 }}
@@ -1002,7 +1017,7 @@ function TrackingPageContent() {
             pagination={{
               current: currentPage,
               pageSize: pageSize,
-              total: filteredData.length,
+              total: totalCount,
               showTotal: (total) => `Total ${total} loads`,
               showSizeChanger: true,
               pageSizeOptions: ["50", "100", "200"],
