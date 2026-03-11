@@ -24,6 +24,7 @@ import type { ColumnsType } from "antd/es/table";
 import type { Waybill, WaybillStatus } from "@/types/waybill";
 import { useAuth } from "@/contexts/AuthContext";
 import { useWaybills, useInvalidateQueries } from "@/hooks/useApi";
+import { fmtCurrency } from "@/lib/utils";
 import { CreateWaybillDrawer } from "@/components/waybills/CreateWaybillDrawer";
 import { EditWaybillDrawer } from "@/components/waybills/EditWaybillDrawer";
 import { WaybillDetailDrawer } from "@/components/waybills/WaybillDetailDrawer";
@@ -150,12 +151,29 @@ export default function WaybillsPage() {
       ...getColumnSearchProps<Waybill>("destination"),
     },
     {
+      title: "Cargo",
+      dataIndex: "cargo_type",
+      key: "cargo_type",
+      width: 120,
+      render: (text: string | null) => text || "-",
+    },
+    {
       title: "Loading Date",
       dataIndex: "expected_loading_date",
       key: "expected_loading_date",
       width: 120,
       render: (date: string) => date ? new Date(date).toLocaleDateString() : "-",
       sorter: (a, b) => (a.expected_loading_date || "").localeCompare(b.expected_loading_date || ""),
+    },
+    {
+      title: "Agreed Rate",
+      dataIndex: "agreed_rate",
+      key: "agreed_rate",
+      width: 140,
+      align: "right" as const,
+      render: (_: number, record: Waybill) =>
+        record.agreed_rate ? fmtCurrency(record.agreed_rate, record.currency) : "-",
+      sorter: (a, b) => (a.agreed_rate || 0) - (b.agreed_rate || 0),
     },
     {
       title: "Status",
