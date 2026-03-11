@@ -126,6 +126,7 @@ export function ExpenseReviewModal({
   const [attachments, setAttachments] = useState<AttachmentInfo[]>([]);
   const [attachmentsLoading, setAttachmentsLoading] = useState(false);
   const [attachmentError, setAttachmentError] = useState(false);
+  const [uploadingAttachment, setUploadingAttachment] = useState(false);
 
   // Inline payment form
   const [paymentForm] = Form.useForm();
@@ -1036,7 +1037,6 @@ export function ExpenseReviewModal({
   ) : null;
 
   // Upload attachment handler for returned/edit mode (AC-3)
-  const [uploadingAttachment, setUploadingAttachment] = useState(false);
   const handleUploadAttachment = async (file: File) => {
     if (!expense?.id) return;
     setUploadingAttachment(true);
