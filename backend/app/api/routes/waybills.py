@@ -153,6 +153,16 @@ def update_waybill(
     if not waybill:
         raise HTTPException(status_code=404, detail="Waybill not found")
 
+    # Edit lock: Completed/Invoiced waybills are locked — only admin/manager can edit
+    UNLOCK_ROLES = {UserRole.admin, UserRole.manager}
+    locked_statuses = {WaybillStatus.completed, WaybillStatus.invoiced}
+    current_wb_status = WaybillStatus(waybill.status) if isinstance(waybill.status, str) else waybill.status
+    if current_wb_status in locked_statuses and current_user.role not in UNLOCK_ROLES:
+        raise HTTPException(
+            status_code=403,
+            detail="Waybill is locked for editing. Only Manager or Admin can edit completed waybills."
+        )
+
     # Handle border_ids separately — not a Waybill column
     border_ids = waybill_in.border_ids
     update_dict = waybill_in.model_dump(exclude_unset=True, exclude={"border_ids"})

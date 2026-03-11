@@ -11,6 +11,7 @@ import {
   message,
   Typography,
   Popconfirm,
+  Tooltip,
 } from "antd";
 import {
   PlusOutlined,
@@ -19,6 +20,7 @@ import {
   DeleteOutlined,
   RocketOutlined,
   EditOutlined,
+  LockOutlined,
 } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
 import type { Waybill, WaybillStatus } from "@/types/waybill";
@@ -165,7 +167,8 @@ export default function WaybillsPage() {
       render: (date: string) => date ? new Date(date).toLocaleDateString() : "-",
       sorter: (a, b) => (a.expected_loading_date || "").localeCompare(b.expected_loading_date || ""),
     },
-    {
+    // Rate column — visible to admin/manager only
+    ...((user?.role === "admin" || user?.role === "manager") ? [{
       title: "Rate",
       dataIndex: "agreed_rate",
       key: "agreed_rate",
@@ -173,8 +176,8 @@ export default function WaybillsPage() {
       align: "right" as const,
       render: (_: number, record: Waybill) =>
         record.agreed_rate ? fmtCurrency(record.agreed_rate, record.currency) : "-",
-      sorter: (a, b) => (a.agreed_rate || 0) - (b.agreed_rate || 0),
-    },
+      sorter: (a: Waybill, b: Waybill) => (a.agreed_rate || 0) - (b.agreed_rate || 0),
+    }] : []),
     {
       title: "Status",
       dataIndex: "status",
@@ -203,14 +206,21 @@ export default function WaybillsPage() {
                 Dispatch
               </Button>
             )}
-            <Button
-              size="small"
-              icon={<EditOutlined />}
-              onClick={() => {
-                setEditWaybillId(record.id);
-                setEditDrawerOpen(true);
-              }}
-            />
+            {(record.status === "Completed" || record.status === "Invoiced") &&
+             user?.role !== "admin" && user?.role !== "manager" ? (
+              <Tooltip title="Locked — only Manager/Admin can edit">
+                <Button size="small" icon={<LockOutlined />} disabled />
+              </Tooltip>
+            ) : (
+              <Button
+                size="small"
+                icon={<EditOutlined />}
+                onClick={() => {
+                  setEditWaybillId(record.id);
+                  setEditDrawerOpen(true);
+                }}
+              />
+            )}
             <Popconfirm
               title="Delete waybill"
               description="This action cannot be undone. The waybill must have no active trips to be deleted."
