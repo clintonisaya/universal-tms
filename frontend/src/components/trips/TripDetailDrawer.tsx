@@ -330,8 +330,9 @@ export function TripDetailDrawer({ open, onClose, tripId, onEdit }: TripDetailDr
   };
 
   const openCancelModal = () => {
-    setCancelGoWaybill(true);
-    setCancelReturnWaybill(true);
+    // AC-3 (Story 6.25): Set defaults based on which waybills exist
+    setCancelGoWaybill(!!trip?.waybill_id);
+    setCancelReturnWaybill(!!trip?.return_waybill_id);
     setIsCancelModalOpen(true);
   };
 
@@ -1192,7 +1193,7 @@ export function TripDetailDrawer({ open, onClose, tripId, onEdit }: TripDetailDr
         </Space>
       </Modal>
 
-      {/* Story 2.25: Cancel Trip Modal — dual waybill selection */}
+      {/* Story 2.25 + 6.25: Cancel Trip Modal — conditional waybill checkboxes */}
       <Modal
         title="Cancel Trip"
         open={isCancelModalOpen}
@@ -1202,35 +1203,56 @@ export function TripDetailDrawer({ open, onClose, tripId, onEdit }: TripDetailDr
         okButtonProps={{ danger: true }}
         confirmLoading={cancelling}
       >
-        <Space orientation="vertical" style={{ width: "100%" }}>
+        <Space direction="vertical" style={{ width: "100%" }}>
           <Text>
             Are you sure you want to cancel this trip?
           </Text>
-          {trip?.return_waybill_id ? (
-            <>
-              <Text type="secondary">This trip has 2 waybills. Select which to reset to Open:</Text>
-              <Space orientation="vertical">
-                <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
-                  <input
-                    type="checkbox"
-                    checked={cancelGoWaybill}
-                    onChange={(e) => setCancelGoWaybill(e.target.checked)}
-                  />
-                  <span>Go Waybill (reset to Open)</span>
-                </label>
-                <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
-                  <input
-                    type="checkbox"
-                    checked={cancelReturnWaybill}
-                    onChange={(e) => setCancelReturnWaybill(e.target.checked)}
-                  />
-                  <span>Return Waybill (reset to Open)</span>
-                </label>
-              </Space>
-            </>
-          ) : (
-            <Text type="secondary">The linked waybill will be reset to Open.</Text>
-          )}
+          {(() => {
+            const hasGo = !!trip?.waybill_id;
+            const hasReturn = !!trip?.return_waybill_id;
+            const waybillCount = [hasGo, hasReturn].filter(Boolean).length;
+
+            if (waybillCount === 0) {
+              // No waybills — simple confirmation
+              return null;
+            }
+
+            if (waybillCount === 1) {
+              // AC-3: Single waybill — no checkboxes, just a warning
+              return (
+                <Alert
+                  type="warning"
+                  showIcon
+                  message="Cancelling this trip will also cancel the linked waybill. This cannot be undone."
+                />
+              );
+            }
+
+            // AC-4: Both waybills — show both checkboxes
+            return (
+              <>
+                <Text type="secondary">This trip has 2 waybills. Select which to reset to Open:</Text>
+                <Space direction="vertical">
+                  <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
+                    <input
+                      type="checkbox"
+                      checked={cancelGoWaybill}
+                      onChange={(e) => setCancelGoWaybill(e.target.checked)}
+                    />
+                    <span>Go Waybill (reset to Open)</span>
+                  </label>
+                  <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
+                    <input
+                      type="checkbox"
+                      checked={cancelReturnWaybill}
+                      onChange={(e) => setCancelReturnWaybill(e.target.checked)}
+                    />
+                    <span>Return Waybill (reset to Open)</span>
+                  </label>
+                </Space>
+              </>
+            );
+          })()}
         </Space>
       </Modal>
 
