@@ -270,7 +270,7 @@ export default function WaybillsPage() {
                   action={{ label: "Clear Filters", onClick: clearAllFilters }}
                 />
               ) : (
-                <EmptyState message="No waybills found." />
+                <EmptyState message="No waybills yet." action={{ label: "Create Waybill", onClick: () => setCreateDrawerOpen(true) }} />
               ),
             }}
             rowSelection={getStandardRowSelection(

@@ -30,6 +30,7 @@ import {
   useResizableColumns,
 } from "@/components/ui/tableUtils";
 import { ExpenseStatusBadge } from "@/components/expenses/ExpenseStatusBadge";
+import { EmptyState } from "@/components/ui/EmptyState";
 
 const { Title } = Typography;
 
@@ -192,6 +193,7 @@ function MaintenancePageContent() {
             rowKey="id"
             loading={loading}
             sticky={{ offsetHeader: 64 }}
+            locale={{ emptyText: <EmptyState message="No maintenance recorded yet." action={{ label: "Log Maintenance", onClick: () => setCreateDrawerOpen(true) }} /> }}
             rowSelection={getStandardRowSelection(
               currentPage,
               pageSize,

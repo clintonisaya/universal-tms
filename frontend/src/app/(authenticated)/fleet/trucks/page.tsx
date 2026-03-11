@@ -274,7 +274,7 @@ export default function TrucksPage() {
             rowKey="id"
             loading={isLoading}
             sticky={{ offsetHeader: 64 }}
-            locale={{ emptyText: <EmptyState message="No trucks registered yet." /> }}
+            locale={{ emptyText: <EmptyState message="No trucks registered yet." action={{ label: "Register First Truck", onClick: () => setIsCreateModalOpen(true) }} /> }}
             rowSelection={getStandardRowSelection(
               currentPage,
               pageSize,

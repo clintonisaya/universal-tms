@@ -355,7 +355,7 @@ export default function DriversPage() {
             rowKey="id"
             loading={isLoading}
             sticky={{ offsetHeader: 64 }}
-            locale={{ emptyText: <EmptyState message="No drivers registered yet." /> }}
+            locale={{ emptyText: <EmptyState message="No drivers registered yet." action={{ label: "Add First Driver", onClick: () => setIsCreateModalOpen(true) }} /> }}
             rowSelection={getStandardRowSelection(
               currentPage,
               pageSize,
