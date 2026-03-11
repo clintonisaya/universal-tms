@@ -166,7 +166,7 @@ export default function WaybillsPage() {
       sorter: (a, b) => (a.expected_loading_date || "").localeCompare(b.expected_loading_date || ""),
     },
     {
-      title: "Agreed Rate",
+      title: "Rate",
       dataIndex: "agreed_rate",
       key: "agreed_rate",
       width: 140,
