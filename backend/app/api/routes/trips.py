@@ -250,6 +250,7 @@ VALID_TRANSITIONS: dict[str, list[str]] = {
     ],
     TripStatus.offloaded.value: [                        # AUTO status
         TripStatus.returning_empty.value,                # forward
+        TripStatus.waiting_return.value,                 # forward (return leg shortcut when return waybill attached)
         TripStatus.offloading.value,                     # backward
         TripStatus.breakdown.value, TripStatus.cancelled.value,
     ],
@@ -989,6 +990,11 @@ def attach_return_waybill(
 
     # Attach return waybill and activate it
     trip.return_waybill_id = request.return_waybill_id
+
+    # Auto-advance to Waiting (Return) so the return leg flow begins
+    trip.status = TripStatus.waiting_return
+    trip.updated_at = datetime.now(timezone.utc)
+    trip.updated_by_id = current_user.id
     session.add(trip)
 
     return_waybill.status = WaybillStatus.in_progress

@@ -59,8 +59,9 @@ export const VALID_NEXT_STATUSES: Record<string, string[]> = {
     "Arrived at Destination",              // backward
     "Breakdown", "Cancelled",
   ],
-  "Offloaded": [                           // AUTO status — backward nav only
+  "Offloaded": [                           // AUTO status
     "Returning Empty",                     // forward
+    "Waiting (Return)",                    // forward (return leg shortcut — filtered by hasReturnWaybill)
     "Offloading",                          // backward
     "Breakdown", "Cancelled",
   ],
