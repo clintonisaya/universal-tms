@@ -38,6 +38,7 @@ import {
   TRIP_PIPELINE_STEPS,
 } from "@/constants/tripStatuses";
 import { theme } from "antd";
+import { useAuth } from "@/contexts/AuthContext";
 
 const { Text, Link } = Typography;
 
@@ -105,6 +106,8 @@ export function UpdateTripStatusModal({
   initialValues,
 }: UpdateTripStatusModalProps) {
   const { token } = theme.useToken();
+  const { user } = useAuth();
+  const canReopen = user?.role === "admin" || user?.role === "manager";
   const [form] = Form.useForm();
   const [submitting, setSubmitting] = useState(false);
   const [countries, setCountries] = useState<Country[]>([]);
@@ -127,6 +130,13 @@ export function UpdateTripStatusModal({
 
   // Compute valid next statuses for current status, filtered by leg context
   const validNextStatuses: TripStatus[] = (() => {
+    // Admin/Manager reopen: offer sensible reopen targets for closed trips
+    if (isTripClosed && canReopen) {
+      const reopenTargets: TripStatus[] = hasReturnWaybill
+        ? ["Waiting for PODs", "Arrived at Yard", "Waiting (Return)"]
+        : ["Waiting for PODs", "Returning Empty", "Offloaded"];
+      return reopenTargets;
+    }
     const all = (VALID_NEXT_STATUSES[currentStatus ?? ""] ?? []) as TripStatus[];
     return all.filter((s) => {
       // Filter return leg statuses when no return waybill attached
@@ -594,8 +604,10 @@ export function UpdateTripStatusModal({
         {isTripClosed && (
           <Alert
             title={`Trip is currently ${currentStatus}`}
-            description="Only Manager or Admin can reopen this trip."
-            type="info"
+            description={canReopen
+              ? "Select a status below to reopen this trip."
+              : "Only Manager or Admin can reopen this trip."}
+            type={canReopen ? "warning" : "info"}
             showIcon
             style={{ marginBottom: 16 }}
           />
@@ -629,7 +641,7 @@ export function UpdateTripStatusModal({
           <Select
             placeholder="Select status"
             onChange={handleStatusChange}
-            disabled={isTripClosed}
+            disabled={isTripClosed && !canReopen}
           >
             {nextStepStatuses.length > 0 && (
               <Select.OptGroup label="Next Steps">
