@@ -735,7 +735,7 @@ export function TripDetailDrawer({ open, onClose, tripId, onEdit }: TripDetailDr
                   </Space>
                 ),
               },
-              ...(showFinancials ? [{
+              {
                 key: "financials",
                 label: "Financials",
                 children: (() => {
@@ -802,8 +802,8 @@ export function TripDetailDrawer({ open, onClose, tripId, onEdit }: TripDetailDr
                         </Space>
                       </div>
 
-                      {/* Trip Income section */}
-                      {hasIncome && (
+                      {/* Trip Income section — admin/manager only */}
+                      {showFinancials && hasIncome && (
                         <Descriptions
                           bordered
                           size="small"
@@ -868,7 +868,8 @@ export function TripDetailDrawer({ open, onClose, tripId, onEdit }: TripDetailDr
                               ? `(${unconvertedCount} expense${unconvertedCount > 1 ? "s" : ""} excluded — no exchange rate set)`
                               : "(excl. Voided, Rejected & Returned)"}
                           </Text>
-                          {hasIncome && (
+                          {/* Net Profit — admin/manager only */}
+                          {showFinancials && hasIncome && (
                             <>
                               <Text type="secondary" style={{ fontSize: 13, margin: "0 4px" }}>|</Text>
                               <Text strong>Net Profit:</Text>
@@ -908,7 +909,7 @@ export function TripDetailDrawer({ open, onClose, tripId, onEdit }: TripDetailDr
                     </Space>
                   );
                 })(),
-              }] : []),
+              },
               {
                 key: "border-crossings",
                 label: `Border Crossings${borderCrossings.length > 0 ? ` (${borderCrossings.length})` : ""}`,
