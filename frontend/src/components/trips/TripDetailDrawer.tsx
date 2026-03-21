@@ -409,7 +409,7 @@ export function TripDetailDrawer({ open, onClose, tripId, onEdit }: TripDetailDr
       title: "Created",
       dataIndex: "created_at",
       key: "created_at",
-      width: 110,
+      width: 130,
       render: (date: string | null) => date ? new Date(date).toLocaleDateString() : "-",
     },
     {
