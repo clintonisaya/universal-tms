@@ -76,8 +76,8 @@ export default function TripProfitabilityPage() {
   const [total, setTotal] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
-  const [sortBy, setSortBy] = useState<string>("margin");
-  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
+  const [sortBy, setSortBy] = useState<string>("trip_number");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
 
   // Trip detail drawer
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -350,7 +350,7 @@ export default function TripProfitabilityPage() {
         );
       },
       sorter: true,
-      defaultSortOrder: "ascend",
+
     },
     {
       title: "Days",
