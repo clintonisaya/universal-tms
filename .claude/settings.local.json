@@ -91,7 +91,14 @@
       "Bash(git stash:*)",
       "Bash(npm run test:*)",
       "Bash(cd:*)",
-      "Bash(wc:*)"
+      "Bash(wc:*)",
+      "Bash(/home/clinton/dev/edupo-tms/_bmad-output/planning-artifacts/epics.md:*)",
+      "Bash(node_modules/.bin/tsc --noEmit)",
+      "Bash(./node_modules/.bin/tsc --noEmit)",
+      "mcp__ide__getDiagnostics",
+      "Bash(node_modules/.bin/next build:*)",
+      "Bash(/home/clinton/dev/edupo-tms/frontend/node_modules/.bin/next build:*)",
+      "Bash(git fetch:*)"
     ]
   }
 }
