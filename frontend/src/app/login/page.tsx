@@ -112,6 +112,9 @@ function LoginForm() {
                 width: 180,
                 height: "auto",
                 marginBottom: 12,
+                display: "block",
+                marginLeft: "auto",
+                marginRight: "auto",
                 filter: "drop-shadow(0 8px 24px var(--color-gold-glow))",
               }}
             />
