@@ -316,7 +316,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
               padding: collapsed ? "16px 0" : "20px 24px",
               display: "flex",
               alignItems: "center",
-              justifyContent: collapsed ? "center" : "flex-start",
+              justifyContent: "center",
               borderBottom: "1px solid var(--color-border)",
               flexShrink: 0,
               minHeight: 65,
@@ -330,7 +330,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                   src="/images/logo-icon-full.png"
                   alt="Edupo"
                   style={{
-                    width: 40,
+                    width: 90,
                     height: "auto",
                     filter: "drop-shadow(0 2px 8px var(--color-gold-glow))",
                   }}
