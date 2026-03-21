@@ -255,10 +255,7 @@ function DashboardContent() {
 
   return (
     <div>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24 }}>
-        <Title level={3} style={{ margin: 0 }}>
-          Dashboard
-        </Title>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", marginBottom: 24 }}>
         <ToDoWidget
           count={todoCount}
           loading={todoCountLoading}
