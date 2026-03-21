@@ -78,7 +78,7 @@ function LoginForm() {
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src="/images/logo.png"
+            src="/images/logo-icon-full.png"
             alt=""
             style={{ width: "100%", height: "auto" }}
           />
@@ -106,7 +106,7 @@ function LoginForm() {
           <div style={{ textAlign: "center", marginBottom: 40 }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src="/images/logo.png"
+              src="/images/logo-icon-full.png"
               alt="Edupo"
               style={{
                 width: 90,

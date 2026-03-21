@@ -326,7 +326,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
             {/* Heraldic crest logo */}
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src="/images/logo.png"
+              src="/images/logo-icon-full.png"
               alt="Edupo"
               style={{
                 width: 36,
