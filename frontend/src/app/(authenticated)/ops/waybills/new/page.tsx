@@ -354,7 +354,7 @@ export default function NewWaybillPage() {
                         </Tag>
                         <span style={{ flex: 1, fontSize: 13 }}>
                           <strong>{bp.display_name}</strong>{" "}
-                          <span style={{ color: "#888" }}>
+                          <span style={{ color: "var(--color-text-muted)" }}>
                             ({bp.side_a_name} → {bp.side_b_name})
                           </span>
                         </span>

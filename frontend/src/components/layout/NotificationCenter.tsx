@@ -92,7 +92,7 @@ export function NotificationCenter({
           count={roleFilteredUnreadCount}
           overflowCount={99}
           offset={[-4, 4]}
-          color="#faad14"
+          color="var(--color-orange)"
         >
           <Button
             type="text"
@@ -210,7 +210,7 @@ export function NotificationCenter({
                             width: 8,
                             height: 8,
                             borderRadius: "50%",
-                            background: "#faad14",
+                            background: "var(--color-orange)",
                             flexShrink: 0,
                           }}
                         />
@@ -218,7 +218,7 @@ export function NotificationCenter({
                       <Text
                         style={{
                           fontWeight: n.read ? 400 : 600,
-                          color: n.read ? "#8c8c8c" : "inherit",
+                          color: n.read ? "var(--color-text-muted)" : "inherit",
                           fontSize: 13,
                         }}
                         ellipsis

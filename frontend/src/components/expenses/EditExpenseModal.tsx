@@ -51,9 +51,9 @@ interface AttachmentInfo {
 
 function getFileIcon(filename: string) {
   const lower = filename.toLowerCase();
-  if (lower.endsWith(".pdf")) return <FilePdfOutlined style={{ color: "#ff4d4f", fontSize: 20 }} />;
-  if (lower.match(/\.(jpe?g|png|gif|webp)$/)) return <FileImageOutlined style={{ color: "#1890ff", fontSize: 20 }} />;
-  if (lower.match(/\.(docx?)$/)) return <FileWordOutlined style={{ color: "#2f54eb", fontSize: 20 }} />;
+  if (lower.endsWith(".pdf")) return <FilePdfOutlined style={{ color: "var(--color-red)", fontSize: 20 }} />;
+  if (lower.match(/\.(jpe?g|png|gif|webp)$/)) return <FileImageOutlined style={{ color: "var(--color-blue)", fontSize: 20 }} />;
+  if (lower.match(/\.(docx?)$/)) return <FileWordOutlined style={{ color: "var(--color-blue)", fontSize: 20 }} />;
   return <FileUnknownOutlined style={{ fontSize: 20 }} />;
 }
 
@@ -846,7 +846,7 @@ export function EditExpenseModal({
                     >
                       <Button icon={<UploadOutlined />}>Select File</Button>
                     </Upload>
-                    <div style={{ marginTop: 8, color: '#888' }}>
+                    <div style={{ marginTop: 8, color: 'var(--color-text-muted)' }}>
                       Supported formats: PDF, Images, Word documents. Max 3MB.
                       <br />
                       New files will be uploaded when you click "Update & Resubmit".

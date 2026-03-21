@@ -42,9 +42,9 @@ interface AttachmentInfo {
 
 function getFileIcon(filename: string) {
   const lower = filename.toLowerCase();
-  if (lower.endsWith(".pdf")) return <FilePdfOutlined style={{ color: "#ff4d4f", fontSize: 18 }} />;
-  if (lower.match(/\.(jpe?g|png|gif|webp)$/)) return <FileImageOutlined style={{ color: "#1890ff", fontSize: 18 }} />;
-  if (lower.match(/\.(docx?)$/)) return <FileWordOutlined style={{ color: "#2f54eb", fontSize: 18 }} />;
+  if (lower.endsWith(".pdf")) return <FilePdfOutlined style={{ color: "var(--color-red)", fontSize: 18 }} />;
+  if (lower.match(/\.(jpe?g|png|gif|webp)$/)) return <FileImageOutlined style={{ color: "var(--color-blue)", fontSize: 18 }} />;
+  if (lower.match(/\.(docx?)$/)) return <FileWordOutlined style={{ color: "var(--color-blue)", fontSize: 18 }} />;
   return <FileUnknownOutlined style={{ fontSize: 18 }} />;
 }
 
@@ -302,7 +302,7 @@ export function VoidExpenseModal({ expense, open, onClose, onSuccess }: VoidExpe
                 padding: "10px 14px",
                 background: "var(--color-surface)",
                 borderRadius: 6,
-                border: "1px solid #f0f0f0",
+                border: "1px solid var(--color-border)",
               }}
             >
               <Space>
@@ -489,7 +489,7 @@ export function VoidExpenseModal({ expense, open, onClose, onSuccess }: VoidExpe
       title={
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", paddingRight: 24 }}>
           <Space>
-            <StopOutlined style={{ color: "#ff4d4f" }} />
+            <StopOutlined style={{ color: "var(--color-red)" }} />
             <span>Void Expense — {expense.expense_number || expense.id.slice(0, 8).toUpperCase()}</span>
           </Space>
           <ExpenseStatusBadge status={expense.status} />
@@ -523,7 +523,7 @@ export function VoidExpenseModal({ expense, open, onClose, onSuccess }: VoidExpe
           padding: 16,
           background: "var(--color-surface)",
           borderRadius: 8,
-          border: "1px solid #f0f0f0",
+          border: "1px solid var(--color-border)",
         }}
       >
         <div style={{ marginBottom: 12 }}>

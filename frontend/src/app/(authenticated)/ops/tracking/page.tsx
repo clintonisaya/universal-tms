@@ -767,7 +767,7 @@ function TrackingPageContent() {
           {/* Return waybill (green, with icon) */}
           {r.return_waybill_number && (
             <Tooltip title="Return Waybill">
-              <Text style={{ color: "#52c41a", fontSize: 12 }}>
+              <Text style={{ color: "var(--color-green)", fontSize: 12 }}>
                 <SwapOutlined style={{ marginRight: 3 }} />
                 {r.return_waybill_number}
               </Text>
@@ -775,7 +775,7 @@ function TrackingPageContent() {
           )}
           {/* Trip number */}
           {r.trip_number ? (
-            <Text style={{ fontSize: 12, color: "#595959" }}>{r.trip_number}</Text>
+            <Text style={{ fontSize: 12, color: "var(--color-text-secondary)" }}>{r.trip_number}</Text>
           ) : (
             <Text type="secondary" style={{ fontSize: 12 }}>
               No Trip
@@ -813,7 +813,7 @@ function TrackingPageContent() {
           {truncatedCell(r.client_name, 190)}
           {/* Return client if different */}
           {r.return_client_name && r.return_client_name !== r.client_name && (
-            <Text style={{ fontSize: 12, color: "#52c41a" }}>
+            <Text style={{ fontSize: 12, color: "var(--color-green)" }}>
               <SwapOutlined style={{ marginRight: 3 }} />
               {r.return_client_name}
             </Text>
@@ -849,7 +849,7 @@ function TrackingPageContent() {
           {finalised ? (
             <Tooltip title={r.current_location}>
               <div>
-                <EnvironmentOutlined style={{ marginRight: 4, color: "#8c8c8c" }} />
+                <EnvironmentOutlined style={{ marginRight: 4, color: "var(--color-text-muted)" }} />
                 <Text type="secondary">{r.current_location || "-"}</Text>
               </div>
             </Tooltip>

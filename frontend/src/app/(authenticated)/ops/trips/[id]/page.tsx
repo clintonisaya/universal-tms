@@ -503,7 +503,7 @@ export default function TripDetailPage() {
                       <Descriptions.Item label="Remarks" span={2}>
                         <Text style={{ whiteSpace: "pre-wrap" }}>{trip.remarks}</Text>
                         <EditOutlined
-                          style={{ marginLeft: 8, cursor: "pointer", color: "#1677ff" }}
+                          style={{ marginLeft: 8, cursor: "pointer", color: "var(--color-gold)" }}
                           onClick={() => setIsStatusModalOpen(true)}
                         />
                       </Descriptions.Item>
@@ -568,7 +568,7 @@ export default function TripDetailPage() {
                               </Space>
                             }
                           >
-                            <Text style={{ color: "#52c41a", fontWeight: 500 }}>
+                            <Text style={{ color: "var(--color-green)", fontWeight: 500 }}>
                               {fmt(Number(trip.waybill_rate), trip.waybill_currency || "USD")}
                             </Text>
                           </Descriptions.Item>
@@ -586,14 +586,14 @@ export default function TripDetailPage() {
                               </Space>
                             }
                           >
-                            <Text style={{ color: "#52c41a", fontWeight: 500 }}>
+                            <Text style={{ color: "var(--color-green)", fontWeight: 500 }}>
                               {fmt(Number(returnWaybill.agreed_rate), returnWaybill.currency || "USD")}
                             </Text>
                           </Descriptions.Item>
                         )}
                         {returnWaybill && (
                           <Descriptions.Item label={<Text strong>Combined Income</Text>}>
-                            <Text strong style={{ color: "#52c41a", fontSize: 15 }}>
+                            <Text strong style={{ color: "var(--color-green)", fontSize: 15 }}>
                               {displayCurrency}{" "}
                               {combinedIncome.toLocaleString("en-US", {
                                 minimumFractionDigits: displayCurrency === "USD" ? 2 : 0,
@@ -615,7 +615,7 @@ export default function TripDetailPage() {
                     >
                       <Space align="center" wrap>
                         <Text strong>Total Expenses:</Text>
-                        <Text strong style={{ color: "#ff4d4f" }}>
+                        <Text strong style={{ color: "var(--color-red)" }}>
                           {displayCurrency}{" "}
                           {totalExpensesDisplay.toLocaleString("en-US", {
                             minimumFractionDigits: displayCurrency === "USD" ? 2 : 0,
@@ -630,7 +630,7 @@ export default function TripDetailPage() {
                             <Text
                               strong
                               style={{
-                                color: (combinedIncome - totalExpensesDisplay) >= 0 ? "#52c41a" : "#ff4d4f",
+                                color: (combinedIncome - totalExpensesDisplay) >= 0 ? "var(--color-green)" : "var(--color-red)",
                                 fontSize: 15,
                               }}
                             >

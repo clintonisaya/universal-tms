@@ -90,11 +90,11 @@ interface EditableHeader {
 function getFileIcon(filename: string) {
   const lower = filename.toLowerCase();
   if (lower.endsWith(".pdf"))
-    return <FilePdfOutlined style={{ color: "#ff4d4f", fontSize: 18 }} />;
+    return <FilePdfOutlined style={{ color: "var(--color-red)", fontSize: 18 }} />;
   if (lower.match(/\.(jpe?g|png|gif|webp)$/))
-    return <FileImageOutlined style={{ color: "#1890ff", fontSize: 18 }} />;
+    return <FileImageOutlined style={{ color: "var(--color-blue)", fontSize: 18 }} />;
   if (lower.match(/\.(docx?)$/))
-    return <FileWordOutlined style={{ color: "#2f54eb", fontSize: 18 }} />;
+    return <FileWordOutlined style={{ color: "var(--color-blue)", fontSize: 18 }} />;
   return <FileUnknownOutlined style={{ fontSize: 18 }} />;
 }
 
@@ -1112,7 +1112,7 @@ export function ExpenseReviewModal({
                 padding: "10px 14px",
                 background: "var(--color-surface)",
                 borderRadius: 6,
-                border: "1px solid #f0f0f0",
+                border: "1px solid var(--color-border)",
               }}
             >
               <Space>
@@ -1396,7 +1396,7 @@ export function ExpenseReviewModal({
                 padding: 16,
                 background: "var(--color-surface)",
                 borderRadius: 8,
-                border: "1px solid #f0f0f0",
+                border: "1px solid var(--color-border)",
               }}
             >
                 <Text strong style={{ display: "block", marginBottom: 12 }}>
@@ -1545,7 +1545,7 @@ export function ExpenseReviewModal({
                 padding: 16,
                 background: "var(--color-surface)",
                 borderRadius: 8,
-                border: "1px solid #f0f0f0",
+                border: "1px solid var(--color-border)",
               }}
             >
               {/* Comment TextArea — hide for editable (returned) since banner covers it */}
@@ -1577,8 +1577,8 @@ export function ExpenseReviewModal({
                       onClick={handleApprove}
                       loading={processing}
                       style={{
-                        background: "#52c41a",
-                        borderColor: "#52c41a",
+                        background: "var(--color-green)",
+                        borderColor: "var(--color-green)",
                       }}
                     >
                       Approve
@@ -1611,8 +1611,8 @@ export function ExpenseReviewModal({
                       onClick={handleSubmit}
                       loading={processing}
                       style={{
-                        background: "#52c41a",
-                        borderColor: "#52c41a",
+                        background: "var(--color-green)",
+                        borderColor: "var(--color-green)",
                       }}
                     >
                       Submit

@@ -323,7 +323,7 @@ function TasksContent() {
 
           {tasks.length === 0 && !loading ? (
             <Empty
-              image={<SmileOutlined style={{ fontSize: 64, color: "#52c41a" }} />}
+              image={<SmileOutlined style={{ fontSize: 64, color: "var(--color-green)" }} />}
               description={
                 <div>
                   <Text strong style={{ fontSize: 16 }}>

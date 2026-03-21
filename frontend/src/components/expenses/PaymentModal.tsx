@@ -53,8 +53,8 @@ interface PaymentResult {
 
 function getFileIcon(filename: string) {
   const lower = filename.toLowerCase();
-  const style = { color: "#8c8c8c", fontSize: 18 };
-  if (lower.endsWith(".pdf")) return <FilePdfOutlined style={{ ...style, color: "#ff4d4f" }} />;
+  const style = { color: "var(--color-text-muted)", fontSize: 18 };
+  if (lower.endsWith(".pdf")) return <FilePdfOutlined style={{ ...style, color: "var(--color-red)" }} />;
   if (lower.match(/\.(jpe?g|png|gif|webp)$/)) return <FileImageOutlined style={style} />;
   if (lower.match(/\.(docx?)$/)) return <FileWordOutlined style={style} />;
   return <FileUnknownOutlined style={style} />;

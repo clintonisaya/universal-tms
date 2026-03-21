@@ -487,9 +487,9 @@ export function UpdateTripStatusModal({
 
       items.push({
         icon: isCompleted ? (
-          <CheckCircleOutlined style={{ fontSize: 14, color: "#52c41a" }} />
+          <CheckCircleOutlined style={{ fontSize: 14, color: "var(--color-green)" }} />
         ) : (
-          <ClockCircleOutlined style={{ fontSize: 14, color: "#faad14" }} />
+          <ClockCircleOutlined style={{ fontSize: 14, color: "var(--color-orange)" }} />
         ),
         content: (
           <div>

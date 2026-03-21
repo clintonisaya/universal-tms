@@ -79,7 +79,7 @@ const PERMISSION_GROUPS = AVAILABLE_PERMISSIONS.reduce<
 }, {});
 
 /** Brand color for active toggles */
-const BRAND_GOLD = "#D4AF37";
+const BRAND_GOLD = "var(--color-gold)";
 
 /** Grouped toggle switches for permissions – used as a Form control via value/onChange. */
 function PermissionToggles({
@@ -113,7 +113,7 @@ function PermissionToggles({
           <div
             key={group}
             style={{
-              border: "1px solid #e5e7eb",
+              border: "1px solid var(--color-border)",
               borderRadius: 10,
               padding: "14px 16px",
               background: "var(--color-card)",
@@ -121,12 +121,12 @@ function PermissionToggles({
             }}
           >
             {/* Group header with master toggle */}
-            <Flex justify="space-between" align="center" style={{ marginBottom: 10, borderBottom: "1px solid #f0f0f0", paddingBottom: 8 }}>
-              <Text strong style={{ fontSize: 12, color: "#6b7280", textTransform: "uppercase", letterSpacing: 1 }}>
+            <Flex justify="space-between" align="center" style={{ marginBottom: 10, borderBottom: "1px solid var(--color-border)", paddingBottom: 8 }}>
+              <Text strong style={{ fontSize: 12, color: "var(--color-text-secondary)", textTransform: "uppercase", letterSpacing: 1 }}>
                 {group}
               </Text>
               <Flex align="center" gap={6}>
-                <Text style={{ fontSize: 12, color: "#9ca3af" }}>{allOn ? "All" : someOn ? "Some" : "None"}</Text>
+                <Text style={{ fontSize: 12, color: "var(--color-text-muted)" }}>{allOn ? "All" : someOn ? "Some" : "None"}</Text>
                 <Switch
                   size="small"
                   checked={allOn}
@@ -514,7 +514,7 @@ const UsersContent = () => {
       </Card>
 
       <Modal
-        title={<span style={{ fontSize: 18, fontWeight: 600, color: "#1f2937" }}>{editingUser ? "Edit User" : "Add User"}</span>}
+        title={<span style={{ fontSize: 18, fontWeight: 600, color: "var(--color-text-primary)" }}>{editingUser ? "Edit User" : "Add User"}</span>}
         open={isModalOpen}
         onCancel={() => setIsModalOpen(false)}
         footer={null}
@@ -523,12 +523,12 @@ const UsersContent = () => {
         forceRender
         styles={{ body: { background: "var(--color-surface)", padding: "20px 24px" } }}
       >
-        <Form form={form} layout="vertical" onFinish={handleSubmit} style={{ color: "#1f2937" }}>
+        <Form form={form} layout="vertical" onFinish={handleSubmit} style={{ color: "var(--color-text-primary)" }}>
           {/* Row 1: Full Name + Username */}
           <Flex gap="middle">
             <Form.Item
               name="full_name"
-              label={<span style={{ color: "#374151" }}>Full Name</span>}
+              label={<span style={{ color: "var(--color-text-primary)" }}>Full Name</span>}
               rules={[{ required: true, message: "Required" }]}
               style={{ flex: 1 }}
             >
@@ -536,7 +536,7 @@ const UsersContent = () => {
             </Form.Item>
             <Form.Item
               name="username"
-              label={<span style={{ color: "#374151" }}>Username / Email</span>}
+              label={<span style={{ color: "var(--color-text-primary)" }}>Username / Email</span>}
               rules={[{ required: true, message: "Required" }]}
               style={{ flex: 1 }}
             >
@@ -548,7 +548,7 @@ const UsersContent = () => {
           <Flex gap="middle">
             <Form.Item
               name="role"
-              label={<span style={{ color: "#374151" }}>Role</span>}
+              label={<span style={{ color: "var(--color-text-primary)" }}>Role</span>}
               rules={[{ required: true, message: "Required" }]}
               style={{ flex: 1 }}
             >
@@ -568,7 +568,7 @@ const UsersContent = () => {
             {!editingUser ? (
               <Form.Item
                 name="password"
-                label={<span style={{ color: "#374151" }}>Initial Password</span>}
+                label={<span style={{ color: "var(--color-text-primary)" }}>Initial Password</span>}
                 rules={[{ required: true, message: "Required for new users" }]}
                 style={{ flex: 1 }}
               >
@@ -580,8 +580,8 @@ const UsersContent = () => {
           </Flex>
 
           {/* Separator + Permissions */}
-          <Divider style={{ borderColor: "#e5e7eb", margin: "8px 0 16px" }}>
-            <Text strong style={{ color: "#6b7280", fontSize: 13, letterSpacing: 0.5 }}>PERMISSIONS</Text>
+          <Divider style={{ borderColor: "var(--color-border)", margin: "8px 0 16px" }}>
+            <Text strong style={{ color: "var(--color-text-secondary)", fontSize: 13, letterSpacing: 0.5 }}>PERMISSIONS</Text>
           </Divider>
 
           <Form.Item name="permissions" noStyle>
@@ -598,7 +598,7 @@ const UsersContent = () => {
         </Form>
       </Modal>
       <Modal
-        title={<span style={{ fontSize: 18, fontWeight: 600, color: "#1f2937" }}>Reset Password — {resetPasswordUser?.username}</span>}
+        title={<span style={{ fontSize: 18, fontWeight: 600, color: "var(--color-text-primary)" }}>Reset Password — {resetPasswordUser?.username}</span>}
         open={isResetPasswordModalOpen}
         onCancel={() => setIsResetPasswordModalOpen(false)}
         footer={null}

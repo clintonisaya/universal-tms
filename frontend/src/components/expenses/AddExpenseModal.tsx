@@ -693,7 +693,7 @@ export function AddExpenseModal({
                     >
                       <Button icon={<UploadOutlined />}>Select File</Button>
                     </Upload>
-                    <div style={{ marginTop: 8, color: '#888' }}>
+                    <div style={{ marginTop: 8, color: 'var(--color-text-muted)' }}>
                       Supported formats: PDF, Images. Max 3MB.
                       (The selected files will be attached to all expense items in this application)
                       <br />

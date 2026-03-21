@@ -29,9 +29,9 @@ interface AttachmentInfo {
 
 function getFileIcon(filename: string) {
   const lower = filename.toLowerCase();
-  if (lower.endsWith(".pdf")) return <FilePdfOutlined style={{ color: "#ff4d4f", fontSize: 18 }} />;
-  if (lower.match(/\.(jpe?g|png|gif|webp)$/)) return <FileImageOutlined style={{ color: "#1890ff", fontSize: 18 }} />;
-  if (lower.match(/\.(docx?)$/)) return <FileWordOutlined style={{ color: "#2f54eb", fontSize: 18 }} />;
+  if (lower.endsWith(".pdf")) return <FilePdfOutlined style={{ color: "var(--color-red)", fontSize: 18 }} />;
+  if (lower.match(/\.(jpe?g|png|gif|webp)$/)) return <FileImageOutlined style={{ color: "var(--color-blue)", fontSize: 18 }} />;
+  if (lower.match(/\.(docx?)$/)) return <FileWordOutlined style={{ color: "var(--color-blue)", fontSize: 18 }} />;
   return <FileUnknownOutlined style={{ fontSize: 18 }} />;
 }
 
@@ -262,7 +262,7 @@ export function ExpenseDetailModal({ open, onClose, expense }: ExpenseDetailModa
           </Descriptions.Item>
         )}
         <Descriptions.Item label="Amount" span={1}>
-          <Text strong style={{ fontSize: 16, color: "#1890ff" }}>
+          <Text strong style={{ fontSize: 16, color: "var(--color-blue)" }}>
             {formatCurrency(expense.amount, expense.currency)}
           </Text>
         </Descriptions.Item>
