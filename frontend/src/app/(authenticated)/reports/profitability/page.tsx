@@ -261,7 +261,7 @@ export default function TripProfitabilityPage() {
       width: 150,
       align: "right",
       render: (val: number) => (
-        <Text style={{ color: "#52c41a", fontWeight: 500 }}>
+        <Text style={{ color: "var(--color-green)", fontWeight: 500 }}>
           {fmt(val)}
         </Text>
       ),
@@ -274,7 +274,7 @@ export default function TripProfitabilityPage() {
       width: 150,
       align: "right",
       render: (val: number) => (
-        <Text style={{ color: "#ff4d4f", fontWeight: 500 }}>
+        <Text style={{ color: "var(--color-red)", fontWeight: 500 }}>
           {fmt(val)}
         </Text>
       ),
@@ -289,7 +289,7 @@ export default function TripProfitabilityPage() {
       render: (val: number) => (
         <Text
           style={{
-            color: val >= 0 ? "#52c41a" : "#ff4d4f",
+            color: val >= 0 ? "var(--color-green)" : "var(--color-red)",
             fontWeight: 600,
           }}
         >
@@ -308,7 +308,7 @@ export default function TripProfitabilityPage() {
       render: (val: number) => (
         <Text
           style={{
-            color: val >= 0 ? "#52c41a" : "#ff4d4f",
+            color: val >= 0 ? "var(--color-green)" : "var(--color-red)",
           }}
         >
           {fmt(val)}
@@ -323,7 +323,7 @@ export default function TripProfitabilityPage() {
       width: 120,
       align: "right",
       render: (val: number) => {
-        const color = val >= 20 ? "#52c41a" : val >= 10 ? "#faad14" : "#ff4d4f";
+        const color = val >= 20 ? "var(--color-green)" : val >= 10 ? "var(--color-orange)" : "var(--color-red)";
         const icon =
           val >= 0 ? (
             <ArrowUpOutlined style={{ fontSize: 10 }} />
@@ -331,16 +331,22 @@ export default function TripProfitabilityPage() {
             <ArrowDownOutlined style={{ fontSize: 10 }} />
           );
         return (
-          <Tag
-            color={color}
+          <span
             style={{
+              display: "inline-block",
+              padding: "3px 10px",
+              borderRadius: 6,
+              fontSize: 11,
               fontWeight: 600,
+              color: color,
+              background: `color-mix(in srgb, ${color} 10%, transparent)`,
               minWidth: 70,
               textAlign: "center",
+              whiteSpace: "nowrap",
             }}
           >
             {icon} {val.toFixed(1)}%
-          </Tag>
+          </span>
         );
       },
       sorter: true,
@@ -407,7 +413,7 @@ export default function TripProfitabilityPage() {
           1 USD = {exchangeRate.toLocaleString("en-US")} TZS
           {usingDefaultRate && (
             <Tooltip title="No exchange rate found in Finance settings — using default rate of 2,500 TZS/USD. Set the current rate in Finance → Exchange Rates for accurate figures.">
-              <InfoCircleOutlined style={{ color: "#faad14", marginLeft: 4 }} />
+              <InfoCircleOutlined style={{ color: "var(--color-orange)", marginLeft: 4 }} />
             </Tooltip>
           )}
         </Text>
@@ -432,7 +438,7 @@ export default function TripProfitabilityPage() {
               value={toDisplay(summary?.total_income || 0)}
               prefix={cur}
               precision={displayCurrency === "USD" ? 2 : 0}
-              styles={{ content: { color: "#52c41a" } }}
+              styles={{ content: { color: "var(--color-green)" } }}
             />
           </Card>
         </Col>
@@ -443,7 +449,7 @@ export default function TripProfitabilityPage() {
               value={toDisplay((summary?.total_expenses || 0) + (summary?.total_office_expenses || 0))}
               prefix={cur}
               precision={displayCurrency === "USD" ? 2 : 0}
-              styles={{ content: { color: "#ff4d4f" } }}
+              styles={{ content: { color: "var(--color-red)" } }}
             />
           </Card>
         </Col>
@@ -454,7 +460,7 @@ export default function TripProfitabilityPage() {
               value={toDisplay(summary?.total_expenses || 0)}
               prefix={cur}
               precision={displayCurrency === "USD" ? 2 : 0}
-              styles={{ content: { color: "#ff4d4f" } }}
+              styles={{ content: { color: "var(--color-red)" } }}
             />
           </Card>
         </Col>
@@ -467,7 +473,7 @@ export default function TripProfitabilityPage() {
               precision={displayCurrency === "USD" ? 2 : 0}
               styles={{
                 content: {
-                  color: (summary?.total_profit || 0) >= 0 ? "#52c41a" : "#ff4d4f",
+                  color: (summary?.total_profit || 0) >= 0 ? "var(--color-green)" : "var(--color-red)",
                 }
               }}
             />
@@ -484,10 +490,10 @@ export default function TripProfitabilityPage() {
                 content: {
                   color:
                     (summary?.average_margin_pct || 0) >= 20
-                      ? "#52c41a"
+                      ? "var(--color-green)"
                       : (summary?.average_margin_pct || 0) >= 10
-                      ? "#faad14"
-                      : "#ff4d4f",
+                      ? "var(--color-orange)"
+                      : "var(--color-red)",
                 }
               }}
             />
@@ -502,7 +508,7 @@ export default function TripProfitabilityPage() {
               precision={displayCurrency === "USD" ? 2 : 0}
               styles={{
                 content: {
-                  color: (summary?.total_profit_per_day || 0) >= 0 ? "#52c41a" : "#ff4d4f",
+                  color: (summary?.total_profit_per_day || 0) >= 0 ? "var(--color-green)" : "var(--color-red)",
                 }
               }}
             />
