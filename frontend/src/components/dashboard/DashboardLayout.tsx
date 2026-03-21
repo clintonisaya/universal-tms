@@ -323,21 +323,18 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
               flexShrink: 0,
             }}
           >
-            {/* Gold icon mark */}
-            <div
+            {/* Heraldic crest logo */}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/images/logo.png"
+              alt="Edupo"
               style={{
-                width: 34,
-                height: 34,
-                borderRadius: 9,
-                background: "linear-gradient(135deg, var(--color-gold), var(--color-gold-dim))",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
+                width: 36,
+                height: "auto",
                 flexShrink: 0,
+                filter: "drop-shadow(0 2px 8px var(--color-gold-glow))",
               }}
-            >
-              <span style={{ fontSize: 16, fontWeight: 800, color: "var(--color-logo-icon)" }}>E</span>
-            </div>
+            />
 
             {/* Brand name — hidden when collapsed */}
             {!collapsed && (

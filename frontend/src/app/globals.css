@@ -153,6 +153,8 @@ tr:hover > td .row-actions {
   --color-orange: #E8A034;
   --color-blue: #4A9FF5;
   --color-cyan: #3DD6C8;
+  --color-watermark-opacity: 0.04;
+  --color-watermark-filter: none;
 }
 
 [data-theme="light"] {
@@ -185,6 +187,8 @@ tr:hover > td .row-actions {
   --color-orange: #D48A20;
   --color-blue: #3B8DE5;
   --color-cyan: #2EB8AB;
+  --color-watermark-opacity: 0.03;
+  --color-watermark-filter: invert(1);
 }
 
 /* ── TABLE VISUAL OVERRIDES (Story 7.7) ── */

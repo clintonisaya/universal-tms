@@ -63,35 +63,26 @@ function LoginForm() {
           transition: "background 0.4s",
         }}
       >
-        {/* Decorative ring 1 — 500px */}
+        {/* Watermark — faded logo behind the card */}
         <div
           style={{
             position: "absolute",
             top: "50%",
             left: "50%",
-            transform: "translate(-50%, -50%)",
+            transform: "translate(-50%, -45%)",
             width: 500,
-            height: 500,
-            borderRadius: "50%",
-            border: "1px solid var(--color-ring-a)",
             pointerEvents: "none",
+            opacity: "var(--color-watermark-opacity)",
+            filter: "var(--color-watermark-filter)",
           }}
-        />
-
-        {/* Decorative ring 2 — 700px */}
-        <div
-          style={{
-            position: "absolute",
-            top: "50%",
-            left: "50%",
-            transform: "translate(-50%, -50%)",
-            width: 700,
-            height: 700,
-            borderRadius: "50%",
-            border: "1px solid var(--color-ring-b)",
-            pointerEvents: "none",
-          }}
-        />
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/images/logo.png"
+            alt=""
+            style={{ width: "100%", height: "auto" }}
+          />
+        </div>
 
         {/* Theme toggle — top-right */}
         <div style={{ position: "absolute", top: 24, right: 28 }}>
@@ -112,33 +103,18 @@ function LoginForm() {
           }}
         >
           {/* Logo mark + brand */}
-          <div style={{ textAlign: "center", marginBottom: 32 }}>
-            <div
+          <div style={{ textAlign: "center", marginBottom: 40 }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/images/logo.png"
+              alt="Edupo"
               style={{
-                display: "inline-flex",
-                alignItems: "center",
-                justifyContent: "center",
-                width: 56,
-                height: 56,
-                borderRadius: 14,
-                background: "linear-gradient(135deg, var(--color-gold), var(--color-gold-dim))",
-                marginBottom: 16,
-                boxShadow: "0 8px 24px var(--color-gold-glow)",
+                width: 90,
+                height: "auto",
+                marginBottom: 12,
+                filter: "drop-shadow(0 8px 24px var(--color-gold-glow))",
               }}
-            >
-              <span style={{ fontSize: 24, fontWeight: 800, color: "var(--color-logo-icon)" }}>E</span>
-            </div>
-
-            <div
-              style={{
-                fontSize: 22,
-                fontWeight: 700,
-                color: "var(--color-text-primary)",
-                letterSpacing: "0.15em",
-              }}
-            >
-              EDUPO
-            </div>
+            />
 
             <div
               style={{
