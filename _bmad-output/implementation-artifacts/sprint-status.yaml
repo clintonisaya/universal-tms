@@ -149,3 +149,16 @@ development_status:
   6-24-expense-review-modal-improvements: review
   6-25-cancellation-modal-null-return-waybill: review
   epic-6-retrospective: optional
+
+  # Epic 7: Visual Design System Migration (2026-03-21)
+  epic-7: in-progress
+  7-1-design-tokens-css-variables: done
+  7-2-theme-toggle-infrastructure: done
+  7-3-login-page-visual-restyle: done
+  7-4-sidebar-header-restyle: done
+  7-5-status-badges-exact-match: done
+  7-6-metric-cards-restyle: done
+  7-7-table-visual-styling: review
+  7-8-page-headers-action-buttons: review
+  7-9-global-font-scrollbar: review
+  epic-7-retrospective: optional

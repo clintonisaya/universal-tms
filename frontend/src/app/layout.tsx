@@ -1,10 +1,9 @@
 import type { Metadata } from "next";
 import { AntdRegistry } from "@ant-design/nextjs-registry";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Geist, Geist_Mono, DM_Sans } from "next/font/google";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { QueryProvider } from "@/lib/queryClient";
-import { ConfigProvider, App } from "antd";
-import themeConfig from "@/theme/themeConfig";
+import { ThemeProvider } from "@/contexts/ThemeContext";
 import "react-resizable/css/styles.css";
 import "./globals.css";
 
@@ -16,6 +15,12 @@ const geistSans = Geist({
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
+});
+
+const dmSans = DM_Sans({
+  variable: "--font-dm-sans",
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700", "800"],
 });
 
 export const metadata: Metadata = {
@@ -35,17 +40,15 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" data-theme="dark" suppressHydrationWarning>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} ${dmSans.variable} antialiased`}
       >
         <AntdRegistry>
           <QueryProvider>
-            <ConfigProvider theme={themeConfig}>
-              <App>
-                <AuthProvider>{children}</AuthProvider>
-              </App>
-            </ConfigProvider>
+            <ThemeProvider>
+              <AuthProvider>{children}</AuthProvider>
+            </ThemeProvider>
           </QueryProvider>
         </AntdRegistry>
       </body>

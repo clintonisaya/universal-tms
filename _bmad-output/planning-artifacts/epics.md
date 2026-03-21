@@ -286,3 +286,65 @@ So that I can make informed decisions about repairs or replacement.
 **Then** I see a table of all past maintenance events and costs
 **And** I see a "Total Maintenance Cost" summary
 
+
+## Epic 7: Visual Design System Migration
+
+Replicate the visual design from `edupo-redesign.jsx` into the production codebase — pixel-perfect match across all screens. Zero functional changes. Only the visual layer is updated.
+
+**Source reference:** `/home/clinton/dev/edupo-tms/edupo-redesign.jsx`
+**Themes:** Dark (default) + Light with toggle
+**Constraint:** All Ant Design components, routing, auth, permissions, API calls stay untouched
+
+### Story 7.1: Design Tokens & CSS Variables Foundation
+
+As a developer implementing the visual redesign,
+I want all design tokens from `edupo-redesign.jsx` extracted into `themeConfig.ts` and `globals.css`,
+So that every subsequent visual story has a single source of truth for colors, spacing, and theme values.
+
+### Story 7.2: Theme Toggle Infrastructure
+
+As a user of Edupo TMS,
+I want a dark/light theme toggle that persists my preference,
+So that I can use the app comfortably in any lighting environment.
+
+### Story 7.3: Login Page Visual Restyle
+
+As a user opening Edupo TMS,
+I want the login page to look exactly like the redesign prototype,
+So that the app makes a strong first impression with the new visual identity.
+
+### Story 7.4: App Shell — Sidebar & Header Restyle
+
+As a daily user of Edupo TMS,
+I want the sidebar and header to look exactly like the redesign prototype,
+So that every session starts with the new visual identity.
+
+### Story 7.5: Status Badges Exact Match
+
+As a user scanning data tables,
+I want status badges to look exactly like the redesign prototype,
+So that status information is visually clear and consistent.
+
+### Story 7.6: KPI / Metric Cards Restyle
+
+As a user viewing the dashboard,
+I want KPI metric cards to look exactly like the redesign prototype,
+So that key numbers are displayed with the new visual style.
+
+### Story 7.7: Table Visual Styling
+
+As a user reading data tables across all pages,
+I want all tables to look exactly like the redesign prototype,
+So that data is presented with the new visual style consistently.
+
+### Story 7.8: Page Headers & Action Buttons
+
+As a user on any list page,
+I want page headers and action buttons to look exactly like the redesign prototype,
+So that navigation and actions are visually consistent with the new design.
+
+### Story 7.9: Global Font (DM Sans) & Scrollbar
+
+As a user of Edupo TMS,
+I want the app to use DM Sans font and a minimal scrollbar style,
+So that the typography and browser chrome match the redesign exactly.

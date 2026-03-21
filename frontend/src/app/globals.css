@@ -21,11 +21,12 @@
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  background: var(--color-bg);
+  color: var(--color-text-primary);
+  font-family: 'DM Sans', var(--font-dm-sans), 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  transition: background 0.35s;
 }
 
 /* Row actions: hidden by default, visible on hover — Story 2.18 */
@@ -54,10 +55,10 @@ tr:hover > td .row-actions {
   position: sticky;
   bottom: 0;
   z-index: 100;
-  background: #fff;
+  background: var(--color-card);
   padding: 12px 0;
   margin: 0 !important;
-  border-top: 1px solid #f0f0f0;
+  border-top: 1px solid var(--color-border);
   box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.04);
 }
 
@@ -106,4 +107,204 @@ tr:hover > td .row-actions {
 /* Fix for Ant Design table header cell overflow */
 .ant-table-thead > tr > th.react-resizable {
   overflow: visible;
+}
+
+/* ─── DESIGN SYSTEM TOKENS — edupo-redesign.jsx ──────────────────────────── */
+
+/* P13: :root fallback — dark defaults ensure variables resolve in portals/iframes
+   and any context where data-theme attribute is absent */
+:root {
+  --color-bg: #0C0E12;
+  --color-card: #13161C;
+  --color-surface: #191D25;
+  --color-border: #252A35;
+  --color-gold: #D4A843;
+  --color-gold-dim: #B8922E;
+  --color-gold-glow: rgba(212,168,67,0.15);
+  --color-gold-text: #0C0E12;
+  --color-text-primary: #E8E4DC;
+  --color-text-secondary: #8A8F9C;
+  --color-text-muted: #5A5F6C;
+  --color-login-bg: radial-gradient(ellipse at 50% 30%, #1a1d24 0%, #0C0E12 70%);
+  --color-login-card: rgba(19,22,28,0.85);
+  --color-header-bg: rgba(12,14,18,0.6);
+  --color-ring-a: rgba(212,168,67,0.06);
+  --color-ring-b: rgba(212,168,67,0.03);
+  --color-scroll-thumb: #252A35;
+  --color-input-focus-bg: rgba(212,168,67,0.06);
+  --color-shadow: 0 40px 80px rgba(0,0,0,0.5);
+  --color-card-shadow: none;
+  --color-table-hover: #191D25;
+  --color-logo-icon: #0C0E12;
+  --color-switch-bg: #191D25;
+  --color-green: #3DD68C;
+  --color-red: #E85454;
+  --color-orange: #E8A034;
+  --color-blue: #4A9FF5;
+  --color-cyan: #3DD6C8;
+}
+
+[data-theme="dark"] {
+  --color-bg: #0C0E12;
+  --color-card: #13161C;
+  --color-surface: #191D25;
+  --color-border: #252A35;
+  --color-gold: #D4A843;
+  --color-gold-dim: #B8922E;
+  --color-gold-glow: rgba(212,168,67,0.15);
+  --color-gold-text: #0C0E12;
+  --color-text-primary: #E8E4DC;
+  --color-text-secondary: #8A8F9C;
+  --color-text-muted: #5A5F6C;
+  --color-login-bg: radial-gradient(ellipse at 50% 30%, #1a1d24 0%, #0C0E12 70%);
+  --color-login-card: rgba(19,22,28,0.85);
+  --color-header-bg: rgba(12,14,18,0.6);
+  --color-ring-a: rgba(212,168,67,0.06);
+  --color-ring-b: rgba(212,168,67,0.03);
+  --color-scroll-thumb: #252A35;
+  --color-input-focus-bg: rgba(212,168,67,0.06);
+  --color-shadow: 0 40px 80px rgba(0,0,0,0.5);
+  --color-card-shadow: none;
+  --color-table-hover: #191D25;
+  --color-logo-icon: #0C0E12;
+  --color-switch-bg: #191D25;
+  --color-green: #3DD68C;
+  --color-red: #E85454;
+  --color-orange: #E8A034;
+  --color-blue: #4A9FF5;
+  --color-cyan: #3DD6C8;
+}
+
+[data-theme="light"] {
+  --color-bg: #F4F2EE;
+  --color-card: #FFFFFF;
+  --color-surface: #F0EDE8;
+  --color-border: #E2DDD4;
+  --color-gold: #B8922E;
+  --color-gold-dim: #9A7A20;
+  --color-gold-glow: rgba(184,146,46,0.10);
+  --color-gold-text: #FFFFFF;
+  --color-text-primary: #1A1C20;
+  --color-text-secondary: #6B6E76;
+  --color-text-muted: #9A9DA6;
+  --color-login-bg: radial-gradient(ellipse at 50% 30%, #FAF8F4 0%, #F4F2EE 70%);
+  --color-login-card: rgba(255,255,255,0.92);
+  --color-header-bg: rgba(244,242,238,0.75);
+  --color-ring-a: rgba(184,146,46,0.08);
+  --color-ring-b: rgba(184,146,46,0.04);
+  --color-scroll-thumb: #D4CFC6;
+  --color-input-focus-bg: rgba(184,146,46,0.06);
+  --color-shadow: 0 40px 80px rgba(0,0,0,0.08);
+  --color-card-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  --color-table-hover: #FAF8F4;
+  --color-logo-icon: #FFFFFF;
+  --color-switch-bg: #E2DDD4;
+  --color-green: #2EAE6E;
+  --color-red: #D94444;
+  --color-orange: #D48A20;
+  --color-blue: #3B8DE5;
+  --color-cyan: #2EB8AB;
+}
+
+/* ── TABLE VISUAL OVERRIDES (Story 7.7) ── */
+
+.ant-table-wrapper {
+  border-radius: 14px;
+  border: 1px solid var(--color-border);
+  overflow: hidden;
+  box-shadow: var(--color-card-shadow);
+  background: var(--color-card);
+}
+
+.ant-table {
+  background: var(--color-card) !important;
+}
+
+.ant-table-thead > tr > th,
+.ant-table-thead > tr > td {
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.06em !important;
+  padding: 14px 16px !important;
+  border-bottom: 1px solid var(--color-border) !important;
+  white-space: nowrap;
+}
+
+.ant-table-tbody > tr > td {
+  font-size: 13px;
+  padding: 12px 16px !important;
+  border-bottom: 1px solid var(--color-border) !important;
+  color: var(--color-text-primary);
+}
+
+.ant-table-tbody > tr:last-child > td {
+  border-bottom: none !important;
+}
+
+.ant-pagination {
+  padding: 12px 16px !important;
+}
+
+/* ── BUTTON OVERRIDES (Story 7.8) ── */
+
+.ant-btn-primary {
+  background: linear-gradient(135deg, var(--color-gold), var(--color-gold-dim)) !important;
+  border: none !important;
+  color: var(--color-gold-text) !important;
+  box-shadow: 0 2px 12px var(--color-gold-glow) !important;
+}
+
+.ant-btn-primary:not(:disabled):hover {
+  background: linear-gradient(135deg, var(--color-gold-dim), var(--color-gold)) !important;
+  opacity: 0.92;
+}
+
+.ant-btn-default {
+  background: var(--color-surface) !important;
+  border: 1px solid var(--color-border) !important;
+  color: var(--color-text-secondary) !important;
+  border-radius: 8px !important;
+}
+
+.ant-btn-default:not(:disabled):hover {
+  background: var(--color-card) !important;
+  border-color: var(--color-gold-dim) !important;
+  color: var(--color-text-primary) !important;
+}
+
+/* ── PAGE TITLE UTILITY CLASS (Story 7.8) ── */
+
+.page-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  margin: 0 0 24px 0;
+}
+
+/* ── GLOBAL FONT, SCROLLBAR & RESETS (Story 7.9) ── */
+
+/* Scrollbar — 6px, transparent track, themed thumb */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-scroll-thumb);
+  border-radius: 3px;
+}
+
+/* Input / textarea placeholders */
+input::placeholder,
+textarea::placeholder {
+  color: var(--color-text-muted) !important;
+  opacity: 1;
+}
+
+/* Global box-sizing */
+*, *::before, *::after {
+  box-sizing: border-box;
 }

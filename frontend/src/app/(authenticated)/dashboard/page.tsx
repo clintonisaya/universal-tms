@@ -283,6 +283,7 @@ function DashboardContent() {
             <MetricCard
               title="Trucks In Transit"
               value={stats?.trucks_in_transit ?? 0}
+              accent="var(--color-blue)"
               status={
                 (stats?.trucks_in_transit ?? 0) > 0 ? "active" : "normal"
               }
@@ -302,6 +303,7 @@ function DashboardContent() {
                   ? (stats?.pending_manager ?? 0)
                   : (stats?.pending_approvals ?? 0)
               }
+              accent="var(--color-orange)"
               status={
                 (role === "manager"
                   ? (stats?.pending_manager ?? 0)
@@ -321,6 +323,7 @@ function DashboardContent() {
             <MetricCard
               title="Total Trucks"
               value={stats?.total_trucks ?? 0}
+              accent="var(--color-blue)"
               loading={loading}
               onClick={() => router.push("/fleet/trucks")}
             />
@@ -333,6 +336,7 @@ function DashboardContent() {
             <MetricCard
               title="Completed Trips"
               value={stats?.completed_trips ?? 0}
+              accent="var(--color-green)"
               loading={loading}
               onClick={() => router.push("/ops/trips")}
             />
@@ -345,6 +349,7 @@ function DashboardContent() {
             <MetricCard
               title="Trucks In Transit"
               value={stats?.trucks_in_transit ?? 0}
+              accent="var(--color-blue)"
               status={
                 (stats?.trucks_in_transit ?? 0) > 0 ? "active" : "normal"
               }
@@ -360,6 +365,7 @@ function DashboardContent() {
             <MetricCard
               title="Active Drivers"
               value={stats?.active_drivers ?? 0}
+              accent="var(--color-cyan)"
               loading={loading}
               onClick={() => router.push("/fleet/drivers")}
             />

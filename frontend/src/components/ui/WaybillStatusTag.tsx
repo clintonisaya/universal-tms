@@ -1,15 +1,20 @@
 "use client";
 
-import { Tag } from "antd";
+import { StatusBadge, type ColorKey } from "./StatusBadge";
 import type { WaybillStatus } from "@/types/waybill";
 
-const WAYBILL_STATUS_COLORS: Record<WaybillStatus, string> = {
-  Open: "default",
-  "In Progress": "processing",
-  Completed: "success",
-  Invoiced: "geekblue",
+const WAYBILL_STATUS_COLOR_KEYS: Record<WaybillStatus, ColorKey> = {
+  Open:          "gray",
+  "In Progress": "orange",
+  Completed:     "green",
+  Invoiced:      "cyan",
 };
 
 export function WaybillStatusTag({ status }: { status: WaybillStatus }) {
-  return <Tag color={WAYBILL_STATUS_COLORS[status]}>{status}</Tag>;
+  return (
+    <StatusBadge
+      status={status}
+      colorKey={WAYBILL_STATUS_COLOR_KEYS[status] ?? "gray"}
+    />
+  );
 }

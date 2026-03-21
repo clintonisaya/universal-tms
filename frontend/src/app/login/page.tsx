@@ -2,16 +2,9 @@
 
 import { useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Button, Form, Input, Typography, message, Spin, Alert } from "antd";
-import { UserOutlined, LockOutlined } from "@ant-design/icons";
+import { message, Spin } from "antd";
 import { useAuth } from "@/contexts/AuthContext";
-
-const { Text } = Typography;
-
-interface LoginFormFields {
-  username: string;
-  password: string;
-}
+import { ThemeToggle } from "@/components/ui/ThemeToggle";
 
 function LoginForm() {
   const router = useRouter();
@@ -19,18 +12,26 @@ function LoginForm() {
   const { login } = useAuth();
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [usernameFocused, setUsernameFocused] = useState(false);
+  const [passwordFocused, setPasswordFocused] = useState(false);
   const [messageApi, contextHolder] = message.useMessage();
 
-  // Get the callback URL from query params (set by middleware when redirecting)
-  // Note: Redirect for already logged-in users is handled by AuthContext
-  const callbackUrl = searchParams.get("callbackUrl") || "/dashboard";
+  // P6: validate callbackUrl is relative to prevent open redirect
+  const raw = searchParams.get("callbackUrl") || "/dashboard";
+  const callbackUrl = raw.startsWith("/") ? raw : "/dashboard";
 
-  const onFinish = async (values: LoginFormFields) => {
+  const onSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!username || !password) {
+      setErrorMsg("Username and password are required.");
+      return;
+    }
     setLoading(true);
     setErrorMsg(null);
     try {
-      const success = await login(values.username, values.password);
-
+      const success = await login(username, password);
       if (success) {
         messageApi.success("Login successful!");
         router.push(callbackUrl);
@@ -48,240 +49,232 @@ function LoginForm() {
     <>
       {contextHolder}
 
-      {/* ── KEYFRAME ANIMATIONS ── */}
-      <style>{`
-        @keyframes bgBreath {
-          0%, 100% { opacity: 0.07; transform: translate(-50%, -50%) scale(1); }
-          50%       { opacity: 0.11; transform: translate(-50%, -50%) scale(1.04); }
-        }
-        @keyframes cardIn {
-          from { opacity: 0; transform: translateY(32px); }
-          to   { opacity: 1; transform: translateY(0); }
-        }
-        @keyframes brandIn {
-          from { opacity: 0; letter-spacing: 14px; }
-          to   { opacity: 1; letter-spacing: 6px; }
-        }
-        @keyframes lineExpand {
-          from { width: 0px; opacity: 0; }
-          to   { width: 32px; opacity: 1; }
-        }
-        @keyframes fieldIn {
-          from { opacity: 0; transform: translateX(-10px); }
-          to   { opacity: 1; transform: translateX(0); }
-        }
-        @keyframes goldPulse {
-          0%, 100% { box-shadow: 0 4px 16px rgba(212,175,55,0.25); }
-          50%       { box-shadow: 0 4px 28px rgba(212,175,55,0.50); }
-        }
-        .login-card { animation: cardIn 0.55s cubic-bezier(0.22,1,0.36,1) both; }
-        .login-brand { animation: brandIn 0.7s ease-out 0.2s both; }
-        .login-separator { animation: lineExpand 0.5s ease-out 0.6s both; }
-        .login-field-1 { animation: fieldIn 0.4s ease-out 0.45s both; }
-        .login-field-2 { animation: fieldIn 0.4s ease-out 0.55s both; }
-        .login-btn { animation: fieldIn 0.4s ease-out 0.65s both; }
-        .login-btn:not(:disabled) { animation: fieldIn 0.4s ease-out 0.65s both, goldPulse 3s ease-in-out 1.5s infinite; }
-        .login-btn:hover:not(:disabled) {
-          background: #e8c44a !important;
-          box-shadow: 0 6px 32px rgba(212,175,55,0.55) !important;
-          transform: translateY(-1px);
-          transition: all 0.2s ease;
-        }
-
-        /* ── Respect user motion preferences ── */
-        @media (prefers-reduced-motion: reduce) {
-          .login-card,
-          .login-brand,
-          .login-field-1,
-          .login-field-2,
-          .login-btn,
-          .login-btn:not(:disabled) {
-            animation: none !important;
-            opacity: 1 !important;
-            transform: none !important;
-          }
-          .login-brand { letter-spacing: 6px !important; }
-          .login-separator { animation: none !important; opacity: 1 !important; width: 32px !important; }
-        }
-      `}</style>
-
       <div
         style={{
-          minHeight: "100vh",
-          backgroundColor: "#121417",
-          position: "relative",
+          width: "100%",
+          height: "100vh",
           display: "flex",
-          justifyContent: "center",
           alignItems: "center",
-          overflow: "hidden"
+          justifyContent: "center",
+          background: "var(--color-login-bg)",
+          fontFamily: "'DM Sans', sans-serif",
+          position: "relative",
+          overflow: "hidden",
+          transition: "background 0.4s",
         }}
       >
-
-        {/* ── BACKGROUND WATERMARK — slow breathing pulse ── */}
+        {/* Decorative ring 1 — 500px */}
         <div
           style={{
             position: "absolute",
             top: "50%",
             left: "50%",
-            width: "120vh",
-            height: "120vh",
-            background: "url('/login-bg.png') center center / contain no-repeat",
+            transform: "translate(-50%, -50%)",
+            width: 500,
+            height: 500,
+            borderRadius: "50%",
+            border: "1px solid var(--color-ring-a)",
             pointerEvents: "none",
-            zIndex: 0,
-            animation: "bgBreath 8s ease-in-out infinite",
           }}
         />
 
-        {/* ── LOGIN PANEL ── */}
+        {/* Decorative ring 2 — 700px */}
         <div
           style={{
-            position: "relative",
-            zIndex: 1,
-            width: "100%",
-            maxWidth: 420,
-            padding: "0 24px"
+            position: "absolute",
+            top: "50%",
+            left: "50%",
+            transform: "translate(-50%, -50%)",
+            width: 700,
+            height: 700,
+            borderRadius: "50%",
+            border: "1px solid var(--color-ring-b)",
+            pointerEvents: "none",
+          }}
+        />
+
+        {/* Theme toggle — top-right */}
+        <div style={{ position: "absolute", top: 24, right: 28 }}>
+          <ThemeToggle />
+        </div>
+
+        {/* Login card */}
+        <div
+          style={{
+            width: 380,
+            background: "var(--color-login-card)",
+            backdropFilter: "blur(40px)",
+            border: "1px solid var(--color-border)",
+            borderRadius: 20,
+            padding: "48px 40px",
+            boxShadow: "var(--color-shadow)",
+            transition: "all 0.4s",
           }}
         >
-          <div
-            className="login-card"
-            style={{
-              background: "#181A1F",
-              border: "1px solid rgba(212, 175, 55, 0.20)",
-              borderBottom: "2px solid rgba(212, 175, 55, 0.55)",
-              borderRadius: "20px",
-              padding: "48px 40px 40px",
-              boxShadow: "0 24px 64px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(0,0,0,0.3)",
-            }}
-          >
-            {/* Header — brand + separator */}
-            <div style={{ textAlign: "center", marginBottom: 32 }}>
-              {/* Brand name */}
-              <Text
-                className="login-brand"
+          {/* Logo mark + brand */}
+          <div style={{ textAlign: "center", marginBottom: 32 }}>
+            <div
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                width: 56,
+                height: 56,
+                borderRadius: 14,
+                background: "linear-gradient(135deg, var(--color-gold), var(--color-gold-dim))",
+                marginBottom: 16,
+                boxShadow: "0 8px 24px var(--color-gold-glow)",
+              }}
+            >
+              <span style={{ fontSize: 24, fontWeight: 800, color: "var(--color-logo-icon)" }}>E</span>
+            </div>
+
+            <div
+              style={{
+                fontSize: 22,
+                fontWeight: 700,
+                color: "var(--color-text-primary)",
+                letterSpacing: "0.15em",
+              }}
+            >
+              EDUPO
+            </div>
+
+            <div
+              style={{
+                fontSize: 12,
+                color: "var(--color-text-muted)",
+                marginTop: 6,
+              }}
+            >
+              Fleet Management System
+            </div>
+          </div>
+
+          {/* Form */}
+          <form onSubmit={onSubmit}>
+            {/* Username */}
+            <div style={{ marginBottom: 20 }}>
+              <label
                 style={{
-                  color: "#D4AF37",
-                  fontSize: 28,
                   display: "block",
-                  letterSpacing: "6px",
-                  fontWeight: 700,
-                  lineHeight: 1,
+                  fontSize: 11,
+                  fontWeight: 600,
+                  color: "var(--color-text-muted)",
+                  letterSpacing: "0.08em",
+                  textTransform: "uppercase",
+                  marginBottom: 8,
                 }}
               >
-                EDUPO
-              </Text>
-              {/* Thin gold separator line */}
-              <div
-                className="login-separator"
+                Username
+              </label>
+              <input
+                type="text"
+                value={username}
+                onChange={e => setUsername(e.target.value)}
+                onFocus={() => setUsernameFocused(true)}
+                onBlur={() => setUsernameFocused(false)}
+                autoComplete="username"
+                required
                 style={{
-                  width: 32,
-                  height: 1,
-                  background: "rgba(212,175,55,0.4)",
-                  margin: "14px auto 0",
+                  width: "100%",
+                  padding: "12px 16px",
+                  background: usernameFocused ? "var(--color-input-focus-bg)" : "var(--color-surface)",
+                  border: `1px solid ${usernameFocused ? "var(--color-gold-dim)" : "var(--color-border)"}`,
+                  borderRadius: 10,
+                  color: "var(--color-text-primary)",
+                  fontSize: 14,
+                  outline: "none",
+                  // P8: visible focus ring for keyboard accessibility
+                  boxShadow: usernameFocused ? "0 0 0 2px var(--color-gold-dim)" : "none",
+                  transition: "all 0.2s",
+                  boxSizing: "border-box",
                 }}
               />
             </div>
 
-            <Form
-              name="login"
-              onFinish={onFinish}
-              layout="vertical"
-              size="large"
-              requiredMark={false}
+            {/* Password */}
+            <div style={{ marginBottom: 32 }}>
+              <label
+                style={{
+                  display: "block",
+                  fontSize: 11,
+                  fontWeight: 600,
+                  color: "var(--color-text-muted)",
+                  letterSpacing: "0.08em",
+                  textTransform: "uppercase",
+                  marginBottom: 8,
+                }}
+              >
+                Password
+              </label>
+              <input
+                type="password"
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                onFocus={() => setPasswordFocused(true)}
+                onBlur={() => setPasswordFocused(false)}
+                autoComplete="current-password"
+                required
+                style={{
+                  width: "100%",
+                  padding: "12px 16px",
+                  background: passwordFocused ? "var(--color-input-focus-bg)" : "var(--color-surface)",
+                  border: `1px solid ${passwordFocused ? "var(--color-gold-dim)" : "var(--color-border)"}`,
+                  borderRadius: 10,
+                  color: "var(--color-text-primary)",
+                  fontSize: 14,
+                  outline: "none",
+                  // P8: visible focus ring for keyboard accessibility
+                  boxShadow: passwordFocused ? "0 0 0 2px var(--color-gold-dim)" : "none",
+                  transition: "all 0.2s",
+                  boxSizing: "border-box",
+                }}
+              />
+            </div>
+
+            {/* Error message — P4: use CSS vars for theme-aware error colors */}
+            {errorMsg && (
+              <div
+                style={{
+                  marginBottom: 20,
+                  padding: "10px 14px",
+                  background: "color-mix(in srgb, var(--color-red) 10%, transparent)",
+                  border: "1px solid color-mix(in srgb, var(--color-red) 30%, transparent)",
+                  borderRadius: 8,
+                  color: "var(--color-red)",
+                  fontSize: 13,
+                }}
+              >
+                {errorMsg}
+              </div>
+            )}
+
+            {/* Submit */}
+            <button
+              type="submit"
+              disabled={loading}
+              style={{
+                width: "100%",
+                padding: "14px",
+                background: "linear-gradient(135deg, var(--color-gold), var(--color-gold-dim))",
+                border: "none",
+                borderRadius: 10,
+                color: "var(--color-gold-text)",
+                fontSize: 13,
+                fontWeight: 700,
+                letterSpacing: "0.08em",
+                textTransform: "uppercase",
+                cursor: loading ? "not-allowed" : "pointer",
+                boxShadow: "0 4px 20px var(--color-gold-glow)",
+                opacity: loading ? 0.7 : 1,
+                transition: "all 0.2s",
+              }}
             >
-              <Form.Item
-                name="username"
-                label={
-                  <span style={{ color: "rgba(255,255,255,0.70)", fontSize: 13, letterSpacing: "1.5px" }}>
-                    USERNAME
-                  </span>
-                }
-                rules={[{ required: true, message: "Username is required" }]}
-                style={{ marginBottom: 20 }}
-                className="login-field-1"
-              >
-                <Input
-                  prefix={<UserOutlined style={{ color: "rgba(255,255,255,0.40)", marginRight: 8 }} />}
-                  autoComplete="username"
-                  style={{
-                    background: "#0D0E11",
-                    borderColor: "#3a3d44",
-                    color: "#FFF",
-                    borderRadius: "2px",
-                  }}
-                  styles={{ input: { background: "transparent", color: "#FFF" } }}
-                />
-              </Form.Item>
-
-              <Form.Item
-                name="password"
-                label={
-                  <span style={{ color: "rgba(255,255,255,0.70)", fontSize: 13, letterSpacing: "1.5px" }}>
-                    PASSWORD
-                  </span>
-                }
-                rules={[{ required: true, message: "Password is required" }]}
-                style={{ marginBottom: errorMsg ? 16 : 32 }}
-                className="login-field-2"
-              >
-                <Input.Password
-                  prefix={<LockOutlined style={{ color: "rgba(255,255,255,0.40)", marginRight: 8 }} />}
-                  autoComplete="current-password"
-                  style={{
-                    background: "#0D0E11",
-                    borderColor: "#3a3d44",
-                    color: "#FFF",
-                    borderRadius: "2px",
-                  }}
-                  styles={{ input: { background: "transparent", color: "#FFF" } }}
-                />
-              </Form.Item>
-
-              {/* ── Inline error — visible near the action ── */}
-              {errorMsg && (
-                <Alert
-                  message={errorMsg}
-                  type="error"
-                  showIcon
-                  style={{
-                    marginBottom: 20,
-                    background: "rgba(255,77,79,0.10)",
-                    border: "1px solid rgba(255,77,79,0.30)",
-                    borderRadius: "2px",
-                    color: "#ff7875",
-                    fontSize: 13,
-                  }}
-                />
-              )}
-
-              <Form.Item style={{ marginBottom: 0 }}>
-                <Button
-                  type="primary"
-                  htmlType="submit"
-                  loading={loading}
-                  block
-                  className="login-btn"
-                  style={{
-                    height: "48px",
-                    background: "#D4AF37",
-                    borderColor: "#D4AF37",
-                    color: "#000000",
-                    fontSize: "13px",
-                    fontWeight: 700,
-                    letterSpacing: "2px",
-                    textTransform: "uppercase",
-                    borderRadius: "2px",
-                    boxShadow: "0 4px 16px rgba(212,175,55,0.25)",
-                  }}
-                >
-                  ACCESS SYSTEM
-                </Button>
-              </Form.Item>
-            </Form>
-
-          </div>
-
+              {loading ? "Signing in…" : "Access System"}
+            </button>
+          </form>
         </div>
-
       </div>
     </>
   );
@@ -289,11 +282,21 @@ function LoginForm() {
 
 export default function LoginPage() {
   return (
-    <Suspense fallback={
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', background: '#1F1F1F' }}>
-        <Spin size="large" />
-      </div>
-    }>
+    <Suspense
+      fallback={
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            height: "100vh",
+            background: "var(--color-bg)",
+          }}
+        >
+          <Spin size="large" />
+        </div>
+      }
+    >
       <LoginForm />
     </Suspense>
   );

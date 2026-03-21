@@ -1,7 +1,6 @@
-import { Card, Statistic, Typography } from "antd";
-import { ArrowUpOutlined, ArrowDownOutlined } from "@ant-design/icons";
+"use client";
 
-const { Text } = Typography;
+import { ArrowUpOutlined, ArrowDownOutlined } from "@ant-design/icons";
 
 interface MetricCardProps {
   title: string;
@@ -13,6 +12,7 @@ interface MetricCardProps {
   status?: "active" | "critical" | "normal"; // For styling borders/colors
   isRevenue?: boolean;
   onClick?: () => void;
+  accent?: string; // Top gradient bar start color — defaults to var(--color-gold)
 }
 
 export function MetricCard({
@@ -22,81 +22,94 @@ export function MetricCard({
   prefix,
   suffix,
   loading = false,
-  status = "normal",
-  isRevenue = false,
   onClick,
+  accent,
 }: MetricCardProps) {
-  const getStatusBorderColor = () => {
-    switch (status) {
-      case "critical":
-        return "#ff4d4f";
-      case "active":
-        return "#1890ff";
-      default:
-        return "transparent";
-    }
-  };
-
-  const getStatusBackground = () => {
-    switch (status) {
-      case "critical":
-        return "rgba(255,77,79,0.05)";
-      case "active":
-        return "rgba(24,144,255,0.05)";
-      default:
-        return undefined;
-    }
-  };
-
-  const getValueColor = () => {
-    if (status === "critical") return "#ff4d4f";
-    if (isRevenue) return "#B8961F"; // WCAG-compliant gold
-    return "#1F1F1F"; // Charcoal
-  };
+  const accentColor = accent ?? "var(--color-gold)";
 
   return (
-    <Card
-      loading={loading}
-      hoverable={!!onClick}
+    <div
       onClick={onClick}
+      role={onClick ? "button" : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      onKeyDown={onClick ? (e) => (e.key === "Enter" || e.key === " ") && onClick() : undefined}
       style={{
-        height: "100%",
-        borderLeft: `4px solid ${getStatusBorderColor()}`,
-        borderRadius: "4px",
-        boxShadow: "0 1px 2px rgba(0,0,0,0.03)",
+        background: "var(--color-card)",
+        border: "1px solid var(--color-border)",
+        borderRadius: 14,
+        padding: "20px 22px",
+        flex: 1,
+        minWidth: 180,
+        position: "relative",
+        overflow: "hidden",
+        boxShadow: "var(--color-card-shadow)",
         cursor: onClick ? "pointer" : "default",
-        background: getStatusBackground(),
+        opacity: loading ? 0.5 : 1,
+        transition: "opacity 0.2s",
       }}
-      styles={{ body: { padding: "20px 24px" } }}
     >
-      <Statistic
-        title={<Text type="secondary" style={{ fontSize: 13, textTransform: "uppercase", letterSpacing: "0.5px" }}>{title}</Text>}
-        value={value}
-        prefix={prefix}
-        suffix={suffix}
-        styles={{
-          content: {
-            color: getValueColor(),
-            fontWeight: 700,
-            fontSize: isRevenue ? 28 : 24,
-            fontFamily: "Inter, sans-serif",
-          },
+      {/* 2px accent gradient bar */}
+      <div
+        style={{
+          position: "absolute",
+          top: 0,
+          left: 0,
+          right: 0,
+          height: 2,
+          background: `linear-gradient(90deg, ${accentColor}, transparent)`,
         }}
       />
+
+      {/* Label */}
+      <div
+        style={{
+          fontSize: 11,
+          fontWeight: 600,
+          color: "var(--color-text-muted)",
+          letterSpacing: "0.08em",
+          textTransform: "uppercase",
+          marginBottom: 8,
+        }}
+      >
+        {title}
+      </div>
+
+      {/* Value */}
+      <div
+        style={{
+          fontSize: 28,
+          fontWeight: 700,
+          color: "var(--color-text-primary)",
+          fontFamily: "'DM Sans', sans-serif",
+          letterSpacing: "-0.02em",
+          display: "flex",
+          alignItems: "baseline",
+          gap: 4,
+        }}
+      >
+        {prefix && <span style={{ fontSize: 16 }}>{prefix}</span>}
+        {value}
+        {suffix && <span style={{ fontSize: 16 }}>{suffix}</span>}
+      </div>
+
+      {/* Trend sub-text */}
       {trend !== undefined && (
-        <div style={{ marginTop: 8 }}>
-          <Text
-            type={trend >= 0 ? "success" : "danger"}
-            style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 13, fontWeight: 500 }}
-          >
-            {trend >= 0 ? <ArrowUpOutlined /> : <ArrowDownOutlined />}
-            {Math.abs(trend)}%
-          </Text>
-          <Text type="secondary" style={{ fontSize: 12 }}>
-            {" "}vs last week
-          </Text>
+        <div
+          style={{
+            fontSize: 12,
+            color: trend >= 0 ? "var(--color-green)" : "var(--color-red)",
+            marginTop: 4,
+            display: "flex",
+            alignItems: "center",
+            gap: 4,
+          }}
+        >
+          {trend >= 0 ? <ArrowUpOutlined /> : <ArrowDownOutlined />}
+          <span style={{ color: "var(--color-text-secondary)" }}>
+            {Math.abs(trend)}% vs last week
+          </span>
         </div>
       )}
-    </Card>
+    </div>
   );
 }

@@ -1,77 +1,100 @@
 import type { ThemeConfig } from 'antd';
 import { theme } from 'antd';
 
-const themeConfig: ThemeConfig = {
+export function getThemeConfig(mode: "dark" | "light"): ThemeConfig {
+  const isDark = mode === "dark";
+  return {
+    algorithm: isDark
+      ? [theme.darkAlgorithm, theme.compactAlgorithm]
+      : theme.compactAlgorithm,
     token: {
-        // Typography - Standardizing on 13px as requested
-        fontSize: 13,
-        fontSizeHeading1: 26,
-        fontSizeHeading2: 22,
-        fontSizeHeading3: 18,
-        fontSizeHeading4: 15,
-        fontSizeHeading5: 14, // Slightly larger for emphasis
+      // Typography
+      fontSize: 13,
+      fontSizeHeading1: 26,
+      fontSizeHeading2: 22,
+      fontSizeHeading3: 18,
+      fontSizeHeading4: 15,
+      fontSizeHeading5: 14,
 
-        // Brand Colors
-        colorPrimary: '#B8961F', // Brand Gold (WCAG AA-compliant — contrast ratio ~4.5:1 on white)
-        colorInfo: '#B8961F',
+      // Brand Colors — from edupo-redesign.jsx THEMES
+      colorPrimary: isDark ? '#D4A843' : '#B8922E',
+      colorInfo:    isDark ? '#D4A843' : '#B8922E',
 
-        // Neutralizing Text for better readability
-        colorTextBase: '#262626', // Slightly softer black
-        colorTextSecondary: '#595959',
+      // Base colors drive Ant Design's dark/light algorithm
+      colorTextBase: isDark ? '#E8E4DC' : '#1A1C20',
+      colorBgBase:   isDark ? '#0C0E12' : '#F4F2EE',
 
-        // Modernizing Structure
-        fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
-        borderRadius: 6, // 6px is a sweet spot between "boxy" (4px) and "round" (8px)
+      // Font
+      fontFamily: '"DM Sans", var(--font-dm-sans), "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+      borderRadius: 6,
 
-        // Spacing - controlling density
-        controlHeight: 34, // Slightly taller than default compact (24/32) for better touch/click targets
+      // Spacing
+      controlHeight: 34,
     },
     components: {
-        Layout: {
-            headerBg: '#ffffff',
-            bodyBg: '#f8f9fa', // Cleaner, brighter background
-            siderBg: '#1F1F1F',
-        },
-        Table: {
-            headerBg: '#ffffff', // Clean white headers
-            headerColor: '#8c8c8c', // Muted headers to let data stand out
-            headerSplitColor: '#f0f0f0',
-            rowHoverBg: '#FFFDF5', // Subtle gold tint on hover
-            cellPaddingBlock: 8, // Maintaining density
-            cellPaddingInline: 12,
-            borderColor: '#f0f0f0',
-        },
-        Card: {
-            headerFontSize: 14,
-
-            borderRadiusLG: 8, // Slightly softer cards
-        },
-        Button: {
-            primaryShadow: '0 2px 0 rgba(0, 0, 0, 0.045)',
-            algorithm: true,
-            fontWeight: 500,
-            contentFontSize: 13,
-        },
-        Input: {
-            activeBorderColor: '#B8961F',
-            hoverBorderColor: '#D4AF37',
-        },
-        Select: {
-            colorPrimary: '#B8961F',
-        },
-        Typography: {
-            fontFamilyCode: '"Fira Code", monospace',
-        },
-        Modal: {
-            headerBg: '#ffffff',
-            titleFontSize: 16,
-        },
-        Tag: {
-            borderRadiusSM: 4,
-        }
+      Layout: {
+        headerBg: isDark ? 'rgba(12,14,18,0.6)' : 'rgba(244,242,238,0.75)',
+        bodyBg:   isDark ? '#0C0E12'            : '#F4F2EE',
+        siderBg:  isDark ? '#13161C'            : '#FFFFFF',
+      },
+      Table: {
+        headerBg:             isDark ? '#13161C'  : '#FFFFFF',
+        headerColor:          isDark ? '#5A5F6C'  : '#9A9DA6',
+        headerSplitColor:     isDark ? '#252A35'  : '#E2DDD4',
+        rowHoverBg:           isDark ? '#191D25'  : '#FAF8F4',
+        borderColor:          isDark ? '#252A35'  : '#E2DDD4',
+        headerSortActiveBg:   isDark ? '#13161C'  : '#FFFFFF',
+        headerFilterHoverBg:  isDark ? '#191D25'  : '#F0EDE8',
+        cellPaddingBlock: 8,
+        cellPaddingInline: 16,
+      },
+      Card: {
+        headerFontSize: 14,
+        borderRadiusLG: 8,
+      },
+      Button: {
+        primaryShadow: '0 2px 12px rgba(212,168,67,0.25)',
+        fontWeight: 600,
+        contentFontSize: 12,
+        borderRadius: 8,
+        paddingInline: 16,
+        paddingBlock: 8,
+      },
+      Input: {
+        activeBorderColor: isDark ? '#D4A843' : '#B8922E',
+        hoverBorderColor:  isDark ? '#B8922E' : '#9A7A20',
+      },
+      Select: {
+        colorPrimary: isDark ? '#D4A843' : '#B8922E',
+      },
+      Typography: {
+        fontFamilyCode: '"Fira Code", monospace',
+      },
+      Modal: {
+        headerBg:      isDark ? '#13161C' : '#ffffff',
+        titleFontSize: 16,
+      },
+      Tag: {
+        borderRadiusSM: 4,
+      },
+      Menu: {
+        ...(isDark ? {
+          darkItemBg:           '#13161C',
+          darkSubMenuItemBg:    '#0C0E12',
+          darkItemSelectedBg:   'rgba(212,168,67,0.15)',
+          darkItemSelectedColor: '#D4A843',
+        } : {
+          itemBg:               '#FFFFFF',
+          subMenuItemBg:        '#F4F2EE',
+          itemSelectedBg:       'rgba(184,146,46,0.12)',
+          itemSelectedColor:    '#B8922E',
+        }),
+        itemBorderRadius:    10,
+        itemMarginInline:    8,
+        itemPaddingInline:   14,
+        itemPaddingBlock:    10,
+      },
     },
-    // Keeping compact algorithm for data density, but our token overrides will refine it
-    algorithm: theme.compactAlgorithm,
-};
+  };
+}
 
-export default themeConfig;
