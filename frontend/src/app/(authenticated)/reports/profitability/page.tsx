@@ -220,7 +220,7 @@ export default function TripProfitabilityPage() {
       title: "Trip #",
       dataIndex: "trip_number",
       key: "trip_number",
-      width: 130,
+      width: 120,
       render: (num: string, record) => (
         <a
           onClick={() => openTripDrawer(record.trip_id)}
@@ -236,6 +236,7 @@ export default function TripProfitabilityPage() {
       title: "Route",
       dataIndex: "route_name",
       key: "route_name",
+      width: 180,
       ellipsis: true,
       ...getColumnSearchProps("route_name"),
     },
@@ -243,7 +244,7 @@ export default function TripProfitabilityPage() {
       title: "Client",
       dataIndex: "client",
       key: "client",
-      width: 150,
+      width: 130,
       ellipsis: true,
       ...getColumnSearchProps("client"),
     },
@@ -251,14 +252,14 @@ export default function TripProfitabilityPage() {
       title: "Status",
       dataIndex: "status",
       key: "status",
-      width: 130,
+      width: 120,
       render: (status: string) => <TripStatusTag status={status as TripStatus} />,
     },
     {
       title: `Income (${cur})`,
       dataIndex: "income",
       key: "income",
-      width: 150,
+      width: 130,
       align: "right",
       render: (val: number) => (
         <Text style={{ color: "var(--color-green)", fontWeight: 500 }}>
@@ -271,7 +272,7 @@ export default function TripProfitabilityPage() {
       title: `Expenses (${cur})`,
       dataIndex: "expenses",
       key: "expenses",
-      width: 150,
+      width: 130,
       align: "right",
       render: (val: number) => (
         <Text style={{ color: "var(--color-red)", fontWeight: 500 }}>
@@ -284,7 +285,7 @@ export default function TripProfitabilityPage() {
       title: `Net Profit (${cur})`,
       dataIndex: "net_profit",
       key: "net_profit",
-      width: 160,
+      width: 130,
       align: "right",
       render: (val: number) => (
         <Text
@@ -303,7 +304,7 @@ export default function TripProfitabilityPage() {
       title: `Profit/Day (${cur})`,
       dataIndex: "profit_per_day",
       key: "profit_per_day",
-      width: 160,
+      width: 130,
       align: "right",
       render: (val: number) => (
         <Text
@@ -320,7 +321,7 @@ export default function TripProfitabilityPage() {
       title: "Margin %",
       dataIndex: "margin_pct",
       key: "margin_pct",
-      width: 120,
+      width: 100,
       align: "right",
       render: (val: number) => {
         const color = val >= 20 ? "var(--color-green)" : val >= 10 ? "var(--color-orange)" : "var(--color-red)";
@@ -356,7 +357,7 @@ export default function TripProfitabilityPage() {
       title: "Days",
       dataIndex: "duration_days",
       key: "duration_days",
-      width: 110,
+      width: 80,
       align: "center" as const,
       render: (val: number, record: TripProfitability) => {
         const color = val > 15 ? "error" : val > 7 ? "warning" : "success";
