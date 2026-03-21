@@ -313,11 +313,11 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
           {/* Logo area */}
           <div
             style={{
-              minHeight: 65,
-              padding: collapsed ? "20px 0" : "20px 24px",
+              padding: collapsed ? "16px 0" : "16px 24px",
               display: "flex",
+              flexDirection: collapsed ? "column" : "row",
               alignItems: "center",
-              gap: 12,
+              gap: collapsed ? 4 : 12,
               justifyContent: collapsed ? "center" : "flex-start",
               borderBottom: "1px solid var(--color-border)",
               flexShrink: 0,
@@ -329,7 +329,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
               src="/images/logo-icon-full.png"
               alt="Edupo"
               style={{
-                width: 90,
+                width: collapsed ? 40 : 120,
                 height: "auto",
                 flexShrink: 0,
                 filter: "drop-shadow(0 2px 8px var(--color-gold-glow))",
@@ -340,7 +340,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
             {!collapsed && (
               <span
                 style={{
-                  fontSize: 16,
+                  fontSize: 18,
                   fontWeight: 700,
                   color: "var(--color-text-primary)",
                   letterSpacing: "0.12em",
