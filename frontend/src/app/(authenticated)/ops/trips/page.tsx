@@ -169,7 +169,7 @@ function TripsPageContent() {
       render: (text: string, record: Trip) => {
         const isReturn = RETURN_STATUSES.has(record.status);
         const display = isReturn && record.return_route_name ? record.return_route_name : text;
-        return <div style={{ fontWeight: 500 }}>{display}</div>;
+        return <div style={{ fontWeight: 500, whiteSpace: "nowrap" }}>{display}</div>;
       },
       ...getColumnSearchProps<Trip>("route_name"),
     },
