@@ -165,11 +165,13 @@ function TripsPageContent() {
       title: "Route",
       dataIndex: "route_name",
       key: "route_name",
+      width: 220,
+      ellipsis: true,
       sorter: (a, b) => a.route_name.localeCompare(b.route_name),
       render: (text: string, record: Trip) => {
         const isReturn = RETURN_STATUSES.has(record.status);
         const display = isReturn && record.return_route_name ? record.return_route_name : text;
-        return <div style={{ fontWeight: 500, whiteSpace: "nowrap" }}>{display}</div>;
+        return <div style={{ fontWeight: 500, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{display}</div>;
       },
       ...getColumnSearchProps<Trip>("route_name"),
     },
