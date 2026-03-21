@@ -138,7 +138,7 @@ function ApprovalPageContent() {
       render: (num: string | null, record: ExpenseRequest) => (
         <a
           onClick={() => openReviewModal(record)}
-          style={{ fontWeight: 600, color: "#1890ff", cursor: "pointer" }}
+          style={{ fontWeight: 600, color: "var(--color-gold)", cursor: "pointer" }}
         >
           {num || record.id?.slice(0, 8).toUpperCase()}
         </a>

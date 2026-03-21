@@ -760,7 +760,7 @@ function TrackingPageContent() {
         <Flex vertical gap={2}>
           {/* Go waybill */}
           {r.waybill_number ? (
-            <Text strong style={{ color: "#1890ff", fontSize: 13 }}>
+            <Text strong style={{ color: "var(--color-gold)", fontSize: 13 }}>
               {r.waybill_number}
             </Text>
           ) : null}

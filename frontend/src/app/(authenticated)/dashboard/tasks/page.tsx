@@ -193,7 +193,7 @@ function TasksContent() {
       render: (num: string, record: TodoTask) => (
         <Text
           strong
-          style={{ color: "#1890ff", cursor: "pointer" }}
+          style={{ color: "var(--color-gold)", cursor: "pointer" }}
           onClick={() => openReviewModal(record)}
         >
           {num || "-"}

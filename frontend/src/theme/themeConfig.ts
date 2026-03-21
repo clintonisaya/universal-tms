@@ -11,7 +11,7 @@ export function getThemeConfig(mode: "dark" | "light"): ThemeConfig {
       // Typography
       fontSize: 13,
       fontSizeHeading1: 26,
-      fontSizeHeading2: 22,
+      fontSizeHeading2: 20,
       fontSizeHeading3: 18,
       fontSizeHeading4: 15,
       fontSizeHeading5: 14,
@@ -45,7 +45,6 @@ export function getThemeConfig(mode: "dark" | "light"): ThemeConfig {
         borderColor:          isDark ? '#252A35'  : '#E2DDD4',
         headerSortActiveBg:   isDark ? '#13161C'  : '#FFFFFF',
         headerFilterHoverBg:  isDark ? '#191D25'  : '#F0EDE8',
-        cellPaddingBlock: 8,
         cellPaddingInline: 16,
       },
       Card: {
@@ -61,8 +60,9 @@ export function getThemeConfig(mode: "dark" | "light"): ThemeConfig {
         paddingBlock: 8,
       },
       Input: {
-        activeBorderColor: isDark ? '#D4A843' : '#B8922E',
-        hoverBorderColor:  isDark ? '#B8922E' : '#9A7A20',
+        activeBorderColor:    isDark ? '#D4A843' : '#B8922E',
+        hoverBorderColor:     isDark ? '#B8922E' : '#9A7A20',
+        colorTextPlaceholder: isDark ? '#5A5F6C' : '#9A9DA6', // P4: align with var(--color-text-muted)
       },
       Select: {
         colorPrimary: isDark ? '#D4A843' : '#B8922E',
