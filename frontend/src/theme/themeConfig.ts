@@ -30,6 +30,9 @@ export function getThemeConfig(mode: "dark" | "light"): ThemeConfig {
 
       // Spacing
       controlHeight: 34,
+
+      // Placeholder — global alias token (applies to all inputs)
+      colorTextPlaceholder: isDark ? '#5A5F6C' : '#9A9DA6',
     },
     components: {
       Layout: {
@@ -60,9 +63,8 @@ export function getThemeConfig(mode: "dark" | "light"): ThemeConfig {
         paddingBlock: 8,
       },
       Input: {
-        activeBorderColor:    isDark ? '#D4A843' : '#B8922E',
-        hoverBorderColor:     isDark ? '#B8922E' : '#9A7A20',
-        colorTextPlaceholder: isDark ? '#5A5F6C' : '#9A9DA6', // P4: align with var(--color-text-muted)
+        activeBorderColor: isDark ? '#D4A843' : '#B8922E',
+        hoverBorderColor:  isDark ? '#B8922E' : '#9A7A20',
       },
       Select: {
         colorPrimary: isDark ? '#D4A843' : '#B8922E',
