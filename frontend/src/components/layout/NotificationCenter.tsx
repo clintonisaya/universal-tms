@@ -96,14 +96,15 @@ export function NotificationCenter({
         >
           <Button
             type="text"
-            icon={<BellOutlined style={{ fontSize: 20 }} />}
+            icon={<BellOutlined style={{ fontSize: 18 }} />}
             onClick={() => setOpen((prev) => !prev)}
             style={{
-              height: 40,
-              width: 40,
+              height: 36,
+              width: 36,
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
+              padding: 0,
             }}
           />
         </Badge>
