@@ -94,7 +94,6 @@ export function getThemeConfig(mode: "dark" | "light"): ThemeConfig {
         itemBorderRadius:    10,
         itemMarginInline:    8,
         itemPaddingInline:   14,
-        itemPaddingBlock:    10,
       },
     },
   };
