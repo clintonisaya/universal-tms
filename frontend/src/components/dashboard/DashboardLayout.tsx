@@ -317,7 +317,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
               display: "flex",
               flexDirection: collapsed ? "column" : "row",
               alignItems: "center",
-              gap: collapsed ? 4 : 8,
+              gap: collapsed ? 4 : 4,
               justifyContent: collapsed ? "center" : "flex-start",
               borderBottom: "1px solid var(--color-border)",
               flexShrink: 0,
