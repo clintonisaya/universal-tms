@@ -46,20 +46,19 @@ export function ThemeToggle() {
       style={{
         display: "flex",
         alignItems: "center",
-        gap: 6,
-        padding: "7px 12px",
+        justifyContent: "center",
+        width: 36,
+        height: 36,
+        padding: 0,
         background: "var(--color-switch-bg)",
         border: "1px solid var(--color-border)",
-        borderRadius: 10,
+        borderRadius: 8,
         cursor: "pointer",
         transition: "all 0.25s",
         color: "var(--color-text-secondary)",
       }}
     >
       {isDark ? <SunIcon /> : <MoonIcon />}
-      <span style={{ fontSize: 11, fontWeight: 500, color: "var(--color-text-secondary)" }}>
-        {isDark ? "Light" : "Dark"}
-      </span>
     </button>
   );
 }
