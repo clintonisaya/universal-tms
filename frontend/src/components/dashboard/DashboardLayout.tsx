@@ -408,7 +408,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
-            height: 52,
+            height: 64,
             position: "sticky",
             top: 0,
             zIndex: 10,
