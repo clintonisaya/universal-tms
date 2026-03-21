@@ -427,6 +427,38 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
 
           {/* Right controls */}
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            {/* Decorative search bar */}
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                padding: "8px 14px",
+                background: "var(--color-surface)",
+                border: "1px solid var(--color-border)",
+                borderRadius: 10,
+              }}
+            >
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--color-text-muted)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="11" cy="11" r="8" />
+                <line x1="21" y1="21" x2="16.65" y2="16.65" />
+              </svg>
+              <span style={{ fontSize: 12, color: "var(--color-text-muted)" }}>Search...</span>
+              <span
+                style={{
+                  fontSize: 10,
+                  background: "var(--color-card)",
+                  padding: "2px 6px",
+                  borderRadius: 4,
+                  border: "1px solid var(--color-border)",
+                  color: "var(--color-text-muted)",
+                  marginLeft: 16,
+                }}
+              >
+                ⌘K
+              </span>
+            </div>
+
             <ThemeToggle />
 
             <NotificationCenter onNotificationClick={handleNotificationClick} />

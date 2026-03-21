@@ -27,6 +27,11 @@ body {
   transition: background 0.35s;
 }
 
+/* Global theme transition for table rows */
+.ant-table-tbody > tr {
+  transition: background 0.1s;
+}
+
 /* P3: respect reduced-motion OS preference */
 @media (prefers-reduced-motion: reduce) {
   body { transition: none; }
@@ -138,6 +143,7 @@ tr:hover > td .row-actions {
   --color-scroll-thumb: #252A35;
   --color-input-focus-bg: rgba(212,168,67,0.06);
   --color-shadow: 0 40px 80px rgba(0,0,0,0.5);
+  --color-login-shadow: 0 40px 80px rgba(0,0,0,0.5);
   --color-card-shadow: none;
   --color-table-hover: #191D25;
   --color-logo-icon: #0C0E12;
@@ -169,6 +175,7 @@ tr:hover > td .row-actions {
   --color-scroll-thumb: #D4CFC6;
   --color-input-focus-bg: rgba(184,146,46,0.06);
   --color-shadow: 0 40px 80px rgba(0,0,0,0.08);
+  --color-login-shadow: 0 40px 80px rgba(0,0,0,0.08);
   --color-card-shadow: 0 1px 3px rgba(0,0,0,0.04);
   --color-table-hover: #FAF8F4;
   --color-logo-icon: #FFFFFF;
@@ -202,6 +209,7 @@ tr:hover > td .row-actions {
   letter-spacing: 0.06em !important;
   padding: 14px 16px !important;
   border-bottom: 1px solid var(--color-border) !important;
+  background: transparent !important;
   white-space: nowrap;
 }
 
@@ -218,6 +226,14 @@ tr:hover > td .row-actions {
 
 .ant-table-wrapper .ant-pagination {
   padding: 12px 16px !important;
+}
+
+/* ── SIDEBAR SUB-NAV CONNECTOR (Section 3) ── */
+
+.ant-menu-inline .ant-menu-sub.ant-menu-inline {
+  margin-left: 20px;
+  border-left: 1px solid var(--color-border);
+  padding-left: 0;
 }
 
 /* ── BUTTON OVERRIDES (Story 7.8) ── */
