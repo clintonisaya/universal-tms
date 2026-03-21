@@ -233,7 +233,7 @@ function TasksContent() {
       title: "Date",
       dataIndex: "created_at",
       key: "created_at",
-      width: 100,
+      width: 130,
       render: (date: string) => (
         <Tooltip title={date ? new Date(date).toLocaleString() : ""}>
           <Text type="secondary">{formatTimeAgo(date)}</Text>
