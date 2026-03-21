@@ -148,7 +148,7 @@ function TripsPageContent() {
       title: "Trip Number",
       dataIndex: "trip_number",
       key: "trip_number",
-      width: 140,
+      width: 120,
       sorter: (a, b) => (a.trip_number || "").localeCompare(b.trip_number || ""),
       render: (text: string, record: Trip) => (
         <Button
@@ -177,7 +177,7 @@ function TripsPageContent() {
       title: "Direction",
       dataIndex: "return_waybill_id",
       key: "direction",
-      width: 90,
+      width: 60,
       render: (returnWaybillId: string | null) => (
         <Tag color={returnWaybillId ? "geekblue" : "default"}>
           {returnWaybillId ? "Return" : "Go"}
