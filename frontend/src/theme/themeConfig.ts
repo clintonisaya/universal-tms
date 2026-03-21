@@ -9,7 +9,7 @@ export function getThemeConfig(mode: "dark" | "light"): ThemeConfig {
       : theme.compactAlgorithm,
     token: {
       // Typography
-      fontSize: 13,
+      fontSize: 14,
       fontSizeHeading1: 26,
       fontSizeHeading2: 20,
       fontSizeHeading3: 18,
@@ -58,7 +58,7 @@ export function getThemeConfig(mode: "dark" | "light"): ThemeConfig {
         cellPaddingBlock: 12,
         cellPaddingInline: 16,
         headerBorderRadius: 0,
-        cellFontSize: 13,
+        cellFontSize: 14,
       },
       Card: {
         headerFontSize: 14,
@@ -107,7 +107,7 @@ export function getThemeConfig(mode: "dark" | "light"): ThemeConfig {
         itemPaddingInline: 14,
         itemHeight:        38,
         iconSize:          18,
-        fontSize:          13,
+        fontSize:          14,
         ...(isDark ? {
           darkItemBg:            'transparent',
           darkSubMenuItemBg:     'transparent',
