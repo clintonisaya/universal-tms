@@ -266,7 +266,7 @@ export default function TruckDetailPage() {
                         precision={2}
                         prefix={<ToolOutlined />}
                         suffix="TZS"
-                        styles={{ content: { color: "#cf1322" } }}
+                        styles={{ content: { color: "var(--color-red)" } }}
                       />
                       <Button
                         icon={<ReloadOutlined />}

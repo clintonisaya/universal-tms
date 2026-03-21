@@ -1,6 +1,6 @@
 "use client";
 
-import { Table, Tag, Typography, Tooltip, Button, Space } from "antd";
+import { Table, Typography, Tooltip, Button, Space } from "antd";
 import { EyeOutlined } from "@ant-design/icons";
 import { useRouter } from "next/navigation";
 import type { ColumnsType } from "antd/es/table";
@@ -18,16 +18,12 @@ const RETURN_STATUSES = new Set([
   "Arrived at Yard", "Waiting for PODs",
 ]);
 
-function getRiskColor(risk: string | null | undefined): string {
+function getRiskCssColor(risk: string | null | undefined): string {
   switch (risk) {
-    case "High":
-      return "red";
-    case "Medium":
-      return "orange";
-    case "Low":
-      return "green";
-    default:
-      return "default";
+    case "High":   return "var(--color-red)";
+    case "Medium": return "var(--color-orange)";
+    case "Low":    return "var(--color-green)";
+    default:       return "var(--color-text-muted)";
   }
 }
 
@@ -179,16 +175,20 @@ export function RecentTripsTable({ data, loading }: RecentTripsTableProps) {
                 new Date(record.dispatch_return_date).getTime()) / 86400000
             ) + 1)
           : 0;
-        const color = days > 15 ? "error" : days > 7 ? "warning" : "success";
+        const daysColor = days > 15 ? "var(--color-red)" : days > 7 ? "var(--color-orange)" : "var(--color-green)";
+        const badge = (color: string, label: string) => (
+          <span style={{
+            display: "inline-block", padding: "2px 8px", borderRadius: 6,
+            background: `color-mix(in srgb, ${color} 10%, transparent)`,
+            border: `1px solid color-mix(in srgb, ${color} 30%, transparent)`,
+            color, fontSize: 11, fontWeight: 600, whiteSpace: "nowrap",
+          }}>{label}</span>
+        );
         return (
           <Space size={4}>
-            <Tooltip title="Overall trip duration">
-              <Tag color={color}>{days}d</Tag>
-            </Tooltip>
+            <Tooltip title="Overall trip duration">{badge(daysColor, `${days}d`)}</Tooltip>
             {retDays > 0 && (
-              <Tooltip title="Return leg duration">
-                <Tag color="default">Ret: {retDays}d</Tag>
-              </Tooltip>
+              <Tooltip title="Return leg duration">{badge("var(--color-text-muted)", `Ret: ${retDays}d`)}</Tooltip>
             )}
           </Space>
         );
@@ -199,8 +199,18 @@ export function RecentTripsTable({ data, loading }: RecentTripsTableProps) {
       dataIndex: "waybill_risk_level",
       key: "risk",
       width: 70,
-      render: (risk: string | null) =>
-        risk ? <Tag color={getRiskColor(risk)}>{risk}</Tag> : <Text type="secondary">-</Text>,
+      render: (risk: string | null) => {
+        if (!risk) return <Text type="secondary">-</Text>;
+        const color = getRiskCssColor(risk);
+        return (
+          <span style={{
+            display: "inline-block", padding: "2px 8px", borderRadius: 6,
+            background: `color-mix(in srgb, ${color} 10%, transparent)`,
+            border: `1px solid color-mix(in srgb, ${color} 30%, transparent)`,
+            color, fontSize: 11, fontWeight: 600, whiteSpace: "nowrap",
+          }}>{risk}</span>
+        );
+      },
     },
     {
       title: "",

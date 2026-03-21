@@ -1,6 +1,6 @@
 "use client";
 
-import { Card, Typography } from "antd";
+import { Card } from "antd";
 import {
   PieChart,
   Pie,
@@ -9,9 +9,6 @@ import {
   ResponsiveContainer,
   Legend,
 } from "recharts";
-import { CHART_COLORS } from "@/lib/chartColors";
-
-const { Title } = Typography;
 
 interface ExpenseBreakdown {
   category: string;
@@ -24,18 +21,16 @@ interface ExpenseDistributionChartProps {
 }
 
 const CATEGORY_COLORS: Record<string, string> = {
-  Fuel: CHART_COLORS.blue,
-  Allowance: CHART_COLORS.red,
-  Maintenance: CHART_COLORS.primary,
-  Office: CHART_COLORS.purple,
-  Border: CHART_COLORS.teal,
-  Other: CHART_COLORS.green,
+  Fuel:        "var(--color-blue)",
+  Allowance:   "var(--color-orange)",
+  Maintenance: "var(--color-red)",
+  Office:      "var(--color-cyan)",
+  Border:      "var(--color-gold)",
+  Other:       "var(--color-text-secondary)",
 };
 
 export function ExpenseDistributionChart({ data, loading }: ExpenseDistributionChartProps) {
-  // Filter out zero values for cleaner visualization
   const chartData = data.filter((d) => d.amount > 0);
-
   const totalExpenses = chartData.reduce((sum, d) => sum + d.amount, 0);
 
   const formatValue = (value: number) => {
@@ -49,25 +44,18 @@ export function ExpenseDistributionChart({ data, loading }: ExpenseDistributionC
   };
 
   const renderCustomLabel = ({
-    cx,
-    cy,
-    midAngle,
-    innerRadius,
-    outerRadius,
-    percent,
+    cx, cy, midAngle, innerRadius, outerRadius, percent,
   }: any) => {
-    if (percent < 0.05) return null; // Skip labels for small slices
-
+    if (percent < 0.05) return null;
     const RADIAN = Math.PI / 180;
     const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
     const x = cx + radius * Math.cos(-midAngle * RADIAN);
     const y = cy + radius * Math.sin(-midAngle * RADIAN);
-
     return (
       <text
         x={x}
         y={y}
-        fill="white"
+        fill="var(--color-card)"
         textAnchor="middle"
         dominantBaseline="central"
         fontSize={12}
@@ -81,7 +69,7 @@ export function ExpenseDistributionChart({ data, loading }: ExpenseDistributionC
   return (
     <Card loading={loading} title="Expense Distribution" style={{ height: "100%" }}>
       {chartData.length === 0 ? (
-        <div style={{ textAlign: "center", padding: 40, color: "#8c8c8c" }}>
+        <div style={{ textAlign: "center", padding: 40, color: "var(--color-text-muted)" }}>
           No paid expenses this month
         </div>
       ) : (
@@ -103,7 +91,7 @@ export function ExpenseDistributionChart({ data, loading }: ExpenseDistributionC
                 {chartData.map((entry, index) => (
                   <Cell
                     key={`cell-${index}`}
-                    fill={CATEGORY_COLORS[entry.category] || "#8c8c8c"}
+                    fill={CATEGORY_COLORS[entry.category] || "var(--color-text-muted)"}
                   />
                 ))}
               </Pie>
@@ -112,7 +100,12 @@ export function ExpenseDistributionChart({ data, loading }: ExpenseDistributionC
                   `TZS ${Number(value).toLocaleString("en-US")}`,
                   name,
                 ]}
-                contentStyle={{ borderRadius: 8 }}
+                contentStyle={{
+                  borderRadius: 8,
+                  background: "var(--color-card)",
+                  border: "1px solid var(--color-border)",
+                  color: "var(--color-text-primary)",
+                }}
               />
               <Legend
                 layout="horizontal"
@@ -121,7 +114,7 @@ export function ExpenseDistributionChart({ data, loading }: ExpenseDistributionC
                 iconType="circle"
                 iconSize={8}
                 formatter={(value: string) => (
-                  <span style={{ fontSize: 12, color: "#595959" }}>{value}</span>
+                  <span style={{ fontSize: 12, color: "var(--color-text-secondary)" }}>{value}</span>
                 )}
               />
             </PieChart>
@@ -133,10 +126,11 @@ export function ExpenseDistributionChart({ data, loading }: ExpenseDistributionC
               padding: "6px 12px",
               background: "var(--color-surface)",
               borderRadius: 6,
+              border: "1px solid var(--color-border)",
             }}
           >
-            <span style={{ color: "#8c8c8c", fontSize: 12 }}>Total: </span>
-            <span style={{ fontWeight: 600, color: "#262626" }}>
+            <span style={{ color: "var(--color-text-muted)", fontSize: 12 }}>Total: </span>
+            <span style={{ fontWeight: 600, color: "var(--color-text-primary)" }}>
               TZS {totalExpenses.toLocaleString("en-US")}
             </span>
           </div>

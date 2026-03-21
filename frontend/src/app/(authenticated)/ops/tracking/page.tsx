@@ -856,7 +856,7 @@ function TrackingPageContent() {
           ) : (
             <Tooltip title={r.current_location}>
               <div onClick={() => openStatusModal(r)} style={{ cursor: "pointer" }}>
-                <EnvironmentOutlined style={{ marginRight: 4, color: "#fa8c16" }} />
+                <EnvironmentOutlined style={{ marginRight: 4, color: "var(--color-orange)" }} />
                 <Text type="secondary" underline>
                   {r.current_location || "Update Loc"}
                 </Text>
