@@ -109,7 +109,7 @@ function LoginForm() {
               src="/images/logo-icon-full.png"
               alt="Edupo"
               style={{
-                width: 300,
+                width: 180,
                 height: "auto",
                 marginBottom: 12,
                 display: "block",

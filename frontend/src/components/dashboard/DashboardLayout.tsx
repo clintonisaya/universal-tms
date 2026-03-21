@@ -334,7 +334,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                   src="/images/logo-icon-full.png"
                   alt="Edupo"
                   style={{
-                    width: 90,
+                    width: 60,
                     height: "auto",
                     filter: "drop-shadow(0 2px 8px var(--color-gold-glow))",
                   }}
@@ -343,7 +343,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
             ) : (
               <span
                 style={{
-                  fontSize: 24,
+                  fontSize:18,
                   fontWeight: 700,
                   color: "var(--color-text-primary)",
                   letterSpacing: "0.12em",
