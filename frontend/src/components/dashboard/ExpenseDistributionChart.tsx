@@ -131,7 +131,7 @@ export function ExpenseDistributionChart({ data, loading }: ExpenseDistributionC
               textAlign: "center",
               marginTop: 8,
               padding: "6px 12px",
-              background: "#fafafa",
+              background: "var(--color-surface)",
               borderRadius: 6,
             }}
           >

@@ -655,7 +655,7 @@ export function ExpenseReviewModal({
         style={{
           marginBottom: 24,
           padding: 16,
-          background: "#f5f5f5",
+          background: "var(--color-surface)",
           borderRadius: 8,
         }}
       >
@@ -1110,7 +1110,7 @@ export function ExpenseReviewModal({
                 alignItems: "center",
                 justifyContent: "space-between",
                 padding: "10px 14px",
-                background: "#fafafa",
+                background: "var(--color-surface)",
                 borderRadius: 6,
                 border: "1px solid #f0f0f0",
               }}
@@ -1394,7 +1394,7 @@ export function ExpenseReviewModal({
               style={{
                 marginTop: 16,
                 padding: 16,
-                background: "#fafafa",
+                background: "var(--color-surface)",
                 borderRadius: 8,
                 border: "1px solid #f0f0f0",
               }}
@@ -1543,7 +1543,7 @@ export function ExpenseReviewModal({
               style={{
                 marginTop: 16,
                 padding: 16,
-                background: "#fafafa",
+                background: "var(--color-surface)",
                 borderRadius: 8,
                 border: "1px solid #f0f0f0",
               }}

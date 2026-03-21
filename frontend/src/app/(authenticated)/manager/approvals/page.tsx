@@ -222,7 +222,7 @@ function ApprovalPageContent() {
   const { resizableColumns, components } = useResizableColumns(columns);
 
   return (
-    <div style={{ minHeight: "100vh", background: "#f0f2f5", padding: "24px" }}>
+    <div style={{ minHeight: "100vh", background: "var(--color-bg)", padding: "24px" }}>
       <Card>
         <Space orientation="vertical" size="middle" style={{ width: "100%" }}>
           {/* Header */}

@@ -369,7 +369,7 @@ export function ExpenseDetailModal({ open, onClose, expense }: ExpenseDetailModa
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
               {attachments.map((item) => (
-                <div key={item.key} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', background: '#fafafa', borderRadius: 6, border: '1px solid #f0f0f0' }}>
+                <div key={item.key} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', background: 'var(--color-surface)', borderRadius: 6, border: '1px solid var(--color-border)' }}>
                   <Space>
                     {getFileIcon(item.filename)}
                     {item.url ? (

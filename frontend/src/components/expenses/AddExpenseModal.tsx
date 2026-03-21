@@ -535,7 +535,7 @@ export function AddExpenseModal({
   const BasicInfoTab = (
     <>
       {/* Header Grid */}
-      <div style={{ marginBottom: 24, padding: 16, background: '#f5f5f5', borderRadius: 8 }}>
+      <div style={{ marginBottom: 24, padding: 16, background: 'var(--color-surface)', borderRadius: 8 }}>
         <Row gutter={[16, 16]}>
           <Col span={8}>
             <Form.Item label="Company" name="company">

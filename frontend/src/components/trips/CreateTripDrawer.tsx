@@ -342,7 +342,7 @@ export function CreateTripDrawer({
                 <Input
                   placeholder="Auto-filled from waybill"
                   readOnly={!!selectedWaybill}
-                  style={selectedWaybill ? { backgroundColor: "#f5f5f5" } : undefined}
+                  style={selectedWaybill ? { backgroundColor: "var(--color-surface)" } : undefined}
                 />
               </Form.Item>
 

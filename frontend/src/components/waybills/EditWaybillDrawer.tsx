@@ -350,7 +350,7 @@ export function EditWaybillDrawer({
                       gap: 8,
                       padding: "6px 8px",
                       marginBottom: 4,
-                      background: "#f5f5f5",
+                      background: "var(--color-surface)",
                       borderRadius: 6,
                     }}
                   >

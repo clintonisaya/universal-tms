@@ -75,7 +75,7 @@ export function ProtectedLayout({ children }: ProtectedLayoutProps) {
           display: "flex",
           justifyContent: "center",
           alignItems: "center",
-          background: "#f5f7fa",
+          background: "var(--color-bg)",
         }}
       >
         <Spin size="large" />
@@ -94,7 +94,7 @@ export function ProtectedLayout({ children }: ProtectedLayoutProps) {
           alignItems: "center",
           flexDirection: "column",
           gap: "16px",
-          background: "#f5f7fa",
+          background: "var(--color-bg)",
         }}
       >
         <Spin size="large" />
@@ -112,7 +112,7 @@ export function ProtectedLayout({ children }: ProtectedLayoutProps) {
           display: "flex",
           justifyContent: "center",
           alignItems: "center",
-          background: "#f5f7fa",
+          background: "var(--color-bg)",
         }}
       >
         <SessionExpiredModal open={true} onSuccess={handleLoginSuccess} />
@@ -129,7 +129,7 @@ export function ProtectedLayout({ children }: ProtectedLayoutProps) {
           display: "flex",
           justifyContent: "center",
           alignItems: "center",
-          background: "#f5f7fa",
+          background: "var(--color-bg)",
         }}
       >
         <Spin size="large" />

@@ -160,7 +160,7 @@ export function VoidExpenseModal({ expense, open, onClose, onSuccess }: VoidExpe
       />
 
       {/* Header Grid */}
-      <div style={{ marginBottom: 24, padding: 16, background: "#f5f5f5", borderRadius: 8 }}>
+      <div style={{ marginBottom: 24, padding: 16, background: "var(--color-surface)", borderRadius: 8 }}>
         <Row gutter={[16, 16]}>
           <Col span={8}>
             <div style={{ marginBottom: 4 }}>
@@ -300,7 +300,7 @@ export function VoidExpenseModal({ expense, open, onClose, onSuccess }: VoidExpe
                 alignItems: "center",
                 justifyContent: "space-between",
                 padding: "10px 14px",
-                background: "#fafafa",
+                background: "var(--color-surface)",
                 borderRadius: 6,
                 border: "1px solid #f0f0f0",
               }}
@@ -521,7 +521,7 @@ export function VoidExpenseModal({ expense, open, onClose, onSuccess }: VoidExpe
         style={{
           marginTop: 16,
           padding: 16,
-          background: "#fafafa",
+          background: "var(--color-surface)",
           borderRadius: 8,
           border: "1px solid #f0f0f0",
         }}

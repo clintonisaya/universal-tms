@@ -959,7 +959,7 @@ function TrackingPageContent() {
           </div>
 
           {/* Custom Search Bar */}
-          <Card size="small" style={{ background: "#f5f7fa" }}>
+          <Card size="small" style={{ background: "var(--color-surface)" }}>
             <Form form={searchForm} onFinish={handleSearch} layout="vertical">
               <Row gutter={16}>
                 <Col span={4}>

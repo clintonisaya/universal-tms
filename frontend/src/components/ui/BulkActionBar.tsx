@@ -65,7 +65,7 @@ const BulkActionBar: React.FC<BulkActionBarProps> = ({
                             {selectedCount} item{selectedCount !== 1 ? 's' : ''} selected
                         </Typography.Text>
                     </div>
-                    <div style={{ height: '24px', width: '1px', background: '#f0f0f0' }} />
+                    <div style={{ height: '24px', width: '1px', background: 'var(--color-border)' }} />
                     <Space>
                         {actions.map((action) => (
                             <Button

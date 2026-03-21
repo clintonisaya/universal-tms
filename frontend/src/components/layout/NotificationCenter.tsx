@@ -118,7 +118,7 @@ export function NotificationCenter({
             width: 350,
             maxHeight: 400,
             overflowY: "auto",
-            background: "#fff",
+            background: "var(--color-card)",
             borderRadius: 8,
             boxShadow:
               "0 6px 16px 0 rgba(0,0,0,0.08), 0 3px 6px -4px rgba(0,0,0,0.12), 0 9px 28px 8px rgba(0,0,0,0.05)",
@@ -186,10 +186,10 @@ export function NotificationCenter({
                     cursor: "pointer",
                     background: "transparent",
                     transition: "background 0.2s",
-                    borderBottom: "1px solid #f0f0f0",
+                    borderBottom: "1px solid var(--color-border)",
                   }}
                   onMouseEnter={(e) =>
-                    (e.currentTarget.style.background = "#f0f5ff")
+                    (e.currentTarget.style.background = "var(--color-gold-glow)")
                   }
                   onMouseLeave={(e) =>
                     (e.currentTarget.style.background = "transparent")

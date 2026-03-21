@@ -116,7 +116,7 @@ function PermissionToggles({
               border: "1px solid #e5e7eb",
               borderRadius: 10,
               padding: "14px 16px",
-              background: "#ffffff",
+              background: "var(--color-card)",
               boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
             }}
           >
@@ -521,7 +521,7 @@ const UsersContent = () => {
         width={900}
         destroyOnHidden={false}
         forceRender
-        styles={{ body: { background: "#fafafa", padding: "20px 24px" } }}
+        styles={{ body: { background: "var(--color-surface)", padding: "20px 24px" } }}
       >
         <Form form={form} layout="vertical" onFinish={handleSubmit} style={{ color: "#1f2937" }}>
           {/* Row 1: Full Name + Username */}

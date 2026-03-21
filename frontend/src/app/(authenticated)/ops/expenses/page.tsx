@@ -284,7 +284,7 @@ export default function ExpensesPage() {
     <div
       style={{
         minHeight: "100vh",
-        background: "#f0f2f5",
+        background: "var(--color-bg)",
         padding: "24px",
       }}
     >

@@ -289,7 +289,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   const userInitial = (user?.full_name || user?.username || "U").charAt(0).toUpperCase();
 
   return (
-    <Layout style={{ minHeight: "100vh" }}>
+    <Layout style={{ minHeight: "100vh", background: "var(--color-bg)" }}>
       {/* ── SIDEBAR ── */}
       <Sider
         collapsed={collapsed}

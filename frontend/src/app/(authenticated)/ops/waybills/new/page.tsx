@@ -137,7 +137,7 @@ export default function NewWaybillPage() {
     <div
       style={{
         minHeight: "100vh",
-        background: "#f0f2f5",
+        background: "var(--color-bg)",
         padding: "24px",
       }}
     >
@@ -345,7 +345,7 @@ export default function NewWaybillPage() {
                           gap: 8,
                           padding: "6px 8px",
                           marginBottom: 4,
-                          background: "#f5f5f5",
+                          background: "var(--color-surface)",
                           borderRadius: 6,
                         }}
                       >

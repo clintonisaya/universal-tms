@@ -167,7 +167,7 @@ function MaintenancePageContent() {
   const { resizableColumns, components } = useResizableColumns(columns);
 
   return (
-    <div style={{ padding: "24px", minHeight: "100vh", background: "#f0f2f5" }}>
+    <div style={{ padding: "24px", minHeight: "100vh", background: "var(--color-bg)" }}>
       <Card>
         <Flex vertical gap="middle" style={{ width: "100%" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
