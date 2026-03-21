@@ -334,7 +334,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                   src="/images/logo-icon-full.png"
                   alt="Edupo"
                   style={{
-                    width: 60,
+                    width: 40,
                     height: "auto",
                     filter: "drop-shadow(0 2px 8px var(--color-gold-glow))",
                   }}
