@@ -24,6 +24,8 @@ import { useThemeMode } from "@/contexts/ThemeContext";
 import { NotificationCenter } from "@/components/layout/NotificationCenter";
 import { clearNotifications } from "@/hooks/useNotifications";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
+import { ToDoWidget } from "@/components/dashboard/ToDoWidget";
+import { useTodoCount } from "@/hooks/useApi";
 
 const { Sider, Content, Header } = Layout;
 
@@ -219,6 +221,8 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   const { hasAnyPermission } = usePermissions();
   const { mode } = useThemeMode();
   const [collapsed, setCollapsed] = useState(false);
+  const { data: todoData, isLoading: todoCountLoading } = useTodoCount(!!user);
+  const todoCount = todoData?.total ?? 0;
 
   // Build permission-filtered menu
   const menuItems = filterMenuItems(allMenuItems, hasAnyPermission);
@@ -423,6 +427,12 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
 
           {/* Right controls */}
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <ToDoWidget
+              count={todoCount}
+              loading={todoCountLoading}
+              onClick={() => router.push("/dashboard/tasks")}
+            />
+
             <ThemeToggle />
 
             <NotificationCenter onNotificationClick={handleNotificationClick} />

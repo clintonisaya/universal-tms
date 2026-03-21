@@ -255,13 +255,7 @@ function DashboardContent() {
 
   return (
     <div>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", marginBottom: 24 }}>
-        <ToDoWidget
-          count={todoCount}
-          loading={todoCountLoading}
-          onClick={() => router.push("/dashboard/tasks")}
-        />
-      </div>
+      <div style={{ marginBottom: 24 }} />
 
       <QuickActionsWidget />
 
