@@ -313,31 +313,30 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
           {/* Logo area */}
           <div
             style={{
-              padding: collapsed ? "16px 0" : "16px 24px",
+              padding: collapsed ? "16px 0" : "20px 24px",
               display: "flex",
-              flexDirection: collapsed ? "column" : "row",
               alignItems: "center",
-              gap: collapsed ? 4 : 4,
               justifyContent: collapsed ? "center" : "flex-start",
               borderBottom: "1px solid var(--color-border)",
               flexShrink: 0,
+              minHeight: 65,
             }}
           >
-            {/* Heraldic crest logo */}
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src="/images/logo-icon-full.png"
-              alt="Edupo"
-              style={{
-                width: collapsed ? 90 : 120,
-                height: "auto",
-                flexShrink: 0,
-                filter: "drop-shadow(0 2px 8px var(--color-gold-glow))",
-              }}
-            />
-
-            {/* Brand name — hidden when collapsed */}
-            {!collapsed && (
+            {collapsed ? (
+              <>
+                {/* Crest logo — only when collapsed */}
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src="/images/logo-icon-full.png"
+                  alt="Edupo"
+                  style={{
+                    width: 40,
+                    height: "auto",
+                    filter: "drop-shadow(0 2px 8px var(--color-gold-glow))",
+                  }}
+                />
+              </>
+            ) : (
               <span
                 style={{
                   fontSize: 18,
