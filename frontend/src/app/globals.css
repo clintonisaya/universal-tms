@@ -228,6 +228,94 @@ tr:hover > td .row-actions {
   padding: 12px 16px !important;
 }
 
+/* ── DRAWER OVERRIDES ── */
+
+.ant-drawer .ant-drawer-header {
+  background: var(--color-card) !important;
+  border-bottom: 1px solid var(--color-border) !important;
+}
+
+.ant-drawer .ant-drawer-body {
+  background: var(--color-card) !important;
+}
+
+.ant-drawer .ant-drawer-footer {
+  background: var(--color-card) !important;
+  border-top: 1px solid var(--color-border) !important;
+}
+
+/* Descriptions inside drawers */
+.ant-drawer .ant-descriptions-item-label {
+  color: var(--color-text-muted) !important;
+}
+
+.ant-drawer .ant-descriptions-item-content {
+  color: var(--color-text-primary) !important;
+}
+
+/* Tabs inside drawers */
+.ant-drawer .ant-tabs-tab {
+  color: var(--color-text-secondary) !important;
+}
+
+.ant-drawer .ant-tabs-tab-active .ant-tabs-tab-btn {
+  color: var(--color-gold) !important;
+}
+
+.ant-drawer .ant-tabs-ink-bar {
+  background: var(--color-gold) !important;
+}
+
+/* Collapse panels inside drawers */
+.ant-drawer .ant-collapse {
+  background: var(--color-surface) !important;
+  border-color: var(--color-border) !important;
+}
+
+.ant-drawer .ant-collapse-item {
+  border-color: var(--color-border) !important;
+}
+
+.ant-drawer .ant-collapse-header {
+  color: var(--color-text-primary) !important;
+}
+
+.ant-drawer .ant-collapse-content {
+  background: var(--color-card) !important;
+  border-color: var(--color-border) !important;
+}
+
+/* Descriptions inside drawers — bordered variant */
+.ant-drawer .ant-descriptions-bordered .ant-descriptions-view {
+  border-color: var(--color-border) !important;
+}
+
+.ant-drawer .ant-descriptions-bordered .ant-descriptions-item-label,
+.ant-drawer .ant-descriptions-bordered .ant-descriptions-item-content {
+  border-inline-end: 1px solid var(--color-border) !important;
+}
+
+.ant-drawer .ant-descriptions-bordered .ant-descriptions-row {
+  border-bottom: 1px solid var(--color-border) !important;
+}
+
+.ant-drawer .ant-descriptions-bordered .ant-descriptions-item-label {
+  background: var(--color-surface) !important;
+}
+
+/* Modal overrides for consistency */
+.ant-modal .ant-modal-header {
+  background: var(--color-card) !important;
+}
+
+.ant-modal .ant-modal-content {
+  background: var(--color-card) !important;
+}
+
+.ant-modal .ant-modal-footer {
+  border-top: 1px solid var(--color-border) !important;
+}
+
 /* ── SIDEBAR SUB-NAV CONNECTOR (Section 3) ── */
 
 .ant-menu-inline .ant-menu-sub.ant-menu-inline {

@@ -617,7 +617,7 @@ export function TripDetailDrawer({ open, onClose, tripId, onEdit }: TripDetailDr
                         <Descriptions.Item label="Remarks" span={2}>
                           <Text style={{ whiteSpace: "pre-wrap" }}>{trip.remarks}</Text>
                           <EditOutlined
-                            style={{ marginLeft: 8, cursor: "pointer", color: "#1677ff" }}
+                            style={{ marginLeft: 8, cursor: "pointer", color: "var(--color-gold)" }}
                             onClick={() => setIsStatusModalOpen(true)}
                           />
                         </Descriptions.Item>
@@ -627,7 +627,7 @@ export function TripDetailDrawer({ open, onClose, tripId, onEdit }: TripDetailDr
                     {/* Go Waybill section */}
                     {trip.waybill_id && (
                       <Descriptions
-                        title={<Text strong style={{ color: "#1677ff" }}>Go Waybill</Text>}
+                        title={<Text strong style={{ color: "var(--color-gold)" }}>Go Waybill</Text>}
                         bordered
                         column={2}
                         size="small"
@@ -656,7 +656,7 @@ export function TripDetailDrawer({ open, onClose, tripId, onEdit }: TripDetailDr
                     {/* Return Waybill section (Story 2.25) */}
                     {trip.return_waybill_id && (
                       <Descriptions
-                        title={<Text strong style={{ color: "#52c41a" }}>Return Waybill</Text>}
+                        title={<Text strong style={{ color: "var(--color-green)" }}>Return Waybill</Text>}
                         bordered
                         column={2}
                         size="small"
@@ -717,7 +717,7 @@ export function TripDetailDrawer({ open, onClose, tripId, onEdit }: TripDetailDr
                           )}
                           {returnPods.length > 0 && (
                             <div>
-                              <Text strong style={{ color: "#52c41a" }}>Return PODs</Text>
+                              <Text strong style={{ color: "var(--color-green)" }}>Return PODs</Text>
                               <ul style={{ margin: "4px 0 0 16px", padding: 0 }}>
                                 {returnPods.map((d, i) => (
                                   <li key={i}>
@@ -823,7 +823,7 @@ export function TripDetailDrawer({ open, onClose, tripId, onEdit }: TripDetailDr
                                 </Space>
                               }
                             >
-                              <Text style={{ color: "#52c41a", fontWeight: 500 }}>
+                              <Text style={{ color: "var(--color-green)", fontWeight: 500 }}>
                                 {activeCurrency} {fmtAmt(goIncome ?? 0)}
                               </Text>
                             </Descriptions.Item>
@@ -841,14 +841,14 @@ export function TripDetailDrawer({ open, onClose, tripId, onEdit }: TripDetailDr
                                 </Space>
                               }
                             >
-                              <Text style={{ color: "#52c41a", fontWeight: 500 }}>
+                              <Text style={{ color: "var(--color-green)", fontWeight: 500 }}>
                                 {activeCurrency} {fmtAmt(returnIncome ?? 0)}
                               </Text>
                             </Descriptions.Item>
                           )}
                           {trip.return_waybill_rate && (
                             <Descriptions.Item label={<Text strong>Combined Income</Text>}>
-                              <Text strong style={{ color: "#52c41a", fontSize: 15 }}>
+                              <Text strong style={{ color: "var(--color-green)", fontSize: 15 }}>
                                 {activeCurrency} {fmtAmt(combinedIncome)}
                               </Text>
                             </Descriptions.Item>
@@ -860,7 +860,7 @@ export function TripDetailDrawer({ open, onClose, tripId, onEdit }: TripDetailDr
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                         <Space align="center" wrap>
                           <Text strong>Total Expenses:</Text>
-                          <Text strong style={{ color: "#ff4d4f", fontSize: 15 }}>
+                          <Text strong style={{ color: "var(--color-red)", fontSize: 15 }}>
                             {activeCurrency} {fmtAmt(expensesTotal)}
                           </Text>
                           <Text type="secondary" style={{ fontSize: 11 }}>
@@ -875,7 +875,7 @@ export function TripDetailDrawer({ open, onClose, tripId, onEdit }: TripDetailDr
                               <Text strong>Net Profit:</Text>
                               <Text
                                 strong
-                                style={{ color: netProfit >= 0 ? "#52c41a" : "#ff4d4f", fontSize: 15 }}
+                                style={{ color: netProfit >= 0 ? "var(--color-green)" : "var(--color-red)", fontSize: 15 }}
                               >
                                 {netProfit >= 0 ? "+" : ""}{activeCurrency} {fmtAmt(netProfit)}
                               </Text>

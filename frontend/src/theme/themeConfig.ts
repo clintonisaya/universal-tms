@@ -90,7 +90,11 @@ export function getThemeConfig(mode: "dark" | "light"): ThemeConfig {
       },
       Modal: {
         headerBg:      isDark ? '#13161C' : '#ffffff',
+        contentBg:     isDark ? '#13161C' : '#ffffff',
         titleFontSize: 16,
+      },
+      Drawer: {
+        colorBgElevated: isDark ? '#13161C' : '#FFFFFF',
       },
       Tag: {
         borderRadiusSM: 4,
