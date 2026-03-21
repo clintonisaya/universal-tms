@@ -43,12 +43,12 @@ import { RETURN_DIRECTION_STATUSES, STATUS_FILTERS } from "@/constants/tripStatu
 
 const { Title, Text } = Typography;
 
-function getRiskColor(risk: string | null | undefined): string {
+function getRiskCssColor(risk: string | null | undefined): string {
   switch (risk) {
-    case "High": return "red";
-    case "Medium": return "orange";
-    case "Low": return "green";
-    default: return "default";
+    case "High": return "var(--color-red)";
+    case "Medium": return "var(--color-orange)";
+    case "Low": return "var(--color-green)";
+    default: return "var(--color-text-muted)";
   }
 }
 
@@ -276,8 +276,25 @@ function TripsPageContent() {
       dataIndex: "waybill_risk_level",
       key: "risk",
       width: 70,
-      render: (risk: string | null) =>
-        risk ? <Tag color={getRiskColor(risk)}>{risk}</Tag> : <Text type="secondary">-</Text>,
+      render: (risk: string | null) => {
+        if (!risk) return <Text type="secondary">-</Text>;
+        const color = getRiskCssColor(risk);
+        return (
+          <span style={{
+            display: "inline-block",
+            padding: "3px 10px",
+            borderRadius: 6,
+            background: `color-mix(in srgb, ${color} 10%, transparent)`,
+            color,
+            fontSize: 11,
+            fontWeight: 600,
+            letterSpacing: "0.02em",
+            whiteSpace: "nowrap",
+          }}>
+            {risk}
+          </span>
+        );
+      },
     },
     {
       title: "Actions",
