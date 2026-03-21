@@ -339,7 +339,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
             ) : (
               <span
                 style={{
-                  fontSize: 18,
+                  fontSize: 24,
                   fontWeight: 700,
                   color: "var(--color-text-primary)",
                   letterSpacing: "0.12em",
