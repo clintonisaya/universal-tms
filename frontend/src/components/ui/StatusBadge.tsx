@@ -50,6 +50,7 @@ export function StatusBadge({ status, colorKey = "gray", ariaLabel }: StatusBadg
         padding: "3px 10px",
         borderRadius: 6,
         background: statusBg(color),
+        border: `1px solid ${statusBg(color).replace("0.10", "0.30")}`,
         color,
         fontSize: 11,
         fontWeight: 600,

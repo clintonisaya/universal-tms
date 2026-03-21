@@ -341,6 +341,7 @@ export default function TripProfitabilityPage() {
               fontWeight: 600,
               color: color,
               background: `color-mix(in srgb, ${color} 10%, transparent)`,
+              border: `1px solid color-mix(in srgb, ${color} 30%, transparent)`,
               minWidth: 70,
               textAlign: "center",
               whiteSpace: "nowrap",

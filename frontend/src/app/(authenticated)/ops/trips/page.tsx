@@ -285,6 +285,7 @@ function TripsPageContent() {
             padding: "3px 10px",
             borderRadius: 6,
             background: `color-mix(in srgb, ${color} 10%, transparent)`,
+            border: `1px solid color-mix(in srgb, ${color} 30%, transparent)`,
             color,
             fontSize: 11,
             fontWeight: 600,
