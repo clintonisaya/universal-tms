@@ -317,7 +317,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
               display: "flex",
               flexDirection: collapsed ? "column" : "row",
               alignItems: "center",
-              gap: collapsed ? 4 : 12,
+              gap: collapsed ? 4 : 8,
               justifyContent: collapsed ? "center" : "flex-start",
               borderBottom: "1px solid var(--color-border)",
               flexShrink: 0,
@@ -329,7 +329,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
               src="/images/logo-icon-full.png"
               alt="Edupo"
               style={{
-                width: collapsed ? 40 : 120,
+                width: collapsed ? 90 : 120,
                 height: "auto",
                 flexShrink: 0,
                 filter: "drop-shadow(0 2px 8px var(--color-gold-glow))",
