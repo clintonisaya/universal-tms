@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Modal, Descriptions, Tag, Space, Divider, Typography, Timeline, List, Spin, Empty, Button } from "antd";
+import { Modal, Descriptions, Space, Divider, Typography, Timeline, List, Spin, Empty, Button } from "antd";
 import {
   UserOutlined,
   CalendarOutlined,
@@ -20,6 +20,7 @@ import {
 } from "@ant-design/icons";
 import type { ExpenseRequestDetailed, ExpenseStatus } from "@/types/expense";
 import { ExpenseStatusBadge } from "./ExpenseStatusBadge";
+import { StatusBadge } from "@/components/ui/StatusBadge";
 
 interface AttachmentInfo {
   key: string;
@@ -241,7 +242,7 @@ export function ExpenseDetailModal({ open, onClose, expense }: ExpenseDetailModa
           <Text strong>{expense.expense_number || expense.id.slice(0, 8).toUpperCase()}</Text>
         </Descriptions.Item>
         <Descriptions.Item label="Category" span={1}>
-          <Tag color="default">{expense.category}</Tag>
+          <StatusBadge status={expense.category} colorKey="gray" />
         </Descriptions.Item>
         <Descriptions.Item label="Remarks" span={2}>
           {expense.description || "-"}
@@ -303,7 +304,7 @@ export function ExpenseDetailModal({ open, onClose, expense }: ExpenseDetailModa
             {expense.trip.route_name || "-"}
           </Descriptions.Item>
           <Descriptions.Item label="Status" span={1}>
-            <Tag>{expense.trip.status}</Tag>
+            <StatusBadge status={expense.trip.status} colorKey="gray" />
           </Descriptions.Item>
           <Descriptions.Item label="Current Location" span={1}>
             {expense.trip.current_location || "-"}

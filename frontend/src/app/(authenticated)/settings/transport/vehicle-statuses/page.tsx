@@ -7,7 +7,6 @@ import {
   Button,
   Card,
   Space,
-  Tag,
   Modal,
   Form,
   Input,
@@ -16,6 +15,7 @@ import {
   Typography,
   Popconfirm,
 } from "antd";
+import StatusBadge from "@/components/ui/StatusBadge";
 import {
   PlusOutlined,
   ReloadOutlined,
@@ -180,7 +180,7 @@ export default function VehicleStatusesPage() {
       key: "is_active",
       width: 100,
       render: (active: boolean) => (
-        <Tag color={active ? "success" : "error"}>{active ? "Active" : "Inactive"}</Tag>
+        <StatusBadge status={active ? "Active" : "Inactive"} colorKey={active ? "green" : "red"} />
       ),
       ...getColumnFilterProps("is_active", STATUS_FILTERS),
     },

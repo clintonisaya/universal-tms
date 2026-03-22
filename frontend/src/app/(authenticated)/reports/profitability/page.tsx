@@ -9,7 +9,6 @@ import {
   Space,
   message,
   Typography,
-  Tag,
   Statistic,
   Row,
   Col,
@@ -30,6 +29,8 @@ import {
   useResizableColumns,
 } from "@/components/ui/tableUtils";
 import { TripStatusTag } from "@/components/ui/TripStatusTag";
+import { StatusBadge } from "@/components/ui/StatusBadge";
+import type { ColorKey } from "@/components/ui/StatusBadge";
 import { TripDetailDrawer } from "@/components/trips/TripDetailDrawer";
 import type { TripStatus } from "@/types/trip";
 
@@ -361,15 +362,15 @@ export default function TripProfitabilityPage() {
       width: 80,
       align: "center" as const,
       render: (val: number, record: TripProfitability) => {
-        const color = val > 15 ? "error" : val > 7 ? "warning" : "success";
+        const colorKey: ColorKey = val > 15 ? "red" : val > 7 ? "orange" : "green";
         return (
           <Space size={4}>
             <Tooltip title="Overall trip duration">
-              <Tag color={color}>{val}d</Tag>
+              <StatusBadge status={`${val}d`} colorKey={colorKey} />
             </Tooltip>
             {record.return_duration_days > 0 && (
               <Tooltip title="Return leg duration">
-                <Tag color="default">Ret: {record.return_duration_days}d</Tag>
+                <StatusBadge status={`Ret: ${record.return_duration_days}d`} colorKey="gray" />
               </Tooltip>
             )}
           </Space>

@@ -7,7 +7,6 @@ import {
   Button,
   Card,
   Space,
-  Tag,
   Modal,
   Form,
   Input,
@@ -29,6 +28,8 @@ import {
 } from "@/components/ui/tableUtils";
 import { VehicleStatusTag } from "@/components/ui/VehicleStatusTag";
 import { EmptyState } from "@/components/ui";
+import { StatusBadge } from "@/components/ui/StatusBadge";
+import type { ColorKey } from "@/components/ui/StatusBadge";
 
 const { Title } = Typography;
 
@@ -39,12 +40,12 @@ const STATUS_FILTERS = [
   { text: "Maintenance", value: "Maintenance" },
 ];
 
-const TYPE_COLORS: Record<TrailerType, string> = {
+const TYPE_COLORS: Record<TrailerType, ColorKey> = {
   Flatbed: "cyan",
-  Skeleton: "purple",
-  Box: "gold",
-  Tanker: "magenta",
-  Lowbed: "volcano",
+  Skeleton: "blue",
+  Box: "orange",
+  Tanker: "red",
+  Lowbed: "gray",
 };
 
 const TYPE_FILTERS = [
@@ -190,7 +191,7 @@ export default function TrailersPage() {
       key: "type",
       width: 100,
       render: (type: TrailerType) => (
-        <Tag color={TYPE_COLORS[type]}>{type}</Tag>
+        <StatusBadge status={type} colorKey={TYPE_COLORS[type]} />
       ),
       ...getColumnFilterProps("type", TYPE_FILTERS),
     },

@@ -3,7 +3,6 @@
 import { useState, useEffect, useCallback, useRef, Suspense } from "react";
 import {
   Table,
-  Tag,
   Button,
   Flex,
   Space,
@@ -23,6 +22,8 @@ import {
   ReloadOutlined,
 } from "@ant-design/icons";
 import { useRouter, useSearchParams } from "next/navigation";
+import { StatusBadge } from "@/components/ui/StatusBadge";
+import type { ColorKey } from "@/components/ui/StatusBadge";
 import { useAuth } from "@/contexts/AuthContext";
 import { ExpenseReviewModal } from "@/components/expenses/ExpenseReviewModal";
 import type { ExpenseRequestDetailed } from "@/types/expense";
@@ -47,10 +48,10 @@ interface TodoTask {
 }
 
 
-const TASK_TYPE_LABELS: Record<string, { label: string; color: string }> = {
-  expense_approval: { label: "Expense Approval", color: "warning" },
-  payment_processing: { label: "Payment Processing", color: "processing" },
-  expense_correction: { label: "Expense Correction", color: "warning" },
+const TASK_TYPE_LABELS: Record<string, { label: string; color: ColorKey }> = {
+  expense_approval: { label: "Expense Approval", color: "orange" },
+  payment_processing: { label: "Payment Processing", color: "blue" },
+  expense_correction: { label: "Expense Correction", color: "orange" },
 };
 
 function formatTimeAgo(dateStr: string): string {
@@ -181,8 +182,8 @@ function TasksContent() {
       key: "task_type",
       width: 140,
       render: (type: string) => {
-        const info = TASK_TYPE_LABELS[type] || { label: type, color: "default" };
-        return <Tag color={info.color}>{info.label}</Tag>;
+        const info = TASK_TYPE_LABELS[type] || { label: type, color: "gray" as ColorKey };
+        return <StatusBadge status={info.label} colorKey={info.color} />;
       },
     },
     {

@@ -12,7 +12,6 @@ import {
   Input,
   Typography,
   message,
-  Tag,
 } from "antd";
 import {
   ReloadOutlined,
@@ -25,6 +24,7 @@ import type { ColumnsType } from "antd/es/table";
 import type { ExpenseRequestDetailed, ExpenseStatus } from "@/types/expense";
 import { useExpenses, useInvalidateQueries } from "@/hooks/useApi";
 import { usePermissions } from "@/hooks/usePermissions";
+import { StatusBadge } from "@/components/ui/StatusBadge";
 import { ExpenseStatusBadge } from "@/components/expenses/ExpenseStatusBadge";
 import { VoidExpenseModal } from "@/components/expenses/VoidExpenseModal";
 import { AmendAttachmentModal } from "@/components/expenses/AmendAttachmentModal";
@@ -108,7 +108,7 @@ export default function ExpenseConsolePage() {
       width: 80,
       render: (_, record) => {
         const t = getExpenseType(record.expense_number);
-        return <Tag color={t === "Office" ? "geekblue" : "cyan"}>{t}</Tag>;
+        return <StatusBadge status={t} colorKey={t === "Office" ? "blue" : "cyan"} />;
       },
     },
     {

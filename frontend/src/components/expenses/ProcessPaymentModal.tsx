@@ -15,7 +15,6 @@ import {
   Typography,
   Tabs,
   Descriptions,
-  Tag,
   Timeline,
   Space,
   Spin,
@@ -36,6 +35,7 @@ import {
 } from "@ant-design/icons";
 import type { ExpenseRequestDetailed } from "@/types/expense";
 import { ExpenseStatusBadge } from "./ExpenseStatusBadge";
+import { StatusBadge } from "@/components/ui/StatusBadge";
 import { fmtAmount, fmtCurrency } from "@/lib/utils";
 import dayjs from "dayjs";
 import { COMPANY_NAME } from "@/constants/expenseConstants";
@@ -366,7 +366,7 @@ export function ProcessPaymentModal({
             {expense.trip.route_name || "-"}
           </Descriptions.Item>
           <Descriptions.Item label="Status">
-            <Tag>{expense.trip.status}</Tag>
+            <StatusBadge status={expense.trip.status} />
           </Descriptions.Item>
           <Descriptions.Item label="Current Location">
             {expense.trip.current_location || "-"}

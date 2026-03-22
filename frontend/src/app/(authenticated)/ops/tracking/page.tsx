@@ -8,7 +8,6 @@ import {
   Card,
   Flex,
   Space,
-  Tag,
   Input,
   message,
   Typography,
@@ -34,6 +33,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useTracking, useInvalidateQueries, apiFetch } from "@/hooks/useApi";
 import { UpdateTripStatusModal } from "@/components/trips/UpdateTripStatusModal";
 import { TripStatusTag } from "@/components/ui/TripStatusTag";
+import { StatusBadge, type ColorKey } from "@/components/ui/StatusBadge";
 import { getStandardRowSelection } from "@/components/ui/tableUtils";
 
 const { Title, Text } = Typography;
@@ -131,46 +131,46 @@ interface TrackingRow {
   is_delayed: boolean;
 }
 
-const STATUS_COLORS: Record<string, string> = {
+const STATUS_COLORS: Record<string, ColorKey> = {
   // Waybill Statuses
-  Open: "default",
-  "In Progress": "processing",
-  Completed: "success",
-  Invoiced: "geekblue",
+  Open: "gray",
+  "In Progress": "blue",
+  Completed: "green",
+  Invoiced: "blue",
   // Trip Statuses
-  Waiting: "default",
-  Dispatched: "purple",
-  "Arrived at Loading Point": "lime",
-  Loading: "gold",
-  Loaded: "gold",
-  "In Transit": "processing",
-  "At Border": "purple",
-  "Arrived at Destination": "processing",
+  Waiting: "gray",
+  Dispatched: "blue",
+  "Arrived at Loading Point": "green",
+  Loading: "orange",
+  Loaded: "orange",
+  "In Transit": "blue",
+  "At Border": "blue",
+  "Arrived at Destination": "blue",
   Offloading: "cyan",
   Offloaded: "cyan",
-  "Returning Empty": "processing",
-  Breakdown: "error",
-  "Waiting (Return)": "lime",
+  "Returning Empty": "blue",
+  Breakdown: "red",
+  "Waiting (Return)": "green",
   // Return leg statuses
-  "Dispatched (Return)": "purple",
-  "Arrived at Loading Point (Return)": "lime",
-  "Loading (Return)": "gold",
-  "Loaded (Return)": "gold",
-  "In Transit (Return)": "processing",
-  "At Border (Return)": "purple",
-  "Arrived at Destination (Return)": "processing",
+  "Dispatched (Return)": "blue",
+  "Arrived at Loading Point (Return)": "green",
+  "Loading (Return)": "orange",
+  "Loaded (Return)": "orange",
+  "In Transit (Return)": "blue",
+  "At Border (Return)": "blue",
+  "Arrived at Destination (Return)": "blue",
   "Offloading (Return)": "cyan",
   "Offloaded (Return)": "cyan",
-  "Arrived at Yard": "geekblue",
-  "Waiting for PODs": "warning",
-  Cancelled: "error",
-  "Not Dispatched": "default",
+  "Arrived at Yard": "blue",
+  "Waiting for PODs": "orange",
+  Cancelled: "red",
+  "Not Dispatched": "gray",
 };
 
-const RISK_COLORS: Record<string, string> = {
-  Low: "success",
-  Medium: "warning",
-  High: "error",
+const RISK_COLORS: Record<string, ColorKey> = {
+  Low: "green",
+  Medium: "orange",
+  High: "red",
 };
 
 const RETURN_STATUSES = new Set([
@@ -791,14 +791,10 @@ function TrackingPageContent() {
       render: (_, r) => (
         <Flex vertical gap={2} align="start">
           {r.waybill_status && (
-            <Tag color={STATUS_COLORS[r.waybill_status]} style={{ fontSize: 12 }}>
-              Go: {r.waybill_status}
-            </Tag>
+            <StatusBadge status={`Go: ${r.waybill_status}`} colorKey={STATUS_COLORS[r.waybill_status]} />
           )}
           {r.return_waybill_status && (
-            <Tag color={STATUS_COLORS[r.return_waybill_status]} style={{ fontSize: 12 }}>
-              Ret: {r.return_waybill_status}
-            </Tag>
+            <StatusBadge status={`Ret: ${r.return_waybill_status}`} colorKey={STATUS_COLORS[r.return_waybill_status]} />
           )}
           <TripStatusTag status={r.trip_status as any} isDelayed={r.is_delayed} />
         </Flex>
@@ -875,15 +871,11 @@ function TrackingPageContent() {
       render: (_, r) => (
         <Flex vertical gap={2} align="center">
           <Tooltip title="Overall trip duration">
-            <Tag color={r.duration_days > 15 ? "error" : r.duration_days > 7 ? "warning" : "success"}>
-              {r.duration_days}d
-            </Tag>
+            <StatusBadge status={`${r.duration_days}d`} colorKey={r.duration_days > 15 ? "red" : r.duration_days > 7 ? "orange" : "green"} />
           </Tooltip>
           {r.return_duration_days > 0 && (
             <Tooltip title="Return leg duration">
-              <Tag color="default" style={{ fontSize: 12 }}>
-                Ret: {r.return_duration_days}d
-              </Tag>
+              <StatusBadge status={`Ret: ${r.return_duration_days}d`} colorKey="gray" />
             </Tooltip>
           )}
         </Flex>
@@ -911,7 +903,7 @@ function TrackingPageContent() {
       title: "Risk",
       key: "risk",
       width: 80,
-      render: (_, r) => <Tag color={RISK_COLORS[r.risk_level]}>{r.risk_level}</Tag>,
+      render: (_, r) => <StatusBadge status={r.risk_level} colorKey={RISK_COLORS[r.risk_level]} />,
     },
     {
       title: "Arrival Offloading",

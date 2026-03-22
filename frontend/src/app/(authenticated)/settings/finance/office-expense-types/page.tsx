@@ -14,9 +14,9 @@ import {
   App,
   Typography,
   Popconfirm,
-  Tag,
   Switch,
 } from "antd";
+import StatusBadge from "@/components/ui/StatusBadge";
 import {
   PlusOutlined,
   ReloadOutlined,
@@ -212,9 +212,7 @@ export default function OfficeExpenseTypesPage() {
       key: "is_active",
       width: 100,
       render: (active: boolean) => (
-        <Tag color={active ? "success" : "default"}>
-          {active ? "Active" : "Inactive"}
-        </Tag>
+        <StatusBadge status={active ? "Active" : "Inactive"} colorKey={active ? "green" : "gray"} />
       ),
       ...getColumnFilterProps("is_active", [
         { text: "Active", value: true },

@@ -7,7 +7,6 @@ import {
   Button,
   Card,
   Space,
-  Tag,
   Modal,
   Form,
   Input,
@@ -47,16 +46,18 @@ import {
   useResizableColumns,
 } from "@/components/ui/tableUtils";
 import { EmptyState } from "@/components/ui";
+import { StatusBadge } from "@/components/ui/StatusBadge";
+import type { ColorKey } from "@/components/ui/StatusBadge";
 
 const { Title, Text } = Typography;
 
 const EXPIRY_WARNING_DAYS = 30;
 
-const STATUS_COLORS: Record<DriverStatus, string> = {
-  Active: "success",
+const STATUS_COLORS: Record<DriverStatus, ColorKey> = {
+  Active: "green",
   Assigned: "cyan",
-  "On Trip": "processing",
-  Inactive: "default",
+  "On Trip": "blue",
+  Inactive: "gray",
 };
 
 const STATUS_FILTERS = [
@@ -268,7 +269,7 @@ export default function DriversPage() {
       key: "status",
       width: 100,
       render: (status: DriverStatus) => (
-        <Tag color={STATUS_COLORS[status]}>{status}</Tag>
+        <StatusBadge status={status} colorKey={STATUS_COLORS[status]} />
       ),
       ...getColumnFilterProps("status", STATUS_FILTERS),
     },

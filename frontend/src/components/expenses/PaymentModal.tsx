@@ -17,7 +17,6 @@ import {
   List,
   Spin,
   Empty,
-  Tag,
   Result,
   Descriptions,
 } from "antd";
@@ -32,6 +31,7 @@ import {
   PrinterOutlined,
 } from "@ant-design/icons";
 import { PrintPreviewModal } from "./PrintPreviewModal";
+import { StatusBadge } from "@/components/ui/StatusBadge";
 import type { ExpenseRequestDetailed } from "@/types/expense";
 import dayjs from "dayjs";
 import { COMPANY_NAME } from "@/constants/expenseConstants";
@@ -463,7 +463,7 @@ export function PaymentModal({ open, onClose, onSuccess, expense }: PaymentModal
                 <span>
                   <PaperClipOutlined /> Attachments
                   {expense.attachments && expense.attachments.length > 0 && (
-                    <Tag color="default" style={{ marginLeft: 6 }}>{expense.attachments.length}</Tag>
+                    <StatusBadge status={String(expense.attachments.length)} colorKey="gray" />
                   )}
                 </span>
               ),

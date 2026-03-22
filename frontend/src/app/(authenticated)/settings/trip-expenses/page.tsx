@@ -11,12 +11,12 @@ import {
   Form,
   Input,
   Switch,
-  Tag,
   message,
   Typography,
   Popconfirm,
   Flex,
 } from "antd";
+import StatusBadge from "@/components/ui/StatusBadge";
 import {
   PlusOutlined,
   ReloadOutlined,
@@ -288,12 +288,11 @@ export default function TripExpenseTypesPage() {
       width: 100,
       render: (_, record: TreeNode) => {
         if ("isCategory" in record && record.isCategory) {
-          return <Tag color="default">{record.children?.length || 0} items</Tag>;
+          return <StatusBadge status={`${record.children?.length || 0} items`} colorKey="gray" />;
         }
         const expenseType = record as ExpenseTypeNode;
         return (
-          <Tag color={expenseType.is_active ? "success" : "default"}>
-            {expenseType.is_active ? "Active" : "Inactive"}</Tag>
+          <StatusBadge status={expenseType.is_active ? "Active" : "Inactive"} colorKey={expenseType.is_active ? "green" : "gray"} />
         );
       },
     },

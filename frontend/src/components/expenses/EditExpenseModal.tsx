@@ -21,7 +21,6 @@ import {
   List,
   Spin,
   Empty,
-  Tag,
   App,
 } from "antd";
 import type { UploadFile } from "antd/es/upload/interface";
@@ -38,6 +37,7 @@ import {
   FileUnknownOutlined,
 } from "@ant-design/icons";
 import type { ExpenseRequestDetailed, ExpenseCategory } from "@/types/expense";
+import { StatusBadge } from "@/components/ui/StatusBadge";
 import type { TripExpenseType } from "@/types/trip-expense-type";
 import type { OfficeExpenseType } from "@/types/office-expense-type";
 import dayjs from "dayjs";
@@ -758,9 +758,7 @@ export function EditExpenseModal({
                 <span>
                   <PaperClipOutlined /> Attachment Manage
                   {(existingAttachments.length > 0 || fileList.length > 0) && (
-                    <Tag color="default" style={{ marginLeft: 6 }}>
-                      {existingAttachments.length + fileList.length}
-                    </Tag>
+                    <StatusBadge status={String(existingAttachments.length + fileList.length)} colorKey="gray" />
                   )}
                 </span>
               ),

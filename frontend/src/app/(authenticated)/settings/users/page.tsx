@@ -17,9 +17,9 @@ import {
   App,
   Flex,
   Space,
-  Tag,
   Divider,
 } from "antd";
+import StatusBadge from "@/components/ui/StatusBadge";
 import {
   PlusOutlined,
   ReloadOutlined,
@@ -388,7 +388,7 @@ const UsersContent = () => {
       key: "role",
       width: 100,
       render: (role) => (
-        <Tag color={role === "admin" ? "error" : "default"}>{role.toUpperCase()}</Tag>
+        <StatusBadge status={role.toUpperCase()} colorKey={role === "admin" ? "red" : "gray"} />
       ),
       ...getColumnFilterProps("role", ROLE_FILTERS),
     },
@@ -400,7 +400,7 @@ const UsersContent = () => {
       render: (perms: string[]) => (
         perms && perms.length > 0 ? (
           <Tooltip title={perms.join(", ")}>
-            <Tag color="default">{perms.length} Permissions</Tag>
+            <StatusBadge status={`${perms.length} Permissions`} colorKey="gray" />
           </Tooltip>
         ) : <Text type="secondary">-</Text>
       ),
@@ -411,9 +411,7 @@ const UsersContent = () => {
       dataIndex: "is_active",
       width: 100,
       render: (_, r) => (
-        <Tag color={r.is_active ? "success" : "default"}>
-          {r.is_active ? "Active" : "Inactive"}
-        </Tag>
+        <StatusBadge status={r.is_active ? "Active" : "Inactive"} colorKey={r.is_active ? "green" : "gray"} />
       ),
       ...getColumnFilterProps("is_active", STATUS_FILTERS),
     },

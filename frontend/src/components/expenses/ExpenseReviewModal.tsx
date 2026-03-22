@@ -9,7 +9,6 @@ import {
   Input,
   InputNumber,
   Select,
-  Tag,
   Space,
   Button,
   Typography,
@@ -46,6 +45,7 @@ import type { ExpenseRequestDetailed, ExpenseCategory } from "@/types/expense";
 import type { TripExpenseType } from "@/types/trip-expense-type";
 import type { OfficeExpenseType } from "@/types/office-expense-type";
 import { ExpenseStatusBadge } from "./ExpenseStatusBadge";
+import { StatusBadge } from "@/components/ui/StatusBadge";
 import { COMPANY_NAME, CATEGORY_MAPPING, EXPENSE_STEPS } from "@/constants/expenseConstants";
 
 const { Text } = Typography;
@@ -1026,7 +1026,7 @@ export function ExpenseReviewModal({
             {expense.trip.route_name || "-"}
           </Descriptions.Item>
           <Descriptions.Item label="Status">
-            <Tag>{expense.trip.status}</Tag>
+            <StatusBadge status={expense.trip.status} />
           </Descriptions.Item>
           <Descriptions.Item label="Current Location">
             {expense.trip.current_location || "-"}

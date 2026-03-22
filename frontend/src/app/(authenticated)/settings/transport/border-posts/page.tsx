@@ -14,8 +14,8 @@ import {
   message,
   Typography,
   Popconfirm,
-  Tag,
 } from "antd";
+import StatusBadge from "@/components/ui/StatusBadge";
 import {
   PlusOutlined,
   ReloadOutlined,
@@ -178,7 +178,7 @@ export default function BorderPostsPage() {
       dataIndex: "side_a_name",
       key: "side_a_name",
       width: 180,
-      render: (text: string) => <Tag color="default">{text}</Tag>,
+      render: (text: string) => <StatusBadge status={text} colorKey="gray" />,
       ...getColumnSearchProps("side_a_name"),
     },
     {
@@ -186,7 +186,7 @@ export default function BorderPostsPage() {
       dataIndex: "side_b_name",
       key: "side_b_name",
       width: 180,
-      render: (text: string) => <Tag color="geekblue">{text}</Tag>,
+      render: (text: string) => <StatusBadge status={text} colorKey="blue" />,
       ...getColumnSearchProps("side_b_name"),
     },
     {
@@ -195,7 +195,7 @@ export default function BorderPostsPage() {
       key: "is_active",
       width: 80,
       render: (active: boolean) =>
-        active ? <Tag color="success">Active</Tag> : <Tag color="default">Inactive</Tag>,
+        active ? <StatusBadge status="Active" colorKey="green" /> : <StatusBadge status="Inactive" colorKey="gray" />,
       filters: [
         { text: "Active", value: true },
         { text: "Inactive", value: false },

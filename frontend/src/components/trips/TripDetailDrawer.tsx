@@ -7,7 +7,6 @@ import {
   Button,
   Space,
   Tabs,
-  Tag,
   Descriptions,
   Table,
   message,
@@ -43,6 +42,7 @@ import { AddExpenseModal } from "@/components/expenses/AddExpenseModal";
 import { UpdateTripStatusModal } from "@/components/trips/UpdateTripStatusModal";
 import { ExpenseStatusBadge } from "@/components/expenses/ExpenseStatusBadge";
 import { TripStatusTag } from "@/components/ui/TripStatusTag";
+import { StatusBadge } from "@/components/ui/StatusBadge";
 
 const { Text } = Typography;
 
@@ -565,9 +565,7 @@ export function TripDetailDrawer({ open, onClose, tripId, onEdit }: TripDetailDr
                         {trip.route_name}
                       </Descriptions.Item>
                       <Descriptions.Item label="Direction">
-                        <Tag color={trip.return_waybill_id ? "geekblue" : "default"}>
-                          {trip.return_waybill_id ? "Return" : "Go"}
-                        </Tag>
+                        <StatusBadge status={trip.return_waybill_id ? "Return" : "Go"} colorKey={trip.return_waybill_id ? "blue" : "gray"} />
                       </Descriptions.Item>
                       <Descriptions.Item label="Status">
                         <TripStatusTag status={trip.status} isDelayed={trip.is_delayed} />
@@ -940,11 +938,11 @@ export function TripDetailDrawer({ open, onClose, tripId, onEdit }: TripDetailDr
                           const filledCount = dateFields.filter((df) => crossing[df.field]).length;
                           const completionTag =
                             filledCount === 5 ? (
-                              <Tag color="success">Complete</Tag>
+                              <StatusBadge status="Complete" colorKey="green" />
                             ) : filledCount > 0 ? (
-                              <Tag color="warning">In Progress ({filledCount}/5)</Tag>
+                              <StatusBadge status={`In Progress (${filledCount}/5)`} colorKey="orange" />
                             ) : (
-                              <Tag color="default">Pending</Tag>
+                              <StatusBadge status="Pending" colorKey="gray" />
                             );
 
                           return {
@@ -952,9 +950,7 @@ export function TripDetailDrawer({ open, onClose, tripId, onEdit }: TripDetailDr
                             label: (
                               <Space>
                                 <strong>{bp?.display_name || "Unknown Border"}</strong>
-                                <Tag color={isGo ? "default" : "geekblue"}>
-                                  {isGo ? "Go" : "Return"}
-                                </Tag>
+                                <StatusBadge status={isGo ? "Go" : "Return"} colorKey={isGo ? "gray" : "blue"} />
                                 {completionTag}
                               </Space>
                             ),

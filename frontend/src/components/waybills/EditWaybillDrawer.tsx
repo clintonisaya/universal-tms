@@ -15,9 +15,9 @@ import {
   Select,
   AutoComplete,
   Spin,
-  Tag,
 } from "antd";
 import { SaveOutlined, ArrowUpOutlined, ArrowDownOutlined, CloseOutlined } from "@ant-design/icons";
+import { StatusBadge } from "@/components/ui/StatusBadge";
 import dayjs from "dayjs";
 import { amountInputProps } from "@/lib/utils";
 
@@ -354,9 +354,7 @@ export function EditWaybillDrawer({
                       borderRadius: 6,
                     }}
                   >
-                    <Tag color="default" style={{ margin: 0, minWidth: 24, textAlign: "center" }}>
-                      {index + 1}
-                    </Tag>
+                    <StatusBadge status={String(index + 1)} colorKey="gray" />
                     <span style={{ flex: 1, fontSize: 13 }}>
                       <strong>{bp.display_name}</strong>{" "}
                       <span style={{ color: "var(--color-text-muted)" }}>

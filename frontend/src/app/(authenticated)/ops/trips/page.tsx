@@ -7,7 +7,6 @@ import {
   Button,
   Card,
   Space,
-  Tag,
   Typography,
   Tooltip,
   Popconfirm,
@@ -39,6 +38,7 @@ import {
   useResizableColumns,
 } from "@/components/ui/tableUtils";
 import { TripStatusTag } from "@/components/ui/TripStatusTag";
+import { StatusBadge } from "@/components/ui/StatusBadge";
 import { RETURN_DIRECTION_STATUSES, STATUS_FILTERS } from "@/constants/tripStatuses";
 
 const { Title, Text } = Typography;
@@ -181,9 +181,10 @@ function TripsPageContent() {
       key: "direction",
       width: 60,
       render: (returnWaybillId: string | null) => (
-        <Tag color={returnWaybillId ? "geekblue" : "default"}>
-          {returnWaybillId ? "Return" : "Go"}
-        </Tag>
+        <StatusBadge
+          status={returnWaybillId ? "Return" : "Go"}
+          colorKey={returnWaybillId ? "blue" : "gray"}
+        />
       ),
       filters: DIRECTION_FILTERS,
       onFilter: (value, record) => {

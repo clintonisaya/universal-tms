@@ -11,7 +11,6 @@ import {
   Button,
   Typography,
   Table,
-  Tag,
   Spin,
   Empty,
   Descriptions,
@@ -29,6 +28,7 @@ import {
 import { fmtAmount, fmtCurrency } from "@/lib/utils";
 import type { ExpenseRequestDetailed } from "@/types/expense";
 import { ExpenseStatusBadge } from "./ExpenseStatusBadge";
+import { StatusBadge } from "@/components/ui/StatusBadge";
 import { COMPANY_NAME } from "@/constants/expenseConstants";
 
 const { Text } = Typography;
@@ -276,7 +276,7 @@ export function VoidExpenseModal({ expense, open, onClose, onSuccess }: VoidExpe
             <Text strong>{expense.trip.trip_number}</Text>
           </Descriptions.Item>
           <Descriptions.Item label="Route">{expense.trip.route_name || "-"}</Descriptions.Item>
-          <Descriptions.Item label="Status"><Tag>{expense.trip.status}</Tag></Descriptions.Item>
+          <Descriptions.Item label="Status"><StatusBadge status={expense.trip.status} /></Descriptions.Item>
           <Descriptions.Item label="Current Location">{expense.trip.current_location || "-"}</Descriptions.Item>
         </Descriptions>
       )}
