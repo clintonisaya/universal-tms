@@ -57,6 +57,7 @@ export function ProfitTrendChart({ data, loading }: ProfitTrendChartProps) {
             tickFormatter={(value) => formatValue(value)}
           />
           <Tooltip
+            cursor={{ fill: "var(--color-surface)" }}
             formatter={(value: any, name: any) => {
               const label =
                 name === "profit"

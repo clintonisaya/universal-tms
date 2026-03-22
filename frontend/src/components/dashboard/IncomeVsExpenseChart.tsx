@@ -80,6 +80,7 @@ export function IncomeVsExpenseChart({ data, loading }: IncomeVsExpenseChartProp
               tickFormatter={(value) => formatValue(value)}
             />
             <Tooltip
+              cursor={{ fill: "var(--color-surface)" }}
               formatter={(value: any) => [`TZS ${Number(value).toLocaleString("en-US")}`, ""]}
               contentStyle={{
                 borderRadius: 8,
