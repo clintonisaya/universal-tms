@@ -402,7 +402,7 @@ export function TripDetailDrawer({ open, onClose, tripId, onEdit }: TripDetailDr
       title: "Status",
       dataIndex: "status",
       key: "status",
-      width: 200,
+      width: 230,
       render: (status: ExpenseStatus) => <ExpenseStatusBadge status={status} compact />,
     },
     {

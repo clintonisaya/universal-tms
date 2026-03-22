@@ -98,7 +98,29 @@
       "mcp__ide__getDiagnostics",
       "Bash(node_modules/.bin/next build:*)",
       "Bash(/home/clinton/dev/edupo-tms/frontend/node_modules/.bin/next build:*)",
-      "Bash(git fetch:*)"
+      "Bash(git fetch:*)",
+      "Bash(npm --version)",
+      "Bash(docker info:*)",
+      "Bash(npm show:*)",
+      "Bash(cd /home/clinton/dev/edupo-tms/frontend/src/app/\\\\\\(authenticated\\\\\\))",
+      "Bash(grep -rn 'background: \"\"\"\"#f5f5f5\"\"\"\"' --include=\"*.tsx\" -l)",
+      "Bash(for f:*)",
+      "Bash(do)",
+      "Bash(sed -i 's/background: \"\"#f5f5f5\"\"/background: \"\"var\\(--color-surface\\)\"\"/g' \"$f\")",
+      "Bash(done)",
+      "Bash(sed -i \"s/background: ''#f5f5f5''/background: ''var\\(--color-surface\\)''/g\" \"$f\")",
+      "Bash(sed -i 's/background: \"\"#fafafa\"\"/background: \"\"var\\(--color-surface\\)\"\"/g' \"$f\")",
+      "Bash(head:*)",
+      "Bash(identify /home/clinton/dev/edupo-tms/frontend/public/edupo-logo.png /home/clinton/dev/edupo-tms/frontend/public/images/logo.png /home/clinton/dev/edupo-tms/frontend/public/favicon-logo.png /home/clinton/dev/edupo-tms/frontend/public/logo.png)",
+      "Bash(identify -verbose /home/clinton/dev/edupo-tms/frontend/public/images/logo-icon-full.png)",
+      "Bash(convert logo-icon-full.png -define png:exclude-chunks=bKGD logo-icon-full-clean.png)",
+      "Bash(mv logo-icon-full-clean.png logo-icon-full.png)",
+      "Bash(identify -verbose logo-icon-full.png)",
+      "Bash(magick logo-icon-full.png -background none -define png:exclude-chunks=bKGD PNG32:logo-icon-full.png)",
+      "Bash(magick:*)",
+      "Bash(sed -i 's/styles={{ content: { color: \"\"#cf1322\"\" } }}/styles={{ content: { color: \"\"var\\(--color-red\\)\"\" } }}/g' \"frontend/src/app/\\(authenticated\\)/fleet/trucks/[id]/page.tsx\")",
+      "Bash(sed -i 's/color: \"\"#fa8c16\"\"/color: \"\"var\\(--color-orange\\)\"\"/g' \"frontend/src/app/\\(authenticated\\)/ops/tracking/page.tsx\")",
+      "Bash(grep -rn \"#[0-9a-fA-F]\\\\{3,8\\\\}\" /home/clinton/dev/edupo-tms/frontend/src/app /home/clinton/dev/edupo-tms/frontend/src/components --include=\"*.tsx\")"
     ]
   }
 }
