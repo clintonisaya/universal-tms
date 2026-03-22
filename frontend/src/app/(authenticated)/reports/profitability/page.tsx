@@ -583,10 +583,10 @@ export default function TripProfitabilityPage() {
 
       <style jsx global>{`
         .row-loss {
-          background-color: #fff1f0 !important;
+          background-color: color-mix(in srgb, var(--color-red) 10%, transparent) !important;
         }
         .row-low-margin {
-          background-color: #fffbe6 !important;
+          background-color: color-mix(in srgb, var(--color-orange) 10%, transparent) !important;
         }
         .row-loss:hover td,
         .row-low-margin:hover td {

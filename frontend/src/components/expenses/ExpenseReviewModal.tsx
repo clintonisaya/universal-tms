@@ -1519,7 +1519,7 @@ export function ExpenseReviewModal({
                       icon={<UndoOutlined />}
                       onClick={() => handleRejectOrReturn("return")}
                       loading={processing}
-                      style={{ color: "#fa8c16", borderColor: "#fa8c16" }}
+                      style={{ color: "var(--color-orange)", borderColor: "var(--color-orange)" }}
                     >
                       Return
                     </Button>
@@ -1599,7 +1599,7 @@ export function ExpenseReviewModal({
                       icon={<UndoOutlined />}
                       onClick={() => handleRejectOrReturn("return")}
                       loading={processing}
-                      style={{ color: "#fa8c16", borderColor: "#fa8c16" }}
+                      style={{ color: "var(--color-orange)", borderColor: "var(--color-orange)" }}
                     >
                       Return
                     </Button>

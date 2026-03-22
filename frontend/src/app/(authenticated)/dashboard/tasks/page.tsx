@@ -127,7 +127,7 @@ function TasksContent() {
       const row = document.getElementById(`task-row-${highlightTaskId}`);
       if (row) {
         row.scrollIntoView({ behavior: "smooth", block: "center" });
-        row.style.backgroundColor = "#fff7e6";
+        row.style.backgroundColor = "color-mix(in srgb, var(--color-gold) 10%, transparent)";
         highlightTimerRef.current = setTimeout(() => {
           row.style.transition = "background-color 1s ease";
           row.style.backgroundColor = "transparent";

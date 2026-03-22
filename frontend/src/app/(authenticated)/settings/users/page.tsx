@@ -147,7 +147,7 @@ function PermissionToggles({
                 const isOn = value.includes(p.value);
                 return (
                   <Flex key={p.value} justify="space-between" align="center">
-                    <Text style={{ fontSize: 13, color: isOn ? "#1f2937" : "#9ca3af" }}>
+                    <Text style={{ fontSize: 13, color: isOn ? "var(--color-text-primary)" : "var(--color-text-muted)" }}>
                       {p.label}
                     </Text>
                     <Switch

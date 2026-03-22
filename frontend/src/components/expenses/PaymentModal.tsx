@@ -308,7 +308,7 @@ export function PaymentModal({ open, onClose, onSuccess, expense }: PaymentModal
               <div style={{ marginBottom: 4 }}>
                 <Text type="secondary" style={{ fontSize: 12 }}>Manager Comment</Text>
               </div>
-              <Input value={expense.manager_comment} readOnly style={{ color: "#d4b106" }} />
+              <Input value={expense.manager_comment} readOnly style={{ color: "var(--color-gold)" }} />
             </Col>
           </Row>
         )}
@@ -332,7 +332,7 @@ export function PaymentModal({ open, onClose, onSuccess, expense }: PaymentModal
       </div>
 
       {/* Payment Form */}
-      <div style={{ padding: 16, background: "#f0f5ff", borderRadius: 8, border: "1px solid #d6e4ff" }}>
+      <div style={{ padding: 16, background: "var(--color-surface)", borderRadius: 8, border: "1px solid var(--color-border)" }}>
         <Row gutter={[16, 16]}>
           <Col span={8}>
             <Form.Item

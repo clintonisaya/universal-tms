@@ -389,7 +389,7 @@ function TripsPageContent() {
             loading={loading}
             sticky={{ offsetHeader: 64 }}
             onRow={(record) => ({
-              style: record.is_delayed ? { backgroundColor: "#fffbe6" } : undefined,
+              style: record.is_delayed ? { backgroundColor: "color-mix(in srgb, var(--color-orange) 10%, transparent)" } : undefined,
             })}
             onChange={(_, filters) => {
               const next = filters as Record<string, any>;
