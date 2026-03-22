@@ -495,12 +495,12 @@ export function UpdateTripStatusModal({
           <div>
             <Text strong style={{ fontSize: 13 }}>{status}</Text>
             {date && (
-              <Text type="secondary" style={{ fontSize: 12, display: "block" }}>
+              <Text type="secondary" style={{ display: "block" }}>
                 {formatDate(date)}
               </Text>
             )}
             {extraDates && (
-              <Text type="secondary" style={{ fontSize: 12, display: "block" }}>
+              <Text type="secondary" style={{ display: "block" }}>
                 {extraDates}
               </Text>
             )}
@@ -585,7 +585,7 @@ export function UpdateTripStatusModal({
             label: (
               <span>
                 <Text strong style={{ fontSize: 13 }}>Status History</Text>
-                <Text type="secondary" style={{ fontSize: 12, marginLeft: 8 }}>
+                <Text type="secondary" style={{ marginLeft: 8 }}>
                   ({timelineItems.length} entries{tripDuration ? ` · ${tripDuration}` : ""})
                 </Text>
               </span>
@@ -630,7 +630,7 @@ export function UpdateTripStatusModal({
           extra={
             !isTripClosed && (
               <Link
-                style={{ fontSize: 12 }}
+                style={{ fontSize: "var(--font-sm)" }}
                 onClick={() => message.info("Date correction feature coming soon. Contact your manager to adjust a date.")}
               >
                 Need to correct a recorded date? →

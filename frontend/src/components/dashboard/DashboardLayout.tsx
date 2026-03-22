@@ -464,14 +464,14 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                     flexShrink: 0,
                   }}
                 >
-                  <span style={{ fontSize: 12, fontWeight: 700, color: "var(--color-logo-icon)" }}>
+                  <span style={{ fontSize: "var(--font-sm)", fontWeight: 700, color: "var(--color-logo-icon)" }}>
                     {userInitial}
                   </span>
                 </div>
 
                 {/* Name + role */}
                 <div style={{ display: "flex", flexDirection: "column", lineHeight: 1.3 }}>
-                  <span style={{ fontSize: 12, fontWeight: 600, color: "var(--color-text-primary)" }}>
+                  <span style={{ fontSize: "var(--font-sm)", fontWeight: 600, color: "var(--color-text-primary)" }}>
                     {user?.full_name || user?.username || "Admin User"}
                   </span>
                   <span style={{ fontSize: 10, color: "var(--color-text-muted)" }}>

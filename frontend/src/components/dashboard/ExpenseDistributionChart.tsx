@@ -114,7 +114,7 @@ export function ExpenseDistributionChart({ data, loading }: ExpenseDistributionC
                 iconType="circle"
                 iconSize={8}
                 formatter={(value: string) => (
-                  <span style={{ fontSize: 12, color: "var(--color-text-secondary)" }}>{value}</span>
+                  <span style={{ fontSize: "var(--font-sm)", color: "var(--color-text-secondary)" }}>{value}</span>
                 )}
               />
             </PieChart>
@@ -129,7 +129,7 @@ export function ExpenseDistributionChart({ data, loading }: ExpenseDistributionC
               border: "1px solid var(--color-border)",
             }}
           >
-            <span style={{ color: "var(--color-text-muted)", fontSize: 12 }}>Total: </span>
+            <span style={{ color: "var(--color-text-muted)", fontSize: "var(--font-sm)" }}>Total: </span>
             <span style={{ fontWeight: 600, color: "var(--color-text-primary)" }}>
               TZS {totalExpenses.toLocaleString("en-US")}
             </span>

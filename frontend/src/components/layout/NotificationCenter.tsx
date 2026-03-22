@@ -143,7 +143,7 @@ export function NotificationCenter({
                 type="link"
                 size="small"
                 onClick={() => markAllRead()}
-                style={{ padding: 0, fontSize: 12 }}
+                style={{ padding: 0, fontSize: "var(--font-sm)" }}
               >
                 Mark all read
               </Button>
@@ -164,7 +164,6 @@ export function NotificationCenter({
                   <br />
                   <Text
                     type="secondary"
-                    style={{ fontSize: 12 }}
                   >
                     You&apos;ll see updates here when tasks require your
                     attention
@@ -229,7 +228,6 @@ export function NotificationCenter({
                     </div>
                     <Text
                       type="secondary"
-                      style={{ fontSize: 12 }}
                     >
                       {formatTimeAgo(n.timestamp)}
                     </Text>

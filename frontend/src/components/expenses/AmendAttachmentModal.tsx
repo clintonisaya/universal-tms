@@ -234,7 +234,7 @@ export function AmendAttachmentModal({ expense, open, onClose }: AmendAttachment
           >
             <Button icon={<UploadOutlined />}>Select File</Button>
           </Upload>
-          <Text type="secondary" style={{ display: "block", marginTop: 4, fontSize: 12 }}>
+          <Text type="secondary" style={{ display: "block", marginTop: 4 }}>
             Accepted: PDF, JPEG, PNG, GIF, WebP, Word (.doc/.docx), Excel (.xls/.xlsx) · Max 3 MB
           </Text>
         </div>

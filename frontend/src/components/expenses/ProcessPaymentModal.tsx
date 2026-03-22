@@ -189,7 +189,7 @@ export function ProcessPaymentModal({
         <Row gutter={[16, 16]}>
           <Col span={8}>
             <div style={{ marginBottom: 4 }}>
-              <Text type="secondary" style={{ fontSize: 12 }}>
+              <Text type="secondary">
                 Company
               </Text>
             </div>
@@ -197,7 +197,7 @@ export function ProcessPaymentModal({
           </Col>
           <Col span={8}>
             <div style={{ marginBottom: 4 }}>
-              <Text type="secondary" style={{ fontSize: 12 }}>
+              <Text type="secondary">
                 Application Date
               </Text>
             </div>
@@ -208,19 +208,19 @@ export function ProcessPaymentModal({
           </Col>
           <Col span={8}>
             <div style={{ marginBottom: 4 }}>
-              <Text type="secondary" style={{ fontSize: 12 }}>
+              <Text type="secondary">
                 Total Amount
               </Text>
             </div>
             <Input
               value={formatCurrency(expense.amount, expense.currency)}
               readOnly
-              style={{ fontWeight: "bold" }}
+              style={{ fontWeight: 700 }}
             />
           </Col>
           <Col span={8}>
             <div style={{ marginBottom: 4 }}>
-              <Text type="secondary" style={{ fontSize: 12 }}>
+              <Text type="secondary">
                 Payment Method
               </Text>
             </div>
@@ -228,7 +228,7 @@ export function ProcessPaymentModal({
           </Col>
           <Col span={16}>
             <div style={{ marginBottom: 4 }}>
-              <Text type="secondary" style={{ fontSize: 12 }}>
+              <Text type="secondary">
                 Remarks
               </Text>
             </div>
@@ -244,7 +244,7 @@ export function ProcessPaymentModal({
           <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
             <Col span={8}>
               <div style={{ marginBottom: 4 }}>
-                <Text type="secondary" style={{ fontSize: 12 }}>
+                <Text type="secondary">
                   Bank Name
                 </Text>
               </div>
@@ -252,7 +252,7 @@ export function ProcessPaymentModal({
             </Col>
             <Col span={8}>
               <div style={{ marginBottom: 4 }}>
-                <Text type="secondary" style={{ fontSize: 12 }}>
+                <Text type="secondary">
                   Account Name
                 </Text>
               </div>
@@ -260,7 +260,7 @@ export function ProcessPaymentModal({
             </Col>
             <Col span={8}>
               <div style={{ marginBottom: 4 }}>
-                <Text type="secondary" style={{ fontSize: 12 }}>
+                <Text type="secondary">
                   Account No.
                 </Text>
               </div>
@@ -341,7 +341,7 @@ export function ProcessPaymentModal({
             <div
               style={{
                 textAlign: "right",
-                fontWeight: "bold",
+                fontWeight: 700,
                 fontSize: 16,
               }}
             >

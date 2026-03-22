@@ -87,7 +87,7 @@ export function MetricCard({
               fontSize: 28,
               fontWeight: 700,
               color: "var(--color-text-primary)",
-              fontFamily: "'DM Sans', sans-serif",
+
               letterSpacing: "-0.02em",
               display: "flex",
               alignItems: "baseline",
@@ -101,7 +101,7 @@ export function MetricCard({
 
           {/* Subtitle */}
           {subtitle && (
-            <div style={{ fontSize: 12, color: "var(--color-text-secondary)", marginTop: 4 }}>
+            <div style={{ fontSize: "var(--font-sm)", color: "var(--color-text-secondary)", marginTop: 4 }}>
               {subtitle}
             </div>
           )}
@@ -110,7 +110,7 @@ export function MetricCard({
           {trend !== undefined && (
             <div
               style={{
-                fontSize: 12,
+                fontSize: "var(--font-sm)",
                 color: trend >= 0 ? "var(--color-green)" : "var(--color-red)",
                 marginTop: 4,
                 display: "flex",

@@ -117,6 +117,18 @@ tr:hover > td .row-actions {
   overflow: visible;
 }
 
+/* ─── TYPE SCALE ── */
+:root {
+  --font-xs: 11px;
+  --font-sm: 12px;
+  --font-base: 14px;
+  --font-lg: 16px;
+  --font-xl: 20px;
+}
+
+/* Secondary text — eliminates per-instance fontSize: 12 overrides */
+.ant-typography-secondary { font-size: var(--font-sm); }
+
 /* ─── DESIGN SYSTEM TOKENS — edupo-redesign.jsx ──────────────────────────── */
 
 /* P13: :root fallback — dark defaults ensure variables resolve in portals/iframes

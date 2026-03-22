@@ -50,7 +50,7 @@ export function IncomeVsExpenseChart({ data, loading }: IncomeVsExpenseChartProp
       title={
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <span>Monthly Pulse</span>
-          {data && <span style={{ fontSize: 12, color: "var(--color-text-muted)" }}>{data.month}</span>}
+          {data && <span style={{ fontSize: "var(--font-sm)", color: "var(--color-text-muted)" }}>{data.month}</span>}
         </div>
       }
       style={{ height: "100%" }}
@@ -58,7 +58,7 @@ export function IncomeVsExpenseChart({ data, loading }: IncomeVsExpenseChartProp
       {!hasData && !loading ? (
         <div style={{ textAlign: "center", padding: 40, color: "var(--color-text-muted)" }}>
           <div style={{ fontSize: 14, marginBottom: 8 }}>No financial data this month</div>
-          <div style={{ fontSize: 12 }}>Income and expenses will appear once trips with waybills are created and expenses are paid.</div>
+          <div style={{ fontSize: "var(--font-sm)" }}>Income and expenses will appear once trips with waybills are created and expenses are paid.</div>
         </div>
       ) : (
         <ResponsiveContainer width="100%" height={250}>
@@ -108,7 +108,7 @@ export function IncomeVsExpenseChart({ data, loading }: IncomeVsExpenseChartProp
             border: "1px solid var(--color-border)",
           }}
         >
-          <span style={{ color: "var(--color-text-muted)", fontSize: 12 }}>Net Profit: </span>
+          <span style={{ color: "var(--color-text-muted)", fontSize: "var(--font-sm)" }}>Net Profit: </span>
           <span
             style={{
               fontWeight: 600,

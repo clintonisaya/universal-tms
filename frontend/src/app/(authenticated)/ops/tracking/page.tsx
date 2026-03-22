@@ -767,7 +767,7 @@ function TrackingPageContent() {
           {/* Return waybill (green, with icon) */}
           {r.return_waybill_number && (
             <Tooltip title="Return Waybill">
-              <Text style={{ color: "var(--color-green)", fontSize: 12 }}>
+              <Text style={{ color: "var(--color-green)", fontSize: "var(--font-sm)" }}>
                 <SwapOutlined style={{ marginRight: 3 }} />
                 {r.return_waybill_number}
               </Text>
@@ -775,9 +775,9 @@ function TrackingPageContent() {
           )}
           {/* Trip number */}
           {r.trip_number ? (
-            <Text style={{ fontSize: 12, color: "var(--color-text-secondary)" }}>{r.trip_number}</Text>
+            <Text style={{ fontSize: "var(--font-sm)", color: "var(--color-text-secondary)" }}>{r.trip_number}</Text>
           ) : (
-            <Text type="secondary" style={{ fontSize: 12 }}>
+            <Text type="secondary">
               No Trip
             </Text>
           )}
@@ -809,18 +809,18 @@ function TrackingPageContent() {
           {truncatedCell(r.client_name, 190)}
           {/* Return client if different */}
           {r.return_client_name && r.return_client_name !== r.client_name && (
-            <Text style={{ fontSize: 12, color: "var(--color-green)" }}>
+            <Text style={{ fontSize: "var(--font-sm)", color: "var(--color-green)" }}>
               <SwapOutlined style={{ marginRight: 3 }} />
               {r.return_client_name}
             </Text>
           )}
           <Tooltip title={r.cargo_description}>
-            <Text type="secondary" style={{ fontSize: 12, maxWidth: 190, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "block" }}>
+            <Text type="secondary" style={{ maxWidth: 190, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "block" }}>
               {r.cargo_type} • {r.cargo_weight?.toLocaleString("en-US") || 0}kg{r.cargo_description ? ` — ${r.cargo_description}` : ""}
             </Text>
           </Tooltip>
           {r.return_cargo_weight && (
-            <Text type="secondary" style={{ fontSize: 12 }}>
+            <Text type="secondary">
               Ret: {r.return_cargo_type} • {r.return_cargo_weight?.toLocaleString("en-US")}kg
             </Text>
           )}
@@ -890,10 +890,10 @@ function TrackingPageContent() {
           <Text>
             <CarOutlined /> {r.truck_plate || "-"}
           </Text>
-          <Text type="secondary" style={{ fontSize: 12 }}>
+          <Text type="secondary">
             TL: {r.trailer_plate || "-"}
           </Text>
-          <Text type="secondary" style={{ fontSize: 12 }}>
+          <Text type="secondary">
             <UserOutlined /> {r.driver_name || "-"}
           </Text>
         </Flex>
@@ -909,13 +909,13 @@ function TrackingPageContent() {
       title: "Arrival Offloading",
       key: "arrival_offloading_date",
       width: 130,
-      render: (_, r) => <Text type="secondary" style={{ fontSize: 12 }}>{fmtDateCol(r.arrival_offloading_date)}</Text>,
+      render: (_, r) => <Text type="secondary">{fmtDateCol(r.arrival_offloading_date)}</Text>,
     },
     {
       title: "Ret Empty Container",
       key: "return_empty_container_date",
       width: 140,
-      render: (_, r) => <Text type="secondary" style={{ fontSize: 12 }}>{fmtDateCol(r.return_empty_container_date)}</Text>,
+      render: (_, r) => <Text type="secondary">{fmtDateCol(r.return_empty_container_date)}</Text>,
     },
   ];
 

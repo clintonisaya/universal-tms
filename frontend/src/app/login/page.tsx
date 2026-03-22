@@ -57,7 +57,7 @@ function LoginForm() {
           alignItems: "center",
           justifyContent: "center",
           background: "var(--color-login-bg)",
-          fontFamily: "'DM Sans', sans-serif",
+
           position: "relative",
           overflow: "hidden",
           transition: "background 0.4s",
@@ -121,7 +121,7 @@ function LoginForm() {
 
             <div
               style={{
-                fontSize: 12,
+                fontSize: "var(--font-sm)",
                 color: "var(--color-text-muted)",
                 marginTop: 6,
               }}

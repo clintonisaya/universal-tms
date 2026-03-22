@@ -781,7 +781,7 @@ export function TripDetailDrawer({ open, onClose, tripId, onEdit }: TripDetailDr
                       {/* Currency toggle */}
                       <div style={{ display: "flex", justifyContent: "flex-end" }}>
                         <Space size={4}>
-                          <Text type="secondary" style={{ fontSize: 12 }}>View in:</Text>
+                          <Text type="secondary">View in:</Text>
                           {toggleCurrencies.map((cur) => (
                             <Button
                               key={cur}

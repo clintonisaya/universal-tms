@@ -243,7 +243,7 @@ function TripsPageContent() {
       width: 100,
       render: (date: string | null) => (
         <Tooltip title={date ? new Date(date).toLocaleString() : undefined}>
-          <Text type="secondary" style={{ fontSize: 12 }}>
+          <Text type="secondary">
             {formatRelativeTime(date)}
           </Text>
         </Tooltip>

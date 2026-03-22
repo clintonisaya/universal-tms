@@ -164,35 +164,35 @@ export function VoidExpenseModal({ expense, open, onClose, onSuccess }: VoidExpe
         <Row gutter={[16, 16]}>
           <Col span={8}>
             <div style={{ marginBottom: 4 }}>
-              <Text type="secondary" style={{ fontSize: 12 }}>Company</Text>
+              <Text type="secondary">Company</Text>
             </div>
             <Input value={COMPANY_NAME} readOnly />
           </Col>
           <Col span={8}>
             <div style={{ marginBottom: 4 }}>
-              <Text type="secondary" style={{ fontSize: 12 }}>Application Date</Text>
+              <Text type="secondary">Application Date</Text>
             </div>
             <Input value={formatDate(meta?.application_date || expense.created_at)} readOnly />
           </Col>
           <Col span={8}>
             <div style={{ marginBottom: 4 }}>
-              <Text type="secondary" style={{ fontSize: 12 }}>Total Amount</Text>
+              <Text type="secondary">Total Amount</Text>
             </div>
             <Input
               value={fmtCurrency(expense.amount, expense.currency)}
               readOnly
-              style={{ fontWeight: "bold" }}
+              style={{ fontWeight: 700 }}
             />
           </Col>
           <Col span={8}>
             <div style={{ marginBottom: 4 }}>
-              <Text type="secondary" style={{ fontSize: 12 }}>Payment Method</Text>
+              <Text type="secondary">Payment Method</Text>
             </div>
             <Input value={paymentMethodDisplay || "-"} readOnly />
           </Col>
           <Col span={16}>
             <div style={{ marginBottom: 4 }}>
-              <Text type="secondary" style={{ fontSize: 12 }}>Remarks</Text>
+              <Text type="secondary">Remarks</Text>
             </div>
             <Input value={meta?.remarks || expense.description || "-"} readOnly />
           </Col>
@@ -202,19 +202,19 @@ export function VoidExpenseModal({ expense, open, onClose, onSuccess }: VoidExpe
           <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
             <Col span={8}>
               <div style={{ marginBottom: 4 }}>
-                <Text type="secondary" style={{ fontSize: 12 }}>Bank Name</Text>
+                <Text type="secondary">Bank Name</Text>
               </div>
               <Input value={bankDetails.bank_name || "-"} readOnly />
             </Col>
             <Col span={8}>
               <div style={{ marginBottom: 4 }}>
-                <Text type="secondary" style={{ fontSize: 12 }}>Account Name</Text>
+                <Text type="secondary">Account Name</Text>
               </div>
               <Input value={bankDetails.account_name || "-"} readOnly />
             </Col>
             <Col span={8}>
               <div style={{ marginBottom: 4 }}>
-                <Text type="secondary" style={{ fontSize: 12 }}>Account No.</Text>
+                <Text type="secondary">Account No.</Text>
               </div>
               <Input value={bankDetails.account_no || "-"} readOnly />
             </Col>
@@ -262,7 +262,7 @@ export function VoidExpenseModal({ expense, open, onClose, onSuccess }: VoidExpe
           size="middle"
           bordered
           footer={() => (
-            <div style={{ textAlign: "right", fontWeight: "bold", fontSize: 16 }}>
+            <div style={{ textAlign: "right", fontWeight: 700, fontSize: 16 }}>
               Total: {fmtCurrency(expense.amount, expense.currency)}
             </div>
           )}
@@ -333,7 +333,7 @@ export function VoidExpenseModal({ expense, open, onClose, onSuccess }: VoidExpe
       title: "Submitted",
       status: "finish" as const,
       description: expense.created_by ? (
-        <Text type="secondary" style={{ fontSize: 12 }}>
+        <Text type="secondary">
           {expense.created_by.full_name || expense.created_by.username} · {formatDate(expense.created_at)}
         </Text>
       ) : undefined,
@@ -347,11 +347,11 @@ export function VoidExpenseModal({ expense, open, onClose, onSuccess }: VoidExpe
           status: "finish" as const,
           description: expense.approved_by ? (
             <Space direction="vertical" size={0}>
-              <Text type="secondary" style={{ fontSize: 12 }}>
+              <Text type="secondary">
                 {expense.approved_by.full_name || expense.approved_by.username} · {formatDate(expense.approved_at)}
               </Text>
               {expense.manager_comment && (
-                <Text italic style={{ fontSize: 12 }}>"{expense.manager_comment}"</Text>
+                <Text italic style={{ fontSize: "var(--font-sm)" }}>"{expense.manager_comment}"</Text>
               )}
             </Space>
           ) : undefined,
@@ -362,12 +362,12 @@ export function VoidExpenseModal({ expense, open, onClose, onSuccess }: VoidExpe
           description: (
             <Space direction="vertical" size={0}>
               {expense.voided_by && (
-                <Text type="secondary" style={{ fontSize: 12 }}>
+                <Text type="secondary">
                   {expense.voided_by.full_name || expense.voided_by.username} · {formatDate(expense.voided_at)}
                 </Text>
               )}
               {expense.void_reason && (
-                <Text italic style={{ fontSize: 12 }}>"{expense.void_reason}"</Text>
+                <Text italic style={{ fontSize: "var(--font-sm)" }}>"{expense.void_reason}"</Text>
               )}
             </Space>
           ),
@@ -381,12 +381,12 @@ export function VoidExpenseModal({ expense, open, onClose, onSuccess }: VoidExpe
         {
           title: "Returned for Revision",
           status: "error" as const,
-          description: <Text italic style={{ fontSize: 12 }}>"{expense.manager_comment}"</Text>,
+          description: <Text italic style={{ fontSize: "var(--font-sm)" }}>"{expense.manager_comment}"</Text>,
         },
         {
           title: "Resubmitted",
           status: "process" as const,
-          description: <Text type="secondary" style={{ fontSize: 12 }}>Awaiting manager review</Text>,
+          description: <Text type="secondary">Awaiting manager review</Text>,
         },
         { title: "Finance Payment", status: "wait" as const },
       ];
@@ -398,7 +398,7 @@ export function VoidExpenseModal({ expense, open, onClose, onSuccess }: VoidExpe
         {
           title: "Manager Review",
           status: "process" as const,
-          description: <Text type="secondary" style={{ fontSize: 12 }}>Awaiting manager review</Text>,
+          description: <Text type="secondary">Awaiting manager review</Text>,
         },
         { title: "Finance Payment", status: "wait" as const },
       ];
@@ -412,11 +412,11 @@ export function VoidExpenseModal({ expense, open, onClose, onSuccess }: VoidExpe
           status: "error" as const,
           description: expense.approved_by ? (
             <Space direction="vertical" size={0}>
-              <Text type="secondary" style={{ fontSize: 12 }}>
+              <Text type="secondary">
                 {expense.approved_by.full_name || expense.approved_by.username} · {formatDate(expense.approved_at)}
               </Text>
               {expense.manager_comment && (
-                <Text italic style={{ fontSize: 12 }}>"{expense.manager_comment}"</Text>
+                <Text italic style={{ fontSize: "var(--font-sm)" }}>"{expense.manager_comment}"</Text>
               )}
             </Space>
           ) : undefined,
@@ -432,11 +432,11 @@ export function VoidExpenseModal({ expense, open, onClose, onSuccess }: VoidExpe
           status: "error" as const,
           description: expense.approved_by ? (
             <Space direction="vertical" size={0}>
-              <Text type="secondary" style={{ fontSize: 12 }}>
+              <Text type="secondary">
                 {expense.approved_by.full_name || expense.approved_by.username} · {formatDate(expense.approved_at)}
               </Text>
               {expense.manager_comment && (
-                <Text italic style={{ fontSize: 12 }}>"{expense.manager_comment}"</Text>
+                <Text italic style={{ fontSize: "var(--font-sm)" }}>"{expense.manager_comment}"</Text>
               )}
             </Space>
           ) : undefined,
@@ -450,11 +450,11 @@ export function VoidExpenseModal({ expense, open, onClose, onSuccess }: VoidExpe
       status: "finish" as const,
       description: expense.approved_by ? (
         <Space direction="vertical" size={0}>
-          <Text type="secondary" style={{ fontSize: 12 }}>
+          <Text type="secondary">
             {expense.approved_by.full_name || expense.approved_by.username} · {formatDate(expense.approved_at)}
           </Text>
           {expense.manager_comment && (
-            <Text italic style={{ fontSize: 12 }}>"{expense.manager_comment}"</Text>
+            <Text italic style={{ fontSize: "var(--font-sm)" }}>"{expense.manager_comment}"</Text>
           )}
         </Space>
       ) : undefined,
@@ -465,13 +465,13 @@ export function VoidExpenseModal({ expense, open, onClose, onSuccess }: VoidExpe
       status: expense.status === "Paid" ? ("finish" as const) : ("process" as const),
       description:
         expense.status === "Paid" && expense.paid_by ? (
-          <Text type="secondary" style={{ fontSize: 12 }}>
+          <Text type="secondary">
             {expense.paid_by.full_name || expense.paid_by.username} · {formatDate(expense.payment_date)}
             {expense.payment_method && ` · ${expense.payment_method}`}
             {expense.payment_reference && ` (${expense.payment_reference})`}
           </Text>
         ) : expense.status === "Pending Finance" ? (
-          <Text type="secondary" style={{ fontSize: 12 }}>Awaiting finance payment</Text>
+          <Text type="secondary">Awaiting finance payment</Text>
         ) : undefined,
     };
 
@@ -527,7 +527,7 @@ export function VoidExpenseModal({ expense, open, onClose, onSuccess }: VoidExpe
         }}
       >
         <div style={{ marginBottom: 12 }}>
-          <Text type="secondary" style={{ fontSize: 12 }}>
+          <Text type="secondary">
             Void reason (required — minimum 3 characters)
           </Text>
           <TextArea

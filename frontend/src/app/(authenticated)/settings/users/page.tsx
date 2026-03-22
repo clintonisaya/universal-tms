@@ -122,11 +122,11 @@ function PermissionToggles({
           >
             {/* Group header with master toggle */}
             <Flex justify="space-between" align="center" style={{ marginBottom: 10, borderBottom: "1px solid var(--color-border)", paddingBottom: 8 }}>
-              <Text strong style={{ fontSize: 12, color: "var(--color-text-secondary)", textTransform: "uppercase", letterSpacing: 1 }}>
+              <Text strong style={{ fontSize: "var(--font-sm)", color: "var(--color-text-secondary)", textTransform: "uppercase", letterSpacing: 1 }}>
                 {group}
               </Text>
               <Flex align="center" gap={6}>
-                <Text style={{ fontSize: 12, color: "var(--color-text-muted)" }}>{allOn ? "All" : someOn ? "Some" : "None"}</Text>
+                <Text style={{ fontSize: "var(--font-sm)", color: "var(--color-text-muted)" }}>{allOn ? "All" : someOn ? "Some" : "None"}</Text>
                 <Switch
                   size="small"
                   checked={allOn}

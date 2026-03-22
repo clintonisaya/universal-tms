@@ -528,7 +528,7 @@ export default function TripDetailPage() {
                     {/* ── Currency toggle ── */}
                     <div style={{ display: "flex", justifyContent: "flex-end" }}>
                       <Space size={4}>
-                        <Text type="secondary" style={{ fontSize: 12 }}>View in:</Text>
+                        <Text type="secondary">View in:</Text>
                         {(["TZS", "USD"] as const).map((c) => (
                           <Button
                             key={c}
@@ -685,13 +685,13 @@ export default function TripDetailPage() {
                     items={historyItems.map(({ status, date, dateLabel, extra, isCurrent }) => ({
                       color: getStatusColor(status as TripStatus),
                       label: dateLabel ? (
-                        <Text type="secondary" style={{ fontSize: 12 }}>
+                        <Text type="secondary">
                           {dateLabel}
                           {extra && <><br /><Text type="secondary" style={{ fontSize: 11 }}>{extra}</Text></>}
                         </Text>
                       ) : (
                         <Tooltip title="This status does not record a date.">
-                          <Text type="secondary" style={{ fontSize: 12 }}>—</Text>
+                          <Text type="secondary">—</Text>
                         </Tooltip>
                       ),
                       children: (

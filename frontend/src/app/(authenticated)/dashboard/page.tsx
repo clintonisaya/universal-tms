@@ -262,7 +262,7 @@ function DashboardContent() {
       {/* KPI Cards Row */}
       <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 8 }}>
         {!statsLoading && (
-          <Text type="secondary" style={{ fontSize: 12 }}>
+          <Text type="secondary">
             Last updated: {secondsAgo}s ago
           </Text>
         )}
