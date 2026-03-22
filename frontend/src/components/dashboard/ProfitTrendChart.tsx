@@ -72,9 +72,6 @@ export function ProfitTrendChart({ data, loading }: ProfitTrendChartProps) {
               border: "1px solid var(--color-border)",
               color: "var(--color-text-primary)",
             }}
-            labelStyle={{ color: "var(--color-text-secondary)", fontWeight: 600 }}
-            itemStyle={{ color: "var(--color-text-primary)" }}
-            wrapperStyle={{ outline: "none" }}
           />
           <Legend
             verticalAlign="top"

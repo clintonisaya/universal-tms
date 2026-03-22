@@ -87,9 +87,6 @@ export function IncomeVsExpenseChart({ data, loading }: IncomeVsExpenseChartProp
                 border: "1px solid var(--color-border)",
                 color: "var(--color-text-primary)",
               }}
-              labelStyle={{ color: "var(--color-text-secondary)", fontWeight: 600 }}
-              itemStyle={{ color: "var(--color-text-primary)" }}
-              wrapperStyle={{ outline: "none" }}
             />
             <Bar dataKey="value" radius={[4, 4, 0, 0]}>
               {chartData.map((entry, index) => (
