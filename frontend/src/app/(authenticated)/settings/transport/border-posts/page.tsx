@@ -284,6 +284,7 @@ export default function BorderPostsPage() {
             rowKey="id"
             loading={loading}
             sticky={{ offsetHeader: 64 }}
+            scroll={{ x: "max-content" }}
             rowSelection={getStandardRowSelection(
               currentPage,
               pageSize,

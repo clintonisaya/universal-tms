@@ -938,6 +938,7 @@ export function ExpenseReviewModal({
           </>
         ) : (
           <Table
+            scroll={{ x: "max-content" }}
             dataSource={[
               {
                 key: "1",

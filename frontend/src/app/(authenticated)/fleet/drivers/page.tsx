@@ -312,7 +312,7 @@ export default function DriversPage() {
       style={{
         minHeight: "100vh",
         background: "var(--color-bg)",
-        padding: "24px",
+        padding: "var(--space-xl)",
       }}
     >
       <Card>
@@ -356,6 +356,7 @@ export default function DriversPage() {
             rowKey="id"
             loading={isLoading}
             sticky={{ offsetHeader: 64 }}
+            scroll={{ x: "max-content" }}
             locale={{ emptyText: <EmptyState message="No drivers registered yet." action={{ label: "Add First Driver", onClick: () => setIsCreateModalOpen(true) }} /> }}
             rowSelection={getStandardRowSelection(
               currentPage,

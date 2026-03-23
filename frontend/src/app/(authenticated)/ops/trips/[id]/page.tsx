@@ -404,7 +404,7 @@ export default function TripDetailPage() {
       style={{
         minHeight: "100vh",
         background: "var(--color-bg)",
-        padding: "24px",
+        padding: "var(--space-xl)",
       }}
     >
       <Card>
@@ -593,7 +593,7 @@ export default function TripDetailPage() {
                         )}
                         {returnWaybill && (
                           <Descriptions.Item label={<Text strong>Combined Income</Text>}>
-                            <Text strong style={{ color: "var(--color-green)", fontSize: 15 }}>
+                            <Text strong style={{ color: "var(--color-green)", fontSize: "var(--font-lg)" }}>
                               {displayCurrency}{" "}
                               {combinedIncome.toLocaleString("en-US", {
                                 minimumFractionDigits: displayCurrency === "USD" ? 2 : 0,
@@ -625,13 +625,13 @@ export default function TripDetailPage() {
                         <Text type="secondary" style={{ fontSize: 11 }}>(excl. Voided, Rejected & Returned)</Text>
                         {hasIncome && (
                           <>
-                            <Text type="secondary" style={{ fontSize: 13, margin: "0 4px" }}>|</Text>
+                            <Text type="secondary" style={{ fontSize: "var(--font-sm)", margin: "0 4px" }}>|</Text>
                             <Text strong>Net Profit:</Text>
                             <Text
                               strong
                               style={{
                                 color: (combinedIncome - totalExpensesDisplay) >= 0 ? "var(--color-green)" : "var(--color-red)",
-                                fontSize: 15,
+                                fontSize: "var(--font-lg)",
                               }}
                             >
                               {(combinedIncome - totalExpensesDisplay) >= 0 ? "+" : ""}
@@ -669,6 +669,7 @@ export default function TripDetailPage() {
                       rowKey="id"
                       loading={expensesLoading}
                       sticky
+                      scroll={{ x: "max-content" }}
                       pagination={false}
                       size="small"
                     />
@@ -695,7 +696,7 @@ export default function TripDetailPage() {
                         </Tooltip>
                       ),
                       children: (
-                        <Text strong={isCurrent} style={{ fontSize: 13 }}>
+                        <Text strong={isCurrent} style={{ fontSize: "var(--font-sm)" }}>
                           {status}
                           {isCurrent && trip.updated_by && (
                             <Text type="secondary" style={{ fontSize: 11, marginLeft: 8 }}>
@@ -777,6 +778,7 @@ export default function TripDetailPage() {
                         size="small"
                         dataSource={tripAttachments}
                         rowKey="key"
+                        scroll={{ x: "max-content" }}
                         pagination={false}
                         columns={[
                           {

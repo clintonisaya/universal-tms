@@ -13,7 +13,7 @@ export function getThemeConfig(mode: "dark" | "light"): ThemeConfig {
       fontSizeHeading1: 26,
       fontSizeHeading2: 20,
       fontSizeHeading3: 18,
-      fontSizeHeading4: 15,
+      fontSizeHeading4: 16,
       fontSizeHeading5: 14,
 
       // Brand Colors
@@ -108,7 +108,7 @@ export function getThemeConfig(mode: "dark" | "light"): ThemeConfig {
         itemHoverColor:    isDark ? '#D4A843' : '#B8922E',
         itemBorderRadius:  10,
         itemMarginInline:  8,
-        itemPaddingInline: 14,
+        itemPaddingInline: 16,
         itemHeight:        38,
         iconSize:          18,
         fontSize:          14,

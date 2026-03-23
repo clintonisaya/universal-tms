@@ -167,7 +167,7 @@ function MaintenancePageContent() {
   const { resizableColumns, components } = useResizableColumns(columns);
 
   return (
-    <div style={{ padding: "24px", minHeight: "100vh", background: "var(--color-bg)" }}>
+    <div style={{ padding: "var(--space-xl)", minHeight: "100vh", background: "var(--color-bg)" }}>
       <Card>
         <Flex vertical gap="middle" style={{ width: "100%" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -193,6 +193,7 @@ function MaintenancePageContent() {
             rowKey="id"
             loading={loading}
             sticky={{ offsetHeader: 64 }}
+            scroll={{ x: "max-content" }}
             locale={{ emptyText: <EmptyState message="No maintenance recorded yet." action={{ label: "Log Maintenance", onClick: () => setCreateDrawerOpen(true) }} /> }}
             rowSelection={getStandardRowSelection(
               currentPage,

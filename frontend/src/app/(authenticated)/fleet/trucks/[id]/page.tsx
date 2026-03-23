@@ -182,7 +182,7 @@ export default function TruckDetailPage() {
       style={{
         minHeight: "100vh",
         background: "var(--color-bg)",
-        padding: "24px",
+        padding: "var(--space-xl)",
       }}
     >
       <Card>
@@ -282,6 +282,7 @@ export default function TruckDetailPage() {
                       rowKey="id"
                       loading={maintenanceLoading}
                       sticky
+                      scroll={{ x: "max-content" }}
                       rowSelection={getStandardRowSelection(
                         currentPage,
                         pageSize,

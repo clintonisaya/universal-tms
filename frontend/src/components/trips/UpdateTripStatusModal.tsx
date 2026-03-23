@@ -493,7 +493,7 @@ export function UpdateTripStatusModal({
         ),
         content: (
           <div>
-            <Text strong style={{ fontSize: 13 }}>{status}</Text>
+            <Text strong style={{ fontSize: "var(--font-sm)" }}>{status}</Text>
             {date && (
               <Text type="secondary" style={{ display: "block" }}>
                 {formatDate(date)}
@@ -584,7 +584,7 @@ export function UpdateTripStatusModal({
             key: "history",
             label: (
               <span>
-                <Text strong style={{ fontSize: 13 }}>Status History</Text>
+                <Text strong style={{ fontSize: "var(--font-sm)" }}>Status History</Text>
                 <Text type="secondary" style={{ marginLeft: 8 }}>
                   ({timelineItems.length} entries{tripDuration ? ` · ${tripDuration}` : ""})
                 </Text>

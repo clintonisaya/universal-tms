@@ -273,6 +273,7 @@ export function ProcessPaymentModal({
       {/* Items Table */}
       <div style={{ marginBottom: 24 }}>
         <Table
+          scroll={{ x: "max-content" }}
           dataSource={[
             {
               key: "1",

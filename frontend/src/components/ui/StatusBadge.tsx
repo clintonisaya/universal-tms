@@ -47,12 +47,12 @@ export function StatusBadge({ status, colorKey = "gray", ariaLabel }: StatusBadg
       aria-label={ariaLabel ?? `Status: ${status}`}
       style={{
         display: "inline-block",
-        padding: "3px 10px",
+        padding: "var(--space-xs) var(--space-sm)",
         borderRadius: 6,
         background: statusBg(color),
         border: `1px solid ${statusBg(color).replace("0.10", "0.30")}`,
         color,
-        fontSize: 11,
+        fontSize: "var(--font-xs)",
         fontWeight: 600,
         letterSpacing: "0.02em",
         whiteSpace: "nowrap",

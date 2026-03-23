@@ -245,7 +245,7 @@ export default function WaybillsPage() {
       style={{
         minHeight: "100vh",
         background: "var(--color-bg)",
-        padding: "24px",
+        padding: "var(--space-xl)",
       }}
     >
       <Card>
@@ -290,6 +290,7 @@ export default function WaybillsPage() {
             rowKey="id"
             loading={loading}
             sticky={{ offsetHeader: 64 }}
+            scroll={{ x: "max-content" }}
             onChange={(_, filters) => setTableFilters(filters as Record<string, any>)}
             locale={{
               emptyText: hasActiveFilters ? (

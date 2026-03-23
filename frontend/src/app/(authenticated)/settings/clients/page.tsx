@@ -201,7 +201,7 @@ export default function ClientsPage() {
   ];
 
   return (
-    <div style={{ padding: "24px" }}>
+    <div style={{ padding: "var(--space-xl)" }}>
       <Card>
         <Space orientation="vertical" size="middle" style={{ width: "100%" }}>
           <div
@@ -242,6 +242,7 @@ export default function ClientsPage() {
             rowKey="id"
             loading={loading}
             sticky={{ offsetHeader: 64 }}
+            scroll={{ x: "max-content" }}
             rowSelection={getStandardRowSelection(
               currentPage,
               pageSize,

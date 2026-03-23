@@ -222,7 +222,7 @@ function LoginForm() {
                   border: "1px solid color-mix(in srgb, var(--color-red) 30%, transparent)",
                   borderRadius: 8,
                   color: "var(--color-red)",
-                  fontSize: 13,
+                  fontSize: "var(--font-sm)",
                 }}
               >
                 {errorMsg}
@@ -240,7 +240,7 @@ function LoginForm() {
                 border: "none",
                 borderRadius: 10,
                 color: "var(--color-gold-text)",
-                fontSize: 13,
+                fontSize: "var(--font-sm)",
                 fontWeight: 700,
                 letterSpacing: "0.08em",
                 textTransform: "uppercase",

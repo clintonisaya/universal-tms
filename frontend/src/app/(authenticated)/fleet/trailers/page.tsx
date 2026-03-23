@@ -242,7 +242,7 @@ export default function TrailersPage() {
       style={{
         minHeight: "100vh",
         background: "var(--color-bg)",
-        padding: "24px",
+        padding: "var(--space-xl)",
       }}
     >
       <Card>
@@ -286,6 +286,7 @@ export default function TrailersPage() {
             rowKey="id"
             loading={isLoading}
             sticky={{ offsetHeader: 64 }}
+            scroll={{ x: "max-content" }}
             locale={{ emptyText: <EmptyState message="No trailers registered yet." /> }}
             rowSelection={getStandardRowSelection(
               currentPage,

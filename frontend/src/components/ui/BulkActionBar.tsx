@@ -41,7 +41,7 @@ const BulkActionBar: React.FC<BulkActionBarProps> = ({
                 size="small"
                 styles={{
                     body: {
-                        padding: '8px 16px',
+                        padding: 'var(--space-sm) var(--space-lg)',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'space-between',

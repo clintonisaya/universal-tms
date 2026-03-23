@@ -219,7 +219,7 @@ export function NotificationCenter({
                         style={{
                           fontWeight: n.read ? 400 : 600,
                           color: n.read ? "var(--color-text-muted)" : "inherit",
-                          fontSize: 13,
+                          fontSize: "var(--font-sm)",
                         }}
                         ellipsis
                       >

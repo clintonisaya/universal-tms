@@ -130,7 +130,7 @@ function NewTripForm() {
       style={{
         minHeight: "100vh",
         background: "var(--color-bg)",
-        padding: "24px",
+        padding: "var(--space-xl)",
       }}
     >
       <div style={{ maxWidth: 800, margin: "0 auto" }}>

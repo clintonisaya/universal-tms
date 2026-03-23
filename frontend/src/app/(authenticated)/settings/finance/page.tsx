@@ -190,7 +190,7 @@ export default function ExchangeRateSettingsPage() {
   const { resizableColumns, components } = useResizableColumns(columns);
 
   return (
-    <div style={{ padding: "24px", minHeight: "100vh", background: "var(--color-bg)" }}>
+    <div style={{ padding: "var(--space-xl)", minHeight: "100vh", background: "var(--color-bg)" }}>
       <Card>
         <Space orientation="vertical" size="middle" style={{ width: "100%" }}>
           <div
@@ -233,6 +233,7 @@ export default function ExchangeRateSettingsPage() {
             rowKey="id"
             loading={loading}
             sticky={{ offsetHeader: 64 }}
+            scroll={{ x: "max-content" }}
             rowSelection={getStandardRowSelection(
               currentPage,
               pageSize,

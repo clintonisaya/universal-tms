@@ -333,6 +333,7 @@ export default function LocationsPage() {
             rowKey="id"
             loading={loading}
             sticky={{ offsetHeader: 64 }}
+            scroll={{ x: "max-content" }}
             pagination={false}
             rowSelection={getStandardRowSelection(
               1,

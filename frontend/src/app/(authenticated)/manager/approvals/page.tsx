@@ -222,7 +222,7 @@ function ApprovalPageContent() {
   const { resizableColumns, components } = useResizableColumns(columns);
 
   return (
-    <div style={{ minHeight: "100vh", background: "var(--color-bg)", padding: "24px" }}>
+    <div style={{ minHeight: "100vh", background: "var(--color-bg)", padding: "var(--space-xl)" }}>
       <Card>
         <Space orientation="vertical" size="middle" style={{ width: "100%" }}>
           {/* Header */}
@@ -287,6 +287,7 @@ function ApprovalPageContent() {
             rowKey="id"
             loading={loading}
             sticky={{ offsetHeader: 64 }}
+            scroll={{ x: "max-content" }}
             locale={{
               emptyText:
                 statusFilter === "Pending Manager" && !categoryFilter ? (

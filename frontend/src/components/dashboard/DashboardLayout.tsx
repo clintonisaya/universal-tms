@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { Layout, Menu, Dropdown } from "antd";
 import type { MenuProps } from "antd";
@@ -221,6 +221,26 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   const { hasAnyPermission } = usePermissions();
   const { mode } = useThemeMode();
   const [collapsed, setCollapsed] = useState(false);
+  const [isCompact, setIsCompact] = useState(false);
+
+  // Auto-collapse sidebar on small viewports (≤1024px)
+  useEffect(() => {
+    const mql = window.matchMedia("(max-width: 1024px)");
+    const handleChange = (e: MediaQueryListEvent | MediaQueryList) => {
+      setIsCompact(e.matches);
+      if (e.matches) setCollapsed(true);
+    };
+    handleChange(mql);
+    mql.addEventListener("change", handleChange);
+    return () => mql.removeEventListener("change", handleChange);
+  }, []);
+
+  const handleCollapse = useCallback((val: boolean) => {
+    // On compact screens, prevent expanding sidebar (it would eat content width)
+    if (isCompact && !val) return;
+    setCollapsed(val);
+  }, [isCompact]);
+
   const { data: todoData, isLoading: todoCountLoading } = useTodoCount(!!user);
   const todoCount = todoData?.total ?? 0;
 
@@ -297,7 +317,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
       {/* ── SIDEBAR ── */}
       <Sider
         collapsed={collapsed}
-        onCollapse={setCollapsed}
+        onCollapse={handleCollapse}
         style={{
           background: "var(--color-card)",
           borderRight: "1px solid var(--color-border)",
@@ -317,7 +337,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
           {/* Logo area */}
           <div
             style={{
-              padding: collapsed ? "16px 0" : "20px 24px",
+              padding: collapsed ? "var(--space-lg) 0" : "var(--space-xl)",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
@@ -366,19 +386,19 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
               style={{
                 borderRight: 0,
                 background: "transparent",
-                marginTop: 16,
+                marginTop: "var(--space-lg)",
               }}
             />
           </div>
 
           {/* Collapse toggle — bottom of sidebar */}
-          <div style={{ padding: 8, flexShrink: 0 }}>
+          <div style={{ padding: "var(--space-sm)", flexShrink: 0 }}>
             <button
               type="button"
-              onClick={() => setCollapsed(!collapsed)}
+              onClick={() => handleCollapse(!collapsed)}
               style={{
                 width: "100%",
-                padding: 10,
+                padding: "var(--space-sm)",
                 background: "var(--color-surface)",
                 border: "1px solid var(--color-border)",
                 borderRadius: 8,
@@ -401,7 +421,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
         {/* Header */}
         <Header
           style={{
-            padding: "0 32px",
+            padding: isCompact ? "0 16px" : "0 32px",
             background: "var(--color-header-bg)",
             backdropFilter: "blur(12px)",
             borderBottom: "1px solid var(--color-border)",
@@ -443,8 +463,8 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                 style={{
                   display: "flex",
                   alignItems: "center",
-                  gap: 10,
-                  padding: "6px 12px 6px 6px",
+                  gap: "var(--space-sm)",
+                  padding: "var(--space-xs) var(--space-md) var(--space-xs) var(--space-xs)",
                   background: "var(--color-surface)",
                   borderRadius: 10,
                   border: "1px solid var(--color-border)",
@@ -486,7 +506,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
         {/* Content */}
         <Content
           style={{
-            padding: 32,
+            padding: isCompact ? 16 : 32,
             background: "transparent",
             minHeight: 280,
           }}

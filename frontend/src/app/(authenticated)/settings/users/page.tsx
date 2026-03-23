@@ -147,7 +147,7 @@ function PermissionToggles({
                 const isOn = value.includes(p.value);
                 return (
                   <Flex key={p.value} justify="space-between" align="center">
-                    <Text style={{ fontSize: 13, color: isOn ? "var(--color-text-primary)" : "var(--color-text-muted)" }}>
+                    <Text style={{ fontSize: "var(--font-sm)", color: isOn ? "var(--color-text-primary)" : "var(--color-text-muted)" }}>
                       {p.label}
                     </Text>
                     <Switch
@@ -495,6 +495,7 @@ const UsersContent = () => {
             rowKey="id"
             loading={loading}
             sticky={{ offsetHeader: 64 }}
+            scroll={{ x: "max-content" }}
             pagination={{
               current: currentPage,
               pageSize,
@@ -579,7 +580,7 @@ const UsersContent = () => {
 
           {/* Separator + Permissions */}
           <Divider style={{ borderColor: "var(--color-border)", margin: "8px 0 16px" }}>
-            <Text strong style={{ color: "var(--color-text-secondary)", fontSize: 13, letterSpacing: 0.5 }}>PERMISSIONS</Text>
+            <Text strong style={{ color: "var(--color-text-secondary)", fontSize: "var(--font-sm)", letterSpacing: 0.5 }}>PERMISSIONS</Text>
           </Divider>
 
           <Form.Item name="permissions" noStyle>

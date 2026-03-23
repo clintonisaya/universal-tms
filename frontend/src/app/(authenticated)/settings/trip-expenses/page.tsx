@@ -410,6 +410,7 @@ export default function TripExpenseTypesPage() {
             rowKey="key"
             loading={loading}
             sticky={{ offsetHeader: 64 }}
+            scroll={{ x: "max-content" }}
             pagination={false}
             rowSelection={getStandardRowSelection(
               1,

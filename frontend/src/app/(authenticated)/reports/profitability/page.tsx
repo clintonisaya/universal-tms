@@ -429,7 +429,7 @@ export default function TripProfitabilityPage() {
       style={{
         minHeight: "100vh",
         background: "var(--color-bg)",
-        padding: "24px",
+        padding: "var(--space-xl)",
       }}
     >
       {/* Summary Cards */}

@@ -41,7 +41,7 @@ export function MetricCard({
         background: "var(--color-card)",
         border: "1px solid var(--color-border)",
         borderRadius: 14,
-        padding: "20px 22px",
+        padding: "var(--space-xl)",
         flex: 1,
         minWidth: 180,
         position: "relative",
@@ -70,12 +70,12 @@ export function MetricCard({
           {/* Label */}
           <div
             style={{
-              fontSize: 11,
+              fontSize: "var(--font-xs)",
               fontWeight: 600,
               color: "var(--color-text-muted)",
               letterSpacing: "0.08em",
               textTransform: "uppercase",
-              marginBottom: 8,
+              marginBottom: "var(--space-sm)",
             }}
           >
             {title}

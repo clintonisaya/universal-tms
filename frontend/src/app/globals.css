@@ -64,7 +64,7 @@ tr:hover > td .row-actions {
   bottom: 0;
   z-index: 100;
   background: var(--color-card);
-  padding: 12px 0;
+  padding: var(--space-md) 0;
   margin: 0 !important;
   border-top: 1px solid var(--color-border);
   box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.04);
@@ -124,6 +124,16 @@ tr:hover > td .row-actions {
   --font-base: 14px;
   --font-lg: 16px;
   --font-xl: 20px;
+}
+
+/* ─── SPACING SCALE (4px base unit) ── */
+:root {
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 12px;
+  --space-lg: 16px;
+  --space-xl: 24px;
+  --space-2xl: 32px;
 }
 
 /* Secondary text — eliminates per-instance fontSize: 12 overrides */
@@ -219,19 +229,19 @@ tr:hover > td .row-actions {
 
 .ant-table-thead > tr > th,
 .ant-table-thead > tr > td {
-  font-size: 11px !important;
+  font-size: var(--font-xs) !important;
   font-weight: 600 !important;
   text-transform: uppercase !important;
   letter-spacing: 0.06em !important;
-  padding: 14px 16px !important;
+  padding: var(--space-md) var(--space-lg) !important;
   border-bottom: 1px solid var(--color-border) !important;
   background: transparent !important;
   white-space: nowrap;
 }
 
 .ant-table-tbody > tr > td {
-  font-size: 14px;
-  padding: 12px 16px !important;
+  font-size: var(--font-base);
+  padding: var(--space-md) var(--space-lg) !important;
   border-bottom: 1px solid var(--color-border) !important;
   color: var(--color-text-primary);
 }
@@ -241,7 +251,7 @@ tr:hover > td .row-actions {
 }
 
 .ant-table-wrapper .ant-pagination {
-  padding: 12px 16px !important;
+  padding: var(--space-md) var(--space-lg) !important;
 }
 
 /* ── DRAWER OVERRIDES ── */
@@ -378,10 +388,10 @@ tr:hover > td .row-actions {
 /* ── PAGE TITLE UTILITY CLASS (Story 7.8) ── */
 
 .page-title {
-  font-size: 20px;
+  font-size: var(--font-xl);
   font-weight: 700;
   color: var(--color-text-primary);
-  margin: 0 0 24px 0;
+  margin: 0 0 var(--space-xl) 0;
 }
 
 /* ── GLOBAL FONT, SCROLLBAR & RESETS (Story 7.9) ── */
@@ -415,4 +425,35 @@ textarea::placeholder {
 :root {
   scrollbar-width: thin;
   scrollbar-color: var(--color-scroll-thumb) transparent;
+}
+
+/* ─── RESPONSIVE BREAKPOINTS ── */
+
+/* Tablet / small laptop (760–1024px) — reduce spacing to reclaim content width */
+@media (max-width: 1024px) {
+  :root {
+    --space-xl: 16px;
+    --space-2xl: 24px;
+  }
+
+  .ant-table-thead > tr > th,
+  .ant-table-thead > tr > td {
+    padding: var(--space-sm) var(--space-md) !important;
+  }
+
+  .ant-table-tbody > tr > td {
+    padding: var(--space-sm) var(--space-md) !important;
+  }
+
+  .ant-table-wrapper .ant-pagination {
+    padding: var(--space-sm) var(--space-md) !important;
+  }
+}
+
+/* Small tablet / large phone (< 768px) — further tighten */
+@media (max-width: 767px) {
+  :root {
+    --space-xl: 12px;
+    --space-2xl: 16px;
+  }
 }

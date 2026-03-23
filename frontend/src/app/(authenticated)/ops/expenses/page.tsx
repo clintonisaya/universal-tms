@@ -285,7 +285,7 @@ export default function ExpensesPage() {
       style={{
         minHeight: "100vh",
         background: "var(--color-bg)",
-        padding: "24px",
+        padding: "var(--space-xl)",
       }}
     >
       <Card>
@@ -349,6 +349,7 @@ export default function ExpensesPage() {
             rowKey="id"
             loading={loading}
             sticky={{ offsetHeader: 64 }}
+            scroll={{ x: "max-content" }}
             onChange={(_, filters) => setTableFilters(filters as Record<string, any>)}
             locale={{
               emptyText: hasActiveFilters ? (

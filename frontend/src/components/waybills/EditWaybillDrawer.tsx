@@ -355,7 +355,7 @@ export function EditWaybillDrawer({
                     }}
                   >
                     <StatusBadge status={String(index + 1)} colorKey="gray" />
-                    <span style={{ flex: 1, fontSize: 13 }}>
+                    <span style={{ flex: 1, fontSize: "var(--font-sm)" }}>
                       <strong>{bp.display_name}</strong>{" "}
                       <span style={{ color: "var(--color-text-muted)" }}>
                         ({bp.side_a_name} → {bp.side_b_name})

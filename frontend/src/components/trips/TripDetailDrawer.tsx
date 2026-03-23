@@ -846,7 +846,7 @@ export function TripDetailDrawer({ open, onClose, tripId, onEdit }: TripDetailDr
                           )}
                           {trip.return_waybill_rate && (
                             <Descriptions.Item label={<Text strong>Combined Income</Text>}>
-                              <Text strong style={{ color: "var(--color-green)", fontSize: 15 }}>
+                              <Text strong style={{ color: "var(--color-green)", fontSize: "var(--font-lg)" }}>
                                 {activeCurrency} {fmtAmt(combinedIncome)}
                               </Text>
                             </Descriptions.Item>
@@ -858,7 +858,7 @@ export function TripDetailDrawer({ open, onClose, tripId, onEdit }: TripDetailDr
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                         <Space align="center" wrap>
                           <Text strong>Total Expenses:</Text>
-                          <Text strong style={{ color: "var(--color-red)", fontSize: 15 }}>
+                          <Text strong style={{ color: "var(--color-red)", fontSize: "var(--font-lg)" }}>
                             {activeCurrency} {fmtAmt(expensesTotal)}
                           </Text>
                           <Text type="secondary" style={{ fontSize: 11 }}>
@@ -869,11 +869,11 @@ export function TripDetailDrawer({ open, onClose, tripId, onEdit }: TripDetailDr
                           {/* Net Profit — admin/manager only */}
                           {showFinancials && hasIncome && (
                             <>
-                              <Text type="secondary" style={{ fontSize: 13, margin: "0 4px" }}>|</Text>
+                              <Text type="secondary" style={{ fontSize: "var(--font-sm)", margin: "0 4px" }}>|</Text>
                               <Text strong>Net Profit:</Text>
                               <Text
                                 strong
-                                style={{ color: netProfit >= 0 ? "var(--color-green)" : "var(--color-red)", fontSize: 15 }}
+                                style={{ color: netProfit >= 0 ? "var(--color-green)" : "var(--color-red)", fontSize: "var(--font-lg)" }}
                               >
                                 {netProfit >= 0 ? "+" : ""}{activeCurrency} {fmtAmt(netProfit)}
                               </Text>
@@ -901,6 +901,7 @@ export function TripDetailDrawer({ open, onClose, tripId, onEdit }: TripDetailDr
                         dataSource={expenses}
                         rowKey="id"
                         loading={expensesLoading}
+                        scroll={{ x: "max-content" }}
                         pagination={false}
                         size="small"
                       />
@@ -1054,6 +1055,7 @@ export function TripDetailDrawer({ open, onClose, tripId, onEdit }: TripDetailDr
                           size="small"
                           dataSource={tripAttachments}
                           rowKey="key"
+                          scroll={{ x: "max-content" }}
                           pagination={false}
                           columns={[
                             {
@@ -1162,7 +1164,7 @@ export function TripDetailDrawer({ open, onClose, tripId, onEdit }: TripDetailDr
               dataSource={openWaybills}
               rowKey="id"
               pagination={false}
-              scroll={{ y: 300 }}
+              scroll={{ x: "max-content", y: 300 }}
               rowSelection={{
                 type: "radio",
                 selectedRowKeys: selectedReturnWaybillId ? [selectedReturnWaybillId] : [],

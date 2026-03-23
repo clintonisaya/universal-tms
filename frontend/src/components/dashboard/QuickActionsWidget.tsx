@@ -85,7 +85,7 @@ export function QuickActionsWidget() {
     <Card
       size="small"
       style={{ marginBottom: 16 }}
-      styles={{ body: { padding: "10px 16px" } }}
+      styles={{ body: { padding: "var(--space-sm) var(--space-lg)" } }}
     >
       <Space wrap align="center">
         <Text type="secondary" style={{ marginRight: 4 }}>

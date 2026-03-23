@@ -108,7 +108,7 @@ export default function NewMaintenancePage() {
   };
 
   return (
-    <div style={{ padding: "24px", minHeight: "100vh", background: "var(--color-bg)" }}>
+    <div style={{ padding: "var(--space-xl)", minHeight: "100vh", background: "var(--color-bg)" }}>
       <div style={{ maxWidth: 800, margin: "0 auto" }}>
         <Space orientation="vertical" size="large" style={{ width: "100%" }}>
           <Space>

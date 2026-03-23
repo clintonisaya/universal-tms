@@ -230,7 +230,7 @@ export default function TrucksPage() {
       style={{
         minHeight: "100vh",
         background: "var(--color-bg)",
-        padding: "24px",
+        padding: "var(--space-xl)",
       }}
     >
       <Card>
@@ -274,6 +274,7 @@ export default function TrucksPage() {
             rowKey="id"
             loading={isLoading}
             sticky={{ offsetHeader: 64 }}
+            scroll={{ x: "max-content" }}
             locale={{ emptyText: <EmptyState message="No trucks registered yet." action={{ label: "Register First Truck", onClick: () => setIsCreateModalOpen(true) }} /> }}
             rowSelection={getStandardRowSelection(
               currentPage,

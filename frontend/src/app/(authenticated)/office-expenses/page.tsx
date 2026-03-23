@@ -217,7 +217,7 @@ export default function OfficeExpensesPage() {
       style={{
         minHeight: "100vh",
         background: "var(--color-bg)",
-        padding: "24px",
+        padding: "var(--space-xl)",
       }}
     >
       <Card>
@@ -272,6 +272,7 @@ export default function OfficeExpensesPage() {
             rowKey="id"
             loading={loading}
             sticky={{ offsetHeader: 64 }}
+            scroll={{ x: "max-content" }}
             locale={{ emptyText: <EmptyState message="No office expenses found." /> }}
             rowSelection={getStandardRowSelection(
               currentPage,

@@ -243,7 +243,7 @@ export function RecentTripsTable({ data, loading }: RecentTripsTableProps) {
         loading={loading}
         pagination={false}
         size="small"
-        tableLayout="fixed"
+        scroll={{ x: "max-content" }}
       />
     </div>
   );

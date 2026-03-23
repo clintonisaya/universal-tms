@@ -275,7 +275,7 @@ function TasksContent() {
   ];
 
   return (
-    <div style={{ minHeight: "100vh", background: "var(--color-bg)", padding: "24px" }}>
+    <div style={{ minHeight: "100vh", background: "var(--color-bg)", padding: "var(--space-xl)" }}>
       <Card>
         <Flex vertical gap="middle" style={{ width: "100%" }}>
           {/* Header */}

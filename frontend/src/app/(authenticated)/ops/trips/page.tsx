@@ -344,7 +344,7 @@ function TripsPageContent() {
       style={{
         minHeight: "100vh",
         background: "var(--color-bg)",
-        padding: "24px",
+        padding: "var(--space-xl)",
       }}
     >
       <Card>
@@ -389,6 +389,7 @@ function TripsPageContent() {
             rowKey="id"
             loading={loading}
             sticky={{ offsetHeader: 64 }}
+            scroll={{ x: "max-content" }}
             onRow={(record) => ({
               style: record.is_delayed ? { backgroundColor: "color-mix(in srgb, var(--color-orange) 10%, transparent)" } : undefined,
             })}
