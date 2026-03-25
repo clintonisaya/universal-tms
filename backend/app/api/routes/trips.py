@@ -24,6 +24,7 @@ from app.models import (
     DriverPublic,
     DriverStatus,
     DriversPublic,
+    ExpenseRequest,
     Message,
     Trailer,
     TrailerPublic,
@@ -838,6 +839,30 @@ def update_trip(
                     return_waybill.status = TRIP_TO_RETURN_WAYBILL_STATUS[new_status]
                     session.add(return_waybill)
 
+    # --- Truck change: regenerate trip number & migrate expense numbers ---
+    if "truck_id" in update_dict and update_dict["truck_id"] != trip.truck_id:
+        new_truck_for_renumber = session.get(Truck, update_dict["truck_id"])
+        if new_truck_for_renumber:
+            old_trip_number = trip.trip_number
+            new_trip_number = generate_trip_number(session, new_truck_for_renumber.plate_number)
+            update_dict["trip_number"] = new_trip_number
+
+            # Migrate expense numbers
+            expenses = session.exec(
+                select(ExpenseRequest).where(ExpenseRequest.trip_id == trip.id)
+            ).all()
+            for expense in expenses:
+                if expense.expense_number and old_trip_number in expense.expense_number:
+                    expense.expense_number = expense.expense_number.replace(
+                        old_trip_number, new_trip_number, 1
+                    )
+                    session.add(expense)
+
+            logger.info(
+                "Truck change: trip %s renumbered %s → %s, %d expenses migrated",
+                trip.id, old_trip_number, new_trip_number, len(expenses),
+            )
+
     # Sync waybill status when waybill_id is being newly attached without a status change
     if "waybill_id" in update_dict and "status" not in update_dict:
         new_waybill_id = update_dict["waybill_id"]
@@ -870,6 +895,46 @@ def update_trip(
     return trip
 
 
+@router.get("/{id}/swap-truck-preview")
+def swap_truck_preview(
+    *,
+    session: SessionDep,
+    current_user: CurrentUser,
+    id: uuid.UUID,
+    truck_id: uuid.UUID = Query(..., description="New truck ID to preview swap"),
+) -> Any:
+    """
+    Preview what a truck swap would change (trip number, expense count).
+    Does NOT modify any data — read-only preview for confirmation dialog.
+    """
+    if current_user.role not in WRITE_ROLES:
+        raise HTTPException(status_code=403, detail="Not enough permissions")
+
+    trip = session.get(Trip, id)
+    if not trip:
+        raise HTTPException(status_code=404, detail="Trip not found")
+
+    new_truck = session.get(Truck, truck_id)
+    if not new_truck:
+        raise HTTPException(status_code=404, detail="New truck not found")
+    if not is_truck_available(new_truck):
+        raise HTTPException(status_code=400, detail="New truck is not available")
+
+    # Count linked expenses (trip-linked only, not office expenses)
+    expense_count_stmt = (
+        select(func.count())
+        .select_from(ExpenseRequest)
+        .where(ExpenseRequest.trip_id == trip.id)
+    )
+    expense_count = session.exec(expense_count_stmt).one()
+
+    return {
+        "current_trip_number": trip.trip_number,
+        "new_truck_plate": new_truck.plate_number,
+        "expenses_to_renumber": expense_count,
+    }
+
+
 @router.put("/{id}/swap-truck", response_model=TripPublic)
 def swap_truck(
     *,
@@ -883,6 +948,8 @@ def swap_truck(
 
     - Old truck status changes to Idle
     - New truck takes the current trip status
+    - Trip number is regenerated based on new truck's plate
+    - Linked expense numbers are updated to reflect the new trip number
     """
     # RBAC: Only admin, manager, and ops can swap trucks
     if current_user.role not in WRITE_ROLES:
@@ -912,8 +979,30 @@ def swap_truck(
         new_truck.status = TruckStatus.in_transit
     session.add(new_truck)
 
+    # --- Trip number regeneration ---
+    old_trip_number = trip.trip_number
+    new_trip_number = generate_trip_number(session, new_truck.plate_number)
+    trip.trip_number = new_trip_number
+
+    # --- Expense number migration ---
+    expenses = session.exec(
+        select(ExpenseRequest).where(ExpenseRequest.trip_id == trip.id)
+    ).all()
+    for expense in expenses:
+        if expense.expense_number and old_trip_number in expense.expense_number:
+            expense.expense_number = expense.expense_number.replace(
+                old_trip_number, new_trip_number, 1
+            )
+            session.add(expense)
+
+    logger.info(
+        "Truck swap: trip %s renumbered %s → %s, %d expenses migrated",
+        trip.id, old_trip_number, new_trip_number, len(expenses),
+    )
+
     # Update trip with new truck
     trip.truck_id = swap_in.truck_id
+    trip.updated_by_id = current_user.id
     session.add(trip)
 
     session.commit()

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
     Drawer,
     Form,
@@ -12,11 +12,12 @@ import {
     Typography,
     Divider,
     Spin,
+    Modal,
 } from "antd";
-import { SaveOutlined } from "@ant-design/icons";
+import { SaveOutlined, WarningOutlined } from "@ant-design/icons";
 import type { TripDetailed } from "@/types/trip";
 
-const { Title } = Typography;
+const { Title, Text } = Typography;
 const { Option } = Select;
 
 interface Truck {
@@ -72,6 +73,8 @@ export function UpdateTripDrawer({
     const [loading, setLoading] = useState(false);
     const [submitting, setSubmitting] = useState(false);
     const [selectedWaybill, setSelectedWaybill] = useState<Waybill | null>(null);
+    const originalTruckId = useRef<string | null>(null);
+    const currentTripNumber = useRef<string | null>(null);
 
     useEffect(() => {
         if (open && tripId) {
@@ -79,6 +82,8 @@ export function UpdateTripDrawer({
         } else if (!open) {
             form.resetFields();
             setSelectedWaybill(null);
+            originalTruckId.current = null;
+            currentTripNumber.current = null;
         }
     }, [open, tripId, form]);
 
@@ -89,6 +94,9 @@ export function UpdateTripDrawer({
             const tripRes = await fetch(`/api/v1/trips/${tripId}`, { credentials: "include" });
             if (!tripRes.ok) throw new Error("Failed to fetch trip details");
             const tripData: TripDetailed = await tripRes.json();
+
+            originalTruckId.current = tripData.truck_id;
+            currentTripNumber.current = tripData.trip_number;
 
             const [trucksRes, trailersRes, driversRes, waybillsRes] = await Promise.all([
                 fetch("/api/v1/trips/available-trucks", { credentials: "include" }),
@@ -165,7 +173,7 @@ export function UpdateTripDrawer({
         }
     };
 
-    const onFinish = async (values: any) => {
+    const submitUpdate = async (values: any) => {
         if (!tripId) return;
         setSubmitting(true);
         try {
@@ -199,6 +207,71 @@ export function UpdateTripDrawer({
             message.error("Network error");
         } finally {
             setSubmitting(false);
+        }
+    };
+
+    const onFinish = async (values: any) => {
+        if (!tripId) return;
+
+        const truckChanged = originalTruckId.current && values.truck_id !== originalTruckId.current;
+
+        if (truckChanged) {
+            // Fetch preview data to show in confirmation
+            try {
+                const previewRes = await fetch(
+                    `/api/v1/trips/${tripId}/swap-truck-preview?truck_id=${values.truck_id}`,
+                    { credentials: "include" }
+                );
+
+                if (!previewRes.ok) {
+                    const err = await previewRes.json();
+                    message.error(typeof err.detail === "string" ? err.detail : "Failed to preview truck change");
+                    return;
+                }
+
+                const preview = await previewRes.json();
+                const newTruck = trucks.find(t => t.id === values.truck_id);
+                const newPlate = newTruck?.plate_number || preview.new_truck_plate;
+
+                Modal.confirm({
+                    title: "Confirm Vehicle Change",
+                    icon: <WarningOutlined style={{ color: "#faad14" }} />,
+                    content: (
+                        <div>
+                            <p>
+                                Changing the truck will <Text strong>regenerate the trip number</Text> based
+                                on the new vehicle.
+                            </p>
+                            <div style={{ background: "#fafafa", padding: 12, borderRadius: 6, margin: "12px 0" }}>
+                                <div>
+                                    <Text type="secondary">Current trip: </Text>
+                                    <Text strong>{preview.current_trip_number}</Text>
+                                </div>
+                                <div>
+                                    <Text type="secondary">New truck: </Text>
+                                    <Text strong>{newPlate}</Text>
+                                </div>
+                                {preview.expenses_to_renumber > 0 && (
+                                    <div style={{ marginTop: 8 }}>
+                                        <Text type="warning">
+                                            {preview.expenses_to_renumber} expense{preview.expenses_to_renumber > 1 ? "s" : ""} will
+                                            be renumbered to match the new trip number.
+                                        </Text>
+                                    </div>
+                                )}
+                            </div>
+                            <Text type="secondary">Previous numbers will be kept in the system logs.</Text>
+                        </div>
+                    ),
+                    okText: "Confirm Change",
+                    cancelText: "Cancel",
+                    onOk: () => submitUpdate(values),
+                });
+            } catch {
+                message.error("Network error while previewing truck change");
+            }
+        } else {
+            submitUpdate(values);
         }
     };
 
