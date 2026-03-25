@@ -839,10 +839,25 @@ def update_trip(
                     return_waybill.status = TRIP_TO_RETURN_WAYBILL_STATUS[new_status]
                     session.add(return_waybill)
 
-    # --- Truck change: regenerate trip number & migrate expense numbers ---
+    # --- Truck change: sync statuses, regenerate trip number & migrate expenses ---
     if "truck_id" in update_dict and update_dict["truck_id"] != trip.truck_id:
+        # Set old truck back to idle
+        old_truck = session.get(Truck, trip.truck_id)
+        if old_truck:
+            old_truck.status = TruckStatus.idle
+            session.add(old_truck)
+
         new_truck_for_renumber = session.get(Truck, update_dict["truck_id"])
         if new_truck_for_renumber:
+            # Set new truck status to match current trip status
+            current_status = TripStatus(trip.status) if isinstance(trip.status, str) else trip.status
+            if current_status in TRIP_TO_TRUCK_STATUS:
+                new_truck_for_renumber.status = TRIP_TO_TRUCK_STATUS[current_status]
+            else:
+                new_truck_for_renumber.status = TruckStatus.in_transit
+            session.add(new_truck_for_renumber)
+
+            # Regenerate trip number based on new truck
             old_trip_number = trip.trip_number
             new_trip_number = generate_trip_number(session, new_truck_for_renumber.plate_number)
             update_dict["trip_number"] = new_trip_number
