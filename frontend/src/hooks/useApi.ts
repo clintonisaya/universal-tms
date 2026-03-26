@@ -59,6 +59,8 @@ export const queryKeys = {
   borderPosts: ["borderPosts"] as const,
   tripBorderCrossings: (tripId: string) => ["tripBorderCrossings", tripId] as const,
   nextBorder: (tripId: string, direction: string) => ["nextBorder", tripId, direction] as const,
+  invoices: ["invoices"] as const,
+  invoice: (id: string) => ["invoices", id] as const,
 };
 
 // Trucks
@@ -120,6 +122,24 @@ export function useWaybills(enabled = true) {
     queryKey: queryKeys.waybills,
     queryFn: () => apiFetch<{ data: any[]; count: number }>("/api/v1/waybills"),
     enabled,
+  });
+}
+
+// Invoices
+export function useInvoices(params?: { status?: string }, enabled = true) {
+  const qs = params?.status ? `?status=${params.status}` : "";
+  return useQuery({
+    queryKey: [...queryKeys.invoices, params?.status || "all"],
+    queryFn: () => apiFetch<{ data: any[]; count: number }>(`/api/v1/invoices${qs}`),
+    enabled,
+  });
+}
+
+export function useInvoice(id: string) {
+  return useQuery({
+    queryKey: queryKeys.invoice(id),
+    queryFn: () => apiFetch<any>(`/api/v1/invoices/${id}`),
+    enabled: !!id,
   });
 }
 
@@ -338,6 +358,8 @@ export function useInvalidateQueries() {
     invalidateBorderPosts: () => queryClient.invalidateQueries({ queryKey: queryKeys.borderPosts }),
     invalidateTripBorderCrossings: (tripId: string) => queryClient.invalidateQueries({ queryKey: queryKeys.tripBorderCrossings(tripId) }),
     invalidateNextBorder: (tripId: string) => queryClient.invalidateQueries({ queryKey: ["nextBorder", tripId] }),
+    invalidateInvoices: () => queryClient.invalidateQueries({ queryKey: queryKeys.invoices }),
+    invalidateInvoice: (id: string) => queryClient.invalidateQueries({ queryKey: queryKeys.invoice(id) }),
     invalidateAll: () => queryClient.invalidateQueries(),
   };
 }

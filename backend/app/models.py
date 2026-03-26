@@ -422,6 +422,10 @@ class WaybillPublic(WaybillBase):
     updated_by_id: uuid.UUID | None = None
     created_by: UserPublic | None = None
     updated_by: UserPublic | None = None
+    # Invoice enrichment (set by API, not from DB column)
+    invoice_id: uuid.UUID | None = None
+    invoice_number: str | None = None
+    invoice_status: str | None = None
 
 
 class WaybillsPublic(SQLModel):
@@ -1308,3 +1312,140 @@ class TripBorderCrossingPublic(SQLModel):
     created_at: datetime | None = None
     updated_at: datetime | None = None
     border_post: BorderPostPublic | None = None
+
+
+# ============================================================================
+# Invoice Models — Invoice Generation & Payment Verification
+# ============================================================================
+
+
+class InvoiceStatus(str, Enum):
+    """Invoice lifecycle statuses"""
+    draft = "draft"
+    issued = "issued"
+    partially_paid = "partially_paid"
+    fully_paid = "fully_paid"
+    voided = "voided"
+
+
+class InvoiceBase(SQLModel):
+    invoice_number: str = Field(index=True, unique=True, description="Display number: INV-YYYY-NNNN")
+    invoice_seq: int = Field(description="Sequential integer for auto-increment")
+    date: str = Field(max_length=10, description="Invoice date ISO: YYYY-MM-DD")
+    due_date: str | None = Field(default=None, max_length=10, description="Optional payment due date")
+    status: InvoiceStatus = Field(default=InvoiceStatus.draft, description="Invoice lifecycle status")
+
+    # Company (static, from system settings)
+    company_name: str = Field(default="EDUPO COMPANY LIMITED", max_length=255)
+    company_address: str = Field(default="P.O.Box 999, Dar es Salaam, Tanzania", max_length=500)
+    company_tin: str = Field(default="168883285", max_length=50)
+    company_phone: str = Field(default="+255 718 478 666", max_length=50)
+    company_email: str = Field(default="info@edupocompany.com", max_length=255)
+
+    # Customer
+    customer_name: str = Field(max_length=255, description="Customer company name")
+    customer_tin: str = Field(default="", max_length=50, description="Customer TIN")
+    client_id: uuid.UUID | None = Field(default=None, foreign_key="client.id", description="FK to Client record")
+    regarding: str = Field(default="TRANSPORTATION", max_length=255)
+
+    # Financial
+    currency: str = Field(default="USD", max_length=3, description="Base currency")
+    vat_rate: Decimal = Field(default=Decimal("0"), max_digits=5, decimal_places=2, description="VAT percentage")
+    exchange_rate: Decimal = Field(default=Decimal("0"), max_digits=12, decimal_places=2, description="TZS per USD")
+    subtotal: Decimal = Field(default=Decimal("0"), max_digits=12, decimal_places=2)
+    vat_amount: Decimal = Field(default=Decimal("0"), max_digits=12, decimal_places=2)
+    total_usd: Decimal = Field(default=Decimal("0"), max_digits=12, decimal_places=2)
+    total_tzs: Decimal = Field(default=Decimal("0"), max_digits=14, decimal_places=2)
+
+    # Payment tracking (computed from payments — Phase 2)
+    amount_paid: Decimal = Field(default=Decimal("0"), max_digits=12, decimal_places=2)
+    amount_outstanding: Decimal = Field(default=Decimal("0"), max_digits=12, decimal_places=2)
+
+    # References
+    waybill_id: uuid.UUID | None = Field(default=None, foreign_key="waybill.id", description="One invoice per waybill")
+    trip_id: uuid.UUID | None = Field(default=None, foreign_key="trip.id", description="Linked trip")
+
+
+class Invoice(InvoiceBase, table=True):
+    __table_args__ = (
+        UniqueConstraint("waybill_id", name="uq_invoice_waybill"),
+    )
+
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+
+    # JSON columns
+    items: list = Field(default=[], sa_column=Column(JSON))
+    bank_details_tzs: dict = Field(default={}, sa_column=Column(JSON))
+    bank_details_usd: dict = Field(default={}, sa_column=Column(JSON))
+
+    # Numeric columns needing explicit SA types for precision
+    vat_rate: Decimal = Field(default=Decimal("0"), sa_column=Column(Numeric(5, 2), nullable=False))
+    exchange_rate: Decimal = Field(default=Decimal("0"), sa_column=Column(Numeric(12, 2), nullable=False))
+    subtotal: Decimal = Field(default=Decimal("0"), sa_column=Column(Numeric(12, 2), nullable=False))
+    vat_amount: Decimal = Field(default=Decimal("0"), sa_column=Column(Numeric(12, 2), nullable=False))
+    total_usd: Decimal = Field(default=Decimal("0"), sa_column=Column(Numeric(12, 2), nullable=False))
+    total_tzs: Decimal = Field(default=Decimal("0"), sa_column=Column(Numeric(14, 2), nullable=False))
+    amount_paid: Decimal = Field(default=Decimal("0"), sa_column=Column(Numeric(12, 2), nullable=False))
+    amount_outstanding: Decimal = Field(default=Decimal("0"), sa_column=Column(Numeric(12, 2), nullable=False))
+
+    # Audit trail
+    created_by_id: uuid.UUID | None = Field(default=None, foreign_key="users.id", index=True)
+    updated_by_id: uuid.UUID | None = Field(default=None, foreign_key="users.id", index=True)
+    issued_by_id: uuid.UUID | None = Field(default=None, foreign_key="users.id", index=True)
+    issued_at: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
+    created_at: datetime | None = Field(default_factory=get_datetime_utc, sa_type=DateTime(timezone=True))
+    updated_at: datetime | None = Field(default_factory=get_datetime_utc, sa_type=DateTime(timezone=True))
+
+    # Relationships
+    created_by: User | None = Relationship(sa_relationship_kwargs={"foreign_keys": "[Invoice.created_by_id]", "lazy": "selectin"})
+    updated_by: User | None = Relationship(sa_relationship_kwargs={"foreign_keys": "[Invoice.updated_by_id]", "lazy": "selectin"})
+    issued_by: User | None = Relationship(sa_relationship_kwargs={"foreign_keys": "[Invoice.issued_by_id]", "lazy": "selectin"})
+
+
+class InvoiceCreate(SQLModel):
+    """Used for manual invoice creation (rarely needed — prefer from-waybill endpoint)."""
+    date: str = Field(max_length=10)
+    customer_name: str = Field(min_length=1, max_length=255)
+    customer_tin: str = Field(default="", max_length=50)
+    client_id: uuid.UUID | None = None
+    regarding: str = Field(default="TRANSPORTATION", max_length=255)
+    currency: str = Field(default="USD", max_length=3)
+    vat_rate: Decimal = Field(default=Decimal("0"), max_digits=5, decimal_places=2)
+    exchange_rate: Decimal = Field(default=Decimal("0"), max_digits=12, decimal_places=2)
+    items: list = Field(default=[])
+    waybill_id: uuid.UUID | None = None
+    trip_id: uuid.UUID | None = None
+
+
+class InvoiceUpdate(SQLModel):
+    """Fields editable while invoice is in draft status."""
+    date: str | None = Field(default=None, max_length=10)
+    due_date: str | None = Field(default=None, max_length=10)
+    customer_name: str | None = Field(default=None, min_length=1, max_length=255)
+    customer_tin: str | None = Field(default=None, max_length=50)
+    regarding: str | None = Field(default=None, max_length=255)
+    currency: str | None = Field(default=None, max_length=3)
+    vat_rate: Decimal | None = Field(default=None, max_digits=5, decimal_places=2)
+    exchange_rate: Decimal | None = Field(default=None, max_digits=12, decimal_places=2)
+    items: list | None = None
+
+
+class InvoicePublic(InvoiceBase):
+    id: uuid.UUID
+    items: list = []
+    bank_details_tzs: dict = {}
+    bank_details_usd: dict = {}
+    created_by_id: uuid.UUID | None = None
+    updated_by_id: uuid.UUID | None = None
+    issued_by_id: uuid.UUID | None = None
+    issued_at: datetime | None = None
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
+    created_by: UserPublic | None = None
+    updated_by: UserPublic | None = None
+    issued_by: UserPublic | None = None
+
+
+class InvoicesPublic(SQLModel):
+    data: list[InvoicePublic]
+    count: int

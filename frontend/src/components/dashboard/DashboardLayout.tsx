@@ -93,6 +93,7 @@ const allMenuItems: PermissionMenuItem[] = [
       { key: "/finance/expense-console", label: "Expense Console", requires: ["expenses:audit-console"] },
       { key: "/manager/payments", label: "Payments", requires: ["expenses:pay"] },
       { key: "/settings/finance", label: "Exchange Rates", requires: ["settings:exchange-rates"] },
+      { key: "/finance/invoice-verification", label: "Invoice Verification", requires: ["invoices:verify"] },
     ],
   },
   {

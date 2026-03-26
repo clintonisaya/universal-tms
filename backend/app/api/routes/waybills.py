@@ -16,6 +16,7 @@ logger = logging.getLogger(__name__)
 from app.api.deps import CurrentUser, SessionDep
 from app.models import (
     BorderPost,
+    Invoice,
     Message,
     Trip,
     TripStatus,
@@ -70,18 +71,37 @@ def read_waybills(
     limit: int = 100,
     status: str | None = Query(default=None, description="Filter by status"),
 ) -> Any:
-    """Retrieve all waybills."""
+    """Retrieve all waybills, enriched with invoice data."""
     query = select(Waybill)
     if status:
         query = query.where(Waybill.status == status)
-        
+
     count_statement = select(func.count()).select_from(query.subquery())
     count = session.exec(count_statement).one()
-    
+
     query = query.order_by(Waybill.created_at.desc()).offset(skip).limit(limit)
     waybills = session.exec(query).all()
-    
-    return WaybillsPublic(data=waybills, count=count)
+
+    # Enrich with invoice data (bulk lookup)
+    waybill_ids = [w.id for w in waybills]
+    invoice_map: dict = {}
+    if waybill_ids:
+        invoices = session.exec(
+            select(Invoice).where(Invoice.waybill_id.in_(waybill_ids))
+        ).all()
+        invoice_map = {inv.waybill_id: inv for inv in invoices}
+
+    enriched = []
+    for wb in waybills:
+        pub = WaybillPublic.model_validate(wb)
+        inv = invoice_map.get(wb.id)
+        if inv:
+            pub.invoice_id = inv.id
+            pub.invoice_number = inv.invoice_number
+            pub.invoice_status = inv.status
+        enriched.append(pub)
+
+    return WaybillsPublic(data=enriched, count=count)
 
 
 @router.get("/{id}", response_model=WaybillPublic)
@@ -90,11 +110,20 @@ def read_waybill(
     current_user: CurrentUser,
     id: uuid.UUID,
 ) -> Any:
-    """Get waybill by ID."""
+    """Get waybill by ID, enriched with invoice data."""
     waybill = session.get(Waybill, id)
     if not waybill:
         raise HTTPException(status_code=404, detail="Waybill not found")
-    return waybill
+
+    pub = WaybillPublic.model_validate(waybill)
+    inv = session.exec(
+        select(Invoice).where(Invoice.waybill_id == id)
+    ).first()
+    if inv:
+        pub.invoice_id = inv.id
+        pub.invoice_number = inv.invoice_number
+        pub.invoice_status = inv.status
+    return pub
 
 
 @router.post("", response_model=WaybillPublic)

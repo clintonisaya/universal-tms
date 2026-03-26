@@ -26,6 +26,10 @@ export interface Waybill {
   updated_by_id: string | null;
   created_by: UserSummary | null;
   updated_by: UserSummary | null;
+  // Invoice enrichment
+  invoice_id?: string | null;
+  invoice_number?: string | null;
+  invoice_status?: string | null;
 }
 
 export interface WaybillCreate {

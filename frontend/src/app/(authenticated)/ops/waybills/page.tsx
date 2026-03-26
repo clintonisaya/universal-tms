@@ -21,11 +21,13 @@ import {
   RocketOutlined,
   EditOutlined,
   LockOutlined,
+  FileTextOutlined,
+  EyeOutlined,
 } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
 import type { Waybill, WaybillStatus } from "@/types/waybill";
 import { useAuth } from "@/contexts/AuthContext";
-import { useWaybills, useInvalidateQueries } from "@/hooks/useApi";
+import { useWaybills, useInvalidateQueries, apiFetch } from "@/hooks/useApi";
 import { fmtCurrency } from "@/lib/utils";
 import { CreateWaybillDrawer } from "@/components/waybills/CreateWaybillDrawer";
 import { EditWaybillDrawer } from "@/components/waybills/EditWaybillDrawer";
@@ -110,6 +112,27 @@ export default function WaybillsPage() {
     setDetailDrawerOpen(true);
   };
 
+  const [generatingInvoice, setGeneratingInvoice] = useState<string | null>(null);
+  const handleGenerateInvoice = async (waybill: Waybill) => {
+    setGeneratingInvoice(waybill.id);
+    try {
+      const invoice = await apiFetch<{ id: string }>(`/api/v1/invoices/from-waybill/${waybill.id}`, {
+        method: "POST",
+      });
+      message.success("Invoice draft created");
+      invalidateWaybills();
+      router.push(`/ops/invoices/${invoice.id}`);
+    } catch (err: any) {
+      if (err?.status === 409) {
+        message.info("Invoice already exists for this waybill");
+      } else {
+        message.error(err?.detail || "Failed to generate invoice");
+      }
+    } finally {
+      setGeneratingInvoice(null);
+    }
+  };
+
   const columns: ColumnsType<Waybill> = [
     {
       title: "Waybill #",
@@ -179,6 +202,55 @@ export default function WaybillsPage() {
       sorter: (a: Waybill, b: Waybill) => (a.agreed_rate || 0) - (b.agreed_rate || 0),
     }] : []),
     {
+      title: "Invoice",
+      key: "invoice",
+      width: 130,
+      render: (_: unknown, record: Waybill) => {
+        if (!record.invoice_id) return <span style={{ color: "var(--color-text-muted, #999)" }}>—</span>;
+        const statusColors: Record<string, string> = {
+          draft: "#8c8c8c",
+          issued: "#1677ff",
+          partially_paid: "#fa8c16",
+          fully_paid: "#52c41a",
+          voided: "#ff4d4f",
+        };
+        const statusLabels: Record<string, string> = {
+          draft: "Draft",
+          issued: "Issued",
+          partially_paid: "Partial",
+          fully_paid: "Paid",
+          voided: "Voided",
+        };
+        const s = record.invoice_status || "draft";
+        return (
+          <Tooltip title={`Invoice ${record.invoice_number}`}>
+            <Button
+              type="link"
+              size="small"
+              style={{ padding: 0, height: "auto", color: "#D4A843", fontWeight: 600 }}
+              onClick={() => router.push(`/ops/invoices/${record.invoice_id}`)}
+            >
+              {record.invoice_number}
+            </Button>
+            <span
+              style={{
+                display: "inline-block",
+                marginLeft: 6,
+                padding: "0 6px",
+                borderRadius: 4,
+                fontSize: 11,
+                fontWeight: 600,
+                color: "#fff",
+                background: statusColors[s] || "#8c8c8c",
+              }}
+            >
+              {statusLabels[s] || s}
+            </span>
+          </Tooltip>
+        );
+      },
+    },
+    {
       title: "Status",
       dataIndex: "status",
       key: "status",
@@ -205,6 +277,25 @@ export default function WaybillsPage() {
               >
                 Dispatch
               </Button>
+            )}
+            {/* Invoice action: Generate or View */}
+            {record.invoice_id ? (
+              <Tooltip title={`View ${record.invoice_number}`}>
+                <Button
+                  size="small"
+                  icon={<EyeOutlined />}
+                  onClick={() => router.push(`/ops/invoices/${record.invoice_id}`)}
+                />
+              </Tooltip>
+            ) : (
+              <Tooltip title="Generate Invoice">
+                <Button
+                  size="small"
+                  icon={<FileTextOutlined />}
+                  loading={generatingInvoice === record.id}
+                  onClick={() => handleGenerateInvoice(record)}
+                />
+              </Tooltip>
             )}
             {(record.status === "Completed" || record.status === "Invoiced") &&
              user?.role !== "admin" && user?.role !== "manager" ? (

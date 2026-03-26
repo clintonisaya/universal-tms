@@ -7,6 +7,7 @@ from app.api.routes import (
     drivers,
     exchange_rates,
     expenses,
+    invoices,
     items,
     login,
     private,
@@ -38,6 +39,7 @@ api_router.include_router(drivers.router)
 api_router.include_router(trailers.router)
 api_router.include_router(trips.router)
 api_router.include_router(waybills.router)
+api_router.include_router(invoices.router)
 api_router.include_router(expenses.router)
 api_router.include_router(cargo_types.router)
 api_router.include_router(trip_expense_types.router)
