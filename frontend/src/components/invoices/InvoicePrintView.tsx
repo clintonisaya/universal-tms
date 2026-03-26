@@ -58,12 +58,15 @@ export const InvoicePrintView: React.FC<InvoicePrintViewProps> = ({ invoice }) =
     >
       {/* === HEADER BANNER === */}
       <div style={{ display: "flex", alignItems: "stretch", background: DARK_CARD, minHeight: 130, position: "relative", overflow: "hidden" }}>
-        <div style={{ width: 150, display: "flex", alignItems: "center", justifyContent: "center", padding: "12px 16px", flexShrink: 0 }}>
+        <div style={{ width: 150, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "8px 16px", flexShrink: 0 }}>
           <img
             src="/images/logo-icon-full.png"
             alt="Edupo Company Limited"
-            style={{ width: "auto", height: 110, objectFit: "contain" }}
+            style={{ width: "auto", height: 90, objectFit: "contain" }}
           />
+          <div style={{ fontSize: 6.5, fontWeight: 700, color: GOLD_DIM, letterSpacing: "0.04em", fontStyle: "italic", marginTop: 2, textAlign: "center", whiteSpace: "nowrap" }}>
+            {"\u201C"}Driven by Trust Powered by Precision{"\u201D"}
+          </div>
         </div>
         <div style={{ flex: 1, padding: "22px 24px", display: "flex", flexDirection: "column", justifyContent: "center" }}>
           <div style={{ fontSize: 22, fontWeight: 800, color: GOLD, letterSpacing: "0.02em", marginBottom: 4 }}>
