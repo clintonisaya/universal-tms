@@ -55,6 +55,7 @@ export const InvoiceGenerator: React.FC<InvoiceGeneratorProps> = ({ invoiceId })
     setSaving(true);
     try {
       const body: any = {
+        invoice_number: localInvoice.invoice_number,
         date: localInvoice.date,
         due_date: localInvoice.due_date,
         customer_name: localInvoice.customer_name,

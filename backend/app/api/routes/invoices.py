@@ -55,24 +55,27 @@ DEFAULT_BANK_USD = {
 router = APIRouter(prefix="/invoices", tags=["invoices"])
 
 
-def generate_invoice_number(session: SessionDep) -> tuple[str, int]:
-    """Generate a unique invoice number: INV-YYYY-NNNN. Returns (number, seq)."""
-    year = datetime.now().year
-
+def generate_next_invoice_number(session: SessionDep) -> tuple[str, int]:
+    """Suggest the next sequential invoice number. User can override it."""
     # Advisory lock — prevents concurrent requests generating the same number
     session.execute(text("SELECT pg_advisory_xact_lock(2001)"))
 
-    pattern = f"INV-{year}-%"
     statement = (
         select(Invoice.invoice_seq)
-        .where(Invoice.invoice_number.like(pattern))
         .order_by(Invoice.invoice_seq.desc())
         .limit(1)
     )
     last_seq = session.exec(statement).first()
-
     seq = (last_seq or 0) + 1
-    return f"INV-{year}-{seq:04d}", seq
+    return f"{seq:04d}", seq
+
+
+def check_invoice_number_exists(session: SessionDep, number: str, exclude_id: uuid.UUID | None = None) -> bool:
+    """Check if an invoice number already exists in the database."""
+    query = select(Invoice).where(Invoice.invoice_number == number)
+    if exclude_id:
+        query = query.where(Invoice.id != exclude_id)
+    return session.exec(query).first() is not None
 
 
 def compute_totals(invoice: Invoice) -> None:
@@ -119,23 +122,16 @@ def read_invoices(
     return InvoicesPublic(data=invoices, count=count)
 
 
-@router.get("/next-number")
-def get_next_invoice_number(
+@router.get("/check-number/{invoice_number}")
+def check_invoice_number(
     session: SessionDep,
     current_user: CurrentUser,
+    invoice_number: str,
+    exclude_id: uuid.UUID | None = Query(default=None, description="Exclude this invoice ID from the check"),
 ) -> dict:
-    """Preview the next invoice number without consuming it."""
-    year = datetime.now().year
-    pattern = f"INV-{year}-%"
-    statement = (
-        select(Invoice.invoice_seq)
-        .where(Invoice.invoice_number.like(pattern))
-        .order_by(Invoice.invoice_seq.desc())
-        .limit(1)
-    )
-    last_seq = session.exec(statement).first()
-    seq = (last_seq or 0) + 1
-    return {"invoice_number": f"INV-{year}-{seq:04d}", "invoice_seq": seq}
+    """Check if an invoice number is already taken."""
+    exists = check_invoice_number_exists(session, invoice_number, exclude_id)
+    return {"exists": exists, "invoice_number": invoice_number}
 
 
 @router.get("/{id}", response_model=InvoicePublic)
@@ -221,8 +217,8 @@ def create_invoice_from_waybill(
     if latest_rate:
         exchange_rate = latest_rate.rate
 
-    # Generate invoice number
-    invoice_number, invoice_seq = generate_invoice_number(session)
+    # Auto-suggest next sequential number (user can change it later)
+    invoice_number, invoice_seq = generate_next_invoice_number(session)
 
     # Build line item
     route = f"{waybill.origin} - {waybill.destination}"
@@ -288,6 +284,12 @@ def update_invoice(
         raise HTTPException(status_code=422, detail="Only draft invoices can be edited")
 
     update_dict = invoice_in.model_dump(exclude_unset=True)
+
+    # Validate invoice number uniqueness if being changed
+    if "invoice_number" in update_dict and update_dict["invoice_number"]:
+        if check_invoice_number_exists(session, update_dict["invoice_number"], exclude_id=id):
+            raise HTTPException(status_code=409, detail="Invoice number already exists")
+
     invoice.sqlmodel_update(update_dict)
     invoice.updated_by_id = current_user.id
     invoice.updated_at = datetime.now(timezone.utc)
@@ -320,6 +322,10 @@ def issue_invoice(
 
     if invoice.status != InvoiceStatus.draft:
         raise HTTPException(status_code=422, detail="Only draft invoices can be issued")
+
+    # Validate: must have an invoice number
+    if not invoice.invoice_number or not invoice.invoice_number.strip():
+        raise HTTPException(status_code=422, detail="Enter an invoice number before issuing")
 
     # Recompute totals before issuing
     compute_totals(invoice)

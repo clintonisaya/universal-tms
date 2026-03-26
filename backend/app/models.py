@@ -1419,6 +1419,7 @@ class InvoiceCreate(SQLModel):
 
 class InvoiceUpdate(SQLModel):
     """Fields editable while invoice is in draft status."""
+    invoice_number: str | None = Field(default=None, min_length=1, max_length=50, description="Manually entered invoice number")
     date: str | None = Field(default=None, max_length=10)
     due_date: str | None = Field(default=None, max_length=10)
     customer_name: str | None = Field(default=None, min_length=1, max_length=255)

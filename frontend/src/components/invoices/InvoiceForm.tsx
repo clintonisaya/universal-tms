@@ -1,9 +1,10 @@
 "use client";
 
-import React from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Form, Input, InputNumber, DatePicker, Select, Divider } from "antd";
 import type { Invoice, InvoiceItem } from "@/types/invoice";
 import { amountInputProps } from "@/lib/utils";
+import { apiFetch } from "@/hooks/useApi";
 import dayjs from "dayjs";
 
 interface InvoiceFormProps {
@@ -20,6 +21,52 @@ const SCHEDULE_OPTIONS = [
 ];
 
 export const InvoiceForm: React.FC<InvoiceFormProps> = ({ invoice, onChange, readOnly = false }) => {
+  const [numberStatus, setNumberStatus] = useState<"" | "validating" | "error" | "success">("");
+  const [numberHelp, setNumberHelp] = useState("");
+  const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+
+  // Check uniqueness on invoice number change (debounced)
+  const handleInvoiceNumberChange = (value: string) => {
+    onChange({ invoice_number: value });
+
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+
+    if (!value.trim()) {
+      setNumberStatus("error");
+      setNumberHelp("Invoice number is required");
+      return;
+    }
+
+    setNumberStatus("validating");
+    setNumberHelp("Checking...");
+
+    debounceRef.current = setTimeout(async () => {
+      try {
+        const res = await apiFetch<{ exists: boolean }>(
+          `/api/v1/invoices/check-number/${encodeURIComponent(value)}?exclude_id=${invoice.id}`
+        );
+        if (res.exists) {
+          setNumberStatus("error");
+          setNumberHelp("This invoice number already exists");
+        } else {
+          setNumberStatus("success");
+          setNumberHelp("");
+        }
+      } catch {
+        setNumberStatus("");
+        setNumberHelp("");
+      }
+    }, 500);
+  };
+
+  // Reset validation state when invoice changes (e.g. after save)
+  useEffect(() => {
+    if (invoice.invoice_number) {
+      setNumberStatus("");
+      setNumberHelp("");
+    }
+  }, [invoice.id]);
+
   const item: InvoiceItem = invoice.items?.[0] || {
     route: "",
     truck_plate: "",
@@ -40,8 +87,19 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({ invoice, onChange, rea
     <div style={{ padding: "16px 20px" }}>
       <Form layout="vertical" size="small" disabled={readOnly}>
         {/* Invoice Meta */}
-        <Form.Item label="Invoice #">
-          <Input value={invoice.invoice_number} disabled style={{ fontWeight: 600 }} />
+        <Form.Item
+          label="Invoice #"
+          validateStatus={numberStatus || undefined}
+          help={numberHelp || undefined}
+          required
+        >
+          <Input
+            value={invoice.invoice_number}
+            onChange={(e) => handleInvoiceNumberChange(e.target.value)}
+            placeholder="Enter invoice number"
+            style={{ fontWeight: 600 }}
+            disabled={readOnly}
+          />
         </Form.Item>
 
         <Form.Item label="Date">
