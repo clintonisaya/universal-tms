@@ -66,8 +66,11 @@ export const InvoicePrintView: React.FC<InvoicePrintViewProps> = ({ invoice }) =
           />
         </div>
         <div style={{ flex: 1, padding: "22px 24px", display: "flex", flexDirection: "column", justifyContent: "center" }}>
-          <div style={{ fontSize: 22, fontWeight: 800, color: GOLD, letterSpacing: "0.02em", marginBottom: 4 }}>
+          <div style={{ fontSize: 22, fontWeight: 800, color: GOLD, letterSpacing: "0.02em", marginBottom: 0 }}>
             {invoice.company_name}
+          </div>
+          <div style={{ fontSize: 9, fontWeight: 600, color: GOLD_DIM, letterSpacing: "0.15em", fontStyle: "italic", marginBottom: 4 }}>
+            DRIVEN BY TRUST
           </div>
           <div style={{ fontSize: 11, color: "rgba(255,255,255,0.7)", lineHeight: 1.7 }}>
             <span>TEL: {invoice.company_phone}</span><br />
