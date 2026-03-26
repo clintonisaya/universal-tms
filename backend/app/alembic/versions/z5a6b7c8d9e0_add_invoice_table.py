@@ -1,7 +1,7 @@
 """add invoice table
 
-Revision ID: a1b2c3d4e5f6
-Revises: r7s8t9u0v1w2
+Revision ID: z5a6b7c8d9e0
+Revises: y4z5a6b7c8d9
 Create Date: 2026-03-26
 
 New table: invoice — stores commercial invoices generated from waybills.
@@ -12,8 +12,8 @@ import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
-revision = "a1b2c3d4e5f6"
-down_revision = "r7s8t9u0v1w2"
+revision = "z5a6b7c8d9e0"
+down_revision = "y4z5a6b7c8d9"
 branch_labels = None
 depends_on = None
 
