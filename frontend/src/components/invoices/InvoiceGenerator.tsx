@@ -120,17 +120,23 @@ export const InvoiceGenerator: React.FC<InvoiceGeneratorProps> = ({ invoiceId })
   const handlePrint = () => {
     if (!printRef.current) return;
 
-    // Write invoice HTML into a new window with print-ready CSS.
-    // After printing, the window closes automatically — user returns
-    // to the current page with no leftover tabs.
+    // Render the invoice into a hidden iframe and print from it.
+    // No new tab opens — the print dialog appears directly on the
+    // current page. Once the print dialog closes, the iframe is removed.
     const printContent = printRef.current.innerHTML;
 
-    const win = window.open("", "_blank", "width=800,height=600");
-    if (!win) {
-      message.error("Popup blocked — allow popups for this site");
-      return;
-    }
-    win.document.write(`<!DOCTYPE html>
+    const iframe = document.createElement("iframe");
+    iframe.style.position = "fixed";
+    iframe.style.bottom = "0";
+    iframe.style.right = "0";
+    iframe.style.width = "0";
+    iframe.style.height = "0";
+    iframe.style.border = "0";
+    document.body.appendChild(iframe);
+
+    const doc = iframe.contentDocument!;
+    doc.open();
+    doc.write(`<!DOCTYPE html>
 <html>
 <head>
   <title>Invoice ${localInvoice?.invoice_number || ""}</title>
@@ -143,10 +149,11 @@ export const InvoiceGenerator: React.FC<InvoiceGeneratorProps> = ({ invoiceId })
 </head>
 <body>${printContent}</body>
 </html>`);
-    win.document.close();
+    doc.close();
+
     setTimeout(() => {
-      win.print();
-      win.close();
+      iframe.contentWindow?.print();
+      setTimeout(() => document.body.removeChild(iframe), 1000);
     }, 600);
   };
 
