@@ -119,45 +119,7 @@ export const InvoiceGenerator: React.FC<InvoiceGeneratorProps> = ({ invoiceId })
 
   const handlePrint = () => {
     if (!printRef.current) return;
-    const printContent = printRef.current.innerHTML;
-    const hiddenFrame = document.createElement("iframe");
-    hiddenFrame.style.position = "fixed";
-    hiddenFrame.style.right = "0";
-    hiddenFrame.style.bottom = "0";
-    hiddenFrame.style.width = "0";
-    hiddenFrame.style.height = "0";
-    hiddenFrame.style.border = "0";
-    document.body.appendChild(hiddenFrame);
-
-    const win = hiddenFrame.contentWindow;
-    if (!win) {
-      message.error("Print frame failed to initialize");
-      return;
-    }
-    win.document.write(`<!DOCTYPE html>
-<html>
-<head>
-  <title>Invoice ${localInvoice?.invoice_number || ""}</title>
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
-  <style>
-    @media print {
-      @page { size: A4; margin: 0; }
-      body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-    }
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: 'DM Sans', 'Segoe UI', sans-serif; }
-  </style>
-</head>
-<body>${printContent}</body>
-</html>`);
-    win.document.close();
-    setTimeout(() => {
-      win.focus();
-      win.print();
-    }, 600);
-    setTimeout(() => {
-      hiddenFrame.remove();
-    }, 3000);
+    window.print();
   };
 
   if (isLoading) {
@@ -303,6 +265,28 @@ export const InvoiceGenerator: React.FC<InvoiceGeneratorProps> = ({ invoiceId })
             background: "#e8e5e0",
           }}
         >
+          {/**
+           * Print stylesheet: hides everything except the invoice, removes
+           * the scale() transform used for on-screen preview, resets the
+           * content height so it can render freely, and sets A4 page size.
+           */}
+          <style>{`
+            @media print {
+              @page { size: A4; margin: 0; }
+              body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+              /* Hide toolbar, sider, and page chrome */
+              body > *,
+              #__next > *,
+              .layout-toolbar { display: none !important; }
+              /* Show only the print invoice area */
+              #invoice-print-area { display: block !important; }
+              /* Remove scale() used for on-screen preview */
+              #invoice-print-area,
+              #invoice-print-area *,
+              .ant-layout-content { transform: none !important; margin-bottom: 0 !important; }
+            }
+          `}</style>
+
           <div
             ref={printRef}
             style={{
