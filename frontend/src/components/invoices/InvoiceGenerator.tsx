@@ -120,22 +120,34 @@ export const InvoiceGenerator: React.FC<InvoiceGeneratorProps> = ({ invoiceId })
   const handlePrint = () => {
     if (!printRef.current) return;
 
-    // Clone the invoice into a fullscreen overlay on the current page,
-    // call window.print(), then remove the overlay — no new tabs or iframes.
-    const overlay = document.createElement("div");
-    overlay.classList.add("invoice-print-overlay");
-    overlay.style.cssText = `
-      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-      z-index: 99999; background: white; overflow: auto;
-      -webkit-print-color-adjust: exact; print-color-adjust: exact;
-    `;
-    overlay.appendChild(printRef.current.cloneNode(true));
-    document.body.appendChild(overlay);
+    // Write invoice HTML into a new window with print-ready CSS.
+    // After printing, the window closes automatically — user returns
+    // to the current page with no leftover tabs.
+    const printContent = printRef.current.innerHTML;
 
-    setTimeout(() => window.print(), 50);
-
-    // Clean up after print dialog closes
-    setTimeout(() => overlay.remove(), 1000);
+    const win = window.open("", "_blank", "width=800,height=600");
+    if (!win) {
+      message.error("Popup blocked — allow popups for this site");
+      return;
+    }
+    win.document.write(`<!DOCTYPE html>
+<html>
+<head>
+  <title>Invoice ${localInvoice?.invoice_number || ""}</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    @page { size: A4; margin: 0; }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'DM Sans', 'Segoe UI', sans-serif; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  </style>
+</head>
+<body>${printContent}</body>
+</html>`);
+    win.document.close();
+    setTimeout(() => {
+      win.print();
+      win.close();
+    }, 600);
   };
 
   if (isLoading) {
