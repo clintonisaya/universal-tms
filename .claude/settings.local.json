@@ -120,7 +120,10 @@
       "Bash(magick:*)",
       "Bash(sed -i 's/styles={{ content: { color: \"\"#cf1322\"\" } }}/styles={{ content: { color: \"\"var\\(--color-red\\)\"\" } }}/g' \"frontend/src/app/\\(authenticated\\)/fleet/trucks/[id]/page.tsx\")",
       "Bash(sed -i 's/color: \"\"#fa8c16\"\"/color: \"\"var\\(--color-orange\\)\"\"/g' \"frontend/src/app/\\(authenticated\\)/ops/tracking/page.tsx\")",
-      "Bash(grep -rn \"#[0-9a-fA-F]\\\\{3,8\\\\}\" /home/clinton/dev/edupo-tms/frontend/src/app /home/clinton/dev/edupo-tms/frontend/src/components --include=\"*.tsx\")"
+      "Bash(grep -rn \"#[0-9a-fA-F]\\\\{3,8\\\\}\" /home/clinton/dev/edupo-tms/frontend/src/app /home/clinton/dev/edupo-tms/frontend/src/components --include=\"*.tsx\")",
+      "Bash(find src:*)",
+      "Bash(find . -name \"*.tsx\" -path \"*/authenticated/*\" -exec grep -l 'padding: \"\"\"\"24px\"\"\"\"' {})",
+      "Bash(git revert:*)"
     ]
   }
 }
