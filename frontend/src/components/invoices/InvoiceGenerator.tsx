@@ -119,7 +119,23 @@ export const InvoiceGenerator: React.FC<InvoiceGeneratorProps> = ({ invoiceId })
 
   const handlePrint = () => {
     if (!printRef.current) return;
-    window.print();
+
+    // Clone the invoice into a fullscreen overlay on the current page,
+    // call window.print(), then remove the overlay — no new tabs or iframes.
+    const overlay = document.createElement("div");
+    overlay.classList.add("invoice-print-overlay");
+    overlay.style.cssText = `
+      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      z-index: 99999; background: white; overflow: auto;
+      -webkit-print-color-adjust: exact; print-color-adjust: exact;
+    `;
+    overlay.appendChild(printRef.current.cloneNode(true));
+    document.body.appendChild(overlay);
+
+    setTimeout(() => window.print(), 50);
+
+    // Clean up after print dialog closes
+    setTimeout(() => overlay.remove(), 1000);
   };
 
   if (isLoading) {
@@ -265,28 +281,6 @@ export const InvoiceGenerator: React.FC<InvoiceGeneratorProps> = ({ invoiceId })
             background: "#e8e5e0",
           }}
         >
-          {/**
-           * Print stylesheet: hides everything except the invoice, removes
-           * the scale() transform used for on-screen preview, resets the
-           * content height so it can render freely, and sets A4 page size.
-           */}
-          <style>{`
-            @media print {
-              @page { size: A4; margin: 0; }
-              body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-              /* Hide toolbar, sider, and page chrome */
-              body > *,
-              #__next > *,
-              .layout-toolbar { display: none !important; }
-              /* Show only the print invoice area */
-              #invoice-print-area { display: block !important; }
-              /* Remove scale() used for on-screen preview */
-              #invoice-print-area,
-              #invoice-print-area *,
-              .ant-layout-content { transform: none !important; margin-bottom: 0 !important; }
-            }
-          `}</style>
-
           <div
             ref={printRef}
             style={{
