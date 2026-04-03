@@ -120,9 +120,18 @@ export const InvoiceGenerator: React.FC<InvoiceGeneratorProps> = ({ invoiceId })
   const handlePrint = () => {
     if (!printRef.current) return;
     const printContent = printRef.current.innerHTML;
-    const win = window.open("", "_blank");
+    const hiddenFrame = document.createElement("iframe");
+    hiddenFrame.style.position = "fixed";
+    hiddenFrame.style.right = "0";
+    hiddenFrame.style.bottom = "0";
+    hiddenFrame.style.width = "0";
+    hiddenFrame.style.height = "0";
+    hiddenFrame.style.border = "0";
+    document.body.appendChild(hiddenFrame);
+
+    const win = hiddenFrame.contentWindow;
     if (!win) {
-      message.error("Popup blocked — allow popups for this site");
+      message.error("Print frame failed to initialize");
       return;
     }
     win.document.write(`<!DOCTYPE html>
@@ -142,10 +151,13 @@ export const InvoiceGenerator: React.FC<InvoiceGeneratorProps> = ({ invoiceId })
 <body>${printContent}</body>
 </html>`);
     win.document.close();
-    // Wait for fonts to load before printing
     setTimeout(() => {
+      win.focus();
       win.print();
     }, 600);
+    setTimeout(() => {
+      hiddenFrame.remove();
+    }, 3000);
   };
 
   if (isLoading) {
