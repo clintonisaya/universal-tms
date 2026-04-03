@@ -60,7 +60,7 @@ export const InvoicePrintView: React.FC<InvoicePrintViewProps> = ({ invoice }) =
       <div style={{ display: "flex", alignItems: "stretch", background: DARK_CARD, minHeight: 130, position: "relative", overflow: "hidden" }}>
         <div style={{ width: 150, display: "flex", alignItems: "center", justifyContent: "center", padding: "12px 16px", flexShrink: 0 }}>
           <img
-            src="/images/logo-icon-full.png"
+            src="/images/edupo-logo.png"
             alt="Edupo Company Limited"
             style={{ width: "auto", height: 110, objectFit: "contain" }}
           />
