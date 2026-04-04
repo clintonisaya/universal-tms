@@ -285,20 +285,7 @@ export function CreateWaybillDrawer({
             </Form.Item>
           </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
-            <Form.Item
-              name="agreed_rate"
-              label="Agreed Rate"
-              rules={[{ required: true, message: "Please enter rate" }]}
-            >
-              <InputNumber
-                style={{ width: "100%" }}
-                min={0}
-                precision={2}
-                placeholder="e.g. 3500.00"
-                {...amountInputProps}
-              />
-            </Form.Item>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: "16px" }}>
             <Form.Item
               name="currency"
               label="Currency"
@@ -309,6 +296,19 @@ export function CreateWaybillDrawer({
                 <Option value="TZS">TZS</Option>
               </Select>
             </Form.Item>
+          </div>
+
+          <div
+            style={{
+              padding: 12,
+              background: "var(--color-surface)",
+              borderRadius: 8,
+              border: "1px solid var(--color-border)",
+            }}
+          >
+            <Text type="secondary" style={{ fontSize: 13 }}>
+              Rate will be set when you generate an invoice for this waybill.
+            </Text>
           </div>
 
           <>

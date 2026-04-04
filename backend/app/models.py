@@ -379,7 +379,6 @@ class WaybillCreate(SQLModel):
     origin: str = Field(min_length=1, max_length=255, description="Loading point")
     destination: str = Field(min_length=1, max_length=255, description="Destination")
     expected_loading_date: datetime = Field(description="Expected loading date")
-    agreed_rate: Decimal = Field(default=Decimal("0.00"), max_digits=12, decimal_places=2, description="Agreed rate")
     currency: str = Field(default="USD", max_length=3, description="Currency code")
     risk_level: str = Field(default="Low", description="Risk level (Low, Medium, High)")
     border_ids: list[uuid.UUID] | None = Field(default=None, description="Ordered list of border post IDs to cross (Story 2.26)")

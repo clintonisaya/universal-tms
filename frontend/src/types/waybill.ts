@@ -40,7 +40,6 @@ export interface WaybillCreate {
   origin: string;
   destination: string;
   expected_loading_date: string;
-  agreed_rate: number;
   currency: string;
   risk_level: string;
 }

@@ -100,12 +100,16 @@ export function RecordPaymentModal({
     return types;
   }, [inv]);
 
+  // Auto-fill amount when payment type changes
   useEffect(() => {
-    if (!inv || !open) return;
-    if (availableTypes.length > 0) {
-      form.setFieldValue("payment_type", availableTypes[0].value);
+    if (!inv || !open || !paymentType) return;
+    if (paymentType === "balance" && outstanding > 0) {
+      form.setFieldValue("amount", outstanding);
+    } else if (paymentType === "full") {
+      form.setFieldValue("amount", total);
     }
-  }, [inv?.status, inv?.amount_paid]); // eslint-disable-line react-hooks/exhaustive-deps
+    // advance: leave amount field editable (defaults to 50% set above)
+  }, [paymentType, inv?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleFinish = async (values: any) => {
     if (!inv) return;
@@ -239,6 +243,9 @@ export function RecordPaymentModal({
           <Descriptions.Item label="Client TIN">{inv.customer_tin || "—"}</Descriptions.Item>
           <Descriptions.Item label="Currency">{inv.currency}</Descriptions.Item>
           <Descriptions.Item label="Invoice Date">{inv.date ?? "—"}</Descriptions.Item>
+          {inv.items?.[0]?.route && (
+            <Descriptions.Item label="Route" span={2}>{inv.items[0].route}</Descriptions.Item>
+          )}
         </Descriptions>
 
         {/* Payment form fields */}

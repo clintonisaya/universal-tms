@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { Drawer, Descriptions, Typography, Spin, message, Space, Button } from "antd";
+import { useRouter } from "next/navigation";
 import type { Waybill } from "@/types/waybill";
 import { WaybillStatusTag } from "@/components/ui/WaybillStatusTag";
 
@@ -15,6 +16,7 @@ interface WaybillDetailDrawerProps {
 }
 
 export function WaybillDetailDrawer({ open, onClose, waybillId }: WaybillDetailDrawerProps) {
+  const router = useRouter();
   const [waybill, setWaybill] = useState<Waybill | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -105,7 +107,26 @@ export function WaybillDetailDrawer({ open, onClose, waybillId }: WaybillDetailD
                 : "-"}
             </Descriptions.Item>
             <Descriptions.Item label="Agreed Rate">
-              {waybill.currency} {Number(waybill.agreed_rate).toLocaleString("en-US")}
+              {waybill.invoice_id && waybill.invoice_number ? (
+                <Space>
+                  <span>
+                    {waybill.currency || "USD"} {Number(waybill.agreed_rate).toLocaleString("en-US")}
+                  </span>
+                  <Text type="secondary" style={{ fontSize: 12 }}>
+                    Set by{" "}
+                    <Button
+                      type="link"
+                      size="small"
+                      style={{ padding: 0, height: "auto", color: "#D4A843", fontSize: 12 }}
+                      onClick={() => router.push(`/ops/invoices/${waybill.invoice_id}`)}
+                    >
+                      {waybill.invoice_number}
+                    </Button>
+                  </Text>
+                </Space>
+              ) : (
+                <Text type="secondary">Not invoiced yet</Text>
+              )}
             </Descriptions.Item>
           </Descriptions>
 
