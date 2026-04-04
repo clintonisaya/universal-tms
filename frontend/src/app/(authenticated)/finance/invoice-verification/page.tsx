@@ -119,7 +119,7 @@ export default function InvoiceVerificationPage() {
       sorter: (a, b) => Number(a.total_usd) - Number(b.total_usd),
     },
     {
-      title: "Paid (USD)",
+      title: "Received (USD)",
       dataIndex: "amount_paid",
       key: "amount_paid",
       width: 130,
@@ -186,7 +186,7 @@ export default function InvoiceVerificationPage() {
               </Button>
             </Tooltip>
             {canPay && (
-              <Tooltip title="Record Payment">
+              <Tooltip title="Record Client Payment">
                 <Button
                   size="small"
                   type="primary"

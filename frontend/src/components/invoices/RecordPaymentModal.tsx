@@ -216,7 +216,7 @@ export function RecordPaymentModal({
             </Col>
             <Col span={8}>
               <div style={{ marginBottom: 4 }}>
-                <Text type="secondary">Already Paid</Text>
+                <Text type="secondary">Already Received</Text>
               </div>
               <Text style={{ color: "#52c41a", fontFamily: "'Fira Code', monospace" }}>
                 {fmtCurrency(paid, inv.currency)}
@@ -260,7 +260,7 @@ export function RecordPaymentModal({
             border: "1px solid var(--color-border)",
           }}
         >
-          <Title level={5} style={{ marginTop: 0, marginBottom: 12 }}>Payment Details</Title>
+          <Title level={5} style={{ marginTop: 0, marginBottom: 12 }}>Payment Received</Title>
 
           <Row gutter={[16, 0]}>
             <Col xs={24} sm={12}>
@@ -412,7 +412,7 @@ export function RecordPaymentModal({
               }}
             >
               <Text>
-                Total Paid: <Text strong style={{ fontFamily: "'Fira Code', monospace" }}>
+                Total Received: <Text strong style={{ fontFamily: "'Fira Code', monospace" }}>
                   {fmtCurrency(paid + (form.getFieldValue("amount") ?? 0), inv.currency)}
                 </Text>{" "}
                 / {fmtCurrency(total, inv.currency)}
