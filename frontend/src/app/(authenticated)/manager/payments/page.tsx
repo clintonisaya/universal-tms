@@ -175,7 +175,7 @@ function PaymentsPageContent() {
       title: "Status",
       dataIndex: "status",
       key: "status",
-      width: 250,
+      width: 260,
       render: (status: ExpenseStatus) => <ExpenseStatusBadge status={status} />,
     },
     {
