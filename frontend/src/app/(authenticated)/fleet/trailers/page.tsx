@@ -172,9 +172,7 @@ export default function TrailersPage() {
       key: "plate_number",
       width: 160,
       sorter: (a, b) => a.plate_number.localeCompare(b.plate_number),
-      render: (text: string) => (
-        <div style={{ fontWeight: 600 }}>{text}</div>
-      ),
+      render: (text: string) => text,
       ...getColumnSearchProps("plate_number"),
     },
     {

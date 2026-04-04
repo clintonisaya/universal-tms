@@ -85,7 +85,7 @@ function MaintenancePageContent() {
       dataIndex: "garage_name",
       key: "garage_name",
       width: 180,
-      render: (text: string) => <span style={{ fontWeight: 600 }}>{text}</span>,
+      render: (text: string) => text,
       ...getColumnSearchProps("garage_name"),
     },
     {

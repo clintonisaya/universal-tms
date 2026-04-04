@@ -220,7 +220,7 @@ export default function DriversPage() {
       key: "full_name",
       width: 180,
       sorter: (a, b) => a.full_name.localeCompare(b.full_name),
-      render: (text: string) => <span style={{ fontWeight: 600 }}>{text}</span>,
+      render: (text: string) => text,
       ...getColumnSearchProps("full_name"),
     },
     {
