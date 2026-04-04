@@ -413,10 +413,10 @@ export function RecordPaymentModal({
             >
               <Text>
                 Total Received: <Text strong style={{ fontFamily: "'Fira Code', monospace" }}>
-                  {fmtCurrency(paid + (Number(form.getFieldValue("amount")) ?? 0), inv.currency)}
+                  {fmtCurrency(paid, inv.currency)}
                 </Text>{" "}
                 / {fmtCurrency(total, inv.currency)}
-                {inv.status === "fully_paid" || (paid + (Number(form.getFieldValue("amount")) ?? 0) >= total) ? " ✓" : ""}
+                {inv.status === "fully_paid" ? " ✓" : ""}
               </Text>
             </div>
           </div>
