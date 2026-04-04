@@ -1,6 +1,6 @@
 """add invoice_payment table
 
-Revision ID: a1b2c3d4e5f6
+Revision ID: b0c1d2e3f4a5
 Revises: z5a6b7c8d9e0
 Create Date: 2026-04-04
 
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
-revision = "a1b2c3d4e5f6"
+revision = "b0c1d2e3f4a5"
 down_revision = "z5a6b7c8d9e0"
 branch_labels = None
 depends_on = None
