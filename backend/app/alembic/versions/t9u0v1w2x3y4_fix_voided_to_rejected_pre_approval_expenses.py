@@ -28,7 +28,7 @@ from alembic import op
 revision: str = "t9u0v1w2x3y4"
 down_revision: str = "s8t9u0v1w2x3"
 branch_labels = None
-depends_on = None
+depends_on = "i8j9k0l1m2n3"  # ensure 'voided' enum value exists before this migration runs
 
 
 def upgrade() -> None:
