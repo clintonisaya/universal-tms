@@ -21,7 +21,7 @@ import { StatusBadge } from "@/components/ui/StatusBadge";
 import { amountInputProps } from "@/lib/utils";
 import type { WaybillCreate } from "@/types/waybill";
 
-const { Title } = Typography;
+const { Title, Text } = Typography;
 const { Option } = Select;
 
 interface CreateWaybillDrawerProps {
