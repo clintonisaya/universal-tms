@@ -350,6 +350,7 @@ export default function DriversPage() {
           </div>
 
           <Table<Driver>
+            className="fleet-table"
             columns={resizableColumns}
             components={components}
             dataSource={drivers}
@@ -596,6 +597,14 @@ export default function DriversPage() {
           </Form.Item>
         </Form>
       </Modal>
+
+      <style jsx global>{`
+        .fleet-table .ant-table-cell {
+          white-space: nowrap !important;
+          overflow: hidden;
+          font-size: 14px;
+        }
+      `}</style>
     </div>
   );
 }

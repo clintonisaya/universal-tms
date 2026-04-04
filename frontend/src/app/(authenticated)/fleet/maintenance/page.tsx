@@ -187,6 +187,7 @@ function MaintenancePageContent() {
             </Flex>
           </div>
           <Table<MaintenanceEvent>
+            className="fleet-table"
             columns={resizableColumns}
             components={components}
             dataSource={events}
@@ -216,6 +217,14 @@ function MaintenancePageContent() {
           />
         </Flex>
       </Card>
+
+      <style jsx global>{`
+        .fleet-table .ant-table-cell {
+          white-space: nowrap !important;
+          overflow: hidden;
+          font-size: 14px;
+        }
+      `}</style>
 
       <CreateMaintenanceDrawer
         open={createDrawerOpen}

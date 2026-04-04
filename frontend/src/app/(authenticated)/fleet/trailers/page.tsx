@@ -280,6 +280,7 @@ export default function TrailersPage() {
           </div>
 
           <Table<Trailer>
+            className="fleet-table"
             columns={resizableColumns}
             components={components}
             dataSource={trailers}
@@ -470,6 +471,14 @@ export default function TrailersPage() {
           </Form.Item>
         </Form>
       </Modal>
+
+      <style jsx global>{`
+        .fleet-table .ant-table-cell {
+          white-space: nowrap !important;
+          overflow: hidden;
+          font-size: 14px;
+        }
+      `}</style>
     </div>
   );
 }
