@@ -269,12 +269,11 @@ export function RecordPaymentModal({
                 <Select
                   placeholder="Select type"
                   value={paymentType}
-                  options={availableTypes.map((opt) => ({ value: opt.value, label: opt.label }))}
-                  optionRender={(opt) => (
-                    <Tag color={availableTypes.find((a) => a.value === opt.data?.value)?.color}>
-                      {opt.data?.label}
-                    </Tag>
-                  )}
+                  options={availableTypes.map((opt) => ({
+                    value: opt.value,
+                    label: opt.label,
+                  }))}
+                  dropdownStyle={{ maxHeight: 200 }}
                 />
               </Form.Item>
             </Col>
