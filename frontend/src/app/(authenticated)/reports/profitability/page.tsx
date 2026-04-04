@@ -237,16 +237,16 @@ export default function TripProfitabilityPage() {
       title: "Route",
       dataIndex: "route_name",
       key: "route_name",
-      width: 180,
-      ellipsis: true,
+      width: 200,
+      ellipsis: { showTitle: true },
       ...getColumnSearchProps("route_name"),
     },
     {
       title: "Client",
       dataIndex: "client",
       key: "client",
-      width: 130,
-      ellipsis: true,
+      width: 150,
+      ellipsis: { showTitle: true },
       ...getColumnSearchProps("client"),
     },
     {
@@ -361,21 +361,13 @@ export default function TripProfitabilityPage() {
       key: "duration_days",
       width: 80,
       align: "center" as const,
-      render: (val: number, record: TripProfitability) => {
-        const colorKey: ColorKey = val > 15 ? "red" : val > 7 ? "orange" : "green";
-        return (
-          <Space size={4}>
-            <Tooltip title="Overall trip duration">
-              <StatusBadge status={`${val}d`} colorKey={colorKey} />
-            </Tooltip>
-            {record.return_duration_days > 0 && (
-              <Tooltip title="Return leg duration">
-                <StatusBadge status={`Ret: ${record.return_duration_days}d`} colorKey="gray" />
-              </Tooltip>
-            )}
-          </Space>
-        );
-      },
+      render: (val: number, record: TripProfitability) => (
+        <span style={{ whiteSpace: "nowrap" }}>
+          {record.return_duration_days > 0
+            ? `${val}d (+${record.return_duration_days}d)`
+            : `${val}d`}
+        </span>
+      ),
     },
     {
       title: "Actions",
@@ -557,13 +549,14 @@ export default function TripProfitabilityPage() {
           </Text>
 
           <Table<TripProfitability>
+            className="profitability-table"
             columns={resizableColumns}
             components={components}
             dataSource={data}
             rowKey="trip_id"
             loading={loading}
             sticky={{ offsetHeader: 64 }}
-            scroll={{ x: 1200 }}
+            scroll={{ x: "max-content" }}
             onChange={handleTableChange}
             pagination={{
               current: currentPage,
@@ -583,6 +576,10 @@ export default function TripProfitabilityPage() {
       </Card>
 
       <style jsx global>{`
+        .profitability-table .ant-table-cell {
+          white-space: nowrap !important;
+          overflow: hidden;
+        }
         .row-loss {
           background-color: color-mix(in srgb, var(--color-red) 10%, transparent) !important;
         }
