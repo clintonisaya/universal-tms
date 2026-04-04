@@ -49,9 +49,9 @@ export function RecordPaymentModal({
   const [submitting, setSubmitting] = useState(false);
 
   const inv = useMemo(() => invoice ?? null, [invoice]);
-  const total = inv ? (inv?.total_usd ?? 0) : 0;
-  const paid = inv ? (inv?.amount_paid ?? 0) : 0;
-  const outstanding = inv ? (inv?.amount_outstanding ?? 0) : 0;
+  const total = inv ? Number(inv.total_usd ?? 0) : 0;
+  const paid = inv ? Number(inv.amount_paid ?? 0) : 0;
+  const outstanding = inv ? Number(inv.amount_outstanding ?? 0) : 0;
   const paymentType = Form.useWatch("payment_type", form);
 
   const hasAuthed = !!useAuth().user;
@@ -71,7 +71,7 @@ export function RecordPaymentModal({
         defaultType = "full";
       } else if (inv.status === "partially_paid") {
         defaultType = "balance";
-      } else if (!inv.amount_paid || inv.amount_paid === 0) {
+      } else if (paid === 0) {
         defaultType = "full";
       }
 
@@ -88,12 +88,15 @@ export function RecordPaymentModal({
     const types: { value: PaymentType; label: string; color: string }[] = [];
     if (!inv) return types;
 
-    if (inv.status === "issued" && (inv.amount_paid ?? 0) === 0) {
+    // Convert to number for safe comparison — API may return string decimals
+    const paidAmount = Number(inv.amount_paid ?? 0);
+
+    if (inv.status === "issued" && paidAmount === 0) {
       types.push(PAYMENT_TYPE_OPTIONS[0]); // full
       types.push(PAYMENT_TYPE_OPTIONS[1]); // advance
     } else if (inv.status === "partially_paid") {
       types.push(PAYMENT_TYPE_OPTIONS[2]); // balance
-    } else if (inv.status === "issued" && (inv.amount_paid ?? 0) > 0) {
+    } else if (inv.status === "issued" && paidAmount > 0) {
       types.push(PAYMENT_TYPE_OPTIONS[2]); // balance (fallback)
     }
 
