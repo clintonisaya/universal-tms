@@ -203,7 +203,7 @@ export default function OfficeExpensesPage() {
       title: "Status",
       dataIndex: "status",
       key: "status",
-      width: 220,
+      width: 250,
       render: (status: ExpenseStatus) => <ExpenseStatusBadge status={status} />,
       ...getColumnFilterProps("status", STATUS_FILTERS),
     },
