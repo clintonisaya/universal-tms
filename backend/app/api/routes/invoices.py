@@ -20,11 +20,16 @@ from app.models import (
     ExchangeRate,
     Invoice,
     InvoiceCreate,
+    InvoicePayment,
+    InvoicePaymentCreate,
+    InvoicePaymentPublic,
+    InvoicePaymentsPublic,
     InvoicePublic,
     InvoiceStatus,
     InvoicesPublic,
     InvoiceUpdate,
     Message,
+    PaymentType,
     Trip,
     Truck,
     Trailer,
@@ -37,6 +42,7 @@ from app.models import (
 WRITE_ROLES = {UserRole.admin, UserRole.manager, UserRole.ops}
 ISSUE_ROLES = {UserRole.admin, UserRole.manager, UserRole.ops}
 VOID_ROLES = {UserRole.admin, UserRole.manager}
+PAYMENT_ROLES = {UserRole.admin, UserRole.finance}
 
 # Default bank details (from Edupo company profile)
 DEFAULT_BANK_TZS = {
@@ -392,3 +398,105 @@ def void_invoice(
     session.commit()
     session.refresh(invoice)
     return invoice
+
+
+# ---------------------------------------------------------------------------
+# Payment Recording (Phase 2)
+# ---------------------------------------------------------------------------
+
+@router.patch("/{id}/payment", response_model=InvoicePublic)
+def record_payment(
+    *,
+    session: SessionDep,
+    current_user: CurrentUser,
+    id: uuid.UUID,
+    body: InvoicePaymentCreate,
+) -> Any:
+    """Record a payment against an issued or partially-paid invoice."""
+    if current_user.role not in PAYMENT_ROLES:
+        raise HTTPException(status_code=403, detail="Only Finance or Admin can record invoice payments")
+
+    invoice = session.get(Invoice, id)
+    if not invoice:
+        raise HTTPException(status_code=404, detail="Invoice not found")
+
+    # Only allow payments on invoices that can receive them
+    if invoice.status == InvoiceStatus.draft:
+        raise HTTPException(status_code=422, detail="Cannot record payment on a draft invoice")
+    if invoice.status == InvoiceStatus.voided:
+        raise HTTPException(status_code=422, detail="Cannot record payment on a voided invoice")
+    if invoice.status == InvoiceStatus.fully_paid:
+        raise HTTPException(status_code=422, detail="Invoice is already fully paid")
+
+    # Validate amount doesn't exceed outstanding balance
+    outstanding_after = invoice.amount_outstanding - body.amount
+    if outstanding_after < 0:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Payment amount ({body.amount}) exceeds outstanding balance ({invoice.amount_outstanding})"
+        )
+
+    # Validate payment_type matches invoice state
+    if invoice.status == InvoiceStatus.issued and body.payment_type == PaymentType.balance:
+        raise HTTPException(status_code=422, detail="Cannot record balance payment when no advance has been recorded")
+    if invoice.status == InvoiceStatus.partially_paid and body.payment_type == PaymentType.advance:
+        raise HTTPException(status_code=422, detail="Advance payment already recorded, please record the balance")
+
+    # Auto-suggest payment_type if 'full' but amount != total
+    if body.payment_type == PaymentType.full and body.amount != invoice.total_usd:
+        # Override: if partial payment on issued invoice, treat as advance
+        if invoice.status == InvoiceStatus.issued and body.amount < invoice.total_usd:
+            body.payment_type = PaymentType.advance
+
+    # Apply payment
+    invoice.amount_paid += body.amount
+    invoice.amount_outstanding = outstanding_after
+
+    # Auto-transition status
+    if invoice.amount_outstanding <= 0:
+        invoice.status = InvoiceStatus.fully_paid
+    elif invoice.amount_paid > 0:
+        invoice.status = InvoiceStatus.partially_paid
+
+    invoice.updated_by_id = current_user.id
+    invoice.updated_at = datetime.now(timezone.utc)
+
+    # Create payment record
+    payment = InvoicePayment(
+        invoice_id=id,
+        payment_type=body.payment_type,
+        amount=body.amount,
+        currency=body.currency,
+        payment_date=body.payment_date,
+        reference=body.reference,
+        notes=body.notes,
+        verified_by_id=current_user.id,
+    )
+
+    session.add(invoice)
+    session.add(payment)
+    session.commit()
+    session.refresh(invoice)
+    return invoice
+
+
+@router.get("/{id}/payments", response_model=InvoicePaymentsPublic)
+def list_payments(
+    *,
+    session: SessionDep,
+    current_user: CurrentUser,
+    id: uuid.UUID,
+) -> Any:
+    """List all payments recorded against an invoice."""
+    invoice = session.get(Invoice, id)
+    if not invoice:
+        raise HTTPException(status_code=404, detail="Invoice not found")
+
+    statement = (
+        select(InvoicePayment)
+        .where(InvoicePayment.invoice_id == id)
+        .order_by(InvoicePayment.payment_date.asc())
+    )
+    payments = session.exec(statement).all()
+
+    return InvoicePaymentsPublic(data=payments, count=len(payments))

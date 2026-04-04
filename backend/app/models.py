@@ -1400,6 +1400,7 @@ class Invoice(InvoiceBase, table=True):
     created_by: User | None = Relationship(sa_relationship_kwargs={"foreign_keys": "[Invoice.created_by_id]", "lazy": "selectin"})
     updated_by: User | None = Relationship(sa_relationship_kwargs={"foreign_keys": "[Invoice.updated_by_id]", "lazy": "selectin"})
     issued_by: User | None = Relationship(sa_relationship_kwargs={"foreign_keys": "[Invoice.issued_by_id]", "lazy": "selectin"})
+    payments: list["InvoicePayment"] = Relationship(back_populates="invoice")
 
 
 class InvoiceCreate(SQLModel):
@@ -1449,4 +1450,66 @@ class InvoicePublic(InvoiceBase):
 
 class InvoicesPublic(SQLModel):
     data: list[InvoicePublic]
+    count: int
+
+
+# ============================================================================
+# Invoice Payment Models — Phase 2: Payment Recording
+# ============================================================================
+
+
+class PaymentType(str, Enum):
+    """Invoice payment types"""
+    full = "full"
+    advance = "advance"
+    balance = "balance"
+
+
+class InvoicePayment(SQLModel, table=True):
+    __tablename__ = "invoice_payment"
+
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    invoice_id: uuid.UUID = Field(foreign_key="invoice.id", index=True)
+    payment_type: PaymentType = Field(sa_type=SAEnum(PaymentType, name="payment_type"))
+    amount: Decimal = Field(max_digits=12, decimal_places=2, sa_type=Numeric(12, 2))
+    currency: str = Field(default="USD", max_length=3)
+    payment_date: datetime = Field(sa_type=DateTime(timezone=True))
+    reference: str | None = Field(default=None, max_length=255)
+    notes: str | None = Field(default=None, max_length=500)
+    verified_by_id: uuid.UUID | None = Field(default=None, foreign_key="users.id", index=True)
+    created_at: datetime | None = Field(default_factory=get_datetime_utc, sa_type=DateTime(timezone=True))
+    updated_at: datetime | None = Field(default_factory=get_datetime_utc, sa_type=DateTime(timezone=True))
+
+    # Relationships
+    invoice: Invoice | None = Relationship(back_populates="payments")
+    verified_by: User | None = Relationship(sa_relationship_kwargs={"foreign_keys": "[InvoicePayment.verified_by_id]", "lazy": "selectin"})
+
+
+class InvoicePaymentCreate(SQLModel):
+    """Input for recording an invoice payment."""
+    payment_type: PaymentType
+    amount: Decimal = Field(ge=Decimal("0.01"))
+    currency: str = Field(default="USD", max_length=3)
+    payment_date: datetime
+    reference: str | None = Field(default=None, max_length=255)
+    notes: str | None = Field(default=None, max_length=500)
+
+
+class InvoicePaymentPublic(SQLModel):
+    id: uuid.UUID
+    invoice_id: uuid.UUID
+    payment_type: PaymentType
+    amount: Decimal
+    currency: str
+    payment_date: datetime
+    reference: str | None = None
+    notes: str | None = None
+    verified_by_id: uuid.UUID | None = None
+    verified_by: UserPublic | None = None
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
+
+
+class InvoicePaymentsPublic(SQLModel):
+    data: list[InvoicePaymentPublic]
     count: int

@@ -11,6 +11,8 @@ export type InvoiceStatus =
   | "fully_paid"
   | "voided";
 
+export type PaymentType = "full" | "advance" | "balance";
+
 export interface InvoiceItem {
   route: string;
   truck_plate: string;
@@ -84,4 +86,35 @@ export interface Invoice {
 export interface InvoicesResponse {
   data: Invoice[];
   count: number;
+}
+
+// Invoice Payment types
+
+export interface InvoicePayment {
+  id: string;
+  invoice_id: string;
+  payment_type: PaymentType;
+  amount: number;
+  currency: string;
+  payment_date: string;
+  reference: string | null;
+  notes: string | null;
+  verified_by_id: string | null;
+  verified_by: UserSummary | null;
+  created_at: string | null;
+  updated_at: string | null;
+}
+
+export interface InvoicePaymentsResponse {
+  data: InvoicePayment[];
+  count: number;
+}
+
+export interface RecordPaymentInput {
+  payment_type: PaymentType;
+  amount: number;
+  currency: string;
+  payment_date: string;
+  reference?: string;
+  notes?: string;
 }

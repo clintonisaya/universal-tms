@@ -15,7 +15,9 @@ import {
   ArrowLeftOutlined,
   ReloadOutlined,
   EyeOutlined,
+  DollarOutlined,
 } from "@ant-design/icons";
+import { Space } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { useAuth } from "@/contexts/AuthContext";
 import { useInvoices } from "@/hooks/useApi";
@@ -25,6 +27,7 @@ import {
   useResizableColumns,
 } from "@/components/ui/tableUtils";
 import type { Invoice, InvoiceStatus } from "@/types/invoice";
+import { RecordPaymentModal } from "@/components/invoices/RecordPaymentModal";
 
 const { Title } = Typography;
 
@@ -49,6 +52,10 @@ export default function InvoiceVerificationPage() {
   const isAuthenticated = !!user;
 
   const [statusFilter, setStatusFilter] = useState<string>("issued");
+
+  // Record payment modal state
+  const [paymentModalOpen, setPaymentModalOpen] = useState(false);
+  const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
 
   const apiStatus = statusFilter === "all" ? undefined : statusFilter;
   const { data, isLoading, refetch } = useInvoices(
@@ -162,19 +169,40 @@ export default function InvoiceVerificationPage() {
     {
       title: "Actions",
       key: "actions",
-      width: 120,
+      width: 200,
       fixed: "right",
-      render: (_, record: Invoice) => (
-        <Tooltip title="View Invoice">
-          <Button
-            size="small"
-            icon={<EyeOutlined />}
-            onClick={() => router.push(`/ops/invoices/${record.id}`)}
-          >
-            View
-          </Button>
-        </Tooltip>
-      ),
+      render: (_: unknown, record: Invoice) => {
+        const canPay =
+          record.status === "issued" || record.status === "partially_paid";
+        return (
+          <Space size={4}>
+            <Tooltip title="View Invoice">
+              <Button
+                size="small"
+                icon={<EyeOutlined />}
+                onClick={() => router.push(`/ops/invoices/${record.id}`)}
+              >
+                View
+              </Button>
+            </Tooltip>
+            {canPay && (
+              <Tooltip title="Record Payment">
+                <Button
+                  size="small"
+                  type="primary"
+                  icon={<DollarOutlined />}
+                  onClick={() => {
+                    setSelectedInvoice(record);
+                    setPaymentModalOpen(true);
+                  }}
+                >
+                  Record Payment
+                </Button>
+              </Tooltip>
+            )}
+          </Space>
+        );
+      },
     },
   ];
 
@@ -233,6 +261,18 @@ export default function InvoiceVerificationPage() {
           />
         </Flex>
       </Card>
+
+      <RecordPaymentModal
+        open={paymentModalOpen}
+        onClose={() => {
+          setPaymentModalOpen(false);
+          setSelectedInvoice(null);
+        }}
+        onSuccess={() => {
+          refetch();
+        }}
+        invoice={selectedInvoice}
+      />
     </div>
   );
 }

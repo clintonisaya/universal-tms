@@ -60,6 +60,7 @@ export const queryKeys = {
   tripBorderCrossings: (tripId: string) => ["tripBorderCrossings", tripId] as const,
   nextBorder: (tripId: string, direction: string) => ["nextBorder", tripId, direction] as const,
   invoices: ["invoices"] as const,
+  invoicePayments: (id: string) => ["invoicePayments", id] as const,
   invoice: (id: string) => ["invoices", id] as const,
 };
 
@@ -140,6 +141,15 @@ export function useInvoice(id: string) {
     queryKey: queryKeys.invoice(id),
     queryFn: () => apiFetch<any>(`/api/v1/invoices/${id}`),
     enabled: !!id,
+  });
+}
+
+// Invoice Payments
+export function useInvoicePayments(invoiceId: string | null, enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.invoicePayments(invoiceId ?? ""),
+    queryFn: () => apiFetch<{ data: any[]; count: number }>(`/api/v1/invoices/${invoiceId}/payments`),
+    enabled: !!invoiceId && enabled,
   });
 }
 
@@ -360,6 +370,7 @@ export function useInvalidateQueries() {
     invalidateNextBorder: (tripId: string) => queryClient.invalidateQueries({ queryKey: ["nextBorder", tripId] }),
     invalidateInvoices: () => queryClient.invalidateQueries({ queryKey: queryKeys.invoices }),
     invalidateInvoice: (id: string) => queryClient.invalidateQueries({ queryKey: queryKeys.invoice(id) }),
+    invalidateInvoicePayments: (id: string) => queryClient.invalidateQueries({ queryKey: queryKeys.invoicePayments(id) }),
     invalidateAll: () => queryClient.invalidateQueries(),
   };
 }
