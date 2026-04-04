@@ -26,8 +26,8 @@ import { useAuth } from "@/contexts/AuthContext";
 const { Text, Title } = Typography;
 
 const PAYMENT_TYPE_OPTIONS: { value: PaymentType; label: string; color: string }[] = [
-  { value: "full", label: "Full — pays entire invoice amount", color: "green" },
-  { value: "advance", label: "Advance — partial upfront payment", color: "blue" },
+  { value: "full", label: "Full — entire invoice amount received", color: "green" },
+  { value: "advance", label: "Advance — partial upfront received", color: "blue" },
   { value: "balance", label: "Balance — remaining after advance", color: "orange" },
 ];
 
