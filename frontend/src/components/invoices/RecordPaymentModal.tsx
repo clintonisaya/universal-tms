@@ -266,13 +266,16 @@ export function RecordPaymentModal({
                 name="payment_type"
                 rules={[{ required: true, message: "Select payment type" }]}
               >
-                <Select placeholder="Select type">
-                  {availableTypes.map((opt) => (
-                    <Select.Option key={opt.value} value={opt.value}>
-                      <Tag color={opt.color}>{opt.label}</Tag>
-                    </Select.Option>
-                  ))}
-                </Select>
+                <Select
+                  placeholder="Select type"
+                  value={paymentType}
+                  options={availableTypes.map((opt) => ({ value: opt.value, label: opt.label }))}
+                  optionRender={(opt) => (
+                    <Tag color={availableTypes.find((a) => a.value === opt.data?.value)?.color}>
+                      {opt.data?.label}
+                    </Tag>
+                  )}
+                />
               </Form.Item>
             </Col>
             <Col xs={24} sm={12}>
