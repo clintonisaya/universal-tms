@@ -152,6 +152,13 @@ export default function WaybillsPage() {
       ...getColumnSearchProps<Waybill>("waybill_number"),
     },
     {
+      title: "Trip #",
+      dataIndex: "trip_number",
+      key: "trip_number",
+      width: 110,
+      render: (text: string | null | undefined) => text || "—",
+    },
+    {
       title: "Client",
       dataIndex: "client_name",
       key: "client_name",

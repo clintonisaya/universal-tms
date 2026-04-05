@@ -425,6 +425,8 @@ class WaybillPublic(WaybillBase):
     invoice_id: uuid.UUID | None = None
     invoice_number: str | None = None
     invoice_status: str | None = None
+    # Trip enrichment (set by API, not from DB column)
+    trip_number: str | None = None
 
 
 class WaybillsPublic(SQLModel):
@@ -1445,6 +1447,9 @@ class InvoicePublic(InvoiceBase):
     created_by: UserPublic | None = None
     updated_by: UserPublic | None = None
     issued_by: UserPublic | None = None
+    # Enrichment fields (resolved in route)
+    waybill_number: str | None = None
+    trip_number: str | None = None
 
 
 class InvoicesPublic(SQLModel):

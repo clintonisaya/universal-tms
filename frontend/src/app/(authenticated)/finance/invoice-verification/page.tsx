@@ -87,6 +87,20 @@ export default function InvoiceVerificationPage() {
       ...getColumnSearchProps<Invoice>("invoice_number"),
     },
     {
+      title: "Waybill #",
+      dataIndex: "waybill_number",
+      key: "waybill_number",
+      width: 130,
+      render: (text: string | null | undefined) => text || "—",
+    },
+    {
+      title: "Trip #",
+      dataIndex: "trip_number",
+      key: "trip_number",
+      width: 130,
+      render: (text: string | null | undefined) => text || "—",
+    },
+    {
       title: "Date",
       dataIndex: "date",
       key: "date",
@@ -249,7 +263,7 @@ export default function InvoiceVerificationPage() {
               showSizeChanger: true,
               showTotal: (total) => `${total} invoices`,
             }}
-            scroll={{ x: 1100 }}
+            scroll={{ x: 1400 }}
             size="small"
             locale={{
               emptyText: (

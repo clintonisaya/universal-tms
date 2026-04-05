@@ -125,7 +125,32 @@ def read_invoices(
     query = query.order_by(Invoice.created_at.desc()).offset(skip).limit(limit)
     invoices = session.exec(query).all()
 
-    return InvoicesPublic(data=invoices, count=count)
+    # Enrich with waybill_number and trip_number via bulk lookup
+    waybill_ids = [inv.waybill_id for inv in invoices if inv.waybill_id]
+    trip_ids = [inv.trip_id for inv in invoices if inv.trip_id]
+
+    waybill_number_map: dict[uuid.UUID, str] = {}
+    if waybill_ids:
+        wbs = list(session.exec(
+            select(Waybill.id, Waybill.waybill_number).where(Waybill.id.in_(waybill_ids))
+        ).all())
+        waybill_number_map = {wid: wnum for wid, wnum in wbs}
+
+    trip_number_map: dict[uuid.UUID, str] = {}
+    if trip_ids:
+        trips = list(session.exec(
+            select(Trip.id, Trip.trip_number).where(Trip.id.in_(trip_ids))
+        ).all())
+        trip_number_map = {tid: tnum for tid, tnum in trips}
+
+    public_invoices = []
+    for inv in invoices:
+        pub = InvoicePublic.model_validate(inv)
+        pub.waybill_number = waybill_number_map.get(inv.waybill_id) if inv.waybill_id else None
+        pub.trip_number = trip_number_map.get(inv.trip_id) if inv.trip_id else None
+        public_invoices.append(pub)
+
+    return InvoicesPublic(data=public_invoices, count=count)
 
 
 @router.get("/check-number/{invoice_number}")

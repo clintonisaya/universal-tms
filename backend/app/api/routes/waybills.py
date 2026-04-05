@@ -82,14 +82,20 @@ def read_waybills(
     query = query.order_by(Waybill.created_at.desc()).offset(skip).limit(limit)
     waybills = session.exec(query).all()
 
-    # Enrich with invoice data (bulk lookup)
+    # Enrich with invoice data and trip number (bulk lookup)
     waybill_ids = [w.id for w in waybills]
     invoice_map: dict = {}
+    trip_number_map: dict = {}
     if waybill_ids:
         invoices = session.exec(
             select(Invoice).where(Invoice.waybill_id.in_(waybill_ids))
         ).all()
         invoice_map = {inv.waybill_id: inv for inv in invoices}
+
+        trips = session.exec(
+            select(Trip.waybill_id, Trip.trip_number).where(Trip.waybill_id.in_(waybill_ids))
+        ).all()
+        trip_number_map = {twb: tnum for twb, tnum in trips}
 
     enriched = []
     for wb in waybills:
@@ -99,6 +105,7 @@ def read_waybills(
             pub.invoice_id = inv.id
             pub.invoice_number = inv.invoice_number
             pub.invoice_status = inv.status
+        pub.trip_number = trip_number_map.get(wb.id)
         enriched.append(pub)
 
     return WaybillsPublic(data=enriched, count=count)

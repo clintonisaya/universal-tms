@@ -70,6 +70,9 @@ export interface Invoice {
   // References
   waybill_id: string | null;
   trip_id: string | null;
+  // Enrichment fields (resolved server-side from refs)
+  waybill_number?: string | null;
+  trip_number?: string | null;
 
   // Audit
   created_by_id: string | null;

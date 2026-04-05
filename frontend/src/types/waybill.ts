@@ -30,6 +30,8 @@ export interface Waybill {
   invoice_id?: string | null;
   invoice_number?: string | null;
   invoice_status?: string | null;
+  // Trip enrichment
+  trip_number?: string | null;
 }
 
 export interface WaybillCreate {
