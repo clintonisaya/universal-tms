@@ -97,6 +97,14 @@ def read_waybills(
         ).all()
         trip_number_map = {twb: tnum for twb, tnum in trips}
 
+        # Also link return waybills to their trip numbers
+        return_trips = session.exec(
+            select(Trip.return_waybill_id, Trip.trip_number)
+            .where(Trip.return_waybill_id.in_(waybill_ids))
+        ).all()
+        for rwb, rnum in return_trips:
+            trip_number_map[rwb] = rnum
+
     enriched = []
     for wb in waybills:
         pub = WaybillPublic.model_validate(wb)
@@ -130,6 +138,16 @@ def read_waybill(
         pub.invoice_id = inv.id
         pub.invoice_number = inv.invoice_number
         pub.invoice_status = inv.status
+
+    # Link to trip number via either go leg or return leg
+    trip = session.exec(
+        select(Trip.trip_number).where(
+            (Trip.waybill_id == id) | (Trip.return_waybill_id == id)
+        )
+    ).first()
+    if trip:
+        pub.trip_number = trip
+
     return pub
 
 

@@ -130,6 +130,16 @@ export function WaybillDetailDrawer({ open, onClose, waybillId }: WaybillDetailD
             </Descriptions.Item>
           </Descriptions>
 
+          <Descriptions title="Linked Trip" bordered column={2} size="small">
+            <Descriptions.Item label="Trip #" span={2}>
+              {waybill.trip_number ? (
+                <Text strong>{waybill.trip_number}</Text>
+              ) : (
+                <Text type="secondary">Not yet dispatched</Text>
+              )}
+            </Descriptions.Item>
+          </Descriptions>
+
           <Descriptions title="Metadata" bordered column={2} size="small">
             <Descriptions.Item label="Created At">
               {waybill.created_at
