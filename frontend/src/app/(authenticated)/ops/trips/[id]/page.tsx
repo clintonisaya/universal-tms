@@ -32,6 +32,7 @@ import {
   EditOutlined,
 } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
+import { getStandardRowSelection } from "@/components/ui/tableUtils";
 import type { TripDetailed, TripStatus } from "@/types/trip";
 import { RETURN_DIRECTION_STATUSES, STATUS_ORDER } from "@/constants/tripStatuses";
 import type { Waybill } from "@/types/waybill";
@@ -67,6 +68,7 @@ export default function TripDetailPage() {
   const [expensesLoading, setExpensesLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isStatusModalOpen, setIsStatusModalOpen] = useState(false);
+  const [expenseRowKeys, setExpenseRowKeys] = useState<React.Key[]>([]);
 
   // Attachments
   const [tripAttachments, setTripAttachments] = useState<TripAttachment[]>([]);
@@ -667,6 +669,12 @@ export default function TripDetailPage() {
                       columns={expenseColumns}
                       dataSource={expenses}
                       rowKey="id"
+                      rowSelection={getStandardRowSelection(
+                        1,
+                        expenses.length || 1,
+                        expenseRowKeys,
+                        setExpenseRowKeys
+                      )}
                       loading={expensesLoading}
                       sticky
                       scroll={{ x: "max-content" }}
