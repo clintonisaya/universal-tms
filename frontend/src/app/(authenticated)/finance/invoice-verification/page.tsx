@@ -76,7 +76,7 @@ export default function InvoiceVerificationPage() {
       title: "Invoice #",
       dataIndex: "invoice_number",
       key: "invoice_number",
-      width: 150,
+      width: 100,
       render: (text: string, record: Invoice) => (
         <Button
           type="link"
@@ -92,14 +92,14 @@ export default function InvoiceVerificationPage() {
       title: "Waybill #",
       dataIndex: "waybill_number",
       key: "waybill_number",
-      width: 130,
+      width: 150,
       render: (text: string | null | undefined) => text || "—",
     },
     {
       title: "Trip #",
       dataIndex: "trip_number",
       key: "trip_number",
-      width: 130,
+      width: 150,
       render: (text: string | null | undefined) => text || "—",
     },
     {

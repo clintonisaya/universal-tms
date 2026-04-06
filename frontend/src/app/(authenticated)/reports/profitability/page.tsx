@@ -24,6 +24,7 @@ import {
 } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
 import { useAuth } from "@/contexts/AuthContext";
+import { getStandardRowSelection } from "@/components/ui/tableUtils";
 import {
   getColumnSearchProps,
   useResizableColumns,
@@ -79,6 +80,7 @@ export default function TripProfitabilityPage() {
   const [pageSize, setPageSize] = useState(20);
   const [sortBy, setSortBy] = useState<string>("trip_number");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+  const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
 
   // Trip detail drawer
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -554,6 +556,12 @@ export default function TripProfitabilityPage() {
             components={components}
             dataSource={data}
             rowKey="trip_id"
+            rowSelection={getStandardRowSelection(
+              currentPage,
+              pageSize,
+              selectedRowKeys,
+              setSelectedRowKeys
+            )}
             loading={loading}
             sticky={{ offsetHeader: 64 }}
             scroll={{ x: "max-content" }}

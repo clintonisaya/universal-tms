@@ -21,6 +21,7 @@ import {
   SearchOutlined,
 } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
+import { getStandardRowSelection } from "@/components/ui/tableUtils";
 import type { ExpenseRequestDetailed, ExpenseStatus } from "@/types/expense";
 import { useExpenses, useInvalidateQueries } from "@/hooks/useApi";
 import { usePermissions } from "@/hooks/usePermissions";
@@ -51,6 +52,7 @@ export default function ExpenseConsolePage() {
   const [selectedExpense, setSelectedExpense] = useState<ExpenseRequestDetailed | null>(null);
   const [voidModalOpen, setVoidModalOpen] = useState(false);
   const [attachmentModalOpen, setAttachmentModalOpen] = useState(false);
+  const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
 
   // Filter state
   const [statusFilter, setStatusFilter] = useState<ExpenseStatus[]>([]);
@@ -242,6 +244,12 @@ export default function ExpenseConsolePage() {
           dataSource={filtered}
           columns={columns}
           rowKey="id"
+          rowSelection={getStandardRowSelection(
+            currentPage,
+            pageSize,
+            selectedRowKeys,
+            setSelectedRowKeys
+          )}
           loading={isLoading}
           scroll={{ x: 1000 }}
           pagination={{
