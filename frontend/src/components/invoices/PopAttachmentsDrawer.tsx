@@ -67,7 +67,7 @@ export function PopAttachmentsDrawer({ invoice, open, onClose }: PopAttachmentsD
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [previewFilename, setPreviewFilename] = useState<string>("");
 
-  const canUpload = hasFullAccess || hasPermission("expenses:pay");
+  const canUpload = hasFullAccess || hasPermission("invoices:pop-manage");
 
   useEffect(() => {
     if (open && invoice?.id) {

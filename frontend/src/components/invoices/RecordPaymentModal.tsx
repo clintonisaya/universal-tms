@@ -52,7 +52,7 @@ export function RecordPaymentModal({
   const [submitting, setSubmitting] = useState(false);
   const [fileList, setFileList] = useState<UploadFile[]>([]);
   const { hasFullAccess, hasPermission } = usePermissions();
-  const canUploadPOP = hasFullAccess || hasPermission("expenses:pay");
+  const canUploadPOP = hasFullAccess || hasPermission("invoices:pop-manage");
 
   const inv = useMemo(() => invoice ?? null, [invoice]);
   const total = inv ? Number(inv.total_usd ?? 0) : 0;
