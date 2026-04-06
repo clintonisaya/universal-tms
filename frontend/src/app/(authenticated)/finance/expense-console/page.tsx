@@ -240,7 +240,7 @@ export default function ExpenseConsolePage() {
       </Card>
 
       <Card>
-        <Table
+        <Table<ExpenseRequestDetailed>
           dataSource={filtered}
           columns={columns}
           rowKey="id"
