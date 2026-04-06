@@ -24,6 +24,7 @@ import { useInvoices } from "@/hooks/useApi";
 import { fmtCurrency } from "@/lib/utils";
 import {
   getColumnSearchProps,
+  getStandardRowSelection,
   useResizableColumns,
 } from "@/components/ui/tableUtils";
 import type { Invoice, InvoiceStatus } from "@/types/invoice";
@@ -56,6 +57,7 @@ export default function InvoiceVerificationPage() {
   // Record payment modal state
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
+  const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
 
   const apiStatus = statusFilter === "all" ? undefined : statusFilter;
   const { data, isLoading, refetch } = useInvoices(
@@ -257,6 +259,12 @@ export default function InvoiceVerificationPage() {
             columns={resizableColumns}
             components={components}
             dataSource={invoices}
+            rowSelection={getStandardRowSelection(
+              1,
+              20,
+              selectedRowKeys,
+              setSelectedRowKeys
+            )}
             loading={isLoading}
             pagination={{
               total: totalCount,
