@@ -1481,6 +1481,7 @@ class InvoicePayment(SQLModel, table=True):
     reference: str | None = Field(default=None, max_length=255)
     notes: str | None = Field(default=None, max_length=500)
     verified_by_id: uuid.UUID | None = Field(default=None, foreign_key="users.id", index=True)
+    attachments: list = Field(default=[], sa_column=Column(JSON), description="POP attachment storage keys in R2")
     created_at: datetime | None = Field(default_factory=get_datetime_utc, sa_type=DateTime(timezone=True))
     updated_at: datetime | None = Field(default_factory=get_datetime_utc, sa_type=DateTime(timezone=True))
 
@@ -1510,6 +1511,7 @@ class InvoicePaymentPublic(SQLModel):
     notes: str | None = None
     verified_by_id: uuid.UUID | None = None
     verified_by: UserPublic | None = None
+    attachments: list = []
     created_at: datetime | None = None
     updated_at: datetime | None = None
 

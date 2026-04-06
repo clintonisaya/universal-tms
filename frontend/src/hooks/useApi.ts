@@ -61,6 +61,7 @@ export const queryKeys = {
   nextBorder: (tripId: string, direction: string) => ["nextBorder", tripId, direction] as const,
   invoices: ["invoices"] as const,
   invoicePayments: (id: string) => ["invoicePayments", id] as const,
+  invoicePopAttachments: (id: string) => ["invoicePopAttachments", id] as const,
   invoice: (id: string) => ["invoices", id] as const,
 };
 
@@ -149,6 +150,15 @@ export function useInvoicePayments(invoiceId: string | null, enabled = true) {
   return useQuery({
     queryKey: queryKeys.invoicePayments(invoiceId ?? ""),
     queryFn: () => apiFetch<{ data: any[]; count: number }>(`/api/v1/invoices/${invoiceId}/payments`),
+    enabled: !!invoiceId && enabled,
+  });
+}
+
+// Invoice POP Attachments
+export function usePopAttachments(invoiceId: string | null, enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.invoicePopAttachments(invoiceId ?? ""),
+    queryFn: () => apiFetch<any[]>(`/api/v1/invoices/${invoiceId}/pop-attachments`),
     enabled: !!invoiceId && enabled,
   });
 }
@@ -371,6 +381,7 @@ export function useInvalidateQueries() {
     invalidateInvoices: () => queryClient.invalidateQueries({ queryKey: queryKeys.invoices }),
     invalidateInvoice: (id: string) => queryClient.invalidateQueries({ queryKey: queryKeys.invoice(id) }),
     invalidateInvoicePayments: (id: string) => queryClient.invalidateQueries({ queryKey: queryKeys.invoicePayments(id) }),
+    invalidatePopAttachments: (id: string) => queryClient.invalidateQueries({ queryKey: queryKeys.invoicePopAttachments(id) }),
     invalidateAll: () => queryClient.invalidateQueries(),
   };
 }

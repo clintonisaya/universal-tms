@@ -16,6 +16,7 @@ import {
   ReloadOutlined,
   EyeOutlined,
   DollarOutlined,
+  PaperClipOutlined,
 } from "@ant-design/icons";
 import { Space } from "antd";
 import type { ColumnsType } from "antd/es/table";
@@ -29,6 +30,7 @@ import {
 } from "@/components/ui/tableUtils";
 import type { Invoice, InvoiceStatus } from "@/types/invoice";
 import { RecordPaymentModal } from "@/components/invoices/RecordPaymentModal";
+import { PopAttachmentsDrawer } from "@/components/invoices/PopAttachmentsDrawer";
 
 const { Title } = Typography;
 
@@ -58,6 +60,7 @@ export default function InvoiceVerificationPage() {
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
+  const [popDrawerOpen, setPopDrawerOpen] = useState(false);
 
   const apiStatus = statusFilter === "all" ? undefined : statusFilter;
   const { data, isLoading, refetch } = useInvoices(
@@ -181,7 +184,7 @@ export default function InvoiceVerificationPage() {
     {
       title: "Actions",
       key: "actions",
-      width: 200,
+      width: 260,
       fixed: "right",
       render: (_: unknown, record: Invoice) => {
         const canPay =
@@ -212,6 +215,16 @@ export default function InvoiceVerificationPage() {
                 </Button>
               </Tooltip>
             )}
+            <Tooltip title="View POP Attachments">
+              <Button
+                size="small"
+                icon={<PaperClipOutlined />}
+                onClick={() => {
+                  setSelectedInvoice(record);
+                  setPopDrawerOpen(true);
+                }}
+              />
+            </Tooltip>
           </Space>
         );
       },
@@ -290,6 +303,15 @@ export default function InvoiceVerificationPage() {
           refetch();
         }}
         invoice={selectedInvoice}
+      />
+
+      <PopAttachmentsDrawer
+        invoice={selectedInvoice}
+        open={popDrawerOpen}
+        onClose={() => {
+          setPopDrawerOpen(false);
+          setSelectedInvoice(null);
+        }}
       />
     </div>
   );

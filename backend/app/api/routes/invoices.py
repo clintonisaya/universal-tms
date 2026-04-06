@@ -8,13 +8,15 @@ from datetime import datetime, timezone
 from decimal import Decimal
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, UploadFile, File
 from sqlalchemy import text
+from sqlalchemy.orm.attributes import flag_modified
 from sqlmodel import func, select
 
 logger = logging.getLogger(__name__)
 
 from app.api.deps import CurrentUser, SessionDep
+from app.core.storage import storage
 from app.models import (
     Client,
     ExchangeRate,
@@ -525,3 +527,156 @@ def list_payments(
     payments = session.exec(statement).all()
 
     return InvoicePaymentsPublic(data=payments, count=len(payments))
+
+
+# ---------------------------------------------------------------------------
+# POP Attachments — attach Proof of Payment files to payment records
+# ---------------------------------------------------------------------------
+
+POP_ALLOWED_TYPES = [
+    "application/pdf",
+    "image/jpeg",
+    "image/png",
+    "image/webp",
+]
+POP_MAX_SIZE = 5 * 1024 * 1024  # 5 MB
+POP_ROLES = {UserRole.admin, UserRole.finance}
+
+
+@router.post("/{invoice_id}/payments/{payment_id}/attachment")
+async def upload_pop_attachment(
+    *,
+    session: SessionDep,
+    current_user: CurrentUser,
+    invoice_id: uuid.UUID,
+    payment_id: uuid.UUID,
+    file: UploadFile = File(...),
+) -> Any:
+    """Upload a proof-of-payment attachment for a specific payment record."""
+    if current_user.role not in POP_ROLES:
+        raise HTTPException(status_code=403, detail="Only Finance or Admin can upload POP attachments")
+
+    invoice = session.get(Invoice, invoice_id)
+    if not invoice:
+        raise HTTPException(status_code=404, detail="Invoice not found")
+
+    payment = session.get(InvoicePayment, payment_id)
+    if not payment or payment.invoice_id != invoice_id:
+        raise HTTPException(status_code=404, detail="Payment not found for this invoice")
+
+    # Validate file type
+    if file.content_type not in POP_ALLOWED_TYPES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"File type '{file.content_type}' is not allowed. Accepted: PDF, JPEG, PNG, WebP",
+        )
+
+    # Validate file size
+    content = await file.read()
+    if len(content) > POP_MAX_SIZE:
+        raise HTTPException(status_code=400, detail="File size exceeds 5 MB limit")
+
+    # Generate storage key
+    unique_id = uuid.uuid4().hex[:8]
+    clean_filename = (file.filename or "pop").replace(" ", "_")
+    object_name = f"pop/{invoice_id}/{unique_id}_{clean_filename}"
+
+    uploaded_key = storage.upload_file(content, object_name, file.content_type)
+    if not uploaded_key:
+        raise HTTPException(status_code=500, detail="Failed to upload file to storage")
+
+    # Append to payment's JSON attachments list
+    attachment_entry = {
+        "id": uuid.uuid4().hex[:12],
+        "key": uploaded_key,
+        "filename": file.filename or clean_filename,
+        "content_type": file.content_type,
+        "uploaded_by": str(current_user.id),
+        "uploaded_at": datetime.now(timezone.utc).isoformat(),
+    }
+
+    current = list(payment.attachments) if payment.attachments else []
+    current.append(attachment_entry)
+    payment.attachments = current
+    flag_modified(payment, "attachments")
+    payment.updated_at = datetime.now(timezone.utc)
+    session.add(payment)
+    session.commit()
+
+    return attachment_entry
+
+
+@router.get("/{invoice_id}/pop-attachments")
+def list_pop_attachments(
+    *,
+    session: SessionDep,
+    current_user: CurrentUser,
+    invoice_id: uuid.UUID,
+) -> Any:
+    """List all POP attachments for an invoice, grouped by payment."""
+    invoice = session.get(Invoice, invoice_id)
+    if not invoice:
+        raise HTTPException(status_code=404, detail="Invoice not found")
+
+    statement = (
+        select(InvoicePayment)
+        .where(InvoicePayment.invoice_id == invoice_id)
+        .order_by(InvoicePayment.payment_date.desc())
+    )
+    payments = session.exec(statement).all()
+
+    result = []
+    for payment in payments:
+        enriched_attachments = []
+        for att in (payment.attachments or []):
+            url = storage.get_presigned_url(att["key"], expiration=3600)
+            enriched_attachments.append({**att, "url": url})
+
+        result.append({
+            "payment_id": str(payment.id),
+            "payment_type": payment.payment_type,
+            "amount": float(payment.amount),
+            "payment_date": payment.payment_date.isoformat() if payment.payment_date else None,
+            "attachments": enriched_attachments,
+        })
+
+    return result
+
+
+@router.delete("/{invoice_id}/pop-attachments/{attachment_id}")
+def delete_pop_attachment(
+    *,
+    session: SessionDep,
+    current_user: CurrentUser,
+    invoice_id: uuid.UUID,
+    attachment_id: str,
+) -> Message:
+    """Delete a POP attachment by its ID."""
+    if current_user.role not in POP_ROLES:
+        raise HTTPException(status_code=403, detail="Only Finance or Admin can delete POP attachments")
+
+    invoice = session.get(Invoice, invoice_id)
+    if not invoice:
+        raise HTTPException(status_code=404, detail="Invoice not found")
+
+    # Find the payment that contains this attachment
+    statement = (
+        select(InvoicePayment)
+        .where(InvoicePayment.invoice_id == invoice_id)
+    )
+    payments = session.exec(statement).all()
+
+    for payment in payments:
+        current = list(payment.attachments) if payment.attachments else []
+        match = next((a for a in current if a.get("id") == attachment_id), None)
+        if match:
+            storage.delete_file(match["key"])
+            current.remove(match)
+            payment.attachments = current
+            flag_modified(payment, "attachments")
+            payment.updated_at = datetime.now(timezone.utc)
+            session.add(payment)
+            session.commit()
+            return Message(message="POP attachment deleted successfully")
+
+    raise HTTPException(status_code=404, detail="Attachment not found")

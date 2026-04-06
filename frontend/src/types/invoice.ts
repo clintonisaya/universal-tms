@@ -104,8 +104,27 @@ export interface InvoicePayment {
   notes: string | null;
   verified_by_id: string | null;
   verified_by: UserSummary | null;
+  attachments: PopAttachment[];
   created_at: string | null;
   updated_at: string | null;
+}
+
+export interface PopAttachment {
+  id: string;
+  key: string;
+  filename: string;
+  content_type: string;
+  uploaded_by: string;
+  uploaded_at: string;
+  url?: string;
+}
+
+export interface PopAttachmentsGroup {
+  payment_id: string;
+  payment_type: PaymentType;
+  amount: number;
+  payment_date: string;
+  attachments: PopAttachment[];
 }
 
 export interface InvoicePaymentsResponse {

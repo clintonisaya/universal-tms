@@ -15,13 +15,16 @@ import {
   Space,
   Tag,
   Descriptions,
+  Upload,
 } from "antd";
-import { DollarOutlined, CheckCircleOutlined } from "@ant-design/icons";
+import type { UploadFile } from "antd/es/upload/interface";
+import { DollarOutlined, CheckCircleOutlined, UploadOutlined } from "@ant-design/icons";
 import { useInvalidateQueries, useInvoicePayments } from "@/hooks/useApi";
 import { fmtCurrency } from "@/lib/utils";
 import type { Invoice, PaymentType, InvoicePayment } from "@/types/invoice";
 import dayjs from "dayjs";
 import { useAuth } from "@/contexts/AuthContext";
+import { usePermissions } from "@/hooks/usePermissions";
 
 const { Text, Title } = Typography;
 
@@ -47,6 +50,9 @@ export function RecordPaymentModal({
   const { message } = App.useApp();
   const [form] = Form.useForm();
   const [submitting, setSubmitting] = useState(false);
+  const [fileList, setFileList] = useState<UploadFile[]>([]);
+  const { hasFullAccess, hasPermission } = usePermissions();
+  const canUploadPOP = hasFullAccess || hasPermission("expenses:pay");
 
   const inv = useMemo(() => invoice ?? null, [invoice]);
   const total = inv ? Number(inv.total_usd ?? 0) : 0;
@@ -149,10 +155,36 @@ export function RecordPaymentModal({
       });
 
       if (response.ok) {
+        // Upload POP files if any selected
+        if (fileList.length > 0) {
+          // Fetch payments to get the newly created payment ID
+          const payRes = await fetch(`/api/v1/invoices/${inv.id}/payments`, { credentials: "include" });
+          if (payRes.ok) {
+            const payData = await payRes.json();
+            // Get the most recent payment (sorted by date desc on backend)
+            const latestPayment = payData.data?.[payData.data.length - 1];
+            if (latestPayment) {
+              for (const file of fileList) {
+                const fileToUpload = file.originFileObj || (file as any);
+                if (fileToUpload) {
+                  const formData = new FormData();
+                  formData.append("file", fileToUpload as Blob);
+                  await fetch(
+                    `/api/v1/invoices/${inv.id}/payments/${latestPayment.id}/attachment`,
+                    { method: "POST", credentials: "include", body: formData }
+                  );
+                }
+              }
+            }
+          }
+        }
+
         message.success("Payment recorded successfully");
         form.resetFields();
+        setFileList([]);
         invalidate.invalidateInvoice(inv.id);
         invalidate.invalidateInvoicePayments(inv.id);
+        invalidate.invalidatePopAttachments(inv.id);
         invalidate.invalidateInvoices();
         onSuccess();
         onClose();
@@ -187,6 +219,7 @@ export function RecordPaymentModal({
       open={open}
       onCancel={() => {
         form.resetFields();
+        setFileList([]);
         onClose();
       }}
       width={720}
@@ -322,6 +355,38 @@ export function RecordPaymentModal({
               </Form.Item>
             </Col>
           </Row>
+
+          {/* POP Upload Zone — optional, visible only to finance/admin */}
+          {canUploadPOP && (
+            <div style={{ marginTop: 12 }}>
+              <Text type="secondary" style={{ display: "block", marginBottom: 6 }}>
+                Proof of Payment (optional)
+              </Text>
+              <Upload
+                accept=".pdf,.jpg,.jpeg,.png,.webp"
+                fileList={fileList}
+                beforeUpload={(file) => {
+                  const maxSize = 5 * 1024 * 1024;
+                  if (file.size > maxSize) {
+                    message.error(`${file.name} exceeds the 5 MB limit`);
+                    return Upload.LIST_IGNORE;
+                  }
+                  const allowed = ["application/pdf", "image/jpeg", "image/png", "image/webp"];
+                  if (!allowed.includes(file.type)) {
+                    message.error(`${file.name}: unsupported type. Use PDF, JPEG, PNG, or WebP.`);
+                    return Upload.LIST_IGNORE;
+                  }
+                  setFileList((prev) => [...prev, file as UploadFile]);
+                  return false;
+                }}
+                onRemove={(file) => {
+                  setFileList((prev) => prev.filter((f) => f.uid !== file.uid));
+                }}
+              >
+                <Button icon={<UploadOutlined />} size="small">Attach POP</Button>
+              </Upload>
+            </div>
+          )}
 
           <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 8 }}>
             <Button onClick={() => { form.resetFields(); onClose(); }}>
