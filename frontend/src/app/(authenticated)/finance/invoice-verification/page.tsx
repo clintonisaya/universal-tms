@@ -67,10 +67,6 @@ export default function InvoiceVerificationPage() {
   const invoices: Invoice[] = data?.data || [];
   const totalCount = data?.count || 0;
 
-  // Counts per status tab (approximate — uses current filtered data for "all", otherwise shows total)
-  const tabLabel = (label: string, count: number) =>
-    `${label} (${count})`;
-
   const columns: ColumnsType<Invoice> = [
     {
       title: "Invoice #",
