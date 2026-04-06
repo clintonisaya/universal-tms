@@ -118,7 +118,7 @@ const allMenuItems: PermissionMenuItem[] = [
           { key: "/settings/transport/locations", label: "Locations", requires: ["settings:locations"] },
           { key: "/settings/transport/cargo-types", label: "Cargo Types", requires: ["settings:cargo-types"] },
           { key: "/settings/transport/vehicle-statuses", label: "Vehicle Statuses", requires: ["settings:vehicle-statuses"] },
-          { key: "/settings/transport/border-posts", label: "Border Posts", requires: ["settings:vehicle-statuses"] },
+          { key: "/settings/transport/border-posts", label: "Border Posts", requires: ["settings:border-posts"] },
         ],
       },
       {
@@ -203,6 +203,7 @@ const PAGE_TITLES: Record<string, string> = {
   "/manager/approvals": "Approvals",
   "/manager/payments": "Payments",
   "/finance/expense-console": "Expense Console",
+  "/finance/invoice-verification": "Invoice Verification",
   "/reports/profitability": "Trip Profitability",
   "/settings/clients": "Clients",
   "/settings/finance": "Exchange Rates",
