@@ -78,19 +78,26 @@ def generate_reset_password_email(email_to: str, email: str, token: str) -> Emai
     return EmailData(html_content=html_content, subject=subject)
 
 
+def generate_password_reset_token(email: str) -> str:
+    """Generate a short-lived JWT token for password reset."""
+    from app.core.security import create_access_token
+    delta = timedelta(hours=settings.EMAIL_RESET_TOKEN_EXPIRE_HOURS)
+    return create_access_token(subject=email, expires_delta=delta)
+
+
 def generate_new_account_email(
-    email_to: str, username: str, password: str
+    email_to: str, username: str, token: str
 ) -> EmailData:
     project_name = settings.PROJECT_NAME
     subject = f"{project_name} - New account for user {username}"
+    link = f"{settings.server_host}/reset-password?token={token}"
     html_content = render_email_template(
         template_name="new_account.html",
         context={
             "project_name": settings.PROJECT_NAME,
             "username": username,
-            "password": password,
             "email": email_to,
-            "link": settings.server_host,
+            "link": link,
         },
     )
     return EmailData(html_content=html_content, subject=subject)

@@ -84,8 +84,10 @@ def create_user(
 
     user = crud.create_user(session=session, user_create=user_in)
     if settings.emails_enabled and user_in.username:
+        from app.utils import generate_password_reset_token
+        reset_token = generate_password_reset_token(user_in.username)
         email_data = generate_new_account_email(
-            email_to=user_in.username, username=user_in.username, password=user_in.password
+            email_to=user_in.username, username=user_in.username, token=reset_token
         )
         send_email(
             email_to=user_in.username,

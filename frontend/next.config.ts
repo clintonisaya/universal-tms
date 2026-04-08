@@ -22,6 +22,22 @@ const nextConfig: NextConfig = {
   // Ensure @tanstack/react-query is bundled once (fixes "No QueryClient set" with Turbopack)
   transpilePackages: ["@tanstack/react-query"],
 
+  // Content-Security-Policy in report-only mode to avoid breaking existing functionality
+  async headers() {
+    return [
+      {
+        source: "/(.*)",
+        headers: [
+          {
+            key: "Content-Security-Policy-Report-Only",
+            value:
+              "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' ws: wss:; frame-ancestors 'none';",
+          },
+        ],
+      },
+    ];
+  },
+
   // Fixes the API proxy so it works on both Local (Laptop) and Docker (Server)
   async rewrites() {
     const backendUrl =

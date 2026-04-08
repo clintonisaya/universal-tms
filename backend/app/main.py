@@ -9,6 +9,7 @@ from app.api.main import api_router
 from app.core.config import settings
 from app.core.limiter import limiter
 from app.core.security import clear_auth_cookie
+from app.core.security_headers import SecurityHeadersMiddleware
 
 
 def custom_generate_unique_id(route: APIRoute) -> str:
@@ -48,11 +49,14 @@ if settings.all_cors_origins:
         CORSMiddleware,
         allow_origins=settings.all_cors_origins,
         allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
+        allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+        allow_headers=["Authorization", "Content-Type", "X-Requested-With"],
     )
 
 app.include_router(api_router, prefix=settings.API_V1_STR)
+
+# Security headers
+app.add_middleware(SecurityHeadersMiddleware)
 
 
 @app.middleware("http")
