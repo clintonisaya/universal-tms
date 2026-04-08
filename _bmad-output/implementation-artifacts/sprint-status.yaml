@@ -174,7 +174,7 @@ development_status:
 
   # Epic 9: Security Hardening (from QA Scan 2026-04-06)
   epic-9: in-progress
-  9-1-security-endpoint-hardening: ready-for-dev
+  9-1-security-endpoint-hardening: review
   9-2-secrets-and-xss-prevention: ready-for-dev
   9-3-rate-limiting: ready-for-dev
   9-4-security-headers-and-cors: ready-for-dev
