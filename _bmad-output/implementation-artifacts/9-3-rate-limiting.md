@@ -2,7 +2,7 @@
 
 **Epic:** 9 - Security Hardening
 **Story Key:** 9-3-rate-limiting
-**Status:** ready-for-dev
+**Status:** review
 
 ## 1. User Story
 
