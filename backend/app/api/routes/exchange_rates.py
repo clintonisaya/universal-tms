@@ -151,12 +151,12 @@ def update_exchange_rate(
     return rate
 
 
-@router.delete("/{id}")
+@router.delete("/{id}", status_code=204)
 def delete_exchange_rate(
     session: SessionDep,
     current_user: CurrentUser,
     id: uuid.UUID,
-) -> Message:
+) -> None:
     """Delete an exchange rate."""
     require_finance_role(current_user)
 
@@ -166,4 +166,3 @@ def delete_exchange_rate(
 
     session.delete(rate)
     commit_or_rollback(session)
-    return Message(message="Exchange rate deleted successfully")

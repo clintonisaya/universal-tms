@@ -159,10 +159,10 @@ def read_user_me(current_user: CurrentUser) -> Any:
     return current_user
 
 
-@router.delete("/me", response_model=Message)
+@router.delete("/me", status_code=204)
 def delete_user_me(
     session: SessionDep, current_user: CurrentUser
-) -> Any:
+) -> None:
     """
     Delete own user.
     """
@@ -172,7 +172,6 @@ def delete_user_me(
         )
     session.delete(current_user)
     commit_or_rollback(session)
-    return Message(message="User deleted successfully")
 
 
 @router.get(
@@ -247,11 +246,11 @@ def update_user(
 @router.delete(
     "/{user_id}",
     dependencies=[Depends(get_current_admin_user)],
-    response_model=Message,
+    status_code=204,
 )
 def delete_user(
     session: SessionDep, current_user: CurrentUser, user_id: uuid.UUID
-) -> Any:
+) -> None:
     """
     Delete a user.
     """
@@ -264,7 +263,6 @@ def delete_user(
         )
     session.delete(user)
     commit_or_rollback(session)
-    return Message(message="User deleted successfully")
 
 
 @router.post(

@@ -28,220 +28,38 @@ import {
   SwapOutlined,
 } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
-import ExcelJS from "exceljs";
 import { useAuth } from "@/contexts/AuthContext";
-import { useTracking, useInvalidateQueries, apiFetch } from "@/hooks/useApi";
+import { useTracking, useInvalidateQueries } from "@/hooks/useApi";
+import { useTrackingExport, STATUS_COLORS, RISK_COLORS, RETURN_STATUSES, type TrackingRow } from "@/hooks/useTrackingExport";
 import { UpdateTripStatusModal } from "@/components/trips/UpdateTripStatusModal";
 import { TripStatusTag } from "@/components/ui/TripStatusTag";
-import { StatusBadge, type ColorKey } from "@/components/ui/StatusBadge";
+import { StatusBadge } from "@/components/ui/StatusBadge";
 import { getStandardRowSelection } from "@/components/ui/tableUtils";
 
 const { Title, Text } = Typography;
-
-// --- Types for Flattened Report Data (Trip-centric: one row per trip) ---
-interface TrackingRow {
-  // Unique row key
-  row_id: string;
-
-  // 1. Status
-  waybill_status: string | null;
-  trip_status: string;
-
-  // 2. IDs
-  waybill_id: string | null;
-  waybill_number: string | null;
-  trip_id: string | null;
-  trip_number: string | null;
-
-  // 3. Go Waybill Info
-  client_name: string | null;
-  cargo_type: string | null;
-  cargo_weight: number;
-  cargo_description: string;
-
-  // 4. Return Waybill Info
-  return_waybill_id: string | null;
-  return_waybill_number: string | null;
-  return_waybill_status: string | null;
-  return_client_name: string | null;
-  return_cargo_type: string | null;
-  return_cargo_weight: number | null;
-
-  // 5. Route Info
-  origin: string;
-  destination: string;
-  current_location: string | null;
-  border_location: string | null;
-
-  // 6. Asset Info — extended (Story 2.26)
-  truck_plate: string | null;
-  truck_make: string | null;
-  truck_model: string | null;
-  driver_name: string | null;
-  driver_license: string | null;
-  driver_passport: string | null;
-  driver_phone: string | null;
-  trailer_plate: string | null;
-  trailer_type: string | null;
-
-  // 7. Risk
-  risk_level: string;
-
-  // Meta
-  start_date: string | null;
-  duration_days: number;
-  return_duration_days: number;
-
-  // Tracking dates (Story 2.26)
-  dispatch_date: string | null;
-  arrival_loading_date: string | null;
-  loading_start_date: string | null;
-  loading_end_date: string | null;
-  arrival_offloading_date: string | null;
-  offloading_date: string | null;
-  dispatch_return_date: string | null;
-  arrival_loading_return_date: string | null;
-  loading_return_start_date: string | null;
-  loading_return_end_date: string | null;
-  offloading_return_date: string | null;
-  arrival_return_date: string | null;
-
-  // Border crossings (Story 2.26)
-  border_crossings: Array<{
-    border_display_name: string;
-    side_a_name: string;
-    side_b_name: string;
-    direction: string;
-    arrived_side_a_at: string | null;
-    documents_submitted_side_a_at: string | null;
-    documents_cleared_side_a_at: string | null;
-    arrived_side_b_at: string | null;
-    departed_border_at: string | null;
-  }>;
-
-  // Return waybill extended (Story 2.26)
-  return_origin: string | null;
-  return_destination: string | null;
-  return_cargo_description: string | null;
-
-  // Trip extra fields
-  return_empty_container_date: string | null;
-  remarks: string | null;
-  return_remarks: string | null;
-  is_delayed: boolean;
-}
-
-const STATUS_COLORS: Record<string, ColorKey> = {
-  // Waybill Statuses
-  Open: "gray",
-  "In Progress": "blue",
-  Completed: "green",
-  Invoiced: "blue",
-  // Trip Statuses
-  Waiting: "gray",
-  Dispatched: "blue",
-  "Arrived at Loading Point": "green",
-  Loading: "orange",
-  Loaded: "orange",
-  "In Transit": "blue",
-  "At Border": "blue",
-  "Arrived at Destination": "blue",
-  Offloading: "cyan",
-  Offloaded: "cyan",
-  "Returning Empty": "blue",
-  Breakdown: "red",
-  "Waiting (Return)": "green",
-  // Return leg statuses
-  "Dispatched (Return)": "blue",
-  "Arrived at Loading Point (Return)": "green",
-  "Loading (Return)": "orange",
-  "Loaded (Return)": "orange",
-  "In Transit (Return)": "blue",
-  "At Border (Return)": "blue",
-  "Arrived at Destination (Return)": "blue",
-  "Offloading (Return)": "cyan",
-  "Offloaded (Return)": "cyan",
-  "Arrived at Yard": "blue",
-  "Waiting for PODs": "orange",
-  Cancelled: "red",
-  "Not Dispatched": "gray",
-};
-
-const RISK_COLORS: Record<string, ColorKey> = {
-  Low: "green",
-  Medium: "orange",
-  High: "red",
-};
-
-const RETURN_STATUSES = new Set([
-  "Waiting (Return)", "Dispatched (Return)", "Arrived at Loading Point (Return)", "Loading (Return)",
-  "Loaded (Return)", "In Transit (Return)", "At Border (Return)",
-  "Arrived at Destination (Return)", "Offloading (Return)", "Offloaded (Return)",
-  "Arrived at Yard", "Waiting for PODs",
-]);
-
-// Excel row background colors — semantic color system:
-//   🔵 Blue   = Truck is moving       🟡 Yellow = Someone waiting
-//   🟢 Green  = Trip done             🔴 Red    = Problem / stop
-//   🟣 Purple = Border / regulatory   🩵 Cyan   = Physical cargo handling
-const STATUS_ROW_COLORS: Record<string, string> = {
-  // Neutral — pre-dispatch
-  "Waiting":                "F5F5F5",
-  "Not Dispatched":         "FAFAFA",
-  // 🟣 Purple — Border / regulatory
-  "Dispatched":                          "D3ADF7",  // Soft Purple
-  "At Border":                           "B37FEB",  // Medium Purple
-  "Dispatched (Return)":                 "F9F0FF",  // Lightest purple (return = lighter)
-  "At Border (Return)":                  "EFDBFF",  // Light purple
-  // 🟡 Yellow — Waiting / standby
-  "Arrived at Loading Point":            "FFE58F",  // Strong Yellow
-  "Arrived at Loading Point (Return)":   "FFF7CC",  // Soft Yellow
-  "Waiting (Return)":                    "FFFBE6",  // Lightest Yellow
-  "Waiting for PODs":                    "FFD666",  // Amber
-  // 🩵 Cyan — Physical cargo handling
-  "Loading":                "87E8DE",  // Medium Cyan
-  "Loaded":                 "B5F5EC",  // Light Cyan (loaded, ready to go)
-  "Arrived at Destination": "BAE7FF",  // Light Blue-Cyan (at destination)
-  "Offloading":             "B5F5EC",  // Light Cyan
-  "Offloaded":              "BAE7FF",  // Light Blue-Cyan (done offloading, about to move)
-  "Loading (Return)":       "D2F5F0",  // Lighter cyan
-  "Loaded (Return)":        "C6F0EB",  // Slightly lighter cyan
-  "Arrived at Destination (Return)": "BAE7FF",  // Light Blue-Cyan
-  "Offloading (Return)":    "E6FFFB",  // Lightest cyan
-  "Offloaded (Return)":     "BAE7FF",  // Light Blue-Cyan
-  // 🔵 Blue — Truck is moving
-  "In Transit":             "91CAFF",  // Medium Blue
-  "In Transit (Return)":    "D6E4FF",  // Light Blue
-  "Returning Empty":        "ADC6FF",  // Periwinkle Blue (heading back)
-  // 🟢 Green — Trip done
-  "Arrived at Yard":        "D9F7BE",  // Light Green
-  "Completed":              "95DE64",  // Fresh Green
-  // 🔴 Red — Problem / stop
-  "Cancelled":              "FF7875",  // Soft Red
-};
 
 function TrackingPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user } = useAuth();
   const { invalidateTracking } = useInvalidateQueries();
+  const { handleExport, handleClientExport } = useTrackingExport();
 
   const isAuthenticated = !!user;
 
-  // Server-side pagination & filter state (Story 6-19)
+  // Server-side pagination & filter state
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(50);
   const [serverSearch, setServerSearch] = useState<string>("");
   const [searchForm] = Form.useForm();
 
-  // Initialise search form from URL params on mount (AC-2, Story 6.17)
+  // Initialise search form from URL params on mount
   useEffect(() => {
     const fields = ["waybill", "trip", "truck", "trailer", "client", "driver"];
     const values: Record<string, string> = {};
     fields.forEach((f) => { const v = searchParams.get(f); if (v) values[f] = v; });
     if (Object.keys(values).length > 0) {
       searchForm.setFieldsValue(values);
-      // Build combined search string for server-side filter
       const combined = Object.values(values).filter(Boolean).join(" ");
       if (combined) setServerSearch(combined);
     }
@@ -250,11 +68,7 @@ function TrackingPageContent() {
 
   // Server-side paginated query
   const { data: apiResponse, isLoading: loading, refetch } = useTracking(
-    {
-      skip: (currentPage - 1) * pageSize,
-      limit: pageSize,
-      search: serverSearch || undefined,
-    },
+    { skip: (currentPage - 1) * pageSize, limit: pageSize, search: serverSearch || undefined },
     isAuthenticated,
   );
   const trackingData = apiResponse?.data || [];
@@ -269,11 +83,9 @@ function TrackingPageContent() {
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
 
   const handleSearch = (values: any) => {
-    // Build combined search term for the server
     const terms = Object.values(values).filter(Boolean) as string[];
     setServerSearch(terms.join(" "));
-    setCurrentPage(1); // AC-4: Reset to page 1 on filter change
-    // Sync to URL (AC-2, Story 6.17)
+    setCurrentPage(1);
     const params = new URLSearchParams();
     Object.entries(values).forEach(([k, v]) => { if (v) params.set(k, v as string); });
     router.replace(`?${params.toString()}`, { scroll: false });
@@ -286,447 +98,17 @@ function TrackingPageContent() {
     router.replace("?", { scroll: false });
   };
 
-  // AC-5: Fetch ALL matching records for export (not just current page)
-  const fetchAllForExport = async (): Promise<TrackingRow[]> => {
-    const qs = new URLSearchParams();
-    qs.set("export", "true");
-    if (serverSearch) qs.set("search", serverSearch);
-    const res = await apiFetch<{ data: TrackingRow[]; count: number }>(
-      `/api/v1/reports/waybill-tracking?${qs.toString()}`
-    );
-    return res.data;
-  };
-
-  // Excel Export
-  const handleExport = async () => {
-    const exportData = await fetchAllForExport();
-    const workbook = new ExcelJS.Workbook();
-    const worksheet = workbook.addWorksheet("Control Tower");
-
-    type ColDef = Partial<ExcelJS.Column>;
-
-    const maxGoBorders = exportData.reduce(
-      (max, row) => Math.max(max, (row.border_crossings || []).filter((bc: any) => bc.direction === "go").length),
-      0
-    );
-    const maxReturnBorders = exportData.reduce(
-      (max, row) => Math.max(max, (row.border_crossings || []).filter((bc: any) => bc.direction === "return").length),
-      0
-    );
-
-    const calcDays = (start: string | null | undefined, end: string | null | undefined): number | string => {
-      if (!start) return "-";
-      const s = new Date(start);
-      const e = end ? new Date(end) : new Date(); // live count until end date is set
-      const diff = e.getTime() - s.getTime();
-      if (isNaN(diff) || diff < 0) return "-";
-      return Math.round(diff / (1000 * 60 * 60 * 24));
-    };
-
-    const goBorderCols: ColDef[] = [];
-    for (let i = 0; i < maxGoBorders; i++) {
-      const n = i + 1;
-      goBorderCols.push(
-        { header: `Border ${n} Name`,           key: `bcG${n}_name`,  width: 22 },
-        { header: `Border ${n} Arrived`,         key: `bcG${n}_arr_a`, width: 20 },
-        { header: `Border ${n} Docs Submitted`, key: `bcG${n}_sub_a`, width: 20 },
-        { header: `Border ${n} Docs Cleared`,   key: `bcG${n}_clr_a`, width: 20 },
-        { header: `Border ${n} Crossed`,        key: `bcG${n}_arr_b`, width: 22 },
-        { header: `Border ${n} Departed Zone`,  key: `bcG${n}_dep`,   width: 20 }
-      );
-    }
-
-    const returnBorderCols: ColDef[] = [];
-    for (let i = 0; i < maxReturnBorders; i++) {
-      const n = i + 1;
-      returnBorderCols.push(
-        { header: `Ret Border ${n} Name`,           key: `bcR${n}_name`,  width: 22 },
-        { header: `Ret Border ${n} Arrived Side A`, key: `bcR${n}_arr_a`, width: 20 },
-        { header: `Ret Border ${n} Docs Submitted`, key: `bcR${n}_sub_a`, width: 20 },
-        { header: `Ret Border ${n} Docs Cleared`,   key: `bcR${n}_clr_a`, width: 20 },
-        { header: `Ret Border ${n} Crossed`,        key: `bcR${n}_arr_b`, width: 22 },
-        { header: `Ret Border ${n} Departed Zone`,  key: `bcR${n}_dep`,   width: 20 }
-      );
-    }
-
-    const daysBorderGoCols: ColDef[] = [];
-    for (let i = 0; i < maxGoBorders; i++) {
-      const n = i + 1;
-      daysBorderGoCols.push({ header: `Days at Border ${n}`,     key: `days_bcG${n}`, width: 16 });
-    }
-    const daysBorderReturnCols: ColDef[] = [];
-    for (let i = 0; i < maxReturnBorders; i++) {
-      const n = i + 1;
-      daysBorderReturnCols.push({ header: `Days at Ret Border ${n}`, key: `days_bcR${n}`, width: 18 });
-    }
-
-    worksheet.columns = [
-      { header: "No.",               key: "index",             width: 8  },
-      { header: "Leg",               key: "leg",               width: 10 },
-      { header: "Trip #",            key: "trip_number",       width: 20 },
-      { header: "Trip Status",       key: "trip_status",       width: 22 },
-      { header: "Waybill #",         key: "waybill_number",    width: 20 },
-      { header: "WB Status",         key: "waybill_status",    width: 15 },
-      { header: "Client",            key: "client_name",       width: 25 },
-      { header: "Origin",            key: "origin",            width: 25 },
-      { header: "Destination",       key: "destination",       width: 25 },
-      { header: "Cargo Description", key: "cargo_description", width: 30 },
-      { header: "Risk",              key: "risk_level",        width: 10 },
-      { header: "Driver Name",       key: "driver_name",       width: 22 },
-      { header: "Driver Licence",    key: "driver_license",    width: 18 },
-      { header: "Driver Passport",   key: "driver_passport",   width: 18 },
-      { header: "Driver Phone",      key: "driver_phone",      width: 16 },
-      { header: "Truck Plate",       key: "truck_plate",       width: 14 },
-      { header: "Trailer Plate",     key: "trailer_plate",     width: 14 },
-      { header: "Dispatch Date",            key: "dispatch_date",           width: 20 },
-      { header: "Arrival at Loading",       key: "arrival_loading_date",    width: 20 },
-      { header: "Loading Start",            key: "loading_start_date",      width: 20 },
-      { header: "Loading End",                   key: "loading_end_date",        width: 20 },
-      { header: "Current Location",              key: "current_location",        width: 28 },
-      ...goBorderCols,
-      { header: "Arrival at Offloading",    key: "arrival_offloading_date", width: 22 },
-      { header: "Offloading Date",          key: "offloading_date",         width: 20 },
-      ...returnBorderCols,
-      { header: "Return Offloading Date",   key: "offloading_return_date",  width: 26 },
-      { header: "Arrival at Yard",          key: "arrival_return_date",     width: 22 },
-      { header: "Ret Empty Container",     key: "return_empty_container_date", width: 22 },
-      { header: "Total Days",               key: "duration_days",           width: 14 },
-      { header: "Days at Loading",          key: "days_loading",            width: 16 },
-      ...daysBorderGoCols,
-      ...daysBorderReturnCols,
-      { header: "Remark (Go)",              key: "remarks",                 width: 30 },
-      { header: "Remark (Return)",          key: "return_remarks",          width: 30 },
-    ] as Partial<ExcelJS.Column>[];
-
-    worksheet.getRow(1).font = { bold: true };
-    worksheet.views = [{ state: "frozen", ySplit: 1 }];
-
-    const fmtDate = (d: string | null | undefined) =>
-      d ? new Date(d).toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric" }) : "-";
-
-    let rowNum = 0;
-    exportData.forEach((row) => {
-      const goCrossings     = (row.border_crossings || []).filter((bc: any) => bc.direction === "go");
-      const returnCrossings = (row.border_crossings || []).filter((bc: any) => bc.direction === "return");
-
-      const goBorderData: Record<string, string | number> = {};
-      goCrossings.forEach((bc: any, i: number) => {
-        const n = i + 1;
-        goBorderData[`bcG${n}_name`]  = bc.border_display_name || "-";
-        goBorderData[`bcG${n}_arr_a`] = fmtDate(bc.arrived_side_a_at);
-        goBorderData[`bcG${n}_sub_a`] = fmtDate(bc.documents_submitted_side_a_at);
-        goBorderData[`bcG${n}_clr_a`] = fmtDate(bc.documents_cleared_side_a_at);
-        goBorderData[`bcG${n}_arr_b`] = fmtDate(bc.arrived_side_b_at);
-        goBorderData[`bcG${n}_dep`]   = fmtDate(bc.departed_border_at);
-        goBorderData[`days_bcG${n}`]  = calcDays(bc.arrived_side_a_at, bc.departed_border_at);
-      });
-
-      const returnBorderData: Record<string, string | number> = {};
-      returnCrossings.forEach((bc: any, i: number) => {
-        const n = i + 1;
-        returnBorderData[`bcR${n}_name`]  = bc.border_display_name || "-";
-        returnBorderData[`bcR${n}_arr_a`] = fmtDate(bc.arrived_side_a_at);
-        returnBorderData[`bcR${n}_sub_a`] = fmtDate(bc.documents_submitted_side_a_at);
-        returnBorderData[`bcR${n}_clr_a`] = fmtDate(bc.documents_cleared_side_a_at);
-        returnBorderData[`bcR${n}_arr_b`] = fmtDate(bc.arrived_side_b_at);
-        returnBorderData[`bcR${n}_dep`]   = fmtDate(bc.departed_border_at);
-        returnBorderData[`days_bcR${n}`]  = calcDays(bc.arrived_side_a_at, bc.departed_border_at);
-      });
-
-      const sharedFields = {
-        trip_number:      row.trip_number || "-",
-        trip_status:      row.trip_status,
-        risk_level:       row.risk_level,
-        driver_name:      row.driver_name || "-",
-        driver_license:   row.driver_license || "-",
-        driver_passport:  row.driver_passport || "-",
-        driver_phone:     row.driver_phone || "-",
-        truck_plate:      row.truck_plate || "-",
-        trailer_plate:    row.trailer_plate || "-",
-        current_location: row.current_location || "-",
-        remarks:          row.remarks || "-",
-        return_remarks:   row.return_remarks || "-",
-      };
-
-      const statusColor = STATUS_ROW_COLORS[row.trip_status] ?? "FFFFFF";
-
-      // --- GO ROW ---
-      const goRow = worksheet.addRow({
-        ...sharedFields,
-        index:                   ++rowNum,
-        leg:                     "Go",
-        waybill_number:          row.waybill_number || "-",
-        waybill_status:          row.waybill_status || "-",
-        client_name:             row.client_name || "-",
-        origin:                  row.origin || "-",
-        destination:             row.destination || "-",
-        cargo_description:       row.cargo_description || "-",
-        dispatch_date:           fmtDate(row.dispatch_date),
-        arrival_loading_date:    fmtDate(row.arrival_loading_date),
-        loading_start_date:      fmtDate(row.loading_start_date),
-        loading_end_date:        fmtDate(row.loading_end_date),
-        arrival_offloading_date: fmtDate(row.arrival_offloading_date),
-        offloading_date:         fmtDate(row.offloading_date),
-        offloading_return_date:  "-",
-        arrival_return_date:     "-",
-        return_empty_container_date: fmtDate(row.return_empty_container_date),
-        duration_days:           calcDays(row.dispatch_date, row.arrival_return_date),
-        days_loading:            calcDays(row.arrival_loading_date, row.loading_end_date),
-        ...goBorderData,
-      });
-      goRow.eachCell({ includeEmpty: true }, (cell) => {
-        cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: `FF${statusColor}` } };
-      });
-
-      // --- RETURN ROW (only if return waybill exists) ---
-      if (row.return_waybill_id) {
-        const retRow = worksheet.addRow({
-          ...sharedFields,
-          index:                   ++rowNum,
-          leg:                     "Return",
-          waybill_number:          row.return_waybill_number || "-",
-          waybill_status:          row.return_waybill_status || "-",
-          client_name:             row.return_client_name || "-",
-          origin:                  row.return_origin || "-",
-          destination:             row.return_destination || "-",
-          cargo_description:       row.return_cargo_description || "-",
-          // dispatch_date reused for return dispatch — "Leg Dispatch Date" applies to both legs
-          dispatch_date:           fmtDate(row.dispatch_return_date),
-          arrival_loading_date:    fmtDate(row.arrival_loading_return_date),
-          loading_start_date:      fmtDate(row.loading_return_start_date),
-          loading_end_date:        fmtDate(row.loading_return_end_date),
-          arrival_offloading_date: "-",
-          offloading_date:         "-",
-          offloading_return_date:  fmtDate(row.offloading_return_date),
-          arrival_return_date:     fmtDate(row.arrival_return_date),
-          return_empty_container_date: fmtDate(row.return_empty_container_date),
-          duration_days:           calcDays(row.dispatch_date, row.arrival_return_date),
-          days_loading:            calcDays(row.arrival_loading_return_date, row.loading_return_end_date),
-          ...returnBorderData,
-        });
-        retRow.eachCell({ includeEmpty: true }, (cell) => {
-          cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFEAF7FF" } };
-        });
-      }
-    });
-
-    const buffer = await workbook.xlsx.writeBuffer();
-    const blob = new Blob([buffer], {
-      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `Edupo_Control_Tower_${new Date().toISOString().slice(0, 10)}.xlsx`;
-    a.click();
-    window.URL.revokeObjectURL(url);
-  };
-
-  // Client Excel Export — selected trips only, dynamic border columns across all selected rows
-  const handleClientExport = async () => {
-    const keySet = new Set(selectedRowKeys.map(String));
-    const selectedRows = trackingData.filter((r) => keySet.has(String(r.row_id)));
-    if (selectedRows.length === 0) {
-      message.warning("Please select trips to export first");
-      return;
-    }
-
-    const workbook = new ExcelJS.Workbook();
-    const worksheet = workbook.addWorksheet("Trucks Report");
-
-    const fmtDate = (d: string | null | undefined) =>
-      d ? new Date(d).toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric" }) : "";
-
-    const calcDays = (start: string | null | undefined, end: string | null | undefined): number | string => {
-      if (!start) return "";
-      const s = new Date(start);
-      const e = end ? new Date(end) : new Date(); // live count until end date is set
-      const diff = e.getTime() - s.getTime();
-      if (isNaN(diff) || diff < 0) return "";
-      return Math.round(diff / (1000 * 60 * 60 * 24));
-    };
-
-    // Max border count across ALL selected rows, both go and return directions
-    const maxBorders = selectedRows.reduce(
-      (max, row) => Math.max(
-        max,
-        (row.border_crossings || []).filter((bc: any) => bc.direction === "go").length,
-        (row.border_crossings || []).filter((bc: any) => bc.direction === "return").length,
-      ),
-      0
-    );
-
-    // Dynamically generate 7 columns per border: Entry, Arrived, Docs Submitted, Docs Received, Crossing, Dispatch, Days
-    const borderCols: Partial<ExcelJS.Column>[] = [];
-    for (let i = 0; i < maxBorders; i++) {
-      const n = i + 1;
-      const suffix = maxBorders > 1 ? ` ${n}` : "";
-      borderCols.push(
-        { header: `Border Entry${suffix}`,     key: `bc${i}_name`,  width: 22 },
-        { header: `Border Arrived${suffix}`,   key: `bc${i}_arr_a`, width: 18 },
-        { header: `Docs Submitted${suffix}`,   key: `bc${i}_sub_a`, width: 18 },
-        { header: `Docs Received${suffix}`,    key: `bc${i}_clr_a`, width: 18 },
-        { header: `Border Crossing${suffix}`,  key: `bc${i}_arr_b`, width: 18 },
-        { header: `Border Dispatch${suffix}`,  key: `bc${i}_dep`,   width: 18 },
-        { header: `Border Days${suffix}`,      key: `bc${i}_days`,  width: 14 },
-      );
-    }
-
-    const reportDate = new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric" });
-
-    worksheet.columns = [
-      { header: "Truck",             key: "truck",            width: 16 },
-      { header: "Trailer",           key: "trailer",          width: 16 },
-      { header: "Type of Business",  key: "type_of_business", width: 18 },
-      { header: "Client",            key: "client",           width: 25 },
-      { header: "Cargo Details",     key: "cargo_details",    width: 30 },
-      { header: "Origin",            key: "origin",           width: 22 },
-      { header: "Destination",       key: "destination",      width: 22 },
-      { header: "Report Date",       key: "report_date",      width: 16 },
-      { header: "Current Position",  key: "current_position", width: 22 },
-      { header: "Status",            key: "status",           width: 22 },
-      { header: "Loading Date",      key: "loading_date",     width: 16 },
-      ...borderCols,
-      { header: "Arrvl at Offloading place", key: "arrvl_offloading", width: 24 },
-      { header: "Offloading Date",           key: "offloading_date",  width: 16 },
-      { header: "Total Days",                 key: "total_days",       width: 12 },
-      { header: "Transit Days",              key: "transit_days",     width: 14 },
-      { header: "Remark",                    key: "remarks",          width: 30 },
-    ] as Partial<ExcelJS.Column>[];
-
-    worksheet.getRow(1).font = { bold: true };
-    worksheet.views = [{ state: "frozen", ySplit: 1 }];
-
-    const buildBorderData = (crossings: any[], direction: "go" | "return" = "go"): Record<string, string | number> => {
-      const data: Record<string, string | number> = {};
-      for (let i = 0; i < maxBorders; i++) {
-        const bc = crossings[i];
-        // For return leg the truck crosses in the opposite direction: Side B → Side A
-        const borderName = bc
-          ? direction === "return"
-            ? `${bc.side_b_name || ""} / ${bc.side_a_name || ""}`.trim().replace(/^\/ | \/$/, "")
-            : bc.border_display_name || ""
-          : "";
-        data[`bc${i}_name`]  = borderName;
-        data[`bc${i}_arr_a`] = bc ? fmtDate(bc.arrived_side_a_at) : "";
-        data[`bc${i}_sub_a`] = bc ? fmtDate(bc.documents_submitted_side_a_at) : "";
-        data[`bc${i}_clr_a`] = bc ? fmtDate(bc.documents_cleared_side_a_at) : "";
-        data[`bc${i}_arr_b`] = bc ? fmtDate(bc.arrived_side_b_at) : "";
-        data[`bc${i}_dep`]   = bc ? fmtDate(bc.departed_border_at) : "";
-        data[`bc${i}_days`]  = bc ? calcDays(bc.arrived_side_a_at, bc.departed_border_at) : "";
-      }
-      return data;
-    };
-
-    const applyRowColor = (excelRow: ExcelJS.Row, resolvedStatus: string) => {
-      // "Invoiced" shares the same cell color as "Completed" — financially closed
-      // "Offloaded | Waiting for PODs" uses the "Waiting for PODs" amber color
-      const colorKey =
-        resolvedStatus === "Invoiced" ? "Completed" :
-        resolvedStatus === "Offloaded | Waiting for PODs" ? "Waiting for PODs" :
-        resolvedStatus;
-      const color = STATUS_ROW_COLORS[colorKey] ?? "FFFFFF";
-      excelRow.eachCell({ includeEmpty: true }, (cell) => {
-        cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: `FF${color}` } };
-      });
-    };
-
-    selectedRows.forEach((row) => {
-      const goCrossings     = (row.border_crossings || []).filter((bc: any) => bc.direction === "go");
-      const returnCrossings = (row.border_crossings || []).filter((bc: any) => bc.direction === "return");
-
-      // Resolve single status per leg — no double "WB | Trip" format
-      // Trip terminal statuses take priority; then waybill overrides for in-progress trips
-      const goStatus: string =
-        row.trip_status === "Completed" || row.trip_status === "Cancelled" ? row.trip_status :
-        row.waybill_status === "Invoiced"  ? "Invoiced" :
-        row.waybill_status === "Completed" ? "Offloaded | Waiting for PODs" :
-        row.trip_status;
-      // Return: always the current trip status (e.g. "Loading (Return)")
-      const retStatus: string = row.trip_status;
-
-      // --- GO ROW ---
-      const goRow = worksheet.addRow({
-        truck:            row.truck_plate || "",
-        trailer:          row.trailer_plate || "",
-        type_of_business: "Going",
-        client:           row.client_name || "",
-        cargo_details:    row.cargo_description || "",
-        origin:           row.origin || "",
-        destination:      row.destination || "",
-        report_date:      reportDate,
-        current_position: row.current_location || "",
-        status:           goStatus,
-        loading_date:     fmtDate(row.loading_start_date),
-        ...buildBorderData(goCrossings, "go"),
-        arrvl_offloading: fmtDate(row.arrival_offloading_date),
-        offloading_date:  fmtDate(row.offloading_date),
-        total_days:       calcDays(row.dispatch_date, row.arrival_return_date),
-        transit_days:     calcDays(row.loading_end_date, row.offloading_date),
-        remarks:          row.remarks || "",       // go-leg remark (frozen at offloading)
-      });
-      applyRowColor(goRow, goStatus);
-
-      // --- RETURN ROW (only if return waybill exists) ---
-      if (row.return_waybill_id) {
-        const retRow = worksheet.addRow({
-          truck:            row.truck_plate || "",
-          trailer:          row.trailer_plate || "",
-          type_of_business: "Return",
-          client:           row.return_client_name || "",
-          cargo_details:    row.return_cargo_description || "",
-          origin:           row.return_origin || "",
-          destination:      row.return_destination || "",
-          report_date:      reportDate,
-          current_position: row.current_location || "",
-          status:           retStatus,
-          loading_date:     fmtDate(row.loading_return_start_date),
-          ...buildBorderData(returnCrossings, "return"),
-          arrvl_offloading: fmtDate(row.offloading_return_date),
-          offloading_date:  "",
-          total_days:       calcDays(row.dispatch_date, row.arrival_return_date),
-          transit_days:     calcDays(row.loading_return_end_date, row.offloading_return_date),
-          remarks:          row.return_remarks || "", // return-leg remark (independent)
-        });
-        applyRowColor(retRow, retStatus);
-      }
-    });
-
-    const buffer = await workbook.xlsx.writeBuffer();
-    const blob = new Blob([buffer], {
-      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `Edupo_Trucks_Report_${new Date().toISOString().slice(0, 10)}.xlsx`;
-    a.click();
-    window.URL.revokeObjectURL(url);
-  };
-
-  // Only "Invoiced" locks the record — "Completed" is a normal mid-trip waybill state
-  // (go waybill becomes Completed at offloading, trip can still continue to return leg)
+  // Only "Invoiced" locks the record
   const isWaybillFinalised = (record: TrackingRow): boolean => {
     const goLocked = record.waybill_status === "Invoiced";
-    const retLocked =
-      !record.return_waybill_id ||
-      record.return_waybill_status === "Invoiced";
+    const retLocked = !record.return_waybill_id || record.return_waybill_status === "Invoiced";
     return goLocked && retLocked;
   };
 
   const openStatusModal = (record: TrackingRow) => {
-    if (!record.trip_id) {
-      message.info("No trip assigned to this waybill yet.");
-      return;
-    }
-    if (record.trip_status === "Completed" || record.trip_status === "Cancelled") {
-      message.info("Trip is already completed — status cannot be changed.");
-      return;
-    }
-    if (isWaybillFinalised(record)) {
-      message.info("All waybills on this trip are Invoiced — status cannot be changed.");
-      return;
-    }
+    if (!record.trip_id) { message.info("No trip assigned to this waybill yet."); return; }
+    if (record.trip_status === "Completed" || record.trip_status === "Cancelled") { message.info("Trip is already completed — status cannot be changed."); return; }
+    if (isWaybillFinalised(record)) { message.info("All waybills on this trip are Invoiced — status cannot be changed."); return; }
     setSelectedTripId(record.trip_id);
     setInitialStatusValues({
       status: record.trip_status,
@@ -737,7 +119,7 @@ function TrackingPageContent() {
     setIsStatusModalOpen(true);
   };
 
-  // AC-3 (Story 6-20): Truncated text with tooltip for long values
+  // Truncated text with tooltip
   const truncatedCell = (text: string | null, maxWidth = 150) => (
     <Tooltip title={text}>
       <div style={{ maxWidth, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
@@ -746,72 +128,50 @@ function TrackingPageContent() {
     </Tooltip>
   );
 
-  // AC-1/AC-2 (Story 6-20): Format date for display in table columns
   const fmtDateCol = (d: string | null) =>
     d ? new Date(d).toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric" }) : "—";
 
   const columns: ColumnsType<TrackingRow> = [
     {
-      title: "Tracking No.",
-      key: "ids",
-      width: 180,
-      align: "left",
+      title: "Tracking No.", key: "ids", width: 180, align: "left",
       render: (_, r) => (
         <Flex vertical gap={2}>
-          {/* Go waybill */}
-          {r.waybill_number ? (
-            <Text strong style={{ color: "var(--color-gold)", fontSize: "var(--font-sm)" }}>
-              {r.waybill_number}
-            </Text>
-          ) : null}
-          {/* Return waybill (green, with icon) */}
+          {r.waybill_number && (
+            <Text strong style={{ color: "var(--color-gold)", fontSize: "var(--font-sm)" }}>{r.waybill_number}</Text>
+          )}
           {r.return_waybill_number && (
             <Tooltip title="Return Waybill">
               <Text style={{ color: "var(--color-green)", fontSize: "var(--font-sm)" }}>
-                <SwapOutlined style={{ marginRight: 3 }} />
-                {r.return_waybill_number}
+                <SwapOutlined style={{ marginRight: 3 }} />{r.return_waybill_number}
               </Text>
             </Tooltip>
           )}
-          {/* Trip number */}
           {r.trip_number ? (
             <Text style={{ fontSize: "var(--font-sm)", color: "var(--color-text-secondary)" }}>{r.trip_number}</Text>
           ) : (
-            <Text type="secondary">
-              No Trip
-            </Text>
+            <Text type="secondary">No Trip</Text>
           )}
         </Flex>
       ),
     },
     {
-      title: "Status",
-      key: "status",
-      width: 170,
+      title: "Status", key: "status", width: 170,
       render: (_, r) => (
         <Flex vertical gap={2} align="start">
-          {r.waybill_status && (
-            <StatusBadge status={`Go: ${r.waybill_status}`} colorKey={STATUS_COLORS[r.waybill_status]} />
-          )}
-          {r.return_waybill_status && (
-            <StatusBadge status={`Ret: ${r.return_waybill_status}`} colorKey={STATUS_COLORS[r.return_waybill_status]} />
-          )}
+          {r.waybill_status && <StatusBadge status={`Go: ${r.waybill_status}`} colorKey={STATUS_COLORS[r.waybill_status]} />}
+          {r.return_waybill_status && <StatusBadge status={`Ret: ${r.return_waybill_status}`} colorKey={STATUS_COLORS[r.return_waybill_status]} />}
           <TripStatusTag status={r.trip_status as any} isDelayed={r.is_delayed} />
         </Flex>
       ),
     },
     {
-      title: "Client / Cargo",
-      key: "entity",
-      width: 210,
+      title: "Client / Cargo", key: "entity", width: 210,
       render: (_, r) => (
         <Flex vertical gap={0}>
           {truncatedCell(r.client_name, 190)}
-          {/* Return client if different */}
           {r.return_client_name && r.return_client_name !== r.client_name && (
             <Text style={{ fontSize: "var(--font-sm)", color: "var(--color-green)" }}>
-              <SwapOutlined style={{ marginRight: 3 }} />
-              {r.return_client_name}
+              <SwapOutlined style={{ marginRight: 3 }} />{r.return_client_name}
             </Text>
           )}
           <Tooltip title={r.cargo_description}>
@@ -820,54 +180,45 @@ function TrackingPageContent() {
             </Text>
           </Tooltip>
           {r.return_cargo_weight && (
-            <Text type="secondary">
-              Ret: {r.return_cargo_type} • {r.return_cargo_weight?.toLocaleString("en-US")}kg
-            </Text>
+            <Text type="secondary">Ret: {r.return_cargo_type} • {r.return_cargo_weight?.toLocaleString("en-US")}kg</Text>
           )}
         </Flex>
       ),
     },
     {
-      title: "Route / Location",
-      key: "route",
-      width: 250,
+      title: "Route / Location", key: "route", width: 250,
       render: (_, r) => {
         const isReturn = RETURN_STATUSES.has(r.trip_status);
         const from = isReturn && r.return_origin ? r.return_origin : r.origin;
-        const to   = isReturn && r.return_destination ? r.return_destination : r.destination;
+        const to = isReturn && r.return_destination ? r.return_destination : r.destination;
         const finalised = isWaybillFinalised(r);
         return (
-        <Flex vertical gap={0}>
-          <Space separator={<Text type="secondary">→</Text>}>
-            <Tooltip title={from}><Text style={{ maxWidth: 100, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "inline-block" }}>{from}</Text></Tooltip>
-            <Tooltip title={to}><Text style={{ maxWidth: 100, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "inline-block" }}>{to}</Text></Tooltip>
-          </Space>
-          {finalised ? (
-            <Tooltip title={r.current_location}>
-              <div>
-                <EnvironmentOutlined style={{ marginRight: 4, color: "var(--color-text-muted)" }} />
-                <Text type="secondary">{r.current_location || "-"}</Text>
-              </div>
-            </Tooltip>
-          ) : (
-            <Tooltip title={r.current_location}>
-              <div onClick={() => openStatusModal(r)} style={{ cursor: "pointer" }}>
-                <EnvironmentOutlined style={{ marginRight: 4, color: "var(--color-orange)" }} />
-                <Text type="secondary" underline>
-                  {r.current_location || "Update Loc"}
-                </Text>
-              </div>
-            </Tooltip>
-          )}
-        </Flex>
+          <Flex vertical gap={0}>
+            <Space separator={<Text type="secondary">→</Text>}>
+              <Tooltip title={from}><Text style={{ maxWidth: 100, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "inline-block" }}>{from}</Text></Tooltip>
+              <Tooltip title={to}><Text style={{ maxWidth: 100, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "inline-block" }}>{to}</Text></Tooltip>
+            </Space>
+            {finalised ? (
+              <Tooltip title={r.current_location}>
+                <div>
+                  <EnvironmentOutlined style={{ marginRight: 4, color: "var(--color-text-muted)" }} />
+                  <Text type="secondary">{r.current_location || "-"}</Text>
+                </div>
+              </Tooltip>
+            ) : (
+              <Tooltip title={r.current_location}>
+                <div onClick={() => openStatusModal(r)} style={{ cursor: "pointer" }}>
+                  <EnvironmentOutlined style={{ marginRight: 4, color: "var(--color-orange)" }} />
+                  <Text type="secondary" underline>{r.current_location || "Update Loc"}</Text>
+                </div>
+              </Tooltip>
+            )}
+          </Flex>
         );
       },
     },
     {
-      title: "Days",
-      key: "days",
-      width: 90,
-      align: "center",
+      title: "Days", key: "days", width: 90, align: "center",
       render: (_, r) => (
         <Flex vertical gap={2} align="center">
           <Tooltip title="Overall trip duration">
@@ -882,41 +233,18 @@ function TrackingPageContent() {
       ),
     },
     {
-      title: "Assets",
-      key: "assets",
-      width: 180,
+      title: "Assets", key: "assets", width: 180,
       render: (_, r) => (
         <Flex vertical gap={0}>
-          <Text>
-            <CarOutlined /> {r.truck_plate || "-"}
-          </Text>
-          <Text type="secondary">
-            TL: {r.trailer_plate || "-"}
-          </Text>
-          <Text type="secondary">
-            <UserOutlined /> {r.driver_name || "-"}
-          </Text>
+          <Text><CarOutlined /> {r.truck_plate || "-"}</Text>
+          <Text type="secondary">TL: {r.trailer_plate || "-"}</Text>
+          <Text type="secondary"><UserOutlined /> {r.driver_name || "-"}</Text>
         </Flex>
       ),
     },
-    {
-      title: "Risk",
-      key: "risk",
-      width: 80,
-      render: (_, r) => <StatusBadge status={r.risk_level} colorKey={RISK_COLORS[r.risk_level]} />,
-    },
-    {
-      title: "Arrival Offloading",
-      key: "arrival_offloading_date",
-      width: 130,
-      render: (_, r) => <Text type="secondary">{fmtDateCol(r.arrival_offloading_date)}</Text>,
-    },
-    {
-      title: "Ret Empty Container",
-      key: "return_empty_container_date",
-      width: 140,
-      render: (_, r) => <Text type="secondary">{fmtDateCol(r.return_empty_container_date)}</Text>,
-    },
+    { title: "Risk", key: "risk", width: 80, render: (_, r) => <StatusBadge status={r.risk_level} colorKey={RISK_COLORS[r.risk_level]} /> },
+    { title: "Arrival Offloading", key: "arrival_offloading_date", width: 130, render: (_, r) => <Text type="secondary">{fmtDateCol(r.arrival_offloading_date)}</Text> },
+    { title: "Ret Empty Container", key: "return_empty_container_date", width: 140, render: (_, r) => <Text type="secondary">{fmtDateCol(r.return_empty_container_date)}</Text> },
   ];
 
   return (
@@ -926,25 +254,17 @@ function TrackingPageContent() {
           {/* Header */}
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <Space>
-              <Button icon={<ArrowLeftOutlined />} onClick={() => router.push("/dashboard")}>
-                Back
-              </Button>
-              <Title level={3} style={{ margin: 0 }}>
-                Tracking
-              </Title>
+              <Button icon={<ArrowLeftOutlined />} onClick={() => router.push("/dashboard")}>Back</Button>
+              <Title level={3} style={{ margin: 0 }}>Tracking</Title>
             </Space>
             <Space>
-              <Button icon={<ReloadOutlined />} onClick={() => refetch()}>
-                Refresh
-              </Button>
-              <Button type="primary" icon={<DownloadOutlined />} onClick={handleExport}>
-                Export Excel
-              </Button>
-              <Button
-                icon={<DownloadOutlined />}
-                onClick={handleClientExport}
-                disabled={selectedRowKeys.length === 0}
-              >
+              <Button icon={<ReloadOutlined />} onClick={() => refetch()}>Refresh</Button>
+              <Button type="primary" icon={<DownloadOutlined />} onClick={() => handleExport(serverSearch)}>Export Excel</Button>
+              <Button icon={<DownloadOutlined />} onClick={() => {
+                const keySet = new Set(selectedRowKeys.map(String));
+                const rows = trackingData.filter((r) => keySet.has(String(r.row_id)));
+                handleClientExport(rows);
+              }} disabled={selectedRowKeys.length === 0}>
                 Client Export{selectedRowKeys.length > 0 ? ` (${selectedRowKeys.length})` : ""}
               </Button>
             </Space>
@@ -982,16 +302,14 @@ function TrackingPageContent() {
                 <Col span={4} style={{ textAlign: "right" }}>
                   <Space>
                     <Button onClick={handleReset}>Reset</Button>
-                    <Button type="primary" htmlType="submit" icon={<SearchOutlined />}>
-                      Query
-                    </Button>
+                    <Button type="primary" htmlType="submit" icon={<SearchOutlined />}>Query</Button>
                   </Space>
                 </Col>
               </Row>
             </Form>
           </Card>
 
-          {/* Trip-centric Tracking Table */}
+          {/* Tracking Table */}
           <Table<TrackingRow>
             columns={columns}
             dataSource={trackingData}
@@ -1000,23 +318,12 @@ function TrackingPageContent() {
             scroll={{ x: 1300 }}
             sticky={{ offsetHeader: 64 }}
             size="small"
-            rowSelection={getStandardRowSelection(
-              currentPage,
-              pageSize,
-              selectedRowKeys,
-              setSelectedRowKeys
-            )}
+            rowSelection={getStandardRowSelection(currentPage, pageSize, selectedRowKeys, setSelectedRowKeys)}
             pagination={{
-              current: currentPage,
-              pageSize: pageSize,
-              total: totalCount,
+              current: currentPage, pageSize, total: totalCount,
               showTotal: (total) => `Total ${total} loads`,
-              showSizeChanger: true,
-              pageSizeOptions: ["50", "100", "200"],
-              onChange: (page, size) => {
-                setCurrentPage(page);
-                setPageSize(size);
-              },
+              showSizeChanger: true, pageSizeOptions: ["50", "100", "200"],
+              onChange: (page, size) => { setCurrentPage(page); setPageSize(size); },
             }}
           />
         </Flex>
@@ -1026,10 +333,7 @@ function TrackingPageContent() {
       {selectedTripId && (
         <UpdateTripStatusModal
           open={isStatusModalOpen}
-          onClose={() => {
-            setIsStatusModalOpen(false);
-            setSelectedTripId(null);
-          }}
+          onClose={() => { setIsStatusModalOpen(false); setSelectedTripId(null); }}
           onSuccess={() => invalidateTracking()}
           tripId={selectedTripId}
           initialValues={initialStatusValues}

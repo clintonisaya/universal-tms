@@ -102,7 +102,7 @@ export default function ExpenseConsolePage() {
       dataIndex: "expense_number",
       key: "expense_number",
       render: (val: string | null) => val ?? "—",
-      width: 130,
+      width: 200,
     },
     {
       title: "Type",

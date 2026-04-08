@@ -1110,12 +1110,12 @@ def attach_return_waybill(
     return trip
 
 
-@router.delete("/{id}")
+@router.delete("/{id}", status_code=204)
 def delete_trip(
     session: SessionDep,
     current_user: CurrentUser,
     id: uuid.UUID,
-) -> Message:
+) -> None:
     """Delete a trip."""
     # RBAC: Only admin can delete trips
     if current_user.role not in DELETE_ROLES:
@@ -1157,7 +1157,6 @@ def delete_trip(
 
     session.delete(trip)
     commit_or_rollback(session)
-    return Message(message="Trip deleted successfully")
 
 
 # ============================================================================
@@ -1498,14 +1497,14 @@ def get_trip_attachments(
     return result
 
 
-@router.delete("/{id}/attachment")
+@router.delete("/{id}/attachment", status_code=204)
 def delete_trip_attachment(
     *,
     session: SessionDep,
     current_user: CurrentUser,
     id: uuid.UUID,
     key: str = Query(..., description="Storage key of the attachment to remove"),
-) -> Message:
+) -> None:
     """
     Delete a specific attachment from a trip.
     Removes from R2 storage and updates the database record.
@@ -1532,4 +1531,3 @@ def delete_trip_attachment(
     trip.updated_at = datetime.now(timezone.utc)
     session.add(trip)
     commit_or_rollback(session)
-    return Message(message="Attachment deleted successfully")

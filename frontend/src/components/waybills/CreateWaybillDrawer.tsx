@@ -79,8 +79,8 @@ export function CreateWaybillDrawer({
         const borderData = await borderRes.json();
         setBorderPosts(borderData.data);
       }
-    } catch (err) {
-      console.error("Failed to fetch master data", err);
+    } catch {
+      // master data fetch failed — UI will show empty dropdowns
     } finally {
       setLoadingResources(false);
     }

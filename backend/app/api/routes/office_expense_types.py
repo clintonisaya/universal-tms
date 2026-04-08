@@ -144,19 +144,18 @@ def update_office_expense_type(
     return expense_type
 
 
-@router.delete("/{id}")
+@router.delete("/{id}", status_code=204)
 def delete_office_expense_type(
     session: SessionDep,
     current_user: CurrentUser,
     id: uuid.UUID,
-) -> Message:
+) -> None:
     """Delete an office expense type."""
     expense_type = session.get(OfficeExpenseType, id)
     if not expense_type:
         raise HTTPException(status_code=404, detail="Office expense type not found")
     session.delete(expense_type)
     commit_or_rollback(session)
-    return Message(message="Office expense type deleted successfully")
 
 
 @router.post("/seed", response_model=Message)

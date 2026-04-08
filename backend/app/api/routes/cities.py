@@ -74,10 +74,10 @@ def update_city(
     session.refresh(city)
     return city
 
-@router.delete("/{id}")
+@router.delete("/{id}", status_code=204)
 def delete_city(
     session: SessionDep, current_user: CurrentUser, id: uuid.UUID
-) -> Message:
+) -> None:
     """
     Delete a city.
     """
@@ -86,4 +86,3 @@ def delete_city(
         raise HTTPException(status_code=404, detail="City not found")
     session.delete(city)
     commit_or_rollback(session)
-    return Message(message="City deleted successfully")

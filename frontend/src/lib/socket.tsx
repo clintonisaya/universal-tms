@@ -30,7 +30,9 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
     });
 
     socketInstance.on("connect_error", (err) => {
-      console.warn("Socket connection error:", err.message);
+      if (process.env.NODE_ENV === "development") {
+        console.warn("Socket connection error:", err.message);
+      }
     });
 
     setSocket(socketInstance);

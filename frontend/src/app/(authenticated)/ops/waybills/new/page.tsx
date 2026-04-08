@@ -75,8 +75,8 @@ export default function NewWaybillPage() {
         const d = await borderRes.json();
         setBorderPosts(d.data);
       }
-    } catch (err) {
-      console.error("Failed to fetch master data", err);
+    } catch {
+      // master data fetch failed — UI will show empty dropdowns
     } finally {
       setLoadingResources(false);
     }

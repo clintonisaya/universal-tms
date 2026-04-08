@@ -96,10 +96,10 @@ def update_item(
     return item
 
 
-@router.delete("/{id}")
+@router.delete("/{id}", status_code=204)
 def delete_item(
     session: SessionDep, current_user: CurrentUser, id: uuid.UUID
-) -> Message:
+) -> None:
     """
     Delete an item.
     """
@@ -110,4 +110,3 @@ def delete_item(
         raise HTTPException(status_code=403, detail="Not enough permissions")
     session.delete(item)
     commit_or_rollback(session)
-    return Message(message="Item deleted successfully")

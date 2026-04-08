@@ -296,12 +296,12 @@ def read_waybill_borders(
     ]
 
 
-@router.delete("/{id}")
+@router.delete("/{id}", status_code=204)
 def delete_waybill(
     session: SessionDep,
     current_user: CurrentUser,
     id: uuid.UUID,
-) -> Message:
+) -> None:
     """Delete a waybill."""
     # RBAC: Only admin can delete waybills
     if current_user.role not in DELETE_ROLES:
@@ -333,4 +333,3 @@ def delete_waybill(
 
     session.delete(waybill)
     commit_or_rollback(session)
-    return Message(message="Waybill deleted successfully")

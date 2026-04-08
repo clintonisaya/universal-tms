@@ -1519,3 +1519,44 @@ class InvoicePaymentPublic(SQLModel):
 class InvoicePaymentsPublic(SQLModel):
     data: list[InvoicePaymentPublic]
     count: int
+
+
+# Company Settings — Story 9.2
+class CompanySettingsBase(SQLModel):
+    bank_name_tzs: str = Field(default="CRDB BANK - AZIKIWE BRANCH", max_length=255)
+    bank_account_tzs: str = Field(default="015C001CVAW00", max_length=100)
+    bank_account_name: str = Field(default="EDUPO COMPANY LIMITED", max_length=255)
+    bank_currency_tzs: str = Field(default="Tanzanian Shilling", max_length=50)
+    bank_name_usd: str = Field(default="CRDB BANK - AZIKIWE BRANCH", max_length=255)
+    bank_account_usd: str = Field(default="025C001CVAW00", max_length=100)
+    bank_currency_usd: str = Field(default="USD", max_length=50)
+
+
+class CompanySettingsCreate(CompanySettingsBase):
+    pass
+
+
+class CompanySettingsUpdate(SQLModel):
+    bank_name_tzs: str | None = Field(default=None, max_length=255)
+    bank_account_tzs: str | None = Field(default=None, max_length=100)
+    bank_account_name: str | None = Field(default=None, max_length=255)
+    bank_currency_tzs: str | None = Field(default=None, max_length=50)
+    bank_name_usd: str | None = Field(default=None, max_length=255)
+    bank_account_usd: str | None = Field(default=None, max_length=100)
+    bank_currency_usd: str | None = Field(default=None, max_length=50)
+
+
+class CompanySettings(CompanySettingsBase, table=True):
+    __tablename__ = "company_settings"
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    updated_at: datetime | None = Field(
+        default_factory=get_datetime_utc,
+        sa_type=DateTime(timezone=True),  # type: ignore
+    )
+    updated_by_id: uuid.UUID | None = Field(default=None, foreign_key="users.id", ondelete="SET NULL")
+
+
+class CompanySettingsPublic(CompanySettingsBase):
+    id: uuid.UUID
+    updated_at: datetime | None = None
+    updated_by_id: uuid.UUID | None = None

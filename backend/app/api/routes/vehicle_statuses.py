@@ -121,16 +121,15 @@ def update_vehicle_status(
     return status
 
 
-@router.delete("/{id}")
+@router.delete("/{id}", status_code=204)
 def delete_vehicle_status(
     session: SessionDep,
     current_user: CurrentUser,
     id: uuid.UUID,
-) -> Message:
+) -> None:
     """Delete a vehicle status."""
     status = session.get(VehicleStatus, id)
     if not status:
         raise HTTPException(status_code=404, detail="Vehicle status not found")
     session.delete(status)
     commit_or_rollback(session)
-    return Message(message="Vehicle status deleted successfully")

@@ -115,12 +115,12 @@ def update_client(
     return client
 
 
-@router.delete("/{id}")
+@router.delete("/{id}", status_code=204)
 def delete_client(
     session: SessionDep,
     current_user: CurrentUser,
     id: uuid.UUID,
-) -> Message:
+) -> None:
     """
     Delete a client.
     """
@@ -129,4 +129,3 @@ def delete_client(
         raise HTTPException(status_code=404, detail="Client not found")
     session.delete(client)
     commit_or_rollback(session)
-    return Message(message="Client deleted successfully")

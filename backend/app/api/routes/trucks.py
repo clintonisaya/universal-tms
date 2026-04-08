@@ -222,12 +222,12 @@ def update_truck(
     return truck
 
 
-@router.delete("/{id}")
+@router.delete("/{id}", status_code=204)
 def delete_truck(
     session: SessionDep,
     current_user: CurrentUser,
     id: uuid.UUID,
-) -> Message:
+) -> None:
     """
     Delete a truck.
     """
@@ -236,4 +236,3 @@ def delete_truck(
         raise HTTPException(status_code=404, detail="Truck not found")
     session.delete(truck)
     commit_or_rollback(session)
-    return Message(message="Truck deleted successfully")

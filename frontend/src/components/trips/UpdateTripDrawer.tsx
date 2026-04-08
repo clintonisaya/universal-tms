@@ -154,8 +154,7 @@ export function UpdateTripDrawer({
                 driver_id: tripData.driver_id,
             });
 
-        } catch (err) {
-            console.error(err);
+        } catch {
             message.error("Failed to load trip and resources");
         } finally {
             setLoading(false);

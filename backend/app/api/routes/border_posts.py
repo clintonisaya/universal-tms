@@ -109,12 +109,12 @@ def update_border_post(
     return border_post
 
 
-@router.delete("/{id}")
+@router.delete("/{id}", status_code=204)
 def delete_border_post(
     session: SessionDep,
     current_user: CurrentUser,
     id: uuid.UUID,
-) -> Message:
+) -> None:
     """
     Delete a border post.
     Soft-deletes (sets is_active=False) if crossing records exist;
@@ -139,8 +139,7 @@ def delete_border_post(
         border_post.is_active = False
         session.add(border_post)
         commit_or_rollback(session)
-        return Message(message="Border post deactivated (crossing records exist and are preserved)")
+        return
 
     session.delete(border_post)
     commit_or_rollback(session)
-    return Message(message="Border post deleted successfully")

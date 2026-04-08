@@ -20,6 +20,7 @@ from app.core.db import commit_or_rollback
 from app.core.storage import storage
 from app.models import (
     Client,
+    CompanySettings,
     ExchangeRate,
     Invoice,
     InvoiceCreate,
@@ -46,20 +47,6 @@ WRITE_ROLES = {UserRole.admin, UserRole.manager, UserRole.ops}
 ISSUE_ROLES = {UserRole.admin, UserRole.manager, UserRole.ops}
 VOID_ROLES = {UserRole.admin, UserRole.manager}
 PAYMENT_ROLES = {UserRole.admin, UserRole.finance}
-
-# Default bank details (from Edupo company profile)
-DEFAULT_BANK_TZS = {
-    "bank": "CRDB BANK - AZIKIWE BRANCH",
-    "account": "015C001CVAW00",
-    "name": "EDUPO COMPANY LIMITED",
-    "currency": "Tanzanian Shilling",
-}
-DEFAULT_BANK_USD = {
-    "bank": "CRDB BANK - AZIKIWE BRANCH",
-    "account": "025C001CVAW00",
-    "name": "EDUPO COMPANY LIMITED",
-    "currency": "USD",
-}
 
 router = APIRouter(prefix="/invoices", tags=["invoices"])
 
@@ -254,6 +241,26 @@ def create_invoice_from_waybill(
     # Auto-suggest next sequential number (user can change it later)
     invoice_number, invoice_seq = generate_next_invoice_number(session)
 
+    # Get bank details from company_settings table
+    company = session.exec(select(CompanySettings)).first()
+    if company:
+        bank_details_tzs = {
+            "bank": company.bank_name_tzs,
+            "account": company.bank_account_tzs,
+            "name": company.bank_account_name,
+            "currency": company.bank_currency_tzs,
+        }
+        bank_details_usd = {
+            "bank": company.bank_name_usd,
+            "account": company.bank_account_usd,
+            "name": company.bank_account_name,
+            "currency": company.bank_currency_usd,
+        }
+    else:
+        # Fallback if company_settings not yet seeded
+        bank_details_tzs = {"bank": "", "account": "", "name": "", "currency": "Tanzanian Shilling"}
+        bank_details_usd = {"bank": "", "account": "", "name": "", "currency": "USD"}
+
     # Build line item
     route = f"{waybill.origin} - {waybill.destination}"
     items = [
@@ -280,8 +287,8 @@ def create_invoice_from_waybill(
         exchange_rate=exchange_rate,
         vat_rate=Decimal("0"),
         items=items,
-        bank_details_tzs=DEFAULT_BANK_TZS,
-        bank_details_usd=DEFAULT_BANK_USD,
+        bank_details_tzs=bank_details_tzs,
+        bank_details_usd=bank_details_usd,
         waybill_id=waybill_id,
         trip_id=trip_id,
         created_by_id=current_user.id,
@@ -644,14 +651,14 @@ def list_pop_attachments(
     return result
 
 
-@router.delete("/{invoice_id}/pop-attachments/{attachment_id}")
+@router.delete("/{invoice_id}/pop-attachments/{attachment_id}", status_code=204)
 def delete_pop_attachment(
     *,
     session: SessionDep,
     current_user: CurrentUser,
     invoice_id: uuid.UUID,
     attachment_id: str,
-) -> Message:
+) -> None:
     """Delete a POP attachment by its ID."""
     if current_user.role not in POP_ROLES:
         raise HTTPException(status_code=403, detail="Only Finance or Admin can delete POP attachments")
@@ -678,6 +685,6 @@ def delete_pop_attachment(
             payment.updated_at = datetime.now(timezone.utc)
             session.add(payment)
             commit_or_rollback(session)
-            return Message(message="POP attachment deleted successfully")
+            return
 
     raise HTTPException(status_code=404, detail="Attachment not found")

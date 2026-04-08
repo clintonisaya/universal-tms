@@ -63,6 +63,7 @@ export const queryKeys = {
   invoicePayments: (id: string) => ["invoicePayments", id] as const,
   invoicePopAttachments: (id: string) => ["invoicePopAttachments", id] as const,
   invoice: (id: string) => ["invoices", id] as const,
+  companySettings: ["companySettings"] as const,
 };
 
 // Trucks
@@ -164,11 +165,12 @@ export function usePopAttachments(invoiceId: string | null, enabled = true) {
 }
 
 // Expenses
-export function useExpenses(params?: { skip?: number; limit?: number }, enabled = true) {
+export function useExpenses(params?: { skip?: number; limit?: number; status?: string; category?: string }, enabled = true) {
+  const filtered = params && Object.fromEntries(Object.entries(params).filter(([, v]) => v !== undefined && v !== ""));
   const qs =
-    params && Object.keys(params).length
+    filtered && Object.keys(filtered).length
       ? `?${new URLSearchParams(
-          Object.fromEntries(Object.entries(params).map(([k, v]) => [k, String(v)]))
+          Object.fromEntries(Object.entries(filtered).map(([k, v]) => [k, String(v)]))
         ).toString()}`
       : "";
   return useQuery({
@@ -349,6 +351,14 @@ export function useNextBorder(tripId: string | null, direction: "go" | "return")
   });
 }
 
+// Company Settings
+export function useCompanySettings() {
+  return useQuery({
+    queryKey: queryKeys.companySettings,
+    queryFn: () => apiFetch<any>("/api/v1/company-settings"),
+  });
+}
+
 // Hook to invalidate queries after mutations
 export function useInvalidateQueries() {
   const queryClient = useQueryClient();
@@ -382,6 +392,7 @@ export function useInvalidateQueries() {
     invalidateInvoice: (id: string) => queryClient.invalidateQueries({ queryKey: queryKeys.invoice(id) }),
     invalidateInvoicePayments: (id: string) => queryClient.invalidateQueries({ queryKey: queryKeys.invoicePayments(id) }),
     invalidatePopAttachments: (id: string) => queryClient.invalidateQueries({ queryKey: queryKeys.invoicePopAttachments(id) }),
+    invalidateCompanySettings: () => queryClient.invalidateQueries({ queryKey: queryKeys.companySettings }),
     invalidateAll: () => queryClient.invalidateQueries(),
   };
 }

@@ -171,12 +171,12 @@ def update_trailer(
     return trailer
 
 
-@router.delete("/{id}")
+@router.delete("/{id}", status_code=204)
 def delete_trailer(
     session: SessionDep,
     current_user: CurrentUser,
     id: uuid.UUID,
-) -> Message:
+) -> None:
     """
     Delete a trailer.
     """
@@ -185,4 +185,3 @@ def delete_trailer(
         raise HTTPException(status_code=404, detail="Trailer not found")
     session.delete(trailer)
     commit_or_rollback(session)
-    return Message(message="Trailer deleted successfully")

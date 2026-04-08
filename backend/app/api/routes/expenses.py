@@ -686,14 +686,14 @@ def get_attachment_urls(
     return result
 
 
-@router.delete("/{id}/attachment")
+@router.delete("/{id}/attachment", status_code=204)
 def delete_attachment(
     *,
     session: SessionDep,
     current_user: CurrentUser,
     id: uuid.UUID,
     key: str = Query(..., description="Object key of the attachment to delete"),
-) -> Message:
+) -> None:
     """
     Delete a specific attachment from an expense.
     Removes from R2 storage and updates the database.
@@ -723,15 +723,13 @@ def delete_attachment(
     session.add(expense)
     commit_or_rollback(session)
 
-    return Message(message="Attachment deleted successfully")
 
-
-@router.delete("/{id}")
+@router.delete("/{id}", status_code=204)
 def delete_expense(
     session: SessionDep,
     current_user: CurrentUser,
     id: uuid.UUID,
-) -> Message:
+) -> None:
     """Delete an expense. Only allowed when status is 'Pending Manager' and trip is not closed."""
     expense = session.get(ExpenseRequest, id)
     if not expense:
@@ -749,4 +747,3 @@ def delete_expense(
 
     session.delete(expense)
     commit_or_rollback(session)
-    return Message(message="Expense deleted successfully")

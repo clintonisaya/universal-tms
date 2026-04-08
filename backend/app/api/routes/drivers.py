@@ -142,12 +142,12 @@ def update_driver(
     return driver
 
 
-@router.delete("/{id}")
+@router.delete("/{id}", status_code=204)
 def delete_driver(
     session: SessionDep,
     current_user: CurrentUser,
     id: uuid.UUID,
-) -> Message:
+) -> None:
     """
     Delete a driver.
     """
@@ -156,4 +156,3 @@ def delete_driver(
         raise HTTPException(status_code=404, detail="Driver not found")
     session.delete(driver)
     commit_or_rollback(session)
-    return Message(message="Driver deleted successfully")

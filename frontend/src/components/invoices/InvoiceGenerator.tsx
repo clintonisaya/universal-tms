@@ -13,6 +13,7 @@ import {
   StopOutlined,
 } from "@ant-design/icons";
 import { useInvoice, useInvalidateQueries, apiFetch } from "@/hooks/useApi";
+import { sanitizeHtml } from "@/lib/sanitize";
 import { useAuth } from "@/contexts/AuthContext";
 import type { Invoice } from "@/types/invoice";
 import { InvoicePrintView } from "./InvoicePrintView";
@@ -123,7 +124,7 @@ export const InvoiceGenerator: React.FC<InvoiceGeneratorProps> = ({ invoiceId })
     // Render the invoice into a hidden iframe and print from it.
     // No new tab opens — the print dialog appears directly on the
     // current page. Once the print dialog closes, the iframe is removed.
-    const printContent = printRef.current.innerHTML;
+    const printContent = sanitizeHtml(printRef.current.innerHTML);
 
     const iframe = document.createElement("iframe");
     iframe.style.position = "fixed";

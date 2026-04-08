@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Modal, Button, Spin, message } from "antd";
 import { PrinterOutlined } from "@ant-design/icons";
 import type { ExpenseRequestDetailed } from "@/types/expense";
+import { sanitizeHtml } from "@/lib/sanitize";
 
 interface PrintPreviewModalProps {
   open: boolean;
@@ -163,7 +164,7 @@ export function PrintPreviewModal({
           </style>
         </head>
         <body>
-          ${printContent.innerHTML}
+          ${sanitizeHtml(printContent.innerHTML)}
         </body>
       </html>
     `);

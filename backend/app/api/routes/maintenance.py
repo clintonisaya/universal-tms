@@ -176,12 +176,12 @@ def update_maintenance_event(
     session.refresh(event)
     return event
 
-@router.delete("/{id}")
+@router.delete("/{id}", status_code=204)
 def delete_maintenance_event(
     session: SessionDep,
     current_user: CurrentUser,
     id: uuid.UUID,
-) -> Message:
+) -> None:
     """
     Delete a maintenance event.
     Also deletes the associated ExpenseRequest.
@@ -211,4 +211,3 @@ def delete_maintenance_event(
         session.delete(expense)
 
     commit_or_rollback(session)
-    return Message(message="Maintenance event deleted successfully")

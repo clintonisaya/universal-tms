@@ -15,7 +15,9 @@ const ThemeContext = createContext<ThemeContextValue>({
   mode: "dark",
   // P10: warn when toggle is called outside ThemeProvider
   toggle: () => {
-    console.warn("useThemeMode: called outside ThemeProvider — toggle will have no effect");
+    if (process.env.NODE_ENV === "development") {
+      console.warn("useThemeMode: called outside ThemeProvider — toggle will have no effect");
+    }
   },
 });
 
