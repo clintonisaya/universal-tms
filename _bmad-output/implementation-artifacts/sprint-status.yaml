@@ -162,3 +162,41 @@ development_status:
   7-8-page-headers-action-buttons: done
   7-9-global-font-scrollbar: done
   epic-7-retrospective: optional
+
+  # Epic 8: Infrastructure & DevOps (from QA Scan 2026-04-06)
+  epic-8: in-progress
+  8-1-invoice-pop-attachments: review
+  8-5-environment-setup: review
+  8-6-docker-infra-fixes: review
+  8-7-cicd-pipeline: ready-for-dev
+  8-8-repository-cleanup: review
+  epic-8-retrospective: optional
+
+  # Epic 9: Security Hardening (from QA Scan 2026-04-06)
+  epic-9: in-progress
+  9-1-security-endpoint-hardening: ready-for-dev
+  9-2-secrets-and-xss-prevention: ready-for-dev
+  9-3-rate-limiting: ready-for-dev
+  9-4-security-headers-and-cors: ready-for-dev
+  epic-9-retrospective: optional
+
+  # Epic 10: Backend Stability (from QA Scan 2026-04-06)
+  epic-10: in-progress
+  10-1-transaction-safety: ready-for-dev
+  10-2-audit-trail-completion: ready-for-dev
+  10-3-frontend-error-handling: ready-for-dev
+  epic-10-retrospective: optional
+
+  # Epic 11: Testing (from QA Scan 2026-04-06)
+  epic-11: in-progress
+  11-1-backend-route-tests: ready-for-dev
+  11-2-frontend-critical-tests: ready-for-dev
+  epic-11-retrospective: optional
+
+  # Epic 12: Code Quality (from QA Scan 2026-04-06)
+  epic-12: in-progress
+  12-1-code-hygiene-cleanup: ready-for-dev
+  12-2-component-refactoring: ready-for-dev
+  12-3-typescript-type-safety: ready-for-dev
+  12-4-accessibility-improvements: ready-for-dev
+  epic-12-retrospective: optional

@@ -1,0 +1,42 @@
+# Pre-commit hooks for edupo-tms
+# Install: pip install pre-commit && pre-commit install
+repos:
+  # Python linting
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.8.6
+    hooks:
+      - id: ruff
+        args: [--fix]
+        files: ^backend/
+      - id: ruff-format
+        files: ^backend/
+
+  # Python type checking
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.14.1
+    hooks:
+      - id: mypy
+        files: ^backend/app/
+        additional_dependencies:
+          - pydantic>=2.0
+          - sqlmodel>=0.0.21
+
+  # Frontend linting
+  - repo: https://github.com/eslint/eslint
+    rev: v9.18.0
+    hooks:
+      - id: eslint
+        files: ^frontend/src/
+        types: [file]
+        types_or: [javascript, jsx, ts, tsx]
+        args: [--fix]
+
+  # General checks
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-added-large-files
+        args: [--maxkb=500]
