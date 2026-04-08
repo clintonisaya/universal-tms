@@ -94,6 +94,10 @@ class Settings(BaseSettings):
     EMAIL_RESET_TOKEN_EXPIRE_HOURS: int = 48
     USERS_OPEN_REGISTRATION: bool = False
 
+    # Rate Limiting
+    RATE_LIMIT_LOGIN: str = "5/minute"
+    RATE_LIMIT_DEFAULT: str = "100/minute"
+
     @computed_field  # type: ignore[prop-decorator]
     @property
     def emails_enabled(self) -> bool:

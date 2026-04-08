@@ -176,7 +176,7 @@ development_status:
   epic-9: in-progress
   9-1-security-endpoint-hardening: review
   9-2-secrets-and-xss-prevention: ready-for-dev
-  9-3-rate-limiting: ready-for-dev
+  9-3-rate-limiting: review
   9-4-security-headers-and-cors: ready-for-dev
   epic-9-retrospective: optional
 

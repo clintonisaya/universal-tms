@@ -1,7 +1,7 @@
 import uuid
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlmodel import col, delete, func, select
 
 from app import crud
@@ -13,6 +13,7 @@ from app.api.deps import (
     get_current_manager_or_admin,
 )
 from app.core.config import settings
+from app.core.limiter import limiter
 from app.core.security import get_password_hash, verify_password
 from app.models import (
     AdminPasswordReset,
@@ -95,7 +96,8 @@ def create_user(
 
 
 @router.post("/signup", response_model=UserPublic)
-def register_user(session: SessionDep, user_in: UserRegister) -> Any:
+@limiter.limit(settings.RATE_LIMIT_LOGIN)
+def register_user(request: Request, session: SessionDep, user_in: UserRegister) -> Any:
     """
     Create new user without the need to be logged in (self-registration).
     """
