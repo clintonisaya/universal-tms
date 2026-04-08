@@ -7,7 +7,6 @@ import {
   Button,
   Card,
   Space,
-  Tag,
   Modal,
   Form,
   Input,
@@ -16,6 +15,7 @@ import {
   Typography,
   Popconfirm,
 } from "antd";
+import StatusBadge from "@/components/ui/StatusBadge";
 import {
   PlusOutlined,
   ReloadOutlined,
@@ -180,7 +180,7 @@ export default function VehicleStatusesPage() {
       key: "is_active",
       width: 100,
       render: (active: boolean) => (
-        <Tag color={active ? "green" : "red"}>{active ? "Active" : "Inactive"}</Tag>
+        <StatusBadge status={active ? "Active" : "Inactive"} colorKey={active ? "green" : "red"} />
       ),
       ...getColumnFilterProps("is_active", STATUS_FILTERS),
     },
@@ -197,6 +197,7 @@ export default function VehicleStatusesPage() {
               size="small"
               icon={<EditOutlined />}
               onClick={() => openEditModal(record)}
+              aria-label="Edit Vehicle Status"
             />
             <Popconfirm
               title="Delete vehicle status"
@@ -206,7 +207,7 @@ export default function VehicleStatusesPage() {
               cancelText="No"
               okButtonProps={{ danger: true }}
             >
-              <Button type="text" danger size="small" icon={<DeleteOutlined />} />
+              <Button type="text" danger size="small" icon={<DeleteOutlined />} aria-label="Delete Vehicle Status" />
             </Popconfirm>
           </Space>
         </div>
@@ -260,6 +261,7 @@ export default function VehicleStatusesPage() {
             rowKey="id"
             loading={loading}
             sticky={{ offsetHeader: 64 }}
+            scroll={{ x: "max-content" }}
             rowSelection={getStandardRowSelection(
               currentPage,
               pageSize,
@@ -286,6 +288,7 @@ export default function VehicleStatusesPage() {
       <Modal
         title="Add Vehicle Status"
         open={isCreateModalOpen}
+        width={600}
         onCancel={() => {
           setIsCreateModalOpen(false);
           createForm.resetFields();
@@ -351,6 +354,7 @@ export default function VehicleStatusesPage() {
       <Modal
         title="Edit Vehicle Status"
         open={isEditModalOpen}
+        width={600}
         onCancel={() => {
           setIsEditModalOpen(false);
           setEditingStatus(null);

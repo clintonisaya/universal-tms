@@ -5,10 +5,11 @@ CRUD endpoints for office expense type management.
 import uuid
 from typing import Any
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 from sqlmodel import func, select
 
 from app.api.deps import CurrentUser, SessionDep
+from app.core.db import commit_or_rollback
 from app.models import (
     OfficeExpenseType,
     OfficeExpenseTypeCreate,
@@ -25,8 +26,8 @@ router = APIRouter(prefix="/office-expense-types", tags=["office-expense-types"]
 def read_office_expense_types(
     session: SessionDep,
     current_user: CurrentUser,
-    skip: int = 0,
-    limit: int = 200,
+    skip: int = Query(default=0, ge=0),
+    limit: int = Query(default=200, ge=1, le=500),
     category: str | None = None,
     active_only: bool = True,
 ) -> Any:
@@ -104,7 +105,7 @@ def create_office_expense_type(
 
     expense_type = OfficeExpenseType.model_validate(expense_type_in)
     session.add(expense_type)
-    session.commit()
+    commit_or_rollback(session)
     session.refresh(expense_type)
     return expense_type
 
@@ -138,24 +139,23 @@ def update_office_expense_type(
 
     expense_type.sqlmodel_update(update_dict)
     session.add(expense_type)
-    session.commit()
+    commit_or_rollback(session)
     session.refresh(expense_type)
     return expense_type
 
 
-@router.delete("/{id}")
+@router.delete("/{id}", status_code=204)
 def delete_office_expense_type(
     session: SessionDep,
     current_user: CurrentUser,
     id: uuid.UUID,
-) -> Message:
+) -> None:
     """Delete an office expense type."""
     expense_type = session.get(OfficeExpenseType, id)
     if not expense_type:
         raise HTTPException(status_code=404, detail="Office expense type not found")
     session.delete(expense_type)
-    session.commit()
-    return Message(message="Office expense type deleted successfully")
+    commit_or_rollback(session)
 
 
 @router.post("/seed", response_model=Message)
@@ -318,5 +318,5 @@ def seed_office_expense_types(
             session.add(expense_type)
             created_count += 1
 
-    session.commit()
+    commit_or_rollback(session)
     return Message(message=f"Seeded {created_count} office expense types successfully")

@@ -6,10 +6,11 @@ import re
 import uuid
 from typing import Any
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 from sqlmodel import func, select
 
 from app.api.deps import CurrentUser, SessionDep
+from app.core.db import commit_or_rollback
 from app.models import (
     Driver,
     DriverCreate,
@@ -34,8 +35,8 @@ def normalize_license_number(license_num: str) -> str:
 def read_drivers(
     session: SessionDep,
     current_user: CurrentUser,
-    skip: int = 0,
-    limit: int = 100,
+    skip: int = Query(default=0, ge=0),
+    limit: int = Query(default=100, ge=1, le=500),
 ) -> Any:
     """
     Retrieve all drivers.
@@ -78,21 +79,22 @@ def create_driver(
     # Normalize license number
     normalized_license = normalize_license_number(driver_in.license_number)
 
-    # Check for duplicate license number
-    existing_drivers = session.exec(select(Driver)).all()
-    for driver in existing_drivers:
-        if normalize_license_number(driver.license_number) == normalized_license:
-            raise HTTPException(
-                status_code=400,
-                detail="Driver with this license number already exists",
-            )
+    # Check for duplicate license number (DB-filtered query)
+    existing_driver = session.exec(
+        select(Driver).where(Driver.license_number == normalized_license)
+    ).first()
+    if existing_driver:
+        raise HTTPException(
+            status_code=400,
+            detail="Driver with this license number already exists",
+        )
 
     # Create driver with normalized license number
     driver_data = driver_in.model_dump()
     driver_data["license_number"] = normalized_license
     driver = Driver.model_validate(driver_data)
     session.add(driver)
-    session.commit()
+    commit_or_rollback(session)
     session.refresh(driver)
     return driver
 
@@ -120,28 +122,32 @@ def update_driver(
         normalized_current = normalize_license_number(driver.license_number)
 
         if normalized_license != normalized_current:
-            existing_drivers = session.exec(select(Driver)).all()
-            for existing in existing_drivers:
-                if existing.id != driver.id and normalize_license_number(existing.license_number) == normalized_license:
-                    raise HTTPException(
-                        status_code=400,
-                        detail="Driver with this license number already exists",
-                    )
+            existing_driver = session.exec(
+                select(Driver).where(
+                    Driver.license_number == normalized_license,
+                    Driver.id != driver.id,
+                )
+            ).first()
+            if existing_driver:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Driver with this license number already exists",
+                )
         update_dict["license_number"] = normalized_license
 
     driver.sqlmodel_update(update_dict)
     session.add(driver)
-    session.commit()
+    commit_or_rollback(session)
     session.refresh(driver)
     return driver
 
 
-@router.delete("/{id}")
+@router.delete("/{id}", status_code=204)
 def delete_driver(
     session: SessionDep,
     current_user: CurrentUser,
     id: uuid.UUID,
-) -> Message:
+) -> None:
     """
     Delete a driver.
     """
@@ -149,5 +155,4 @@ def delete_driver(
     if not driver:
         raise HTTPException(status_code=404, detail="Driver not found")
     session.delete(driver)
-    session.commit()
-    return Message(message="Driver deleted successfully")
+    commit_or_rollback(session)

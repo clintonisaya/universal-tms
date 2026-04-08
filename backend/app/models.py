@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 from decimal import Decimal
 from enum import Enum
 
-from sqlalchemy import Column, DateTime, JSON, Numeric, Enum as SAEnum
+from sqlalchemy import Column, DateTime, Index, JSON, Numeric, Enum as SAEnum, UniqueConstraint
 from sqlmodel import Field, Relationship, SQLModel
 
 
@@ -142,6 +142,10 @@ class NewPassword(SQLModel):
     new_password: str = Field(min_length=8, max_length=128)
 
 
+class AdminPasswordReset(SQLModel):
+    new_password: str = Field(min_length=8, max_length=128)
+
+
 # ============================================================================
 # Truck Models - Story 1.4: Truck Registry Management
 # ============================================================================
@@ -151,13 +155,13 @@ class TruckStatus(str, Enum):
     """Truck status values - FR-TRUCK-01, extended for Trip workflow"""
     idle = "Idle"
     waiting = "Waiting"
-    dispatch = "Dispatch"
-    wait_to_load = "Wait to Load"
+    dispatch = "Dispatched"
+    wait_to_load = "Arrived at Loading Point"
     loading = "Loading"
     in_transit = "In Transit"
     at_border = "At Border"
     offloaded = "Offloaded"
-    returned = "Returned"
+    returned = "Arrived at Yard"
     waiting_for_pods = "Waiting for PODs"
     maintenance = "Maintenance"
 
@@ -277,13 +281,13 @@ class TrailerStatus(str, Enum):
     """Trailer status values - FR-TRAILER-01, extended for Trip workflow"""
     idle = "Idle"
     waiting = "Waiting"
-    dispatch = "Dispatch"
-    wait_to_load = "Wait to Load"
+    dispatch = "Dispatched"
+    wait_to_load = "Arrived at Loading Point"
     loading = "Loading"
     in_transit = "In Transit"
     at_border = "At Border"
     offloaded = "Offloaded"
-    returned = "Returned"
+    returned = "Arrived at Yard"
     waiting_for_pods = "Waiting for PODs"
     maintenance = "Maintenance"
 
@@ -375,7 +379,6 @@ class WaybillCreate(SQLModel):
     origin: str = Field(min_length=1, max_length=255, description="Loading point")
     destination: str = Field(min_length=1, max_length=255, description="Destination")
     expected_loading_date: datetime = Field(description="Expected loading date")
-    agreed_rate: Decimal = Field(default=Decimal("0.00"), max_digits=12, decimal_places=2, description="Agreed rate")
     currency: str = Field(default="USD", max_length=3, description="Currency code")
     risk_level: str = Field(default="Low", description="Risk level (Low, Medium, High)")
     border_ids: list[uuid.UUID] | None = Field(default=None, description="Ordered list of border post IDs to cross (Story 2.26)")
@@ -402,11 +405,28 @@ class Waybill(WaybillBase, table=True):
         default_factory=get_datetime_utc,
         sa_type=DateTime(timezone=True),  # type: ignore
     )
+    # Audit trail (Story 6.13)
+    created_by_id: uuid.UUID | None = Field(default=None, foreign_key="users.id", index=True)
+    updated_by_id: uuid.UUID | None = Field(default=None, foreign_key="users.id", index=True)
+
+    created_by: User | None = Relationship(sa_relationship_kwargs={"foreign_keys": "[Waybill.created_by_id]", "lazy": "selectin"})
+    updated_by: User | None = Relationship(sa_relationship_kwargs={"foreign_keys": "[Waybill.updated_by_id]", "lazy": "selectin"})
 
 
 class WaybillPublic(WaybillBase):
     id: uuid.UUID
     created_at: datetime | None = None
+    # Audit trail (Story 6.13)
+    created_by_id: uuid.UUID | None = None
+    updated_by_id: uuid.UUID | None = None
+    created_by: UserPublic | None = None
+    updated_by: UserPublic | None = None
+    # Invoice enrichment (set by API, not from DB column)
+    invoice_id: uuid.UUID | None = None
+    invoice_number: str | None = None
+    invoice_status: str | None = None
+    # Trip enrichment (set by API, not from DB column)
+    trip_number: str | None = None
 
 
 class WaybillsPublic(SQLModel):
@@ -420,23 +440,32 @@ class WaybillsPublic(SQLModel):
 
 
 class TripStatus(str, Enum):
-    """Trip status values - Story 2.1, extended with return leg in Story 2.25"""
+    """Trip status values - Story 2.1, extended with return leg in Story 2.25, expanded in Story 2.27"""
     waiting = "Waiting"
-    dispatch = "Dispatch"
-    wait_to_load = "Wait to Load"
+    dispatch = "Dispatched"
+    wait_to_load = "Arrived at Loading Point"   # renamed from "Waiting for Loading"
     loading = "Loading"
+    loaded = "Loaded"                           # Auto-set when loading_end_date recorded
     in_transit = "In Transit"
     at_border = "At Border"
+    arrived_at_destination = "Arrived at Destination"   # Manual, fills arrival_offloading_date
     offloading = "Offloading"
-    # Return leg statuses (Story 2.25) — only valid when return_waybill_id is set
-    dispatch_return = "Dispatch (Return)"
-    wait_to_load_return = "Wait to Load (Return)"
+    offloaded = "Offloaded"                     # Auto-set when offloading_date is recorded
+    returning_empty = "Returning Empty"         # renamed from "Returning to Yard" (no return WB)
+    breakdown = "Breakdown"                     # Recoverable breakdown — selectable from any point
+    # Return leg statuses — only valid when return_waybill_id is set
+    waiting_return = "Waiting (Return)"         # First return status, waiting for return cargo
+    dispatch_return = "Dispatched (Return)"
+    wait_to_load_return = "Arrived at Loading Point (Return)"  # renamed
     loading_return = "Loading (Return)"
+    loaded_return = "Loaded (Return)"           # Auto-set when loading_return_end_date recorded
     in_transit_return = "In Transit (Return)"
     at_border_return = "At Border (Return)"
+    arrived_at_destination_return = "Arrived at Destination (Return)"  # Manual, fills arrival_destination_return_date
     offloading_return = "Offloading (Return)"
+    offloaded_return = "Offloaded (Return)"     # Auto-set when offloading_return_date recorded
     # End of journey
-    returned = "Returned"
+    returned = "Arrived at Yard"
     waiting_for_pods = "Waiting for PODs"
     completed = "Completed"
     cancelled = "Cancelled"
@@ -460,6 +489,7 @@ class TripBase(SQLModel):
         ),
         description="Current trip status"
     )
+    is_delayed: bool = Field(default=False, description="Whether the trip is currently delayed")
 
 
 # Properties to receive on creation
@@ -489,15 +519,23 @@ class TripUpdate(SQLModel):
     loading_end_date: datetime | None = Field(default=None, description="Loading completed date")
     arrival_offloading_date: datetime | None = Field(default=None, description="Arrival at offloading point")
     offloading_date: datetime | None = Field(default=None, description="Offloading completed date")
-    arrival_return_date: datetime | None = Field(default=None, description="Arrival back at origin for return offloading")
+    arrival_return_date: datetime | None = Field(default=None, description="Date truck returned to yard (home base)")
     # Return leg tracking date fields (Story 2.25)
     dispatch_return_date: datetime | None = Field(default=None, description="Date dispatched for return journey")
     arrival_loading_return_date: datetime | None = Field(default=None, description="Arrival at return loading point")
     loading_return_start_date: datetime | None = Field(default=None, description="Return cargo loading started")
     loading_return_end_date: datetime | None = Field(default=None, description="Return cargo loading completed")
+    offloading_return_date: datetime | None = Field(default=None, description="Return cargo offloaded at client destination")
+    arrival_destination_return_date: datetime | None = Field(default=None, description="Arrival at return destination (Arrived at Destination (Return))")
     # Cancellation control flags (Story 2.25) — used when status=Cancelled with dual waybills
     cancel_go_waybill: bool | None = Field(default=None, description="Reset go waybill to Open on cancel (default: True)")
     cancel_return_waybill: bool | None = Field(default=None, description="Reset return waybill to Open on cancel (default: True)")
+    # Client report fields
+    return_empty_container_date: datetime | None = Field(default=None, description="Date empty container was returned")
+    remarks: str | None = Field(default=None, description="Go-leg remarks for client report (frozen after offloading)")
+    return_remarks: str | None = Field(default=None, description="Return-leg remarks for client report")
+    pods_confirmed_date: datetime | None = Field(default=None, description="Date PODs were confirmed — auto-advances trip to Completed")
+    is_delayed: bool | None = Field(default=None, description="Set or clear the delayed flag")
 
 
 # Properties to receive for truck swap
@@ -514,6 +552,7 @@ class AttachReturnWaybillRequest(SQLModel):
 class Trip(TripBase, table=True):
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     pod_documents: list = Field(default=[], sa_column=Column(JSON))
+    attachments: list = Field(default=[], sa_column=Column(JSON), description="Trip-level document attachments (keys in R2 storage)")
     start_date: datetime | None = Field(
         default=None,
         sa_type=DateTime(timezone=True),
@@ -541,17 +580,31 @@ class Trip(TripBase, table=True):
     arrival_loading_return_date: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
     loading_return_start_date: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
     loading_return_end_date: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
+    offloading_return_date: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
+    arrival_destination_return_date: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
+    # Client report fields
+    return_empty_container_date: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
+    remarks: str | None = Field(default=None)
+    return_remarks: str | None = Field(default=None)
+    pods_confirmed_date: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
+
+    # Audit trail (Story 6.13)
+    created_by_id: uuid.UUID | None = Field(default=None, foreign_key="users.id", index=True)
+    updated_by_id: uuid.UUID | None = Field(default=None, foreign_key="users.id", index=True)
 
     # Relationships
     truck: Truck | None = Relationship()
     trailer: Trailer | None = Relationship()
     driver: Driver | None = Relationship()
+    created_by: User | None = Relationship(sa_relationship_kwargs={"foreign_keys": "[Trip.created_by_id]", "lazy": "selectin"})
+    updated_by: User | None = Relationship(sa_relationship_kwargs={"foreign_keys": "[Trip.updated_by_id]", "lazy": "selectin"})
 
 
 # Properties to return via API
 class TripPublic(TripBase):
     id: uuid.UUID
     pod_documents: list = []
+    attachments: list = []
     start_date: datetime | None = None
     end_date: datetime | None = None
     created_at: datetime | None = None
@@ -569,11 +622,26 @@ class TripPublic(TripBase):
     arrival_loading_return_date: datetime | None = None
     loading_return_start_date: datetime | None = None
     loading_return_end_date: datetime | None = None
+    offloading_return_date: datetime | None = None
+    arrival_destination_return_date: datetime | None = None
+    # Client report fields
+    return_empty_container_date: datetime | None = None
+    remarks: str | None = None
+    return_remarks: str | None = None
+    pods_confirmed_date: datetime | None = None
     # Enrichment fields from waybill join (Story 4.6)
     waybill_rate: Decimal | None = None
     waybill_currency: str | None = None
     waybill_risk_level: str | None = None
+    return_waybill_rate: Decimal | None = None
+    return_waybill_currency: str | None = None
+    waybill_number: str | None = None
+    return_waybill_number: str | None = None
+    return_route_name: str | None = None
     location_update_time: datetime | None = None
+    # Audit trail (Story 6.13)
+    created_by_id: uuid.UUID | None = None
+    updated_by_id: uuid.UUID | None = None
 
 
 # Trip with nested entities for detailed views
@@ -581,6 +649,8 @@ class TripPublicDetailed(TripPublic):
     truck: TruckPublic | None = None
     trailer: TrailerPublic | None = None
     driver: DriverPublic | None = None
+    created_by: UserPublic | None = None
+    updated_by: UserPublic | None = None
 
 
 class TripsPublic(SQLModel):
@@ -600,6 +670,7 @@ class ExpenseStatus(str, Enum):
     paid = "Paid"
     rejected = "Rejected"
     returned = "Returned"
+    voided = "Voided"
 
 
 class ExpenseCategory(str, Enum):
@@ -635,6 +706,10 @@ class ExpenseRequestBase(SQLModel):
     paid_by_id: uuid.UUID | None = Field(default=None, foreign_key="users.id", description="User who processed the payment")
     approved_by_id: uuid.UUID | None = Field(default=None, foreign_key="users.id", description="User who approved the expense")
     approved_at: datetime | None = Field(default=None, sa_type=DateTime(timezone=True), description="Date expense was approved")
+    voided_by_id: uuid.UUID | None = Field(default=None, foreign_key="users.id", description="User who voided the expense")
+    voided_at: datetime | None = Field(default=None, sa_type=DateTime(timezone=True), description="Date expense was voided")
+    void_reason: str | None = Field(default=None, max_length=500, description="Reason for voiding the expense")
+    returned_at: datetime | None = Field(default=None, sa_type=DateTime(timezone=True), description="Date expense was last returned for revision")
     expense_metadata: dict | None = Field(default=None, description="Additional expense metadata (item details, payment info, etc.)")
     attachments: list[str] | None = Field(default=[], description="List of URLs for attached receipts/documents")
 
@@ -656,6 +731,7 @@ class ExpenseRequestUpdate(SQLModel):
     category: ExpenseCategory | None = Field(default=None)
     description: str | None = Field(default=None, min_length=1, max_length=500)
     status: ExpenseStatus | None = Field(default=None)
+    expense_metadata: dict | None = Field(default=None)
 
 
 # Database model
@@ -676,11 +752,16 @@ class ExpenseRequest(ExpenseRequestBase, table=True):
         sa_type=DateTime(timezone=True),  # type: ignore
     )
 
+    # Audit trail (Story 6.13)
+    updated_by_id: uuid.UUID | None = Field(default=None, foreign_key="users.id")
+
     # Relationships
     trip: Trip | None = Relationship(sa_relationship_kwargs={"foreign_keys": "[ExpenseRequest.trip_id]"})
     created_by: User | None = Relationship(sa_relationship_kwargs={"foreign_keys": "[ExpenseRequest.created_by_id]"})
+    updated_by: User | None = Relationship(sa_relationship_kwargs={"foreign_keys": "[ExpenseRequest.updated_by_id]"})
     paid_by: User | None = Relationship(sa_relationship_kwargs={"foreign_keys": "[ExpenseRequest.paid_by_id]"})
     approved_by: User | None = Relationship(sa_relationship_kwargs={"foreign_keys": "[ExpenseRequest.approved_by_id]"})
+    voided_by: User | None = Relationship(sa_relationship_kwargs={"foreign_keys": "[ExpenseRequest.voided_by_id]"})
 
 
 # Properties to return via API
@@ -695,8 +776,10 @@ class ExpenseRequestPublic(ExpenseRequestBase):
 class ExpenseRequestPublicDetailed(ExpenseRequestPublic):
     trip: TripPublic | None = None
     created_by: UserPublic | None = None
+    updated_by: UserPublic | None = None
     paid_by: UserPublic | None = None
     approved_by: UserPublic | None = None
+    voided_by: UserPublic | None = None
 
 
 class ExpenseRequestsPublic(SQLModel):
@@ -740,6 +823,9 @@ class ExchangeRateUpdate(SQLModel):
 
 class ExchangeRate(ExchangeRateBase, table=True):
     __tablename__ = "exchange_rate"
+    __table_args__ = (
+        UniqueConstraint("month", "year", name="uq_exchange_rate_month_year"),
+    )
 
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     rate: Decimal = Field(sa_column=Column(Numeric(12, 2), nullable=False))
@@ -1162,6 +1248,9 @@ class BorderPostsPublic(SQLModel):
 
 class WaybillBorder(SQLModel, table=True):
     __tablename__ = "waybill_border"
+    __table_args__ = (
+        UniqueConstraint("waybill_id", "border_post_id", name="uq_waybill_border"),
+    )
 
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     waybill_id: uuid.UUID = Field(foreign_key="waybill.id", description="Linked waybill")
@@ -1193,6 +1282,9 @@ class TripBorderCrossingUpsert(SQLModel):
 
 class TripBorderCrossing(SQLModel, table=True):
     __tablename__ = "trip_border_crossing"
+    __table_args__ = (
+        Index("ix_trip_border_crossing_lookup", "trip_id", "border_post_id", "direction"),
+    )
 
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     trip_id: uuid.UUID = Field(foreign_key="trip.id", description="Linked trip")
@@ -1221,3 +1313,250 @@ class TripBorderCrossingPublic(SQLModel):
     created_at: datetime | None = None
     updated_at: datetime | None = None
     border_post: BorderPostPublic | None = None
+
+
+# ============================================================================
+# Invoice Models — Invoice Generation & Payment Verification
+# ============================================================================
+
+
+class InvoiceStatus(str, Enum):
+    """Invoice lifecycle statuses"""
+    draft = "draft"
+    issued = "issued"
+    partially_paid = "partially_paid"
+    fully_paid = "fully_paid"
+    voided = "voided"
+
+
+class InvoiceBase(SQLModel):
+    invoice_number: str = Field(index=True, unique=True, description="Display number: INV-YYYY-NNNN")
+    invoice_seq: int = Field(description="Sequential integer for auto-increment")
+    date: str = Field(max_length=10, description="Invoice date ISO: YYYY-MM-DD")
+    due_date: str | None = Field(default=None, max_length=10, description="Optional payment due date")
+    status: InvoiceStatus = Field(default=InvoiceStatus.draft, description="Invoice lifecycle status")
+
+    # Company (static, from system settings)
+    company_name: str = Field(default="EDUPO COMPANY LIMITED", max_length=255)
+    company_address: str = Field(default="P.O.Box 999, Dar es Salaam, Tanzania", max_length=500)
+    company_tin: str = Field(default="168883285", max_length=50)
+    company_phone: str = Field(default="+255 718 478 666", max_length=50)
+    company_email: str = Field(default="info@edupocompany.com", max_length=255)
+
+    # Customer
+    customer_name: str = Field(max_length=255, description="Customer company name")
+    customer_tin: str = Field(default="", max_length=50, description="Customer TIN")
+    client_id: uuid.UUID | None = Field(default=None, foreign_key="client.id", description="FK to Client record")
+    regarding: str = Field(default="TRANSPORTATION", max_length=255)
+
+    # Financial
+    currency: str = Field(default="USD", max_length=3, description="Base currency")
+    vat_rate: Decimal = Field(default=Decimal("0"), max_digits=5, decimal_places=2, description="VAT percentage")
+    exchange_rate: Decimal = Field(default=Decimal("0"), max_digits=12, decimal_places=2, description="TZS per USD")
+    subtotal: Decimal = Field(default=Decimal("0"), max_digits=12, decimal_places=2)
+    vat_amount: Decimal = Field(default=Decimal("0"), max_digits=12, decimal_places=2)
+    total_usd: Decimal = Field(default=Decimal("0"), max_digits=12, decimal_places=2)
+    total_tzs: Decimal = Field(default=Decimal("0"), max_digits=14, decimal_places=2)
+
+    # Payment tracking (computed from payments — Phase 2)
+    amount_paid: Decimal = Field(default=Decimal("0"), max_digits=12, decimal_places=2)
+    amount_outstanding: Decimal = Field(default=Decimal("0"), max_digits=12, decimal_places=2)
+
+    # References
+    waybill_id: uuid.UUID | None = Field(default=None, foreign_key="waybill.id", description="One invoice per waybill")
+    trip_id: uuid.UUID | None = Field(default=None, foreign_key="trip.id", description="Linked trip")
+
+
+class Invoice(InvoiceBase, table=True):
+    __table_args__ = (
+        UniqueConstraint("waybill_id", name="uq_invoice_waybill"),
+    )
+
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+
+    # JSON columns
+    items: list = Field(default=[], sa_column=Column(JSON))
+    bank_details_tzs: dict = Field(default={}, sa_column=Column(JSON))
+    bank_details_usd: dict = Field(default={}, sa_column=Column(JSON))
+
+    # Numeric columns needing explicit SA types for precision
+    vat_rate: Decimal = Field(default=Decimal("0"), sa_column=Column(Numeric(5, 2), nullable=False))
+    exchange_rate: Decimal = Field(default=Decimal("0"), sa_column=Column(Numeric(12, 2), nullable=False))
+    subtotal: Decimal = Field(default=Decimal("0"), sa_column=Column(Numeric(12, 2), nullable=False))
+    vat_amount: Decimal = Field(default=Decimal("0"), sa_column=Column(Numeric(12, 2), nullable=False))
+    total_usd: Decimal = Field(default=Decimal("0"), sa_column=Column(Numeric(12, 2), nullable=False))
+    total_tzs: Decimal = Field(default=Decimal("0"), sa_column=Column(Numeric(14, 2), nullable=False))
+    amount_paid: Decimal = Field(default=Decimal("0"), sa_column=Column(Numeric(12, 2), nullable=False))
+    amount_outstanding: Decimal = Field(default=Decimal("0"), sa_column=Column(Numeric(12, 2), nullable=False))
+
+    # Audit trail
+    created_by_id: uuid.UUID | None = Field(default=None, foreign_key="users.id", index=True)
+    updated_by_id: uuid.UUID | None = Field(default=None, foreign_key="users.id", index=True)
+    issued_by_id: uuid.UUID | None = Field(default=None, foreign_key="users.id", index=True)
+    issued_at: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
+    created_at: datetime | None = Field(default_factory=get_datetime_utc, sa_type=DateTime(timezone=True))
+    updated_at: datetime | None = Field(default_factory=get_datetime_utc, sa_type=DateTime(timezone=True))
+
+    # Relationships
+    created_by: User | None = Relationship(sa_relationship_kwargs={"foreign_keys": "[Invoice.created_by_id]", "lazy": "selectin"})
+    updated_by: User | None = Relationship(sa_relationship_kwargs={"foreign_keys": "[Invoice.updated_by_id]", "lazy": "selectin"})
+    issued_by: User | None = Relationship(sa_relationship_kwargs={"foreign_keys": "[Invoice.issued_by_id]", "lazy": "selectin"})
+    payments: list["InvoicePayment"] = Relationship(back_populates="invoice")
+
+
+class InvoiceCreate(SQLModel):
+    """Used for manual invoice creation (rarely needed — prefer from-waybill endpoint)."""
+    date: str = Field(max_length=10)
+    customer_name: str = Field(min_length=1, max_length=255)
+    customer_tin: str = Field(default="", max_length=50)
+    client_id: uuid.UUID | None = None
+    regarding: str = Field(default="TRANSPORTATION", max_length=255)
+    currency: str = Field(default="USD", max_length=3)
+    vat_rate: Decimal = Field(default=Decimal("0"), max_digits=5, decimal_places=2)
+    exchange_rate: Decimal = Field(default=Decimal("0"), max_digits=12, decimal_places=2)
+    items: list = Field(default=[])
+    waybill_id: uuid.UUID | None = None
+    trip_id: uuid.UUID | None = None
+
+
+class InvoiceUpdate(SQLModel):
+    """Fields editable while invoice is in draft status."""
+    invoice_number: str | None = Field(default=None, min_length=1, max_length=50, description="Manually entered invoice number")
+    date: str | None = Field(default=None, max_length=10)
+    due_date: str | None = Field(default=None, max_length=10)
+    customer_name: str | None = Field(default=None, min_length=1, max_length=255)
+    customer_tin: str | None = Field(default=None, max_length=50)
+    regarding: str | None = Field(default=None, max_length=255)
+    currency: str | None = Field(default=None, max_length=3)
+    vat_rate: Decimal | None = Field(default=None, max_digits=5, decimal_places=2)
+    exchange_rate: Decimal | None = Field(default=None, max_digits=12, decimal_places=2)
+    items: list | None = None
+
+
+class InvoicePublic(InvoiceBase):
+    id: uuid.UUID
+    items: list = []
+    bank_details_tzs: dict = {}
+    bank_details_usd: dict = {}
+    created_by_id: uuid.UUID | None = None
+    updated_by_id: uuid.UUID | None = None
+    issued_by_id: uuid.UUID | None = None
+    issued_at: datetime | None = None
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
+    created_by: UserPublic | None = None
+    updated_by: UserPublic | None = None
+    issued_by: UserPublic | None = None
+    # Enrichment fields (resolved in route)
+    waybill_number: str | None = None
+    trip_number: str | None = None
+
+
+class InvoicesPublic(SQLModel):
+    data: list[InvoicePublic]
+    count: int
+
+
+# ============================================================================
+# Invoice Payment Models — Phase 2: Payment Recording
+# ============================================================================
+
+
+class PaymentType(str, Enum):
+    """Invoice payment types"""
+    full = "full"
+    advance = "advance"
+    balance = "balance"
+
+
+class InvoicePayment(SQLModel, table=True):
+    __tablename__ = "invoice_payment"
+
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    invoice_id: uuid.UUID = Field(foreign_key="invoice.id", index=True)
+    payment_type: PaymentType = Field(sa_type=SAEnum(PaymentType, name="payment_type"))
+    amount: Decimal = Field(max_digits=12, decimal_places=2, sa_type=Numeric(12, 2))
+    currency: str = Field(default="USD", max_length=3)
+    payment_date: datetime = Field(sa_type=DateTime(timezone=True))
+    reference: str | None = Field(default=None, max_length=255)
+    notes: str | None = Field(default=None, max_length=500)
+    verified_by_id: uuid.UUID | None = Field(default=None, foreign_key="users.id", index=True)
+    attachments: list = Field(default=[], sa_column=Column(JSON), description="POP attachment storage keys in R2")
+    created_at: datetime | None = Field(default_factory=get_datetime_utc, sa_type=DateTime(timezone=True))
+    updated_at: datetime | None = Field(default_factory=get_datetime_utc, sa_type=DateTime(timezone=True))
+
+    # Relationships
+    invoice: Invoice | None = Relationship(back_populates="payments")
+    verified_by: User | None = Relationship(sa_relationship_kwargs={"foreign_keys": "[InvoicePayment.verified_by_id]", "lazy": "selectin"})
+
+
+class InvoicePaymentCreate(SQLModel):
+    """Input for recording an invoice payment."""
+    payment_type: PaymentType
+    amount: Decimal = Field(ge=Decimal("0.01"))
+    currency: str = Field(default="USD", max_length=3)
+    payment_date: datetime
+    reference: str | None = Field(default=None, max_length=255)
+    notes: str | None = Field(default=None, max_length=500)
+
+
+class InvoicePaymentPublic(SQLModel):
+    id: uuid.UUID
+    invoice_id: uuid.UUID
+    payment_type: PaymentType
+    amount: Decimal
+    currency: str
+    payment_date: datetime
+    reference: str | None = None
+    notes: str | None = None
+    verified_by_id: uuid.UUID | None = None
+    verified_by: UserPublic | None = None
+    attachments: list = []
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
+
+
+class InvoicePaymentsPublic(SQLModel):
+    data: list[InvoicePaymentPublic]
+    count: int
+
+
+# Company Settings — Story 9.2
+class CompanySettingsBase(SQLModel):
+    bank_name_tzs: str = Field(default="CRDB BANK - AZIKIWE BRANCH", max_length=255)
+    bank_account_tzs: str = Field(default="015C001CVAW00", max_length=100)
+    bank_account_name: str = Field(default="EDUPO COMPANY LIMITED", max_length=255)
+    bank_currency_tzs: str = Field(default="Tanzanian Shilling", max_length=50)
+    bank_name_usd: str = Field(default="CRDB BANK - AZIKIWE BRANCH", max_length=255)
+    bank_account_usd: str = Field(default="025C001CVAW00", max_length=100)
+    bank_currency_usd: str = Field(default="USD", max_length=50)
+
+
+class CompanySettingsCreate(CompanySettingsBase):
+    pass
+
+
+class CompanySettingsUpdate(SQLModel):
+    bank_name_tzs: str | None = Field(default=None, max_length=255)
+    bank_account_tzs: str | None = Field(default=None, max_length=100)
+    bank_account_name: str | None = Field(default=None, max_length=255)
+    bank_currency_tzs: str | None = Field(default=None, max_length=50)
+    bank_name_usd: str | None = Field(default=None, max_length=255)
+    bank_account_usd: str | None = Field(default=None, max_length=100)
+    bank_currency_usd: str | None = Field(default=None, max_length=50)
+
+
+class CompanySettings(CompanySettingsBase, table=True):
+    __tablename__ = "company_settings"
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    updated_at: datetime | None = Field(
+        default_factory=get_datetime_utc,
+        sa_type=DateTime(timezone=True),  # type: ignore
+    )
+    updated_by_id: uuid.UUID | None = Field(default=None, foreign_key="users.id", ondelete="SET NULL")
+
+
+class CompanySettingsPublic(CompanySettingsBase):
+    id: uuid.UUID
+    updated_at: datetime | None = None
+    updated_by_id: uuid.UUID | None = None

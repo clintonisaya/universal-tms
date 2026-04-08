@@ -14,9 +14,9 @@ import {
   App,
   Typography,
   Popconfirm,
-  Tag,
   Switch,
 } from "antd";
+import StatusBadge from "@/components/ui/StatusBadge";
 import {
   PlusOutlined,
   ReloadOutlined,
@@ -212,9 +212,7 @@ export default function OfficeExpenseTypesPage() {
       key: "is_active",
       width: 100,
       render: (active: boolean) => (
-        <Tag color={active ? "success" : "default"}>
-          {active ? "Active" : "Inactive"}
-        </Tag>
+        <StatusBadge status={active ? "Active" : "Inactive"} colorKey={active ? "green" : "gray"} />
       ),
       ...getColumnFilterProps("is_active", [
         { text: "Active", value: true },
@@ -234,6 +232,7 @@ export default function OfficeExpenseTypesPage() {
               size="small"
               icon={<EditOutlined />}
               onClick={() => openEditModal(record)}
+              aria-label="Edit Expense Type"
             />
             <Popconfirm
               title="Delete type"
@@ -243,7 +242,7 @@ export default function OfficeExpenseTypesPage() {
               cancelText="No"
               okButtonProps={{ danger: true }}
             >
-              <Button type="text" danger size="small" icon={<DeleteOutlined />} />
+              <Button type="text" danger size="small" icon={<DeleteOutlined />} aria-label="Delete Expense Type" />
             </Popconfirm>
           </Space>
         </div>
@@ -297,6 +296,7 @@ export default function OfficeExpenseTypesPage() {
             rowKey="id"
             loading={loading}
             sticky={{ offsetHeader: 64 }}
+            scroll={{ x: "max-content" }}
             rowSelection={getStandardRowSelection(
               currentPage,
               pageSize,
@@ -323,6 +323,7 @@ export default function OfficeExpenseTypesPage() {
       <Modal
         title="Add Office Expense Type"
         open={isCreateModalOpen}
+        width={660}
         onCancel={() => {
           setIsCreateModalOpen(false);
           createForm.resetFields();
@@ -400,6 +401,7 @@ export default function OfficeExpenseTypesPage() {
       <Modal
         title="Edit Office Expense Type"
         open={isEditModalOpen}
+        width={660}
         onCancel={() => {
           setIsEditModalOpen(false);
           setEditingType(null);

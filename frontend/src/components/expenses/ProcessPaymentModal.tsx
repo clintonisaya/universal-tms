@@ -15,7 +15,6 @@ import {
   Typography,
   Tabs,
   Descriptions,
-  Tag,
   Timeline,
   Space,
   Spin,
@@ -36,8 +35,10 @@ import {
 } from "@ant-design/icons";
 import type { ExpenseRequestDetailed } from "@/types/expense";
 import { ExpenseStatusBadge } from "./ExpenseStatusBadge";
+import { StatusBadge } from "@/components/ui/StatusBadge";
 import { fmtAmount, fmtCurrency } from "@/lib/utils";
 import dayjs from "dayjs";
+import { COMPANY_NAME } from "@/constants/expenseConstants";
 
 const { Text } = Typography;
 
@@ -57,11 +58,11 @@ interface AttachmentInfo {
 function getFileIcon(filename: string) {
   const lower = filename.toLowerCase();
   if (lower.endsWith(".pdf"))
-    return <FilePdfOutlined style={{ color: "#ff4d4f", fontSize: 18 }} />;
+    return <FilePdfOutlined style={{ color: "var(--color-red)", fontSize: 18 }} />;
   if (lower.match(/\.(jpe?g|png|gif|webp)$/))
-    return <FileImageOutlined style={{ color: "#1890ff", fontSize: 18 }} />;
+    return <FileImageOutlined style={{ color: "var(--color-blue)", fontSize: 18 }} />;
   if (lower.match(/\.(docx?)$/))
-    return <FileWordOutlined style={{ color: "#2f54eb", fontSize: 18 }} />;
+    return <FileWordOutlined style={{ color: "var(--color-blue)", fontSize: 18 }} />;
   return <FileUnknownOutlined style={{ fontSize: 18 }} />;
 }
 
@@ -181,22 +182,22 @@ export function ProcessPaymentModal({
         style={{
           marginBottom: 24,
           padding: 16,
-          background: "#f5f5f5",
+          background: "var(--color-surface)",
           borderRadius: 8,
         }}
       >
         <Row gutter={[16, 16]}>
           <Col span={8}>
             <div style={{ marginBottom: 4 }}>
-              <Text type="secondary" style={{ fontSize: 12 }}>
+              <Text type="secondary">
                 Company
               </Text>
             </div>
-            <Input value="EDUPO COMPANY LIMITED" readOnly />
+            <Input value={COMPANY_NAME} readOnly />
           </Col>
           <Col span={8}>
             <div style={{ marginBottom: 4 }}>
-              <Text type="secondary" style={{ fontSize: 12 }}>
+              <Text type="secondary">
                 Application Date
               </Text>
             </div>
@@ -207,19 +208,19 @@ export function ProcessPaymentModal({
           </Col>
           <Col span={8}>
             <div style={{ marginBottom: 4 }}>
-              <Text type="secondary" style={{ fontSize: 12 }}>
+              <Text type="secondary">
                 Total Amount
               </Text>
             </div>
             <Input
               value={formatCurrency(expense.amount, expense.currency)}
               readOnly
-              style={{ fontWeight: "bold" }}
+              style={{ fontWeight: 700 }}
             />
           </Col>
           <Col span={8}>
             <div style={{ marginBottom: 4 }}>
-              <Text type="secondary" style={{ fontSize: 12 }}>
+              <Text type="secondary">
                 Payment Method
               </Text>
             </div>
@@ -227,7 +228,7 @@ export function ProcessPaymentModal({
           </Col>
           <Col span={16}>
             <div style={{ marginBottom: 4 }}>
-              <Text type="secondary" style={{ fontSize: 12 }}>
+              <Text type="secondary">
                 Remarks
               </Text>
             </div>
@@ -243,7 +244,7 @@ export function ProcessPaymentModal({
           <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
             <Col span={8}>
               <div style={{ marginBottom: 4 }}>
-                <Text type="secondary" style={{ fontSize: 12 }}>
+                <Text type="secondary">
                   Bank Name
                 </Text>
               </div>
@@ -251,7 +252,7 @@ export function ProcessPaymentModal({
             </Col>
             <Col span={8}>
               <div style={{ marginBottom: 4 }}>
-                <Text type="secondary" style={{ fontSize: 12 }}>
+                <Text type="secondary">
                   Account Name
                 </Text>
               </div>
@@ -259,7 +260,7 @@ export function ProcessPaymentModal({
             </Col>
             <Col span={8}>
               <div style={{ marginBottom: 4 }}>
-                <Text type="secondary" style={{ fontSize: 12 }}>
+                <Text type="secondary">
                   Account No.
                 </Text>
               </div>
@@ -272,6 +273,7 @@ export function ProcessPaymentModal({
       {/* Items Table */}
       <div style={{ marginBottom: 24 }}>
         <Table
+          scroll={{ x: "max-content" }}
           dataSource={[
             {
               key: "1",
@@ -340,7 +342,7 @@ export function ProcessPaymentModal({
             <div
               style={{
                 textAlign: "right",
-                fontWeight: "bold",
+                fontWeight: 700,
                 fontSize: 16,
               }}
             >
@@ -365,7 +367,7 @@ export function ProcessPaymentModal({
             {expense.trip.route_name || "-"}
           </Descriptions.Item>
           <Descriptions.Item label="Status">
-            <Tag>{expense.trip.status}</Tag>
+            <StatusBadge status={expense.trip.status} />
           </Descriptions.Item>
           <Descriptions.Item label="Current Location">
             {expense.trip.current_location || "-"}
@@ -394,9 +396,9 @@ export function ProcessPaymentModal({
                 alignItems: "center",
                 justifyContent: "space-between",
                 padding: "10px 14px",
-                background: "#fafafa",
+                background: "var(--color-surface)",
                 borderRadius: 6,
-                border: "1px solid #f0f0f0",
+                border: "1px solid var(--color-border)",
               }}
             >
               <Space>
@@ -585,7 +587,7 @@ export function ProcessPaymentModal({
         body: { maxHeight: "calc(100vh - 200px)", overflowY: "auto" },
       }}
       footer={null}
-      destroyOnHidden
+      forceRender
     >
       <Form form={form} layout="vertical" onFinish={handleFinish}>
         <Tabs
@@ -614,9 +616,9 @@ export function ProcessPaymentModal({
           style={{
             marginTop: 16,
             padding: 16,
-            background: "#fafafa",
+            background: "var(--color-surface)",
             borderRadius: 8,
-            border: "1px solid #f0f0f0",
+            border: "1px solid var(--color-border)",
           }}
         >
           <Text strong style={{ display: "block", marginBottom: 12 }}>

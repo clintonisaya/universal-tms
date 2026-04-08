@@ -6,9 +6,11 @@ import uuid
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Query
+from sqlalchemy.exc import IntegrityError
 from sqlmodel import select, func, and_
 
 from app.api.deps import CurrentUser, SessionDep
+from app.core.db import commit_or_rollback
 from app.models import (
     ExchangeRate,
     ExchangeRateCreate,
@@ -35,8 +37,8 @@ def require_finance_role(user: Any) -> None:
 def read_exchange_rates(
     session: SessionDep,
     current_user: CurrentUser,
-    skip: int = 0,
-    limit: int = 100,
+    skip: int = Query(default=0, ge=0),
+    limit: int = Query(default=100, ge=1, le=500),
 ) -> Any:
     """Retrieve all exchange rates, ordered by year desc, month desc."""
     count_query = select(func.count()).select_from(ExchangeRate)
@@ -110,12 +112,19 @@ def create_exchange_rate(
     if existing:
         raise HTTPException(
             status_code=409,
-            detail=f"Exchange rate already exists for {rate_in.month}/{rate_in.year}. Use PUT to update.",
+            detail="Exchange rate for this month already exists. Update the existing record instead.",
         )
 
     rate = ExchangeRate(**rate_in.model_dump())
     session.add(rate)
-    session.commit()
+    try:
+        session.commit()
+    except IntegrityError:
+        session.rollback()
+        raise HTTPException(
+            status_code=409,
+            detail="Exchange rate for this month already exists. Update the existing record instead.",
+        )
     session.refresh(rate)
     return rate
 
@@ -137,17 +146,17 @@ def update_exchange_rate(
 
     rate.rate = rate_in.rate
     session.add(rate)
-    session.commit()
+    commit_or_rollback(session)
     session.refresh(rate)
     return rate
 
 
-@router.delete("/{id}")
+@router.delete("/{id}", status_code=204)
 def delete_exchange_rate(
     session: SessionDep,
     current_user: CurrentUser,
     id: uuid.UUID,
-) -> Message:
+) -> None:
     """Delete an exchange rate."""
     require_finance_role(current_user)
 
@@ -156,5 +165,4 @@ def delete_exchange_rate(
         raise HTTPException(status_code=404, detail="Exchange rate not found")
 
     session.delete(rate)
-    session.commit()
-    return Message(message="Exchange rate deleted successfully")
+    commit_or_rollback(session)

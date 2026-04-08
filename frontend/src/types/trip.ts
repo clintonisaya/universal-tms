@@ -5,24 +5,34 @@
 import type { Driver } from "./driver";
 import type { Trailer } from "./trailer";
 import type { Truck } from "./truck";
+import type { UserSummary } from "./expense";
 
 export type TripStatus =
   | "Waiting"
-  | "Dispatch"
-  | "Wait to Load"
+  | "Dispatched"
+  | "Arrived at Loading Point"        // renamed from "Waiting for Loading"
   | "Loading"
+  | "Loaded"                          // auto-set when loading_end_date recorded
   | "In Transit"
   | "At Border"
+  | "Arrived at Destination"          // manual, fills arrival_offloading_date
   | "Offloading"
-  // Return leg statuses (Story 2.25) — only when return_waybill_id is set
-  | "Dispatch (Return)"
-  | "Wait to Load (Return)"
+  | "Offloaded"                       // auto-set when offloading_date recorded
+  | "Returning Empty"                 // renamed from "Returning to Yard" (no return WB)
+  | "Breakdown"                       // recoverable breakdown — selectable from any point
+  // Return leg statuses — only when return_waybill_id is set
+  | "Waiting (Return)"                // first return status, waiting for return cargo
+  | "Dispatched (Return)"
+  | "Arrived at Loading Point (Return)"  // renamed from "Waiting for Loading (Return)"
   | "Loading (Return)"
+  | "Loaded (Return)"                 // auto-set when loading_return_end_date recorded
   | "In Transit (Return)"
   | "At Border (Return)"
+  | "Arrived at Destination (Return)" // manual, fills arrival_destination_return_date
   | "Offloading (Return)"
+  | "Offloaded (Return)"              // auto-set when offloading_return_date recorded
   // End of journey
-  | "Returned"
+  | "Arrived at Yard"
   | "Waiting for PODs"
   | "Completed"
   | "Cancelled";
@@ -59,19 +69,37 @@ export interface Trip {
   arrival_loading_return_date: string | null;
   loading_return_start_date: string | null;
   loading_return_end_date: string | null;
+  offloading_return_date: string | null;
+  arrival_destination_return_date: string | null;
   arrival_return_date: string | null;
   trip_duration_days: number | null;
   // Waybill enrichment fields (Story 4.6)
   waybill_rate: number | null;
   waybill_currency: string | null;
   waybill_risk_level: string | null;
+  return_waybill_rate: number | null;
+  return_waybill_currency: string | null;
+  waybill_number: string | null;
+  return_waybill_number: string | null;
+  return_route_name: string | null;
   location_update_time: string | null;
+  // Trip-level document attachments
+  attachments: string[];
+  pods_confirmed_date: string | null;
+  is_delayed: boolean;
+  remarks: string | null;
+  return_remarks: string | null;
+  // Audit trail (Story 6.13)
+  created_by_id: string | null;
+  updated_by_id: string | null;
 }
 
 export interface TripDetailed extends Trip {
   truck: Truck | null;
   trailer: Trailer | null;
   driver: Driver | null;
+  created_by: UserSummary | null;
+  updated_by: UserSummary | null;
 }
 
 export interface TripCreate {
@@ -104,10 +132,18 @@ export interface TripUpdate {
   arrival_loading_return_date?: string | null;
   loading_return_start_date?: string | null;
   loading_return_end_date?: string | null;
+  offloading_return_date?: string | null;
+  arrival_destination_return_date?: string | null;
   arrival_return_date?: string | null;
+  // Trip extra fields
+  return_empty_container_date?: string | null;
+  remarks?: string | null;
+  return_remarks?: string | null;
+  pods_confirmed_date?: string | null;
   // Cancellation control flags (Story 2.25)
   cancel_go_waybill?: boolean;
   cancel_return_waybill?: boolean;
+  is_delayed?: boolean;
 }
 
 export interface TripsResponse {

@@ -15,15 +15,16 @@ export function ToDoWidget({ count, loading = false, onClick }: ToDoWidgetProps)
       <Badge count={count} overflowCount={99} offset={[-4, 4]}>
         <Button
           type="text"
-          icon={<CheckSquareOutlined style={{ fontSize: 20 }} />}
+          icon={<CheckSquareOutlined style={{ fontSize: 18 }} />}
           onClick={onClick}
           loading={loading}
           style={{
-            height: 40,
-            width: 40,
+            height: 36,
+            width: 36,
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
+            padding: 0,
           }}
         />
       </Badge>

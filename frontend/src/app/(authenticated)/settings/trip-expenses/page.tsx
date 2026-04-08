@@ -11,12 +11,12 @@ import {
   Form,
   Input,
   Switch,
-  Tag,
   message,
   Typography,
   Popconfirm,
   Flex,
 } from "antd";
+import StatusBadge from "@/components/ui/StatusBadge";
 import {
   PlusOutlined,
   ReloadOutlined,
@@ -288,12 +288,11 @@ export default function TripExpenseTypesPage() {
       width: 100,
       render: (_, record: TreeNode) => {
         if ("isCategory" in record && record.isCategory) {
-          return <Tag color="blue">{record.children?.length || 0} items</Tag>;
+          return <StatusBadge status={`${record.children?.length || 0} items`} colorKey="gray" />;
         }
         const expenseType = record as ExpenseTypeNode;
         return (
-          <Tag color={expenseType.is_active ? "green" : "default"}>
-            {expenseType.is_active ? "Active" : "Inactive"}</Tag>
+          <StatusBadge status={expenseType.is_active ? "Active" : "Inactive"} colorKey={expenseType.is_active ? "green" : "gray"} />
         );
       },
     },
@@ -325,6 +324,7 @@ export default function TripExpenseTypesPage() {
                 type="text"
                 size="small"
                 icon={<EditOutlined />}
+                aria-label="Edit Expense Category"
                 onClick={() => {
                   setEditingItem(record as CategoryNode | ExpenseTypeNode);
                   if (isCategory) {
@@ -349,7 +349,7 @@ export default function TripExpenseTypesPage() {
                 cancelText="No"
                 okButtonProps={{ danger: true }}
               >
-                <Button type="text" danger size="small" icon={<DeleteOutlined />} />
+                <Button type="text" danger size="small" icon={<DeleteOutlined />} aria-label="Delete Expense Category" />
               </Popconfirm>
             </Space>
           </div>
@@ -410,6 +410,7 @@ export default function TripExpenseTypesPage() {
             rowKey="key"
             loading={loading}
             sticky={{ offsetHeader: 64 }}
+            scroll={{ x: "max-content" }}
             pagination={false}
             rowSelection={getStandardRowSelection(
               1,
@@ -428,13 +429,14 @@ export default function TripExpenseTypesPage() {
       <Modal
         title="Edit Category"
         open={isCategoryModalOpen}
+        width={600}
         onCancel={() => {
           setIsCategoryModalOpen(false);
           setEditingItem(null);
           categoryForm.resetFields();
         }}
         footer={null}
-        destroyOnHidden
+        forceRender
       >
         <Form
           form={categoryForm}
@@ -469,13 +471,14 @@ export default function TripExpenseTypesPage() {
             : "Add Expense Type"
         }
         open={isExpenseTypeModalOpen}
+        width={600}
         onCancel={() => {
           setIsExpenseTypeModalOpen(false);
           setEditingItem(null);
           expenseTypeForm.resetFields();
         }}
         footer={null}
-        destroyOnHidden
+        forceRender
       >
         <Form
           form={expenseTypeForm}

@@ -1,20 +1,23 @@
 from datetime import timedelta
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, HTTPException, Response
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from fastapi.security import OAuth2PasswordRequestForm
 
 from app import crud
 from app.api.deps import CurrentUser, SessionDep
 from app.core import security
 from app.core.config import settings
+from app.core.limiter import limiter
 from app.models import Message, Token, UserPublic
 
 router = APIRouter(tags=["login"])
 
 
 @router.post("/login/access-token")
+@limiter.limit(settings.RATE_LIMIT_LOGIN)
 def login_access_token(
+    request: Request,
     response: Response,
     session: SessionDep,
     form_data: Annotated[OAuth2PasswordRequestForm, Depends()],

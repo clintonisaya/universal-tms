@@ -1,6 +1,9 @@
+import logging
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 from fastapi import APIRouter, Query
 from sqlmodel import func, select
@@ -30,32 +33,87 @@ from app.models import (
 
 router = APIRouter(prefix="/reports", tags=["reports"])
 
+
+def _resolve_border_location(crossings: list[dict], trip_status: str) -> str | None:
+    """AC-1 (Story 6.14): Resolve border location from actual crossing records.
+
+    Only show a border location when the trip is at/near a border.
+    Prefer the first crossing with arrived_side_a_at recorded; fall back to
+    the first planned GO crossing; return None when not at a border at all.
+    """
+    at_border = trip_status in ("At Border", "At Border (Return)")
+    if not at_border:
+        return None
+
+    go_crossings = [c for c in crossings if c.get("direction") == "go"]
+    # First: any crossing with arrival recorded (truck is physically there)
+    for c in go_crossings:
+        if c.get("arrived_side_a_at"):
+            return c.get("border_display_name") or "—"
+    # Second: first planned GO crossing (not yet arrived but trip is heading there)
+    if go_crossings:
+        return go_crossings[0].get("border_display_name") or "—"
+    return "—"
+
+
 @router.get("/waybill-tracking")
 def get_waybill_tracking_report(
     session: SessionDep,
     current_user: CurrentUser,
     skip: int = Query(default=0, ge=0, description="Number of records to skip"),
-    limit: int = Query(default=200, ge=1, le=500, description="Max records to return"),
+    limit: int = Query(default=50, ge=1, le=500, description="Max records to return"),
+    search: str | None = Query(default=None, description="Search by truck plate or driver name"),
+    status: str | None = Query(default=None, description="Filter by trip status"),
+    export: bool = Query(default=False, description="If true, return all matching records (ignore skip/limit)"),
 ) -> Any:
     """
     Trip-centric tracking report — one row per trip combining go + return waybill data.
     Unlinked (open, no trip) waybills are appended as separate rows.
+
+    Returns {"data": [...], "count": total} for server-side pagination.
     """
     GoWaybill = aliased(Waybill, name="go_waybill")
     ReturnWaybill = aliased(Waybill, name="return_waybill")
 
-    # Trip-centric: one row per trip, left-join both waybills
-    trips_stmt = (
+    # Base query — trip-centric: one row per trip, left-join both waybills
+    base_stmt = (
         select(Trip, GoWaybill, ReturnWaybill, Truck, Driver, Trailer)
         .outerjoin(GoWaybill, GoWaybill.id == Trip.waybill_id)
         .outerjoin(ReturnWaybill, ReturnWaybill.id == Trip.return_waybill_id)
         .outerjoin(Truck, Truck.id == Trip.truck_id)
         .outerjoin(Driver, Driver.id == Trip.driver_id)
         .outerjoin(Trailer, Trailer.id == Trip.trailer_id)
-        .order_by(Trip.created_at.desc())
-        .offset(skip)
-        .limit(limit)
     )
+
+    # AC-2: Server-side search filter — searches across key fields
+    if search:
+        search_term = f"%{search}%"
+        base_stmt = base_stmt.where(
+            or_(
+                Truck.plate_number.ilike(search_term),
+                Driver.full_name.ilike(search_term),
+                GoWaybill.waybill_number.ilike(search_term),
+                ReturnWaybill.waybill_number.ilike(search_term),
+                Trip.trip_number.ilike(search_term),
+                GoWaybill.client_name.ilike(search_term),
+                ReturnWaybill.client_name.ilike(search_term),
+                Trailer.plate_number.ilike(search_term),
+            )
+        )
+
+    # AC-2: Server-side status filter
+    if status:
+        base_stmt = base_stmt.where(Trip.status == status)
+
+    # AC-1/AC-3: Get total count before pagination
+    count_stmt = select(func.count()).select_from(base_stmt.subquery())
+    total_count = session.execute(count_stmt).scalar() or 0
+
+    # Apply ordering + pagination (skip for export mode)
+    trips_stmt = base_stmt.order_by(Trip.created_at.desc())
+    if not export:
+        trips_stmt = trips_stmt.offset(skip).limit(limit)
+
     trip_results = session.execute(trips_stmt).all()
 
     # Collect linked waybill IDs to find unlinked ones
@@ -67,11 +125,13 @@ def get_waybill_tracking_report(
         if trip.return_waybill_id:
             linked_ids.append(trip.return_waybill_id)
 
-    # Open waybills not yet dispatched on any trip
-    unlinked_stmt = select(Waybill).where(Waybill.status == WaybillStatus.open)
-    if linked_ids:
-        unlinked_stmt = unlinked_stmt.where(Waybill.id.notin_(linked_ids))
-    unlinked_waybills = session.exec(unlinked_stmt).all()
+    # Open waybills not yet dispatched on any trip (only when no filters active)
+    unlinked_waybills = []
+    if not search and not status:
+        unlinked_stmt = select(Waybill).where(Waybill.status == WaybillStatus.open)
+        if linked_ids:
+            unlinked_stmt = unlinked_stmt.where(Waybill.id.notin_(linked_ids))
+        unlinked_waybills = session.exec(unlinked_stmt).all()
 
     def calc_durations(trip):
         duration_days = 0
@@ -79,14 +139,18 @@ def get_waybill_tracking_report(
         if not trip:
             return duration_days, return_duration_days
 
-        start_date = trip.dispatch_date or trip.start_date or trip.created_at
-        if start_date:
-            end_date = trip.arrival_return_date or trip.end_date or datetime.now(timezone.utc)
-            if start_date.tzinfo is None:
-                start_date = start_date.replace(tzinfo=timezone.utc)
-            if end_date.tzinfo is None:
-                end_date = end_date.replace(tzinfo=timezone.utc)
-            duration_days = max(1, (end_date - start_date).days + 1)
+        # Prefer stored trip_duration_days (set at completion — authoritative, no +1 offset)
+        if trip.trip_duration_days is not None:
+            duration_days = max(1, trip.trip_duration_days)
+        else:
+            start_date = trip.dispatch_date or trip.start_date or trip.created_at
+            if start_date:
+                end_date = trip.arrival_return_date or trip.end_date or datetime.now(timezone.utc)
+                if start_date.tzinfo is None:
+                    start_date = start_date.replace(tzinfo=timezone.utc)
+                if end_date.tzinfo is None:
+                    end_date = end_date.replace(tzinfo=timezone.utc)
+                duration_days = max(1, (end_date - start_date).days + 1)
 
         if trip.return_waybill_id and trip.dispatch_return_date:
             ret_start = trip.dispatch_return_date
@@ -174,7 +238,10 @@ def get_waybill_tracking_report(
             "trailer_type": trailer.type if trailer else None,
             # Location
             "current_location": trip.current_location,
-            "border_location": "Kasumbalesa" if trip.status in ("At Border", "At Border (Return)") else None,
+            # AC-1 (Story 6.14): Derive border_location from actual crossing records.
+            # Prefer the first GO crossing that has arrived_side_a_at recorded;
+            # fall back to any GO crossing planned; then "—" if no crossings at all.
+            "border_location": _resolve_border_location(crossings_by_trip.get(str(trip.id), []), trip.status),
             # Duration
             "duration_days": duration_days,
             "return_duration_days": return_duration_days,
@@ -191,7 +258,13 @@ def get_waybill_tracking_report(
             "arrival_loading_return_date": _iso(trip.arrival_loading_return_date),
             "loading_return_start_date": _iso(trip.loading_return_start_date),
             "loading_return_end_date": _iso(trip.loading_return_end_date),
+            "offloading_return_date": _iso(trip.offloading_return_date),
             "arrival_return_date": _iso(trip.arrival_return_date),
+            # Client report fields
+            "return_empty_container_date": _iso(trip.return_empty_container_date),
+            "remarks": trip.remarks,
+            "return_remarks": trip.return_remarks,
+            "is_delayed": trip.is_delayed,
             # Border crossings (bulk-fetched, no N+1)
             "border_crossings": crossings_by_trip.get(str(trip.id), []),
         }
@@ -247,11 +320,18 @@ def get_waybill_tracking_report(
             "arrival_loading_return_date": None,
             "loading_return_start_date": None,
             "loading_return_end_date": None,
+            "offloading_return_date": None,
             "arrival_return_date": None,
+            "return_empty_container_date": None,
+            "remarks": None,
+            "return_remarks": None,
+            "is_delayed": False,
             "border_crossings": [],
         })
 
-    return report_data
+    # Include unlinked count in total when no filters are active
+    unlinked_count = len(unlinked_waybills) if not search and not status else 0
+    return {"data": report_data, "count": total_count + unlinked_count}
 
 
 def get_current_exchange_rate(session: SessionDep) -> Decimal:
@@ -278,16 +358,26 @@ def get_current_exchange_rate(session: SessionDep) -> Decimal:
     if rate:
         return rate.rate
 
-    # Default rate
+    # Default rate — no exchange rate configured in DB
+    logger.warning(
+        "No exchange rate found for %s-%s. Using fallback rate of 2500.00",
+        now.year, now.month,
+    )
     return Decimal("2500.00")
 
 
 def normalize_to_tzs(amount: Decimal, currency: str, exchange_rate: Decimal | None, default_rate: Decimal) -> Decimal:
-    """Convert USD to TZS using stored exchange rate or default."""
+    """Convert USD to TZS using stored exchange rate or default.
+
+    The stored exchange_rate must be > 1 to be valid (a real TZS/USD rate is
+    always > 1, e.g. 2500). Values of 0 or 1 are sentinel/unset values and
+    must fall back to default_rate to avoid silently under-converting amounts.
+    This mirrors the frontend resolveRate() guard: `if (ownRate && ownRate > 1)`.
+    """
     if currency == "TZS":
         return amount
-    # USD - use stored rate or default
-    rate = exchange_rate if exchange_rate else default_rate
+    # Only use the stored rate if it is a real rate (> 1 TZS per foreign unit)
+    rate = exchange_rate if (exchange_rate and exchange_rate > Decimal("1")) else default_rate
     return amount * rate
 
 
@@ -329,41 +419,50 @@ def get_financial_pulse(
     _active_statuses = [
         TripStatus.wait_to_load.value,
         TripStatus.loading.value,
+        TripStatus.loaded.value,
         TripStatus.in_transit.value,
         TripStatus.at_border.value,
+        TripStatus.arrived_at_destination.value,
         TripStatus.offloading.value,
+        TripStatus.offloaded.value,
+        TripStatus.returning_empty.value,
         TripStatus.dispatch_return.value,
         TripStatus.wait_to_load_return.value,
         TripStatus.loading_return.value,
+        TripStatus.loaded_return.value,
         TripStatus.in_transit_return.value,
         TripStatus.at_border_return.value,
+        TripStatus.arrived_at_destination_return.value,
         TripStatus.offloading_return.value,
+        TripStatus.offloaded_return.value,
         TripStatus.returned.value,
         TripStatus.waiting_for_pods.value,
         TripStatus.completed.value,
     ]
 
     # Go waybill revenue (current year)
+    # AC-3: attribute revenue to dispatch_date (or end_date, then created_at as last resort)
+    _revenue_date = func.coalesce(Trip.dispatch_date, Trip.end_date, Trip.created_at)
     revenue_stmt = (
         select(
-            func.date(Trip.created_at).label("date"),
+            func.date(_revenue_date).label("date"),
             Waybill.agreed_rate,
             Waybill.currency,
         )
         .join(Waybill, Waybill.id == Trip.waybill_id)
-        .where(Trip.created_at >= year_start)
+        .where(_revenue_date >= year_start)
         .where(Trip.status.in_(_active_statuses))
     )
     # Return waybill revenue (current year) — only trips that have return waybill attached
     return_revenue_stmt = (
         select(
-            func.date(Trip.created_at).label("date"),
+            func.date(_revenue_date).label("date"),
             Waybill.agreed_rate,
             Waybill.currency,
         )
         .join(Waybill, Waybill.id == Trip.return_waybill_id)
         .where(Trip.return_waybill_id.isnot(None))
-        .where(Trip.created_at >= year_start)
+        .where(_revenue_date >= year_start)
         .where(Trip.status.in_(_active_statuses))
     )
     revenue_rows = list(session.exec(revenue_stmt).all()) + list(session.exec(return_revenue_stmt).all())
@@ -575,7 +674,7 @@ def get_trip_profitability(
         for rw in session.exec(rw_stmt).all():
             return_waybills[rw.id] = rw
 
-    # Get all approved expenses grouped by trip (Pending Finance + Paid)
+    # Only approved expenses count: Pending Finance (manager-approved) and Paid
     approved_statuses = [ExpenseStatus.pending_finance.value, ExpenseStatus.paid.value]
     expense_stmt = (
         select(
@@ -589,12 +688,27 @@ def get_trip_profitability(
     )
     expense_rows = session.exec(expense_stmt).all()
 
-    # Build expense totals per trip
+    # Build expense totals per trip — USD amounts normalized to TZS
     trip_expenses: dict[str, Decimal] = {}
     for row in expense_rows:
         trip_id = str(row.trip_id)
         amt_tzs = normalize_to_tzs(row.amount, row.currency, row.exchange_rate, default_rate)
         trip_expenses[trip_id] = trip_expenses.get(trip_id, Decimal("0")) + amt_tzs
+
+    # Approved office expenses (no trip linked) — same filter
+    office_expense_stmt = (
+        select(
+            ExpenseRequest.amount,
+            ExpenseRequest.currency,
+            ExpenseRequest.exchange_rate,
+        )
+        .where(ExpenseRequest.status.in_(approved_statuses))
+        .where(ExpenseRequest.trip_id.is_(None))
+    )
+    office_expense_rows = session.exec(office_expense_stmt).all()
+    total_office_expenses_tzs = Decimal("0")
+    for row in office_expense_rows:
+        total_office_expenses_tzs += normalize_to_tzs(row.amount, row.currency, row.exchange_rate, default_rate)
 
     # Build profitability data
     profitability_data = []
@@ -628,25 +742,33 @@ def get_trip_profitability(
         margin_pct = (float(net_profit) / float(income) * 100) if income > 0 else 0.0
 
         # Trip Duration & Profit per Day
-        duration_days = 1
-        
-        # Determine Start Date (Dispatch > Start > Created)
-        start_date = trip.dispatch_date or trip.start_date or trip.created_at
-        
-        if start_date:
-            # Determine End Date (Return > End > Now)
-            end_date = trip.arrival_return_date or trip.end_date or datetime.now(timezone.utc)
-            
-            # Ensure aware datetimes for subtraction
-            if start_date.tzinfo is None:
-                start_date = start_date.replace(tzinfo=timezone.utc)
-            if end_date.tzinfo is None:
-                end_date = end_date.replace(tzinfo=timezone.utc)
-                
-            delta = end_date - start_date
-            duration_days = max(1, delta.days + 1) # +1 to include partial days as 1 full day, or at least 1 day
-        
+        # Prefer stored trip_duration_days (authoritative value set at completion)
+        if trip.trip_duration_days is not None:
+            duration_days = max(1, trip.trip_duration_days)
+        else:
+            duration_days = 1
+            start_date = trip.dispatch_date or trip.start_date or trip.created_at
+            if start_date:
+                end_date = trip.arrival_return_date or trip.end_date or datetime.now(timezone.utc)
+                if start_date.tzinfo is None:
+                    start_date = start_date.replace(tzinfo=timezone.utc)
+                if end_date.tzinfo is None:
+                    end_date = end_date.replace(tzinfo=timezone.utc)
+                delta = end_date - start_date
+                duration_days = max(1, delta.days + 1)
+
         profit_per_day = float(net_profit) / duration_days
+
+        # Return leg duration
+        return_duration_days = 0
+        if trip.return_waybill_id and trip.dispatch_return_date:
+            ret_start = trip.dispatch_return_date
+            ret_end = trip.arrival_return_date or datetime.now(timezone.utc)
+            if ret_start.tzinfo is None:
+                ret_start = ret_start.replace(tzinfo=timezone.utc)
+            if ret_end.tzinfo is None:
+                ret_end = ret_end.replace(tzinfo=timezone.utc)
+            return_duration_days = max(1, (ret_end - ret_start).days + 1)
 
         profitability_data.append({
             "trip_id": trip_id,
@@ -661,6 +783,7 @@ def get_trip_profitability(
             "start_date": trip.start_date.isoformat() if trip.start_date else None,
             "profit_per_day": round(profit_per_day, 2),
             "duration_days": duration_days,
+            "return_duration_days": return_duration_days,
         })
 
     # Sort
@@ -683,6 +806,9 @@ def get_trip_profitability(
     # Summary stats
     total_income = sum(d["income"] for d in profitability_data)
     total_expenses_sum = sum(d["expenses"] for d in profitability_data)
+    # AC-2 (Story 6.14): Office expenses are reported separately in the summary
+    # and must NOT also be subtracted from total_profit — that would double-count them.
+    # total_profit reflects trip-level P&L only; total_office_expenses is informational overhead.
     total_profit = total_income - total_expenses_sum
     avg_margin = (total_profit / total_income * 100) if total_income > 0 else 0.0
     total_profit_per_day = sum(d["profit_per_day"] for d in profitability_data)
@@ -693,6 +819,7 @@ def get_trip_profitability(
         "summary": {
             "total_income": total_income,
             "total_expenses": total_expenses_sum,
+            "total_office_expenses": float(total_office_expenses_tzs),
             "total_profit": total_profit,
             "average_margin_pct": round(avg_margin, 2),
             "total_profit_per_day": round(total_profit_per_day, 2),

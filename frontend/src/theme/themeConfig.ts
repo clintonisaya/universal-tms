@@ -1,77 +1,125 @@
 import type { ThemeConfig } from 'antd';
 import { theme } from 'antd';
 
-const themeConfig: ThemeConfig = {
+export function getThemeConfig(mode: "dark" | "light"): ThemeConfig {
+  const isDark = mode === "dark";
+  return {
+    algorithm: isDark
+      ? [theme.darkAlgorithm, theme.compactAlgorithm]
+      : theme.compactAlgorithm,
     token: {
-        // Typography - Standardizing on 13px as requested
-        fontSize: 13,
-        fontSizeHeading1: 26,
-        fontSizeHeading2: 22,
-        fontSizeHeading3: 18,
-        fontSizeHeading4: 15,
-        fontSizeHeading5: 14, // Slightly larger for emphasis
+      // Typography
+      fontSize: 14,
+      fontSizeHeading1: 26,
+      fontSizeHeading2: 20,
+      fontSizeHeading3: 18,
+      fontSizeHeading4: 16,
+      fontSizeHeading5: 14,
 
-        // Brand Colors
-        colorPrimary: '#D4AF37', // Brand Gold
-        colorInfo: '#D4AF37',
+      // Brand Colors
+      colorPrimary: isDark ? '#D4A843' : '#B8922E',
+      colorInfo:    isDark ? '#D4A843' : '#B8922E',
 
-        // Neutralizing Text for better readability
-        colorTextBase: '#262626', // Slightly softer black
-        colorTextSecondary: '#595959',
+      // Base colors drive Ant Design's dark/light algorithm
+      colorTextBase: isDark ? '#E8E4DC' : '#1A1C20',
+      colorBgBase:   isDark ? '#0C0E12' : '#F4F2EE',
 
-        // Modernizing Structure
-        fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
-        borderRadius: 6, // 6px is a sweet spot between "boxy" (4px) and "round" (8px)
+      // Container & border tokens — align Ant defaults with design system
+      colorBgContainer: isDark ? '#13161C' : '#FFFFFF',
+      colorBorder:      isDark ? '#252A35' : '#E2DDD4',
+      colorText:        isDark ? '#E8E4DC' : '#1A1C20',
+      colorTextSecondary: isDark ? '#8A8F9C' : '#6B6E76',
+      colorTextTertiary:  isDark ? '#5A5F6C' : '#9A9DA6',
 
-        // Spacing - controlling density
-        controlHeight: 34, // Slightly taller than default compact (24/32) for better touch/click targets
+      // Font
+      fontFamily: "'DM Sans', var(--font-dm-sans), 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+      borderRadius: 6,
+
+      // Spacing
+      controlHeight: 34,
+
+      // Placeholder — global alias token (applies to all inputs)
+      colorTextPlaceholder: isDark ? '#5A5F6C' : '#9A9DA6',
     },
     components: {
-        Layout: {
-            headerBg: '#ffffff',
-            bodyBg: '#f8f9fa', // Cleaner, brighter background
-            siderBg: '#1F1F1F',
-        },
-        Table: {
-            headerBg: '#ffffff', // Clean white headers
-            headerColor: '#8c8c8c', // Muted headers to let data stand out
-            headerSplitColor: '#f0f0f0',
-            rowHoverBg: '#FFFDF5', // Subtle gold tint on hover
-            cellPaddingBlock: 8, // Maintaining density
-            cellPaddingInline: 12,
-            borderColor: '#f0f0f0',
-        },
-        Card: {
-            headerFontSize: 14,
-
-            borderRadiusLG: 8, // Slightly softer cards
-        },
-        Button: {
-            primaryShadow: '0 2px 0 rgba(0, 0, 0, 0.045)',
-            algorithm: true,
-            fontWeight: 500,
-            contentFontSize: 13,
-        },
-        Input: {
-            activeBorderColor: '#D4AF37',
-            hoverBorderColor: '#EAC159',
-        },
-        Select: {
-            colorPrimary: '#D4AF37',
-        },
-        Typography: {
-            fontFamilyCode: '"Fira Code", monospace',
-        },
-        Modal: {
-            headerBg: '#ffffff',
-            titleFontSize: 16,
-        },
-        Tag: {
-            borderRadiusSM: 4,
-        }
+      Layout: {
+        headerBg: isDark ? 'rgba(12,14,18,0.6)' : 'rgba(244,242,238,0.75)',
+        bodyBg:   isDark ? '#0C0E12'            : '#F4F2EE',
+        siderBg:  isDark ? '#13161C'            : '#FFFFFF',
+      },
+      Table: {
+        headerBg:           'transparent',
+        headerColor:        isDark ? '#5A5F6C'  : '#9A9DA6',
+        headerSplitColor:   isDark ? '#252A35'  : '#E2DDD4',
+        rowHoverBg:         isDark ? '#191D25'  : '#FAF8F4',
+        borderColor:        isDark ? '#252A35'  : '#E2DDD4',
+        headerSortActiveBg: 'transparent',
+        headerFilterHoverBg: isDark ? '#191D25' : '#F0EDE8',
+        cellPaddingBlock: 12,
+        cellPaddingInline: 16,
+        headerBorderRadius: 0,
+        cellFontSize: 14,
+      },
+      Card: {
+        headerFontSize: 14,
+        borderRadiusLG: 8,
+      },
+      Button: {
+        primaryShadow: '0 2px 12px rgba(212,168,67,0.25)',
+        fontWeight: 600,
+        contentFontSize: 12,
+        borderRadius: 8,
+        paddingInline: 16,
+        paddingBlock: 8,
+        primaryColor:      isDark ? '#0C0E12' : '#FFFFFF',
+        defaultBg:         isDark ? '#191D25' : '#F0EDE8',
+        defaultBorderColor: isDark ? '#252A35' : '#E2DDD4',
+        defaultColor:      isDark ? '#8A8F9C' : '#6B6E76',
+      },
+      Input: {
+        activeBorderColor: isDark ? '#B8922E' : '#9A7A20',
+        hoverBorderColor:  isDark ? '#B8922E' : '#9A7A20',
+        activeBg:          isDark ? 'rgba(212,168,67,0.06)' : 'rgba(184,146,46,0.06)',
+        addonBg:           isDark ? '#191D25' : '#F0EDE8',
+      },
+      Select: {
+        colorPrimary: isDark ? '#D4A843' : '#B8922E',
+      },
+      Typography: {
+        fontFamilyCode: '"Fira Code", monospace',
+      },
+      Modal: {
+        headerBg:      isDark ? '#13161C' : '#ffffff',
+        contentBg:     isDark ? '#13161C' : '#ffffff',
+        titleFontSize: 16,
+      },
+      Drawer: {
+        colorBgElevated: isDark ? '#13161C' : '#FFFFFF',
+      },
+      Tag: {
+        borderRadiusSM: 4,
+      },
+      Menu: {
+        itemBg:            'transparent',
+        subMenuItemBg:     'transparent',
+        itemSelectedBg:    isDark ? 'rgba(212,168,67,0.15)' : 'rgba(184,146,46,0.10)',
+        itemSelectedColor: isDark ? '#D4A843' : '#B8922E',
+        itemColor:         isDark ? '#8A8F9C' : '#6B6E76',
+        itemHoverColor:    isDark ? '#D4A843' : '#B8922E',
+        itemBorderRadius:  10,
+        itemMarginInline:  8,
+        itemPaddingInline: 16,
+        itemHeight:        38,
+        iconSize:          18,
+        fontSize:          14,
+        ...(isDark ? {
+          darkItemBg:            'transparent',
+          darkSubMenuItemBg:     'transparent',
+          darkItemSelectedBg:    'rgba(212,168,67,0.15)',
+          darkItemSelectedColor: '#D4A843',
+        } : {}),
+      },
     },
-    // Keeping compact algorithm for data density, but our token overrides will refine it
-    algorithm: theme.compactAlgorithm,
-};
+  };
+}
 
-export default themeConfig;

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Modal, Descriptions, Tag, Space, Divider, Typography, Timeline, List, Spin, Empty, Button } from "antd";
+import { Modal, Descriptions, Space, Divider, Typography, Timeline, List, Spin, Empty, Button } from "antd";
 import {
   UserOutlined,
   CalendarOutlined,
@@ -20,6 +20,7 @@ import {
 } from "@ant-design/icons";
 import type { ExpenseRequestDetailed, ExpenseStatus } from "@/types/expense";
 import { ExpenseStatusBadge } from "./ExpenseStatusBadge";
+import { StatusBadge } from "@/components/ui/StatusBadge";
 
 interface AttachmentInfo {
   key: string;
@@ -29,9 +30,9 @@ interface AttachmentInfo {
 
 function getFileIcon(filename: string) {
   const lower = filename.toLowerCase();
-  if (lower.endsWith(".pdf")) return <FilePdfOutlined style={{ color: "#ff4d4f", fontSize: 18 }} />;
-  if (lower.match(/\.(jpe?g|png|gif|webp)$/)) return <FileImageOutlined style={{ color: "#1890ff", fontSize: 18 }} />;
-  if (lower.match(/\.(docx?)$/)) return <FileWordOutlined style={{ color: "#2f54eb", fontSize: 18 }} />;
+  if (lower.endsWith(".pdf")) return <FilePdfOutlined style={{ color: "var(--color-red)", fontSize: 18 }} />;
+  if (lower.match(/\.(jpe?g|png|gif|webp)$/)) return <FileImageOutlined style={{ color: "var(--color-blue)", fontSize: 18 }} />;
+  if (lower.match(/\.(docx?)$/)) return <FileWordOutlined style={{ color: "var(--color-blue)", fontSize: 18 }} />;
   return <FileUnknownOutlined style={{ fontSize: 18 }} />;
 }
 
@@ -221,7 +222,7 @@ export function ExpenseDetailModal({ open, onClose, expense }: ExpenseDetailModa
       open={open}
       onCancel={onClose}
       footer={null}
-      width={700}
+      width={900}
       styles={{ body: { maxHeight: "70vh", overflowY: "auto" } }}
     >
       {/* Status Badge */}
@@ -241,7 +242,7 @@ export function ExpenseDetailModal({ open, onClose, expense }: ExpenseDetailModa
           <Text strong>{expense.expense_number || expense.id.slice(0, 8).toUpperCase()}</Text>
         </Descriptions.Item>
         <Descriptions.Item label="Category" span={1}>
-          <Tag color="blue">{expense.category}</Tag>
+          <StatusBadge status={expense.category} colorKey="gray" />
         </Descriptions.Item>
         <Descriptions.Item label="Remarks" span={2}>
           {expense.description || "-"}
@@ -262,7 +263,7 @@ export function ExpenseDetailModal({ open, onClose, expense }: ExpenseDetailModa
           </Descriptions.Item>
         )}
         <Descriptions.Item label="Amount" span={1}>
-          <Text strong style={{ fontSize: 16, color: "#1890ff" }}>
+          <Text strong style={{ fontSize: 16, color: "var(--color-blue)" }}>
             {formatCurrency(expense.amount, expense.currency)}
           </Text>
         </Descriptions.Item>
@@ -303,7 +304,7 @@ export function ExpenseDetailModal({ open, onClose, expense }: ExpenseDetailModa
             {expense.trip.route_name || "-"}
           </Descriptions.Item>
           <Descriptions.Item label="Status" span={1}>
-            <Tag>{expense.trip.status}</Tag>
+            <StatusBadge status={expense.trip.status} colorKey="gray" />
           </Descriptions.Item>
           <Descriptions.Item label="Current Location" span={1}>
             {expense.trip.current_location || "-"}
@@ -369,7 +370,7 @@ export function ExpenseDetailModal({ open, onClose, expense }: ExpenseDetailModa
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
               {attachments.map((item) => (
-                <div key={item.key} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', background: '#fafafa', borderRadius: 6, border: '1px solid #f0f0f0' }}>
+                <div key={item.key} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', background: 'var(--color-surface)', borderRadius: 6, border: '1px solid var(--color-border)' }}>
                   <Space>
                     {getFileIcon(item.filename)}
                     {item.url ? (

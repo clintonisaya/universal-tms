@@ -12,21 +12,10 @@ from app.api.deps import CurrentUser, SessionDep
 from app.models import (
     ExpenseRequest,
     ExpenseStatus,
-    Trip,
-    TripStatus,
     UserRole,
 )
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])
-
-
-def is_expense_trip_closed(exp: ExpenseRequest) -> bool:
-    """Check if the expense's linked trip is in a closed state (Completed/Cancelled)."""
-    if not exp.trip:
-        return False  # Non-trip expenses are not affected
-
-    trip_status = TripStatus(exp.trip.status) if isinstance(exp.trip.status, str) else exp.trip.status
-    return trip_status in [TripStatus.completed, TripStatus.cancelled]
 
 
 @router.get("/my-tasks")
@@ -65,9 +54,6 @@ def get_my_tasks(
         else:
             expenses = session.exec(query).all()
             for exp in expenses:
-                # Skip expenses for closed trips
-                if is_expense_trip_closed(exp):
-                    continue
                 tasks.append(_expense_to_task(exp, "expense_approval", ["approve", "reject", "return"]))
 
     if role in (UserRole.finance, UserRole.admin):
@@ -85,9 +71,6 @@ def get_my_tasks(
         else:
             expenses = session.exec(query).all()
             for exp in expenses:
-                # Skip expenses for closed trips
-                if is_expense_trip_closed(exp):
-                    continue
                 tasks.append(_expense_to_task(exp, "payment_processing", ["pay", "return"]))
 
     if role == UserRole.finance:
@@ -106,8 +89,6 @@ def get_my_tasks(
         if not task_type or task_type == "payment_processing":
             returned_expenses = session.exec(returned_query).all()
             for exp in returned_expenses:
-                if is_expense_trip_closed(exp):
-                    continue
                 tasks.append(_expense_to_task(exp, "payment_processing", []))
 
     if role in (UserRole.ops, UserRole.finance, UserRole.admin):
@@ -128,9 +109,6 @@ def get_my_tasks(
         else:
             expenses = session.exec(query).all()
             for exp in expenses:
-                # Skip expenses for closed trips
-                if is_expense_trip_closed(exp):
-                    continue
                 tasks.append(_expense_to_task(exp, "expense_correction", ["submit", "reject"]))
 
     # Apply task_type filter (already handled above via skip logic)

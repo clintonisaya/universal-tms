@@ -1,4 +1,7 @@
 import logging
+import os
+import shutil
+from pathlib import Path
 import boto3
 from botocore.exceptions import ClientError
 from botocore.config import Config
@@ -6,6 +9,50 @@ from app.core.config import settings
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+class LocalStorageClient:
+    def __init__(self):
+        # Resolve path relative to this file (backend/app/core/storage.py)
+        # We want backend/uploads
+        self.upload_dir = Path(__file__).parent.parent.parent / "uploads"
+        self.upload_dir.mkdir(parents=True, exist_ok=True)
+        self.bucket_name = "local"
+        logger.info(f"Initialized Local Storage at {self.upload_dir}")
+
+    def upload_file(self, file_content: bytes, object_name: str, content_type: str = None) -> str | None:
+        try:
+            file_path = self.upload_dir / object_name
+            # Ensure parent directories exist for nested keys
+            file_path.parent.mkdir(parents=True, exist_ok=True)
+            with open(file_path, "wb") as buffer:
+                buffer.write(file_content)
+            logger.info(f"File saved locally to {file_path}")
+            return object_name
+        except Exception as e:
+            logger.error(f"Error saving file locally: {e}")
+            return None
+
+    def get_presigned_url(self, object_name: str, expiration: int = 3600) -> str | None:
+        # Return a relative URL that the frontend can use.
+        # This assumes we will serve these files via an endpoint.
+        # Note: Frontend must prepend backend URL if needed, but since we use proxy, relative is fine.
+        # However, `get_trip_attachments` returns full URL usually.
+        # Let's return path relative to API root for now, or full URL if possible.
+        # Since we don't know the host, let's return a path that our new endpoint will handle.
+        # e.g., /api/v1/files/{object_name}
+        return f"{settings.API_V1_STR}/files/{object_name}"
+
+    def delete_file(self, object_name: str) -> bool:
+        try:
+            file_path = self.upload_dir / object_name
+            if file_path.exists():
+                file_path.unlink()
+                logger.info(f"File deleted locally: {file_path}")
+                return True
+            return False
+        except Exception as e:
+            logger.error(f"Error deleting local file: {e}")
+            return False
 
 class StorageClient:
     def __init__(self):
@@ -123,4 +170,7 @@ class StorageClient:
             logger.error(f"Error deleting file from R2: {e}")
             return False
 
-storage = StorageClient()
+if settings.R2_ACCESS_KEY_ID:
+    storage = StorageClient()
+else:
+    storage = LocalStorageClient()

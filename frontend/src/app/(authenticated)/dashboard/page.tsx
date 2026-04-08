@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Row, Col, Empty, Typography, App, notification } from "antd";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
@@ -22,10 +22,11 @@ import { ExpenseDistributionChart } from "@/components/dashboard/ExpenseDistribu
 import { UtilizationChart } from "@/components/dashboard/UtilizationChart";
 import { RecentTripsTable } from "@/components/dashboard/RecentTripsTable";
 import { ToDoWidget } from "@/components/dashboard/ToDoWidget";
+import { QuickActionsWidget } from "@/components/dashboard/QuickActionsWidget";
 import type { TaskType } from "@/types/notification";
 import { TASK_TYPE_ICONS, TOAST_DURATION_SECONDS } from "@/types/notification";
 
-const { Title } = Typography;
+const { Title, Text } = Typography;
 
 interface DashboardStats {
   total_trucks: number;
@@ -80,6 +81,26 @@ interface TaskSocketEvent {
   manager?: string;
 }
 
+// AC-4: Tracks seconds since last data refresh, resets when dependency changes
+function useLastUpdated(dependency: unknown): number {
+  const [lastUpdated, setLastUpdated] = useState(new Date());
+  const [secondsAgo, setSecondsAgo] = useState(0);
+
+  useEffect(() => {
+    setLastUpdated(new Date());
+    setSecondsAgo(0);
+  }, [dependency]);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setSecondsAgo(Math.floor((Date.now() - lastUpdated.getTime()) / 1000));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [lastUpdated]);
+
+  return secondsAgo;
+}
+
 function buildToastMessage(taskType: TaskType | undefined, data: TaskSocketEvent): string {
   switch (taskType) {
     case "expense_approval":
@@ -122,6 +143,9 @@ function DashboardContent() {
   const recentTrips = tripsData?.data || [];
   const todoCount = todoData?.total ?? 0;
   const financialPulse = pulseData || null;
+
+  // AC-4: Freshness indicator — resets when stats data changes
+  const secondsAgo = useLastUpdated(statsData);
 
   // Listen for notification-click events from the NotificationCenter in the header
   useEffect(() => {
@@ -231,20 +255,36 @@ function DashboardContent() {
 
   return (
     <div>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24 }}>
-        <Title level={3} style={{ margin: 0 }}>
-          Dashboard
-        </Title>
-        <ToDoWidget
-          count={todoCount}
-          loading={todoCountLoading}
-          onClick={() => router.push("/dashboard/tasks")}
-        />
-      </div>
+      <div style={{ marginBottom: 24 }} />
+
+      <QuickActionsWidget />
 
       {/* KPI Cards Row */}
+      <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 8 }}>
+        {!statsLoading && (
+          <Text type="secondary">
+            Last updated: {secondsAgo}s ago
+          </Text>
+        )}
+      </div>
       <Row gutter={[16, 16]}>
-        {/* Pending Approvals: admin, manager, finance */}
+        {/* AC-4: Ops/Dispatcher priority — Trucks In Transit appears first */}
+        {(role === 'ops' || role === 'dispatcher') && (
+          <Col xs={24} sm={12} lg={6} xl={4}>
+            <MetricCard
+              title="Trucks In Transit"
+              value={stats?.trucks_in_transit ?? 0}
+              accent="var(--color-blue)"
+              status={
+                (stats?.trucks_in_transit ?? 0) > 0 ? "active" : "normal"
+              }
+              loading={loading}
+              onClick={() => router.push("/ops/trips")}
+            />
+          </Col>
+        )}
+
+        {/* Pending Approvals: admin, manager, finance — first for manager/finance roles */}
         {canSee(role, ["finance"]) && (
           <Col xs={24} sm={12} lg={6} xl={4}>
             <MetricCard
@@ -254,6 +294,7 @@ function DashboardContent() {
                   ? (stats?.pending_manager ?? 0)
                   : (stats?.pending_approvals ?? 0)
               }
+              accent="var(--color-orange)"
               status={
                 (role === "manager"
                   ? (stats?.pending_manager ?? 0)
@@ -273,6 +314,7 @@ function DashboardContent() {
             <MetricCard
               title="Total Trucks"
               value={stats?.total_trucks ?? 0}
+              accent="var(--color-blue)"
               loading={loading}
               onClick={() => router.push("/fleet/trucks")}
             />
@@ -285,18 +327,20 @@ function DashboardContent() {
             <MetricCard
               title="Completed Trips"
               value={stats?.completed_trips ?? 0}
+              accent="var(--color-green)"
               loading={loading}
               onClick={() => router.push("/ops/trips")}
             />
           </Col>
         )}
 
-        {/* Trucks In Transit: admin, manager, ops */}
-        {canSee(role, ["ops"]) && (
+        {/* Trucks In Transit: admin, manager only — ops/dispatcher already see it first above */}
+        {canSee(role, ["ops"]) && role !== 'ops' && role !== 'dispatcher' && (
           <Col xs={24} sm={12} lg={6} xl={4}>
             <MetricCard
               title="Trucks In Transit"
               value={stats?.trucks_in_transit ?? 0}
+              accent="var(--color-blue)"
               status={
                 (stats?.trucks_in_transit ?? 0) > 0 ? "active" : "normal"
               }
@@ -312,6 +356,7 @@ function DashboardContent() {
             <MetricCard
               title="Active Drivers"
               value={stats?.active_drivers ?? 0}
+              accent="var(--color-cyan)"
               loading={loading}
               onClick={() => router.push("/fleet/drivers")}
             />

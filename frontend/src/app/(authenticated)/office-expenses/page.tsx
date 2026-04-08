@@ -9,12 +9,14 @@ import {
   Space,
   Typography,
   message,
+  Tooltip,
 } from "antd";
 import {
   ReloadOutlined,
   PlusOutlined,
   PrinterOutlined,
   HistoryOutlined,
+  QuestionCircleOutlined,
 } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
 import type { ExpenseRequestDetailed, ExpenseStatus } from "@/types/expense";
@@ -32,6 +34,7 @@ import {
   getStandardRowSelection,
   useResizableColumns,
 } from "@/components/ui/tableUtils";
+import { EmptyState } from "@/components/ui";
 
 const { Title } = Typography;
 
@@ -41,6 +44,7 @@ const STATUS_COLORS: Record<ExpenseStatus, string> = {
   "Paid": "green",
   "Rejected": "red",
   "Returned": "purple",
+  "Voided": "red",
 };
 
 const STATUS_FILTERS = Object.keys(STATUS_COLORS).map((status) => ({
@@ -128,6 +132,7 @@ export default function OfficeExpensesPage() {
             size="small"
             icon={<HistoryOutlined />}
             title="View History"
+            aria-label="View Expense History"
             onClick={() => handleViewHistory(record)}
           />
           {canPrint(record.status) && (
@@ -136,6 +141,7 @@ export default function OfficeExpensesPage() {
               size="small"
               icon={<PrinterOutlined />}
               title="Print Voucher"
+              aria-label="Print Expense Voucher"
               onClick={() => handlePrint(record.id)}
             />
           )}
@@ -150,7 +156,7 @@ export default function OfficeExpensesPage() {
       render: (num: string | null, record: ExpenseRequestDetailed) => (
         <a
           onClick={() => handleViewDetail(record)}
-          style={{ fontWeight: 600, color: "#1890ff", cursor: "pointer" }}
+          style={{ fontWeight: 600, color: "var(--color-gold)", cursor: "pointer" }}
         >
           {num || record.id?.slice(0, 8).toUpperCase()}
         </a>
@@ -197,7 +203,7 @@ export default function OfficeExpensesPage() {
       title: "Status",
       dataIndex: "status",
       key: "status",
-      width: 220,
+      width: 250,
       render: (status: ExpenseStatus) => <ExpenseStatusBadge status={status} />,
       ...getColumnFilterProps("status", STATUS_FILTERS),
     },
@@ -210,8 +216,8 @@ export default function OfficeExpensesPage() {
     <div
       style={{
         minHeight: "100vh",
-        background: "#f0f2f5",
-        padding: "24px",
+        background: "var(--color-bg)",
+        padding: "var(--space-xl)",
       }}
     >
       <Card>
@@ -248,6 +254,17 @@ export default function OfficeExpensesPage() {
             </Space>
           </div>
 
+          {user?.role === 'ops' && (
+            <div style={{ marginBottom: 8 }}>
+              <Typography.Text type="secondary">
+                Showing: all trip expenses · your office expenses{' '}
+                <Tooltip title="Ops users see all trip expenses and their own submitted office expenses. Managers and Finance see all office expenses.">
+                  <QuestionCircleOutlined style={{ cursor: 'help' }} />
+                </Tooltip>
+              </Typography.Text>
+            </div>
+          )}
+
           <Table<ExpenseRequestDetailed>
             columns={resizableColumns}
             components={components}
@@ -255,6 +272,8 @@ export default function OfficeExpensesPage() {
             rowKey="id"
             loading={loading}
             sticky={{ offsetHeader: 64 }}
+            scroll={{ x: "max-content" }}
+            locale={{ emptyText: <EmptyState message="No office expenses found." /> }}
             rowSelection={getStandardRowSelection(
               currentPage,
               pageSize,

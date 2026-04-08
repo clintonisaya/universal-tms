@@ -1,17 +1,17 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   Table,
   Button,
   Card,
   Space,
-  Tag,
   Typography,
   Tooltip,
   Popconfirm,
   App,
+  theme,
 } from "antd";
 import {
   PlusOutlined,
@@ -19,12 +19,17 @@ import {
   ArrowLeftOutlined,
   DeleteOutlined,
   EyeOutlined,
+  EditOutlined,
+  MessageOutlined,
 } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
 import type { Trip, TripStatus } from "@/types/trip";
 import { useAuth } from "@/contexts/AuthContext";
+import { usePermissions } from "@/hooks/usePermissions";
 import { useTrips, useInvalidateQueries } from "@/hooks/useApi";
+import { EmptyState } from "@/components/ui";
 import { CreateTripDrawer } from "@/components/trips/CreateTripDrawer";
+import { UpdateTripDrawer } from "@/components/trips/UpdateTripDrawer";
 import { TripDetailDrawer } from "@/components/trips/TripDetailDrawer";
 import {
   getColumnSearchProps,
@@ -32,15 +37,18 @@ import {
   getStandardRowSelection,
   useResizableColumns,
 } from "@/components/ui/tableUtils";
+import { TripStatusTag } from "@/components/ui/TripStatusTag";
+import { StatusBadge } from "@/components/ui/StatusBadge";
+import { RETURN_DIRECTION_STATUSES, STATUS_FILTERS } from "@/constants/tripStatuses";
 
 const { Title, Text } = Typography;
 
-function getRiskColor(risk: string | null | undefined): string {
+function getRiskCssColor(risk: string | null | undefined): string {
   switch (risk) {
-    case "High": return "red";
-    case "Medium": return "orange";
-    case "Low": return "green";
-    default: return "default";
+    case "High": return "var(--color-red)";
+    case "Medium": return "var(--color-orange)";
+    case "Low": return "var(--color-green)";
+    default: return "var(--color-text-muted)";
   }
 }
 
@@ -65,30 +73,7 @@ function formatRelativeTime(dateStr: string | null | undefined): string {
   return date.toLocaleDateString();
 }
 
-const STATUS_COLORS: Record<TripStatus, string> = {
-  Waiting: "default",
-  Dispatch: "purple",
-  "Wait to Load": "lime",
-  Loading: "gold",
-  "In Transit": "blue",
-  "At Border": "purple",
-  Offloading: "cyan",
-  "Dispatch (Return)": "purple",
-  "Wait to Load (Return)": "lime",
-  "Loading (Return)": "gold",
-  "In Transit (Return)": "blue",
-  "At Border (Return)": "purple",
-  "Offloading (Return)": "cyan",
-  Returned: "geekblue",
-  "Waiting for PODs": "orange",
-  Completed: "green",
-  Cancelled: "red",
-};
-
-const STATUS_FILTERS = Object.keys(STATUS_COLORS).map((status) => ({
-  text: status,
-  value: status,
-}));
+const RETURN_STATUSES = new Set(RETURN_DIRECTION_STATUSES);
 
 const DIRECTION_FILTERS = [
   { text: "Go", value: "go" },
@@ -97,25 +82,47 @@ const DIRECTION_FILTERS = [
 
 function TripsPageContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { message } = App.useApp();
+  const { token } = theme.useToken();
   const { user } = useAuth();
   const { invalidateTrips } = useInvalidateQueries();
 
   // Only fetch when user is authenticated
   const isAuthenticated = !!user;
 
-  // TanStack Query for trips data
-  const { data, isLoading: loading, refetch } = useTrips(undefined, isAuthenticated);
+  const [createDrawerOpen, setCreateDrawerOpen] = useState(false);
+  const [detailDrawerTripId, setDetailDrawerTripId] = useState<string | null>(null);
+  const [updateDrawerTripId, setUpdateDrawerTripId] = useState<string | null>(null);
+  const { hasPermission } = usePermissions();
+  const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
+  // Initialise from URL so filters survive reload / share (AC-1, Story 6.17)
+  const urlStatus = searchParams.get("status");
+  const [tableFilters, setTableFilters] = useState<Record<string, any>>(
+    urlStatus ? { status: [urlStatus] } : {}
+  );
+  const [tableKey, setTableKey] = useState(0);
+
+  // TanStack Query for trips data — server-side pagination
+  const { data, isLoading: loading, refetch } = useTrips(
+    { skip: (currentPage - 1) * pageSize, limit: pageSize },
+    isAuthenticated
+  );
   const trips = data?.data || [];
   const totalCount = data?.count || 0;
 
   const showFinancialData = user?.role === "admin" || user?.role === "manager";
 
-  const [createDrawerOpen, setCreateDrawerOpen] = useState(false);
-  const [detailDrawerTripId, setDetailDrawerTripId] = useState<string | null>(null);
-  const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(20);
+  const hasActiveFilters = Object.values(tableFilters).some(
+    (v) => v != null && (Array.isArray(v) ? v.length > 0 : true)
+  );
+  const clearAllFilters = () => {
+    setTableFilters({});
+    setTableKey((k) => k + 1);
+    router.replace("?", { scroll: false });
+  };
 
   const handleDelete = async (trip: Trip) => {
     try {
@@ -141,7 +148,7 @@ function TripsPageContent() {
       title: "Trip Number",
       dataIndex: "trip_number",
       key: "trip_number",
-      width: 140,
+      width: 120,
       sorter: (a, b) => (a.trip_number || "").localeCompare(b.trip_number || ""),
       render: (text: string, record: Trip) => (
         <Button
@@ -158,21 +165,26 @@ function TripsPageContent() {
       title: "Route",
       dataIndex: "route_name",
       key: "route_name",
+      width: 220,
+      ellipsis: true,
       sorter: (a, b) => a.route_name.localeCompare(b.route_name),
-      render: (text: string) => (
-        <div style={{ fontWeight: 500 }}>{text}</div>
-      ),
+      render: (text: string, record: Trip) => {
+        const isReturn = RETURN_STATUSES.has(record.status);
+        const display = isReturn && record.return_route_name ? record.return_route_name : text;
+        return <div style={{ fontWeight: 500, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{display}</div>;
+      },
       ...getColumnSearchProps<Trip>("route_name"),
     },
     {
       title: "Direction",
       dataIndex: "return_waybill_id",
       key: "direction",
-      width: 90,
+      width: 60,
       render: (returnWaybillId: string | null) => (
-        <Tag color={returnWaybillId ? "green" : "blue"}>
-          {returnWaybillId ? "Return" : "Go"}
-        </Tag>
+        <StatusBadge
+          status={returnWaybillId ? "Return" : "Go"}
+          colorKey={returnWaybillId ? "blue" : "gray"}
+        />
       ),
       filters: DIRECTION_FILTERS,
       onFilter: (value, record) => {
@@ -200,42 +212,64 @@ function TripsPageContent() {
       title: "Status",
       dataIndex: "status",
       key: "status",
-      width: 120,
-      render: (status: TripStatus) => (
-        <Tag color={STATUS_COLORS[status]}>{status}</Tag>
+      width: 140,
+      render: (status: TripStatus, record: Trip) => (
+        <TripStatusTag status={status} isDelayed={record.is_delayed} />
       ),
       ...getColumnFilterProps("status", STATUS_FILTERS),
+      filteredValue: tableFilters.status || null,
     },
-        {
+    {
+      title: "",
+      key: "remarks",
+      width: 32,
+      render: (_: unknown, record: Trip) =>
+        record.remarks ? (
+          <Tooltip
+            title={
+              record.remarks.length > 100
+                ? record.remarks.slice(0, 100) + "…"
+                : record.remarks
+            }
+          >
+            <MessageOutlined style={{ color: token.colorTextSecondary }} />
+          </Tooltip>
+        ) : null,
+    },
+    {
       title: "Last Updated",
       dataIndex: "location_update_time",
       key: "location_update_time",
       width: 100,
       render: (date: string | null) => (
         <Tooltip title={date ? new Date(date).toLocaleString() : undefined}>
-          <Text type="secondary" style={{ fontSize: 12 }}>
+          <Text type="secondary">
             {formatRelativeTime(date)}
           </Text>
         </Tooltip>
       ),
       sorter: (a, b) =>
         (a.location_update_time || "").localeCompare(b.location_update_time || ""),
-    }, 
+    },
     ...(showFinancialData
       ? [
-          {
-            title: "Rate",
-            dataIndex: "waybill_rate",
-            key: "rate",
-            width: 120,
-            render: (_: unknown, record: Trip) =>
-              record.waybill_rate != null ? (
-                <Text>{formatCurrency(record.waybill_rate, record.waybill_currency)}</Text>
-              ) : (
-                <Text type="secondary">-</Text>
-              ),
-          } as ColumnsType<Trip>[number],
-        ]
+        {
+          title: "Rate",
+          dataIndex: "waybill_rate",
+          key: "rate",
+          width: 120,
+          render: (_: unknown, record: Trip) => {
+            const isReturn = RETURN_STATUSES.has(record.status);
+            const rate = isReturn ? record.return_waybill_rate : record.waybill_rate;
+            const currency = isReturn ? record.return_waybill_currency : record.waybill_currency;
+            return rate != null ? (
+              <Text>{formatCurrency(rate, currency)}</Text>
+            ) : (
+              <Text type="secondary">-</Text>
+            );
+          },
+        } as ColumnsType<Trip>[number],
+      ]
       : []),
 
     {
@@ -243,8 +277,26 @@ function TripsPageContent() {
       dataIndex: "waybill_risk_level",
       key: "risk",
       width: 70,
-      render: (risk: string | null) =>
-        risk ? <Tag color={getRiskColor(risk)}>{risk}</Tag> : <Text type="secondary">-</Text>,
+      render: (risk: string | null) => {
+        if (!risk) return <Text type="secondary">-</Text>;
+        const color = getRiskCssColor(risk);
+        return (
+          <span style={{
+            display: "inline-block",
+            padding: "3px 10px",
+            borderRadius: 6,
+            background: `color-mix(in srgb, ${color} 10%, transparent)`,
+            border: `1px solid color-mix(in srgb, ${color} 30%, transparent)`,
+            color,
+            fontSize: 11,
+            fontWeight: 600,
+            letterSpacing: "0.02em",
+            whiteSpace: "nowrap",
+          }}>
+            {risk}
+          </span>
+        );
+      },
     },
     {
       title: "Actions",
@@ -259,6 +311,14 @@ function TripsPageContent() {
               size="small"
               icon={<EyeOutlined />}
               onClick={() => setDetailDrawerTripId(record.id)}
+              aria-label={`View Trip ${record.trip_number}`}
+            />
+            <Button
+              type="text"
+              size="small"
+              icon={<EditOutlined />}
+              onClick={() => setUpdateDrawerTripId(record.id)}
+              aria-label={`Edit Trip ${record.trip_number}`}
             />
             <Popconfirm
               title="Delete trip"
@@ -268,7 +328,7 @@ function TripsPageContent() {
               cancelText="No"
               okButtonProps={{ danger: true }}
             >
-              <Button type="text" danger size="small" icon={<DeleteOutlined />} />
+              <Button type="text" danger size="small" icon={<DeleteOutlined />} aria-label={`Delete Trip ${record.trip_number}`} />
             </Popconfirm>
           </Space>
         </div>
@@ -283,8 +343,8 @@ function TripsPageContent() {
     <div
       style={{
         minHeight: "100vh",
-        background: "#f0f2f5",
-        padding: "24px",
+        background: "var(--color-bg)",
+        padding: "var(--space-xl)",
       }}
     >
       <Card>
@@ -322,12 +382,44 @@ function TripsPageContent() {
           </div>
 
           <Table<Trip>
+            key={tableKey}
             columns={resizableColumns}
             components={components}
             dataSource={trips}
             rowKey="id"
             loading={loading}
             sticky={{ offsetHeader: 64 }}
+            scroll={{ x: "max-content" }}
+            onRow={(record) => ({
+              style: record.is_delayed ? { backgroundColor: "color-mix(in srgb, var(--color-orange) 10%, transparent)" } : undefined,
+            })}
+            onChange={(_, filters) => {
+              const next = filters as Record<string, any>;
+              setTableFilters(next);
+              // Sync status filter to URL (AC-1, Story 6.17)
+              const params = new URLSearchParams(searchParams.toString());
+              const statusVal = (next.status as string[] | null)?.[0];
+              if (statusVal) params.set("status", statusVal);
+              else params.delete("status");
+              router.replace(`?${params.toString()}`, { scroll: false });
+            }}
+            locale={{
+              emptyText: hasActiveFilters ? (
+                <EmptyState
+                  message="No results match your filters."
+                  action={{ label: "Clear Filters", onClick: clearAllFilters }}
+                />
+              ) : (
+                <EmptyState
+                  message="No trips found."
+                  action={
+                    hasPermission("trips:create")
+                      ? { label: "Create Trip", onClick: () => setCreateDrawerOpen(true) }
+                      : undefined
+                  }
+                />
+              ),
+            }}
             rowSelection={getStandardRowSelection(
               currentPage,
               pageSize,
@@ -356,10 +448,21 @@ function TripsPageContent() {
         onSuccess={() => invalidateTrips()}
       />
 
+      <UpdateTripDrawer
+        open={!!updateDrawerTripId}
+        onClose={() => setUpdateDrawerTripId(null)}
+        onSuccess={() => invalidateTrips()}
+        tripId={updateDrawerTripId}
+      />
+
       <TripDetailDrawer
         open={!!detailDrawerTripId}
         onClose={() => setDetailDrawerTripId(null)}
         tripId={detailDrawerTripId}
+        onEdit={(id) => {
+          setDetailDrawerTripId(null);
+          setUpdateDrawerTripId(id);
+        }}
       />
     </div>
   );
@@ -368,7 +471,9 @@ function TripsPageContent() {
 export default function TripsPage() {
   return (
     <App>
-      <TripsPageContent />
+      <Suspense>
+        <TripsPageContent />
+      </Suspense>
     </App>
   );
 }

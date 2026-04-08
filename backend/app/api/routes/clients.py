@@ -5,10 +5,11 @@ CRUD endpoints for client management.
 import uuid
 from typing import Any
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 from sqlmodel import func, select
 
 from app.api.deps import CurrentUser, SessionDep
+from app.core.db import commit_or_rollback
 from app.models import (
     Client,
     ClientCreate,
@@ -25,8 +26,8 @@ router = APIRouter(prefix="/clients", tags=["clients"])
 def read_clients(
     session: SessionDep,
     current_user: CurrentUser,
-    skip: int = 0,
-    limit: int = 100,
+    skip: int = Query(default=0, ge=0),
+    limit: int = Query(default=100, ge=1, le=500),
 ) -> Any:
     """
     Retrieve all clients.
@@ -76,7 +77,7 @@ def create_client(
 
     client = Client.model_validate(client_in)
     session.add(client)
-    session.commit()
+    commit_or_rollback(session)
     session.refresh(client)
     return client
 
@@ -109,17 +110,17 @@ def update_client(
 
     client.sqlmodel_update(update_dict)
     session.add(client)
-    session.commit()
+    commit_or_rollback(session)
     session.refresh(client)
     return client
 
 
-@router.delete("/{id}")
+@router.delete("/{id}", status_code=204)
 def delete_client(
     session: SessionDep,
     current_user: CurrentUser,
     id: uuid.UUID,
-) -> Message:
+) -> None:
     """
     Delete a client.
     """
@@ -127,5 +128,4 @@ def delete_client(
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
     session.delete(client)
-    session.commit()
-    return Message(message="Client deleted successfully")
+    commit_or_rollback(session)

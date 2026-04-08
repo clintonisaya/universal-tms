@@ -170,6 +170,7 @@ export default function ExchangeRateSettingsPage() {
               size="small"
               icon={<EditOutlined />}
               onClick={() => openEdit(record)}
+              aria-label="Edit Exchange Rate"
             />
             <Button
               type="text"
@@ -177,6 +178,7 @@ export default function ExchangeRateSettingsPage() {
               size="small"
               icon={<DeleteOutlined />}
               onClick={() => handleDelete(record)}
+              aria-label="Delete Exchange Rate"
             />
           </Space>
         </div>
@@ -188,7 +190,7 @@ export default function ExchangeRateSettingsPage() {
   const { resizableColumns, components } = useResizableColumns(columns);
 
   return (
-    <div style={{ padding: "24px", minHeight: "100vh", background: "#f0f2f5" }}>
+    <div style={{ padding: "var(--space-xl)", minHeight: "100vh", background: "var(--color-bg)" }}>
       <Card>
         <Space orientation="vertical" size="middle" style={{ width: "100%" }}>
           <div
@@ -231,6 +233,7 @@ export default function ExchangeRateSettingsPage() {
             rowKey="id"
             loading={loading}
             sticky={{ offsetHeader: 64 }}
+            scroll={{ x: "max-content" }}
             rowSelection={getStandardRowSelection(
               currentPage,
               pageSize,
@@ -256,6 +259,7 @@ export default function ExchangeRateSettingsPage() {
       <Modal
         title={editingRate ? "Edit Exchange Rate" : "Set Exchange Rate"}
         open={modalOpen}
+        width={600}
         onCancel={() => setModalOpen(false)}
         footer={null}
         destroyOnHidden

@@ -1,4 +1,4 @@
-FROM python:3.10-slim
+FROM python:3.10.14-slim-bookworm
 
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
@@ -18,8 +18,9 @@ RUN pip install --no-cache-dir --upgrade pip && \
 
 # Copy application code
 COPY ./alembic.ini ./
+COPY ./prestart.sh ./
 COPY ./app ./app
 
 EXPOSE 8000
 
-CMD ["bash", "-c", "alembic upgrade head && python -m app.initial_data && uvicorn app.main:app --host 0.0.0.0 --port 8000"]
+CMD ["bash", "prestart.sh"]

@@ -5,10 +5,11 @@ CRUD endpoints for cargo type management.
 import uuid
 from typing import Any
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 from sqlmodel import func, select
 
 from app.api.deps import CurrentUser, SessionDep
+from app.core.db import commit_or_rollback
 from app.models import (
     CargoType,
     CargoTypeCreate,
@@ -25,8 +26,8 @@ router = APIRouter(prefix="/cargo-types", tags=["cargo-types"])
 def read_cargo_types(
     session: SessionDep,
     current_user: CurrentUser,
-    skip: int = 0,
-    limit: int = 100,
+    skip: int = Query(default=0, ge=0),
+    limit: int = Query(default=100, ge=1, le=500),
 ) -> Any:
     """Retrieve all cargo types."""
     count_statement = select(func.count()).select_from(CargoType)
@@ -75,7 +76,7 @@ def create_cargo_type(
 
     cargo_type = CargoType.model_validate(cargo_type_in)
     session.add(cargo_type)
-    session.commit()
+    commit_or_rollback(session)
     session.refresh(cargo_type)
     return cargo_type
 
@@ -109,21 +110,20 @@ def update_cargo_type(
 
     cargo_type.sqlmodel_update(update_dict)
     session.add(cargo_type)
-    session.commit()
+    commit_or_rollback(session)
     session.refresh(cargo_type)
     return cargo_type
 
 
-@router.delete("/{id}")
+@router.delete("/{id}", status_code=204)
 def delete_cargo_type(
     session: SessionDep,
     current_user: CurrentUser,
     id: uuid.UUID,
-) -> Message:
+) -> None:
     """Delete a cargo type."""
     cargo_type = session.get(CargoType, id)
     if not cargo_type:
         raise HTTPException(status_code=404, detail="Cargo type not found")
     session.delete(cargo_type)
-    session.commit()
-    return Message(message="Cargo type deleted successfully")
+    commit_or_rollback(session)

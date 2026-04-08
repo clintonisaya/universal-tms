@@ -8,10 +8,10 @@ import {
   Card,
   Flex,
   Space,
-  Tag,
   message,
   Typography,
   Popconfirm,
+  Tooltip,
 } from "antd";
 import {
   PlusOutlined,
@@ -20,11 +20,15 @@ import {
   DeleteOutlined,
   RocketOutlined,
   EditOutlined,
+  LockOutlined,
+  FileTextOutlined,
+  EyeOutlined,
 } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
 import type { Waybill, WaybillStatus } from "@/types/waybill";
 import { useAuth } from "@/contexts/AuthContext";
-import { useWaybills, useInvalidateQueries } from "@/hooks/useApi";
+import { useWaybills, useInvalidateQueries, apiFetch } from "@/hooks/useApi";
+import { fmtCurrency } from "@/lib/utils";
 import { CreateWaybillDrawer } from "@/components/waybills/CreateWaybillDrawer";
 import { EditWaybillDrawer } from "@/components/waybills/EditWaybillDrawer";
 import { WaybillDetailDrawer } from "@/components/waybills/WaybillDetailDrawer";
@@ -35,20 +39,14 @@ import {
   getStandardRowSelection,
   useResizableColumns,
 } from "@/components/ui/tableUtils";
+import { WaybillStatusTag } from "@/components/ui/WaybillStatusTag";
+import { EmptyState } from "@/components/ui";
 
 const { Title } = Typography;
 
-const STATUS_COLORS: Record<WaybillStatus, string> = {
-  Open: "green",
-  "In Progress": "blue",
-  Completed: "purple",
-  Invoiced: "gold",
-};
-
-const STATUS_FILTERS = Object.keys(STATUS_COLORS).map((status) => ({
-  text: status,
-  value: status,
-}));
+const STATUS_FILTERS = ["Open", "In Progress", "Completed", "Invoiced"].map(
+  (s) => ({ text: s, value: s })
+);
 
 export default function WaybillsPage() {
   const router = useRouter();
@@ -74,6 +72,13 @@ export default function WaybillsPage() {
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
+  const [tableFilters, setTableFilters] = useState<Record<string, any>>({});
+  const [tableKey, setTableKey] = useState(0);
+
+  const hasActiveFilters = Object.values(tableFilters).some(
+    (v) => v != null && (Array.isArray(v) ? v.length > 0 : true)
+  );
+  const clearAllFilters = () => { setTableFilters({}); setTableKey((k) => k + 1); };
 
   const handleDelete = async (waybill: Waybill) => {
     try {
@@ -85,6 +90,8 @@ export default function WaybillsPage() {
       if (response.ok) {
         message.success("Waybill deleted successfully");
         invalidateWaybills();
+      } else if (response.status === 409) {
+        message.error("This waybill is linked to an active trip and cannot be deleted.");
       } else {
         const error = await response.json();
         message.error(error.detail || "Failed to delete waybill");
@@ -105,6 +112,27 @@ export default function WaybillsPage() {
     setDetailDrawerOpen(true);
   };
 
+  const [generatingInvoice, setGeneratingInvoice] = useState<string | null>(null);
+  const handleGenerateInvoice = async (waybill: Waybill) => {
+    setGeneratingInvoice(waybill.id);
+    try {
+      const invoice = await apiFetch<{ id: string }>(`/api/v1/invoices/from-waybill/${waybill.id}`, {
+        method: "POST",
+      });
+      message.success("Invoice draft created");
+      invalidateWaybills();
+      router.push(`/ops/invoices/${invoice.id}`);
+    } catch (err: any) {
+      if (err?.status === 409) {
+        message.info("Invoice already exists for this waybill");
+      } else {
+        message.error(err?.detail || "Failed to generate invoice");
+      }
+    } finally {
+      setGeneratingInvoice(null);
+    }
+  };
+
   const columns: ColumnsType<Waybill> = [
     {
       title: "Waybill #",
@@ -122,6 +150,13 @@ export default function WaybillsPage() {
         </Button>
       ),
       ...getColumnSearchProps<Waybill>("waybill_number"),
+    },
+    {
+      title: "Trip #",
+      dataIndex: "trip_number",
+      key: "trip_number",
+      width: 110,
+      render: (text: string | null | undefined) => text || "—",
     },
     {
       title: "Client",
@@ -148,6 +183,13 @@ export default function WaybillsPage() {
       ...getColumnSearchProps<Waybill>("destination"),
     },
     {
+      title: "Cargo",
+      dataIndex: "cargo_type",
+      key: "cargo_type",
+      width: 120,
+      render: (text: string | null) => text || "-",
+    },
+    {
       title: "Loading Date",
       dataIndex: "expected_loading_date",
       key: "expected_loading_date",
@@ -155,13 +197,73 @@ export default function WaybillsPage() {
       render: (date: string) => date ? new Date(date).toLocaleDateString() : "-",
       sorter: (a, b) => (a.expected_loading_date || "").localeCompare(b.expected_loading_date || ""),
     },
+    // Rate column — visible to admin/manager only
+    ...((user?.role === "admin" || user?.role === "manager") ? [{
+      title: "Rate",
+      dataIndex: "agreed_rate",
+      key: "agreed_rate",
+      width: 140,
+      align: "right" as const,
+      render: (_: number, record: Waybill) =>
+        record.agreed_rate ? fmtCurrency(record.agreed_rate, record.currency) : "-",
+      sorter: (a: Waybill, b: Waybill) => (a.agreed_rate || 0) - (b.agreed_rate || 0),
+    }] : []),
+    {
+      title: "Invoice",
+      key: "invoice",
+      width: 130,
+      render: (_: unknown, record: Waybill) => {
+        if (!record.invoice_id) return <span style={{ color: "var(--color-text-muted, #999)" }}>—</span>;
+        const statusColors: Record<string, string> = {
+          draft: "#8c8c8c",
+          issued: "#1677ff",
+          partially_paid: "#fa8c16",
+          fully_paid: "#52c41a",
+          voided: "#ff4d4f",
+        };
+        const statusLabels: Record<string, string> = {
+          draft: "Draft",
+          issued: "Issued",
+          partially_paid: "Partial",
+          fully_paid: "Paid",
+          voided: "Voided",
+        };
+        const s = record.invoice_status || "draft";
+        return (
+          <Tooltip title={`Invoice ${record.invoice_number}`}>
+            <Button
+              type="link"
+              size="small"
+              style={{ padding: 0, height: "auto", color: "#D4A843", fontWeight: 600 }}
+              onClick={() => router.push(`/ops/invoices/${record.invoice_id}`)}
+            >
+              {record.invoice_number}
+            </Button>
+            <span
+              style={{
+                display: "inline-block",
+                marginLeft: 6,
+                padding: "0 6px",
+                borderRadius: 4,
+                fontSize: 11,
+                fontWeight: 600,
+                color: "#fff",
+                background: statusColors[s] || "#8c8c8c",
+              }}
+            >
+              {statusLabels[s] || s}
+            </span>
+          </Tooltip>
+        );
+      },
+    },
     {
       title: "Status",
       dataIndex: "status",
       key: "status",
       width: 100,
       render: (status: WaybillStatus) => (
-        <Tag color={STATUS_COLORS[status]}>{status}</Tag>
+        <WaybillStatusTag status={status} />
       ),
       ...getColumnFilterProps("status", STATUS_FILTERS),
     },
@@ -183,20 +285,46 @@ export default function WaybillsPage() {
                 Dispatch
               </Button>
             )}
-            <Button
-              size="small"
-              icon={<EditOutlined />}
-              onClick={() => {
-                setEditWaybillId(record.id);
-                setEditDrawerOpen(true);
-              }}
-            />
+            {/* Invoice action: Generate or View */}
+            {record.invoice_id ? (
+              <Tooltip title={`View ${record.invoice_number}`}>
+                <Button
+                  size="small"
+                  icon={<EyeOutlined />}
+                  onClick={() => router.push(`/ops/invoices/${record.invoice_id}`)}
+                />
+              </Tooltip>
+            ) : (
+              <Tooltip title="Generate Invoice">
+                <Button
+                  size="small"
+                  icon={<FileTextOutlined />}
+                  loading={generatingInvoice === record.id}
+                  onClick={() => handleGenerateInvoice(record)}
+                />
+              </Tooltip>
+            )}
+            {(record.status === "Completed" || record.status === "Invoiced") &&
+             user?.role !== "admin" && user?.role !== "manager" ? (
+              <Tooltip title="Locked — only Manager/Admin can edit">
+                <Button size="small" icon={<LockOutlined />} disabled />
+              </Tooltip>
+            ) : (
+              <Button
+                size="small"
+                icon={<EditOutlined />}
+                onClick={() => {
+                  setEditWaybillId(record.id);
+                  setEditDrawerOpen(true);
+                }}
+              />
+            )}
             <Popconfirm
               title="Delete waybill"
-              description="Are you sure you want to delete this waybill?"
+              description="This action cannot be undone. The waybill must have no active trips to be deleted."
               onConfirm={() => handleDelete(record)}
-              okText="Yes"
-              cancelText="No"
+              okText="Delete"
+              cancelText="Cancel"
               okButtonProps={{ danger: true }}
             >
               <Button type="text" danger icon={<DeleteOutlined />} size="small" />
@@ -214,8 +342,8 @@ export default function WaybillsPage() {
     <div
       style={{
         minHeight: "100vh",
-        background: "#f0f2f5",
-        padding: "24px",
+        background: "var(--color-bg)",
+        padding: "var(--space-xl)",
       }}
     >
       <Card>
@@ -253,12 +381,25 @@ export default function WaybillsPage() {
           </div>
 
           <Table<Waybill>
+            key={tableKey}
             columns={resizableColumns}
             components={components}
             dataSource={waybills}
             rowKey="id"
             loading={loading}
             sticky={{ offsetHeader: 64 }}
+            scroll={{ x: "max-content" }}
+            onChange={(_, filters) => setTableFilters(filters as Record<string, any>)}
+            locale={{
+              emptyText: hasActiveFilters ? (
+                <EmptyState
+                  message="No results match your filters."
+                  action={{ label: "Clear Filters", onClick: clearAllFilters }}
+                />
+              ) : (
+                <EmptyState message="No waybills yet." action={{ label: "Create Waybill", onClick: () => setCreateDrawerOpen(true) }} />
+              ),
+            }}
             rowSelection={getStandardRowSelection(
               currentPage,
               pageSize,

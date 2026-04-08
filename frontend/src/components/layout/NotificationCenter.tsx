@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { Badge, Button, Tooltip, Typography, Divider, Empty } from "antd";
 import { BellOutlined } from "@ant-design/icons";
 import { useAuth } from "@/contexts/AuthContext";
@@ -9,6 +9,14 @@ import { TASK_TYPE_ICONS } from "@/types/notification";
 import type { Notification } from "@/types/notification";
 
 const { Text } = Typography;
+
+// AC-2: Notification role filtering — filter at display time, never modify stored data
+const ALL_ROLES = ['admin', 'manager', 'ops', 'dispatcher', 'finance', 'fleet'];
+const TASK_TYPE_ROLE_MAP: Record<string, string[]> = {
+  expense_approval: ['manager', 'admin'],
+  payment_processing: ['finance', 'manager', 'admin'],
+  expense_correction: ['ops', 'dispatcher', 'admin'],
+};
 
 function formatTimeAgo(dateStr: string): string {
   if (!dateStr) return "";
@@ -32,9 +40,23 @@ export function NotificationCenter({
   onNotificationClick,
 }: NotificationCenterProps) {
   const { user } = useAuth();
-  const { notifications, unreadCount, markAsRead, markAllRead } =
+  const { notifications, markAsRead, markAllRead } =
     useNotifications(user?.id);
   const [open, setOpen] = useState(false);
+
+  // AC-2, AC-3: Filter notifications by role at render time — stored data is never modified
+  const roleFilteredNotifications = useMemo(() => {
+    const userRole = user?.role ?? '';
+    return notifications.filter((n) => {
+      const allowedRoles = TASK_TYPE_ROLE_MAP[n.taskType] ?? ALL_ROLES;
+      return allowedRoles.includes(userRole);
+    });
+  }, [notifications, user?.role]);
+
+  const roleFilteredUnreadCount = useMemo(
+    () => roleFilteredNotifications.filter((n) => !n.read).length,
+    [roleFilteredNotifications],
+  );
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Close dropdown on outside click
@@ -60,28 +82,29 @@ export function NotificationCenter({
     onNotificationClick?.(notification.taskId);
   };
 
-  // Show at most 10 in the dropdown
-  const visibleNotifications = notifications.slice(0, 10);
+  // Show at most 10 in the dropdown (role-filtered — AC-2, AC-3)
+  const visibleNotifications = roleFilteredNotifications.slice(0, 10);
 
   return (
     <div ref={dropdownRef} style={{ position: "relative" }}>
       <Tooltip title="Notifications">
         <Badge
-          count={unreadCount}
+          count={roleFilteredUnreadCount}
           overflowCount={99}
           offset={[-4, 4]}
-          color="#faad14"
+          color="var(--color-orange)"
         >
           <Button
             type="text"
-            icon={<BellOutlined style={{ fontSize: 20 }} />}
+            icon={<BellOutlined style={{ fontSize: 18 }} />}
             onClick={() => setOpen((prev) => !prev)}
             style={{
-              height: 40,
-              width: 40,
+              height: 36,
+              width: 36,
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
+              padding: 0,
             }}
           />
         </Badge>
@@ -96,7 +119,7 @@ export function NotificationCenter({
             width: 350,
             maxHeight: 400,
             overflowY: "auto",
-            background: "#fff",
+            background: "var(--color-card)",
             borderRadius: 8,
             boxShadow:
               "0 6px 16px 0 rgba(0,0,0,0.08), 0 3px 6px -4px rgba(0,0,0,0.12), 0 9px 28px 8px rgba(0,0,0,0.05)",
@@ -115,12 +138,12 @@ export function NotificationCenter({
             <Text strong style={{ fontSize: 14 }}>
               Notifications
             </Text>
-            {unreadCount > 0 && (
+            {roleFilteredUnreadCount > 0 && (
               <Button
                 type="link"
                 size="small"
                 onClick={() => markAllRead()}
-                style={{ padding: 0, fontSize: 12 }}
+                style={{ padding: 0, fontSize: "var(--font-sm)" }}
               >
                 Mark all read
               </Button>
@@ -141,7 +164,6 @@ export function NotificationCenter({
                   <br />
                   <Text
                     type="secondary"
-                    style={{ fontSize: 12 }}
                   >
                     You&apos;ll see updates here when tasks require your
                     attention
@@ -164,10 +186,10 @@ export function NotificationCenter({
                     cursor: "pointer",
                     background: "transparent",
                     transition: "background 0.2s",
-                    borderBottom: "1px solid #f0f0f0",
+                    borderBottom: "1px solid var(--color-border)",
                   }}
                   onMouseEnter={(e) =>
-                    (e.currentTarget.style.background = "#f0f5ff")
+                    (e.currentTarget.style.background = "var(--color-gold-glow)")
                   }
                   onMouseLeave={(e) =>
                     (e.currentTarget.style.background = "transparent")
@@ -188,7 +210,7 @@ export function NotificationCenter({
                             width: 8,
                             height: 8,
                             borderRadius: "50%",
-                            background: "#faad14",
+                            background: "var(--color-orange)",
                             flexShrink: 0,
                           }}
                         />
@@ -196,8 +218,8 @@ export function NotificationCenter({
                       <Text
                         style={{
                           fontWeight: n.read ? 400 : 600,
-                          color: n.read ? "#8c8c8c" : "inherit",
-                          fontSize: 13,
+                          color: n.read ? "var(--color-text-muted)" : "inherit",
+                          fontSize: "var(--font-sm)",
                         }}
                         ellipsis
                       >
@@ -206,7 +228,6 @@ export function NotificationCenter({
                     </div>
                     <Text
                       type="secondary"
-                      style={{ fontSize: 11 }}
                     >
                       {formatTimeAgo(n.timestamp)}
                     </Text>

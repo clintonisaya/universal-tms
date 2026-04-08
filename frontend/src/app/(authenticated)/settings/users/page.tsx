@@ -17,9 +17,9 @@ import {
   App,
   Flex,
   Space,
-  Tag,
   Divider,
 } from "antd";
+import StatusBadge from "@/components/ui/StatusBadge";
 import {
   PlusOutlined,
   ReloadOutlined,
@@ -79,7 +79,7 @@ const PERMISSION_GROUPS = AVAILABLE_PERMISSIONS.reduce<
 }, {});
 
 /** Brand color for active toggles */
-const BRAND_GOLD = "#D4AF37";
+const BRAND_GOLD = "var(--color-gold)";
 
 /** Grouped toggle switches for permissions – used as a Form control via value/onChange. */
 function PermissionToggles({
@@ -113,20 +113,20 @@ function PermissionToggles({
           <div
             key={group}
             style={{
-              border: "1px solid #e5e7eb",
+              border: "1px solid var(--color-border)",
               borderRadius: 10,
               padding: "14px 16px",
-              background: "#ffffff",
+              background: "var(--color-card)",
               boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
             }}
           >
             {/* Group header with master toggle */}
-            <Flex justify="space-between" align="center" style={{ marginBottom: 10, borderBottom: "1px solid #f0f0f0", paddingBottom: 8 }}>
-              <Text strong style={{ fontSize: 12, color: "#6b7280", textTransform: "uppercase", letterSpacing: 1 }}>
+            <Flex justify="space-between" align="center" style={{ marginBottom: 10, borderBottom: "1px solid var(--color-border)", paddingBottom: 8 }}>
+              <Text strong style={{ fontSize: "var(--font-sm)", color: "var(--color-text-secondary)", textTransform: "uppercase", letterSpacing: 1 }}>
                 {group}
               </Text>
               <Flex align="center" gap={6}>
-                <Text style={{ fontSize: 11, color: "#9ca3af" }}>{allOn ? "All" : someOn ? "Some" : "None"}</Text>
+                <Text style={{ fontSize: "var(--font-sm)", color: "var(--color-text-muted)" }}>{allOn ? "All" : someOn ? "Some" : "None"}</Text>
                 <Switch
                   size="small"
                   checked={allOn}
@@ -147,7 +147,7 @@ function PermissionToggles({
                 const isOn = value.includes(p.value);
                 return (
                   <Flex key={p.value} justify="space-between" align="center">
-                    <Text style={{ fontSize: 13, color: isOn ? "#1f2937" : "#9ca3af" }}>
+                    <Text style={{ fontSize: "var(--font-sm)", color: isOn ? "var(--color-text-primary)" : "var(--color-text-muted)" }}>
                       {p.label}
                     </Text>
                     <Switch
@@ -191,8 +191,12 @@ const UsersContent = () => {
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
+  const [isResetPasswordModalOpen, setIsResetPasswordModalOpen] = useState(false);
+  const [resetPasswordUser, setResetPasswordUser] = useState<User | null>(null);
+  const [resetPasswordSubmitting, setResetPasswordSubmitting] = useState(false);
 
   const [form] = Form.useForm();
+  const [resetPasswordForm] = Form.useForm();
 
   // Role Access Control
   useEffect(() => {
@@ -275,17 +279,32 @@ const UsersContent = () => {
     }
   };
 
-  const handleResetPassword = async (user: User) => {
+  const openResetPasswordModal = (user: User) => {
+    setResetPasswordUser(user);
+    setIsResetPasswordModalOpen(true);
+  };
+
+  const handleResetPasswordSubmit = async (values: { new_password: string }) => {
+    if (!resetPasswordUser) return;
+    setResetPasswordSubmitting(true);
     try {
-      const response = await fetch(`/api/v1/users/${user.id}/password-reset`, {
+      const response = await fetch(`/api/v1/users/${resetPasswordUser.id}/password-reset`, {
         method: "POST",
+        headers: { "Content-Type": "application/json" },
         credentials: "include",
+        body: JSON.stringify({ new_password: values.new_password }),
       });
       if (response.ok) {
-        message.success(`Password for ${user.username} reset to default`);
+        message.success(`Password for ${resetPasswordUser.username} updated successfully`);
+        setIsResetPasswordModalOpen(false);
+      } else {
+        const error = await response.json();
+        message.error(error.detail || "Failed to update password");
       }
     } catch {
       message.error("Network error");
+    } finally {
+      setResetPasswordSubmitting(false);
     }
   };
 
@@ -369,7 +388,7 @@ const UsersContent = () => {
       key: "role",
       width: 100,
       render: (role) => (
-        <Tag color={role === "admin" ? "red" : "blue"}>{role.toUpperCase()}</Tag>
+        <StatusBadge status={role.toUpperCase()} colorKey={role === "admin" ? "red" : "gray"} />
       ),
       ...getColumnFilterProps("role", ROLE_FILTERS),
     },
@@ -381,7 +400,7 @@ const UsersContent = () => {
       render: (perms: string[]) => (
         perms && perms.length > 0 ? (
           <Tooltip title={perms.join(", ")}>
-            <Tag color="cyan">{perms.length} Permissions</Tag>
+            <StatusBadge status={`${perms.length} Permissions`} colorKey="gray" />
           </Tooltip>
         ) : <Text type="secondary">-</Text>
       ),
@@ -392,9 +411,7 @@ const UsersContent = () => {
       dataIndex: "is_active",
       width: 100,
       render: (_, r) => (
-        <Tag color={r.is_active ? "success" : "default"}>
-          {r.is_active ? "Active" : "Inactive"}
-        </Tag>
+        <StatusBadge status={r.is_active ? "Active" : "Inactive"} colorKey={r.is_active ? "green" : "gray"} />
       ),
       ...getColumnFilterProps("is_active", STATUS_FILTERS),
     },
@@ -411,15 +428,16 @@ const UsersContent = () => {
               size="small"
               icon={<EditOutlined />}
               onClick={() => openModal(record)}
+              aria-label={`Edit User ${record.username}`}
             />
             <Tooltip title="Reset Password">
-              <Popconfirm
-                title="Reset Password"
-                description="Reset to default password? User will need to change it."
-                onConfirm={() => handleResetPassword(record)}
-              >
-                <Button type="text" size="small" icon={<KeyOutlined />} />
-              </Popconfirm>
+              <Button
+                type="text"
+                size="small"
+                icon={<KeyOutlined />}
+                aria-label="Reset Password"
+                onClick={() => openResetPasswordModal(record)}
+              />
             </Tooltip>
             <Popconfirm
               title="Delete user"
@@ -429,7 +447,7 @@ const UsersContent = () => {
               cancelText="No"
               okButtonProps={{ danger: true }}
             >
-              <Button type="text" danger icon={<DeleteOutlined />} size="small" />
+              <Button type="text" danger icon={<DeleteOutlined />} size="small" aria-label={`Delete User ${record.username}`} />
             </Popconfirm>
           </Space>
         </div>
@@ -477,6 +495,7 @@ const UsersContent = () => {
             rowKey="id"
             loading={loading}
             sticky={{ offsetHeader: 64 }}
+            scroll={{ x: "max-content" }}
             pagination={{
               current: currentPage,
               pageSize,
@@ -494,21 +513,21 @@ const UsersContent = () => {
       </Card>
 
       <Modal
-        title={<span style={{ fontSize: 18, fontWeight: 600, color: "#1f2937" }}>{editingUser ? "Edit User" : "Add User"}</span>}
+        title={<span style={{ fontSize: 18, fontWeight: 600, color: "var(--color-text-primary)" }}>{editingUser ? "Edit User" : "Add User"}</span>}
         open={isModalOpen}
         onCancel={() => setIsModalOpen(false)}
         footer={null}
-        width={720}
+        width={900}
         destroyOnHidden={false}
         forceRender
-        styles={{ body: { background: "#fafafa", padding: "20px 24px" } }}
+        styles={{ body: { background: "var(--color-surface)", padding: "20px 24px" } }}
       >
-        <Form form={form} layout="vertical" onFinish={handleSubmit} style={{ color: "#1f2937" }}>
+        <Form form={form} layout="vertical" onFinish={handleSubmit} style={{ color: "var(--color-text-primary)" }}>
           {/* Row 1: Full Name + Username */}
           <Flex gap="middle">
             <Form.Item
               name="full_name"
-              label={<span style={{ color: "#374151" }}>Full Name</span>}
+              label={<span style={{ color: "var(--color-text-primary)" }}>Full Name</span>}
               rules={[{ required: true, message: "Required" }]}
               style={{ flex: 1 }}
             >
@@ -516,7 +535,7 @@ const UsersContent = () => {
             </Form.Item>
             <Form.Item
               name="username"
-              label={<span style={{ color: "#374151" }}>Username / Email</span>}
+              label={<span style={{ color: "var(--color-text-primary)" }}>Username / Email</span>}
               rules={[{ required: true, message: "Required" }]}
               style={{ flex: 1 }}
             >
@@ -528,7 +547,7 @@ const UsersContent = () => {
           <Flex gap="middle">
             <Form.Item
               name="role"
-              label={<span style={{ color: "#374151" }}>Role</span>}
+              label={<span style={{ color: "var(--color-text-primary)" }}>Role</span>}
               rules={[{ required: true, message: "Required" }]}
               style={{ flex: 1 }}
             >
@@ -548,7 +567,7 @@ const UsersContent = () => {
             {!editingUser ? (
               <Form.Item
                 name="password"
-                label={<span style={{ color: "#374151" }}>Initial Password</span>}
+                label={<span style={{ color: "var(--color-text-primary)" }}>Initial Password</span>}
                 rules={[{ required: true, message: "Required for new users" }]}
                 style={{ flex: 1 }}
               >
@@ -560,8 +579,8 @@ const UsersContent = () => {
           </Flex>
 
           {/* Separator + Permissions */}
-          <Divider style={{ borderColor: "#e5e7eb", margin: "8px 0 16px" }}>
-            <Text strong style={{ color: "#6b7280", fontSize: 13, letterSpacing: 0.5 }}>PERMISSIONS</Text>
+          <Divider style={{ borderColor: "var(--color-border)", margin: "8px 0 16px" }}>
+            <Text strong style={{ color: "var(--color-text-secondary)", fontSize: "var(--font-sm)", letterSpacing: 0.5 }}>PERMISSIONS</Text>
           </Divider>
 
           <Form.Item name="permissions" noStyle>
@@ -573,6 +592,56 @@ const UsersContent = () => {
             <Button onClick={() => setIsModalOpen(false)}>Cancel</Button>
             <Button type="primary" htmlType="submit" loading={submitting}>
               {editingUser ? "Update" : "Create"}
+            </Button>
+          </Flex>
+        </Form>
+      </Modal>
+      <Modal
+        title={<span style={{ fontSize: 18, fontWeight: 600, color: "var(--color-text-primary)" }}>Reset Password — {resetPasswordUser?.username}</span>}
+        open={isResetPasswordModalOpen}
+        onCancel={() => setIsResetPasswordModalOpen(false)}
+        footer={null}
+        width={560}
+        destroyOnHidden
+      >
+        <Form
+          form={resetPasswordForm}
+          layout="vertical"
+          onFinish={handleResetPasswordSubmit}
+          style={{ marginTop: 16 }}
+        >
+          <Form.Item
+            label="New Password"
+            name="new_password"
+            rules={[
+              { required: true, message: "Please enter a new password" },
+              { min: 8, message: "Password must be at least 8 characters" },
+            ]}
+          >
+            <Input.Password placeholder="Min 8 characters" />
+          </Form.Item>
+          <Form.Item
+            label="Confirm New Password"
+            name="confirm_password"
+            dependencies={["new_password"]}
+            rules={[
+              { required: true, message: "Please confirm the new password" },
+              ({ getFieldValue }) => ({
+                validator(_, value) {
+                  if (!value || getFieldValue("new_password") === value) {
+                    return Promise.resolve();
+                  }
+                  return Promise.reject(new Error("Passwords do not match"));
+                },
+              }),
+            ]}
+          >
+            <Input.Password placeholder="Re-enter password" />
+          </Form.Item>
+          <Flex justify="flex-end" gap="small">
+            <Button onClick={() => setIsResetPasswordModalOpen(false)}>Cancel</Button>
+            <Button type="primary" htmlType="submit" loading={resetPasswordSubmitting}>
+              Save
             </Button>
           </Flex>
         </Form>

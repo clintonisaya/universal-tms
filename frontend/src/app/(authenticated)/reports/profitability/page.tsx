@@ -9,10 +9,10 @@ import {
   Space,
   message,
   Typography,
-  Tag,
   Statistic,
   Row,
   Col,
+  Tooltip,
 } from "antd";
 import {
   ReloadOutlined,
@@ -20,13 +20,20 @@ import {
   EyeOutlined,
   ArrowUpOutlined,
   ArrowDownOutlined,
+  InfoCircleOutlined,
 } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
 import { useAuth } from "@/contexts/AuthContext";
+import { getStandardRowSelection } from "@/components/ui/tableUtils";
 import {
   getColumnSearchProps,
   useResizableColumns,
 } from "@/components/ui/tableUtils";
+import { TripStatusTag } from "@/components/ui/TripStatusTag";
+import { StatusBadge } from "@/components/ui/StatusBadge";
+import type { ColorKey } from "@/components/ui/StatusBadge";
+import { TripDetailDrawer } from "@/components/trips/TripDetailDrawer";
+import type { TripStatus } from "@/types/trip";
 
 const { Title, Text } = Typography;
 
@@ -41,12 +48,15 @@ interface TripProfitability {
   net_profit: number;
   margin_pct: number;
   profit_per_day: number;
+  duration_days: number;
+  return_duration_days: number;
   start_date: string | null;
 }
 
 interface ProfitabilitySummary {
   total_income: number;
   total_expenses: number;
+  total_office_expenses: number;
   total_profit: number;
   average_margin_pct: number;
   total_profit_per_day: number;
@@ -58,16 +68,6 @@ interface ProfitabilityResponse {
   summary: ProfitabilitySummary;
 }
 
-const STATUS_COLORS: Record<string, string> = {
-  Loading: "blue",
-  "In Transit": "processing",
-  "At Border": "orange",
-  Offloaded: "purple",
-  Returned: "cyan",
-  "Waiting for PODs": "gold",
-  Completed: "green",
-  Cancelled: "red",
-};
 
 export default function TripProfitabilityPage() {
   const router = useRouter();
@@ -78,8 +78,95 @@ export default function TripProfitabilityPage() {
   const [total, setTotal] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
-  const [sortBy, setSortBy] = useState<string>("margin");
-  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
+  const [sortBy, setSortBy] = useState<string>("trip_number");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+  const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
+
+  // Trip detail drawer
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [selectedTripId, setSelectedTripId] = useState<string | null>(null);
+
+  const openTripDrawer = (tripId: string) => {
+    setSelectedTripId(tripId);
+    setDrawerOpen(true);
+  };
+
+  // Currency display
+  const [displayCurrency, setDisplayCurrency] = useState<"TZS" | "USD">("TZS");
+  const [exchangeRate, setExchangeRate] = useState<number | null>(null);
+
+  // Fetch exchange rate mirroring the backend's get_current_exchange_rate fallback chain:
+  //   1. Current month/year exact match
+  //   2. Most recent rate overall (any month/year)
+  //   3. Hardcoded default 2500 (same as backend Decimal("2500.00"))
+  // This ensures the same rate is used for TZS→USD conversion as the backend used for
+  // USD→TZS normalization when building the profitability data.
+  useEffect(() => {
+    const now = new Date();
+    const month = now.getMonth() + 1;
+    const year = now.getFullYear();
+
+    const resolveRate = async (): Promise<number> => {
+      // Step 1: try current month (exact match + pre-month fallback from /current endpoint)
+      const r1 = await fetch(
+        `/api/v1/finance/exchange-rates/current?month=${month}&year=${year}`,
+        { credentials: "include" }
+      );
+      if (r1.ok) {
+        const d = await r1.json();
+        if (d?.rate && Number(d.rate) > 1) return Number(d.rate);
+      }
+
+      // Step 2: mirror backend "most recent overall" — fetch list sorted by year/month desc
+      const r2 = await fetch(
+        `/api/v1/finance/exchange-rates?limit=1`,
+        { credentials: "include" }
+      );
+      if (r2.ok) {
+        const d = await r2.json();
+        const first = d?.data?.[0];
+        if (first?.rate && Number(first.rate) > 1) return Number(first.rate);
+      }
+
+      // Step 3: backend hardcoded default
+      return 2500;
+    };
+
+    resolveRate()
+      .then(setExchangeRate)
+      .catch(() => setExchangeRate(2500));
+  }, []);
+
+  // Convert a TZS value to the selected display currency
+  const toDisplay = useCallback(
+    (val: number): number => {
+      if (displayCurrency === "USD" && exchangeRate && exchangeRate > 1) {
+        return val / exchangeRate;
+      }
+      return val;
+    },
+    [displayCurrency, exchangeRate]
+  );
+
+  // Format a display value with correct precision per currency
+  const fmt = useCallback(
+    (val: number): string => {
+      const converted = toDisplay(val);
+      if (displayCurrency === "USD") {
+        return converted.toLocaleString("en-US", {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        });
+      }
+      return converted.toLocaleString("en-US", { maximumFractionDigits: 0 });
+    },
+    [displayCurrency, toDisplay]
+  );
+
+  const cur = displayCurrency;
+  // exchangeRate is always resolved (min 2500) — warn only if using the hardcoded default
+  const usingDefaultRate = exchangeRate === 2500;
+  const noRate = false; // USD toggle always available — rate is always resolved
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -136,11 +223,11 @@ export default function TripProfitabilityPage() {
       title: "Trip #",
       dataIndex: "trip_number",
       key: "trip_number",
-      width: 130,
+      width: 120,
       render: (num: string, record) => (
         <a
-          onClick={() => router.push(`/ops/trips/${record.trip_id}`)}
-          style={{ fontWeight: 600, color: "#1890ff", cursor: "pointer" }}
+          onClick={() => openTripDrawer(record.trip_id)}
+          style={{ fontWeight: 600, color: "var(--color-gold)", cursor: "pointer" }}
         >
           {num}
         </a>
@@ -152,7 +239,8 @@ export default function TripProfitabilityPage() {
       title: "Route",
       dataIndex: "route_name",
       key: "route_name",
-      ellipsis: true,
+      width: 200,
+      ellipsis: { showTitle: true },
       ...getColumnSearchProps("route_name"),
     },
     {
@@ -160,76 +248,74 @@ export default function TripProfitabilityPage() {
       dataIndex: "client",
       key: "client",
       width: 150,
-      ellipsis: true,
+      ellipsis: { showTitle: true },
       ...getColumnSearchProps("client"),
     },
     {
       title: "Status",
       dataIndex: "status",
       key: "status",
-      width: 130,
-      render: (status: string) => (
-        <Tag color={STATUS_COLORS[status] || "default"}>{status}</Tag>
-      ),
+      width: 120,
+      render: (status: string) => <TripStatusTag status={status as TripStatus} />,
     },
     {
-      title: "Income (TZS)",
+      title: `Income (${cur})`,
       dataIndex: "income",
       key: "income",
-      width: 140,
+      width: 130,
       align: "right",
       render: (val: number) => (
-        <Text style={{ color: "#52c41a", fontWeight: 500 }}>
-          {val.toLocaleString("en-US")}
+        <Text style={{ color: "var(--color-green)", fontWeight: 500 }}>
+          {fmt(val)}
         </Text>
       ),
       sorter: true,
     },
     {
-      title: "Expenses (TZS)",
+      title: `Expenses (${cur})`,
       dataIndex: "expenses",
       key: "expenses",
-      width: 140,
+      width: 130,
       align: "right",
       render: (val: number) => (
-        <Text style={{ color: "#ff4d4f", fontWeight: 500 }}>
-          {val.toLocaleString("en-US")}
+        <Text style={{ color: "var(--color-red)", fontWeight: 500 }}>
+          {fmt(val)}
         </Text>
       ),
       sorter: true,
     },
     {
-      title: "Net Profit (TZS)",
+      title: `Net Profit (${cur})`,
       dataIndex: "net_profit",
       key: "net_profit",
-      width: 150,
+      width: 130,
       align: "right",
       render: (val: number) => (
         <Text
           style={{
-            color: val >= 0 ? "#52c41a" : "#ff4d4f",
+            color: val >= 0 ? "var(--color-green)" : "var(--color-red)",
             fontWeight: 600,
           }}
         >
           {val >= 0 ? "+" : ""}
-          {val.toLocaleString("en-US")}
+          {fmt(val)}
         </Text>
       ),
       sorter: true,
     },
     {
-      title: "Profit/Day (TZS)",
+      title: `Profit/Day (${cur})`,
       dataIndex: "profit_per_day",
       key: "profit_per_day",
-      width: 150,
+      width: 130,
       align: "right",
       render: (val: number) => (
         <Text
           style={{
-            color: val >= 0 ? "#52c41a" : "#ff4d4f",
+            color: val >= 0 ? "var(--color-green)" : "var(--color-red)",
           }}
         >
-          {val.toLocaleString("en-US")}
+          {fmt(val)}
         </Text>
       ),
       sorter: true,
@@ -238,10 +324,10 @@ export default function TripProfitabilityPage() {
       title: "Margin %",
       dataIndex: "margin_pct",
       key: "margin_pct",
-      width: 120,
+      width: 100,
       align: "right",
       render: (val: number) => {
-        const color = val >= 20 ? "#52c41a" : val >= 10 ? "#faad14" : "#ff4d4f";
+        const color = val >= 20 ? "var(--color-green)" : val >= 10 ? "var(--color-orange)" : "var(--color-red)";
         const icon =
           val >= 0 ? (
             <ArrowUpOutlined style={{ fontSize: 10 }} />
@@ -249,20 +335,41 @@ export default function TripProfitabilityPage() {
             <ArrowDownOutlined style={{ fontSize: 10 }} />
           );
         return (
-          <Tag
-            color={color}
+          <span
             style={{
+              display: "inline-block",
+              padding: "3px 10px",
+              borderRadius: 6,
+              fontSize: 11,
               fontWeight: 600,
+              color: color,
+              background: `color-mix(in srgb, ${color} 10%, transparent)`,
+              border: `1px solid color-mix(in srgb, ${color} 30%, transparent)`,
               minWidth: 70,
               textAlign: "center",
+              whiteSpace: "nowrap",
             }}
           >
             {icon} {val.toFixed(1)}%
-          </Tag>
+          </span>
         );
       },
       sorter: true,
-      defaultSortOrder: "ascend",
+
+    },
+    {
+      title: "Days",
+      dataIndex: "duration_days",
+      key: "duration_days",
+      width: 80,
+      align: "center" as const,
+      render: (val: number, record: TripProfitability) => (
+        <span style={{ whiteSpace: "nowrap" }}>
+          {record.return_duration_days > 0
+            ? `${val}d (+${record.return_duration_days}d)`
+            : `${val}d`}
+        </span>
+      ),
     },
     {
       title: "Actions",
@@ -275,7 +382,8 @@ export default function TripProfitabilityPage() {
           size="small"
           icon={<EyeOutlined />}
           title="View Trip Details"
-          onClick={() => router.push(`/ops/trips/${record.trip_id}`)}
+          aria-label="View Trip Details"
+          onClick={() => openTripDrawer(record.trip_id)}
         />
       ),
     },
@@ -284,45 +392,85 @@ export default function TripProfitabilityPage() {
   // Make columns resizable
   const { resizableColumns, components } = useResizableColumns(columns);
 
+  // Currency toggle buttons
+  const currencyToggle = (
+    <Space size={4}>
+      {(["TZS", "USD"] as const).map((c) => (
+        <Button
+          key={c}
+          size="small"
+          type={displayCurrency === c ? "primary" : "default"}
+          onClick={() => setDisplayCurrency(c)}
+        >
+          {c}
+        </Button>
+      ))}
+      {displayCurrency === "USD" && exchangeRate && (
+        <Text type="secondary" style={{ fontSize: 11 }}>
+          1 USD = {exchangeRate.toLocaleString("en-US")} TZS
+          {usingDefaultRate && (
+            <Tooltip title="No exchange rate found in Finance settings — using default rate of 2,500 TZS/USD. Set the current rate in Finance → Exchange Rates for accurate figures.">
+              <InfoCircleOutlined style={{ color: "var(--color-orange)", marginLeft: 4 }} />
+            </Tooltip>
+          )}
+        </Text>
+      )}
+    </Space>
+  );
+
   return (
     <div
       style={{
         minHeight: "100vh",
-        background: "#f0f2f5",
-        padding: "24px",
+        background: "var(--color-bg)",
+        padding: "var(--space-xl)",
       }}
     >
       {/* Summary Cards */}
       <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
-        <Col xs={24} sm={12} lg={5}>
+        <Col xs={24} sm={12} lg={4}>
           <Card>
             <Statistic
               title="Total Revenue"
-              value={summary?.total_income || 0}
-              prefix="TZS"
-              styles={{ content: { color: "#52c41a" } }}
+              value={toDisplay(summary?.total_income || 0)}
+              prefix={cur}
+              precision={displayCurrency === "USD" ? 2 : 0}
+              styles={{ content: { color: "var(--color-green)" } }}
             />
           </Card>
         </Col>
-        <Col xs={24} sm={12} lg={5}>
+        <Col xs={24} sm={12} lg={4}>
           <Card>
             <Statistic
-              title="Total Expenses"
-              value={summary?.total_expenses || 0}
-              prefix="TZS"
-              styles={{ content: { color: "#ff4d4f" } }}
+              title="Total Expense"
+              value={toDisplay((summary?.total_expenses || 0) + (summary?.total_office_expenses || 0))}
+              prefix={cur}
+              precision={displayCurrency === "USD" ? 2 : 0}
+              styles={{ content: { color: "var(--color-red)" } }}
             />
           </Card>
         </Col>
-        <Col xs={24} sm={12} lg={5}>
+        <Col xs={24} sm={12} lg={4}>
+          <Card>
+            <Statistic
+              title="Total Trip Expense"
+              value={toDisplay(summary?.total_expenses || 0)}
+              prefix={cur}
+              precision={displayCurrency === "USD" ? 2 : 0}
+              styles={{ content: { color: "var(--color-red)" } }}
+            />
+          </Card>
+        </Col>
+        <Col xs={24} sm={12} lg={4}>
           <Card>
             <Statistic
               title="Total Profit"
-              value={summary?.total_profit || 0}
-              prefix="TZS"
+              value={toDisplay(summary?.total_profit || 0)}
+              prefix={cur}
+              precision={displayCurrency === "USD" ? 2 : 0}
               styles={{
                 content: {
-                  color: (summary?.total_profit || 0) >= 0 ? "#52c41a" : "#ff4d4f",
+                  color: (summary?.total_profit || 0) >= 0 ? "var(--color-green)" : "var(--color-red)",
                 }
               }}
             />
@@ -339,10 +487,10 @@ export default function TripProfitabilityPage() {
                 content: {
                   color:
                     (summary?.average_margin_pct || 0) >= 20
-                      ? "#52c41a"
+                      ? "var(--color-green)"
                       : (summary?.average_margin_pct || 0) >= 10
-                      ? "#faad14"
-                      : "#ff4d4f",
+                      ? "var(--color-orange)"
+                      : "var(--color-red)",
                 }
               }}
             />
@@ -352,12 +500,12 @@ export default function TripProfitabilityPage() {
           <Card>
             <Statistic
               title="Daily Profit"
-              value={summary?.total_profit_per_day || 0}
-              prefix="TZS"
-              precision={0}
+              value={toDisplay(summary?.total_profit_per_day || 0)}
+              prefix={cur}
+              precision={displayCurrency === "USD" ? 2 : 0}
               styles={{
                 content: {
-                  color: (summary?.total_profit_per_day || 0) >= 0 ? "#52c41a" : "#ff4d4f",
+                  color: (summary?.total_profit_per_day || 0) >= 0 ? "var(--color-green)" : "var(--color-red)",
                 }
               }}
             />
@@ -387,6 +535,7 @@ export default function TripProfitabilityPage() {
               </Title>
             </Space>
             <Space>
+              {currencyToggle}
               <Button icon={<ReloadOutlined />} onClick={fetchData}>
                 Refresh
               </Button>
@@ -395,17 +544,27 @@ export default function TripProfitabilityPage() {
 
           <Text type="secondary">
             Shows all trips with waybills. Sort by Margin % to identify least
-            profitable trips. All values normalized to TZS.
+            profitable trips. Base values are in TZS
+            {displayCurrency === "USD" && exchangeRate
+              ? ` — converted at 1 USD = ${exchangeRate.toLocaleString("en-US")} TZS${usingDefaultRate ? " (default — set Finance exchange rate for accuracy)" : ""}`
+              : "."}
           </Text>
 
           <Table<TripProfitability>
+            className="profitability-table"
             columns={resizableColumns}
             components={components}
             dataSource={data}
             rowKey="trip_id"
+            rowSelection={getStandardRowSelection(
+              currentPage,
+              pageSize,
+              selectedRowKeys,
+              setSelectedRowKeys
+            )}
             loading={loading}
             sticky={{ offsetHeader: 64 }}
-            scroll={{ x: 1200 }}
+            scroll={{ x: "max-content" }}
             onChange={handleTableChange}
             pagination={{
               current: currentPage,
@@ -425,17 +584,28 @@ export default function TripProfitabilityPage() {
       </Card>
 
       <style jsx global>{`
+        .profitability-table .ant-table-cell {
+          white-space: nowrap !important;
+          overflow: hidden;
+        }
         .row-loss {
-          background-color: #fff1f0 !important;
+          background-color: color-mix(in srgb, var(--color-red) 10%, transparent) !important;
         }
         .row-low-margin {
-          background-color: #fffbe6 !important;
+          background-color: color-mix(in srgb, var(--color-orange) 10%, transparent) !important;
         }
         .row-loss:hover td,
         .row-low-margin:hover td {
           background: inherit !important;
         }
       `}</style>
+
+      <TripDetailDrawer
+        open={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        tripId={selectedTripId}
+        onEdit={(id) => router.push(`/ops/trips/${id}`)}
+      />
     </div>
   );
 }

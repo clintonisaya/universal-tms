@@ -7,7 +7,6 @@ import {
   Button,
   Card,
   Space,
-  Tag,
   Modal,
   Form,
   Input,
@@ -27,19 +26,13 @@ import {
   getStandardRowSelection,
   useResizableColumns,
 } from "@/components/ui/tableUtils";
+import { VehicleStatusTag } from "@/components/ui/VehicleStatusTag";
+import { EmptyState } from "@/components/ui";
+import { StatusBadge } from "@/components/ui/StatusBadge";
+import type { ColorKey } from "@/components/ui/StatusBadge";
 
 const { Title } = Typography;
 
-const STATUS_COLORS: Record<string, string> = {
-  Idle: "green",
-  Loading: "cyan",
-  "In Transit": "blue",
-  "At Border": "gold",
-  Offloaded: "purple",
-  Returned: "default",
-  "Waiting for PODs": "magenta",
-  Maintenance: "orange",
-};
 
 const STATUS_FILTERS = [
   { text: "Idle", value: "Idle" },
@@ -47,12 +40,12 @@ const STATUS_FILTERS = [
   { text: "Maintenance", value: "Maintenance" },
 ];
 
-const TYPE_COLORS: Record<TrailerType, string> = {
+const TYPE_COLORS: Record<TrailerType, ColorKey> = {
   Flatbed: "cyan",
-  Skeleton: "purple",
-  Box: "gold",
-  Tanker: "magenta",
-  Lowbed: "volcano",
+  Skeleton: "blue",
+  Box: "orange",
+  Tanker: "red",
+  Lowbed: "gray",
 };
 
 const TYPE_FILTERS = [
@@ -179,9 +172,7 @@ export default function TrailersPage() {
       key: "plate_number",
       width: 160,
       sorter: (a, b) => a.plate_number.localeCompare(b.plate_number),
-      render: (text: string) => (
-        <div style={{ fontWeight: 600 }}>{text}</div>
-      ),
+      render: (text: string) => text,
       ...getColumnSearchProps("plate_number"),
     },
     {
@@ -198,7 +189,7 @@ export default function TrailersPage() {
       key: "type",
       width: 100,
       render: (type: TrailerType) => (
-        <Tag color={TYPE_COLORS[type]}>{type}</Tag>
+        <StatusBadge status={type} colorKey={TYPE_COLORS[type]} />
       ),
       ...getColumnFilterProps("type", TYPE_FILTERS),
     },
@@ -207,9 +198,7 @@ export default function TrailersPage() {
       dataIndex: "status",
       key: "status",
       width: 100,
-      render: (status: string) => (
-        <Tag color={STATUS_COLORS[status] || "default"}>{status}</Tag>
-      ),
+      render: (status: string) => <VehicleStatusTag status={status} />,
       ...getColumnFilterProps("status", STATUS_FILTERS),
     },
     {
@@ -225,6 +214,7 @@ export default function TrailersPage() {
               size="small"
               icon={<EditOutlined />}
               onClick={() => openEditModal(record)}
+              aria-label={`Edit Trailer ${record.plate_number}`}
             />
             <Popconfirm
               title="Delete trailer"
@@ -234,7 +224,7 @@ export default function TrailersPage() {
               cancelText="No"
               okButtonProps={{ danger: true }}
             >
-              <Button type="text" danger icon={<DeleteOutlined />} size="small" />
+              <Button type="text" danger icon={<DeleteOutlined />} size="small" aria-label={`Delete Trailer ${record.plate_number}`} />
             </Popconfirm>
           </Space>
         </div>
@@ -249,8 +239,8 @@ export default function TrailersPage() {
     <div
       style={{
         minHeight: "100vh",
-        background: "#f0f2f5",
-        padding: "24px",
+        background: "var(--color-bg)",
+        padding: "var(--space-xl)",
       }}
     >
       <Card>
@@ -294,6 +284,8 @@ export default function TrailersPage() {
             rowKey="id"
             loading={isLoading}
             sticky={{ offsetHeader: 64 }}
+            scroll={{ x: "max-content" }}
+            locale={{ emptyText: <EmptyState message="No trailers registered yet." /> }}
             rowSelection={getStandardRowSelection(
               currentPage,
               pageSize,
@@ -320,6 +312,7 @@ export default function TrailersPage() {
       <Modal
         title="Register New Trailer"
         open={isCreateModalOpen}
+        width={660}
         onCancel={() => {
           setIsCreateModalOpen(false);
           createForm.resetFields();
@@ -399,6 +392,7 @@ export default function TrailersPage() {
       <Modal
         title="Edit Trailer"
         open={isEditModalOpen}
+        width={660}
         onCancel={() => {
           setIsEditModalOpen(false);
           setEditingTrailer(null);

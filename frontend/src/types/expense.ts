@@ -12,7 +12,8 @@ export type ExpenseStatus =
   | "Pending Finance"
   | "Paid"
   | "Rejected"
-  | "Returned";
+  | "Returned"
+  | "Voided";
 
 export type ExpenseCategory =
   | "Fuel"
@@ -61,9 +62,14 @@ export interface ExpenseRequest {
   paid_by_id?: string | null;
   approved_by_id?: string | null;
   approved_at?: string | null;
+  voided_by_id?: string | null;
+  voided_at?: string | null;
+  void_reason?: string | null;
+  returned_at?: string | null;
   expense_metadata?: ExpenseMetadata | null;
   attachments?: string[];
   created_by_id: string;
+  updated_by_id: string | null;
   created_at: string | null;
   updated_at: string | null;
 }
@@ -71,8 +77,10 @@ export interface ExpenseRequest {
 export interface ExpenseRequestDetailed extends ExpenseRequest {
   trip: Trip | null;
   created_by: UserSummary | null;
+  updated_by: UserSummary | null;
   paid_by: UserSummary | null;
   approved_by: UserSummary | null;
+  voided_by: UserSummary | null;
 }
 
 export interface ExpenseRequestCreate {

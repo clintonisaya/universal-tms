@@ -1,10 +1,11 @@
 import uuid
 from typing import Any
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 from sqlmodel import func, select
 
 from app.api.deps import CurrentUser, SessionDep
+from app.core.db import commit_or_rollback
 from app.api.routes.expenses import generate_expense_number
 from app.models import (
     MaintenanceEvent,
@@ -34,8 +35,8 @@ router = APIRouter(prefix="/maintenance", tags=["maintenance"])
 def read_maintenance_events(
     session: SessionDep,
     current_user: CurrentUser,
-    skip: int = 0,
-    limit: int = 100,
+    skip: int = Query(default=0, ge=0),
+    limit: int = Query(default=100, ge=1, le=500),
 ) -> Any:
     """
     Retrieve maintenance events.
@@ -129,7 +130,7 @@ def create_maintenance_event(
             session.add(trailer)
     
     # 4. Commit transaction
-    session.commit()
+    commit_or_rollback(session)
     session.refresh(event)
     return event
 
@@ -171,16 +172,16 @@ def update_maintenance_event(
 
     event.sqlmodel_update(update_dict)
     session.add(event)
-    session.commit()
+    commit_or_rollback(session)
     session.refresh(event)
     return event
 
-@router.delete("/{id}")
+@router.delete("/{id}", status_code=204)
 def delete_maintenance_event(
     session: SessionDep,
     current_user: CurrentUser,
     id: uuid.UUID,
-) -> Message:
+) -> None:
     """
     Delete a maintenance event.
     Also deletes the associated ExpenseRequest.
@@ -192,13 +193,21 @@ def delete_maintenance_event(
     event = session.get(MaintenanceEvent, id)
     if not event:
         raise HTTPException(status_code=404, detail="Maintenance event not found")
-    
-    # Get associated expense to delete
-    expense = session.get(ExpenseRequest, event.expense_id)
-    
+
+    # AC-4: Block deletion if the linked expense has already been paid
+    expense = session.get(ExpenseRequest, event.expense_id) if event.expense_id else None
+    if expense and expense.status == ExpenseStatus.paid:
+        raise HTTPException(
+            status_code=409,
+            detail="Cannot delete — the linked expense has already been paid. Void the expense first.",
+        )
+
     session.delete(event)
-    if expense:
+
+    # Also delete expense if no money has moved (Pending Manager / Pending Finance).
+    # Rejected / Returned / Voided expenses are left as orphaned historical records.
+    deletable_statuses = {ExpenseStatus.pending_manager, ExpenseStatus.pending_finance}
+    if expense and expense.status in deletable_statuses:
         session.delete(expense)
-        
-    session.commit()
-    return Message(message="Maintenance event deleted successfully")
+
+    commit_or_rollback(session)

@@ -7,7 +7,6 @@ import {
   Button,
   Space,
   Tabs,
-  Tag,
   Descriptions,
   Table,
   message,
@@ -16,15 +15,27 @@ import {
   Popconfirm,
   Alert,
   Tooltip,
+  Upload,
+  Breadcrumb,
+  Timeline,
 } from "antd";
+import type { UploadFile } from "antd";
+import Link from "next/link";
 import {
   ArrowLeftOutlined,
   PlusOutlined,
   ReloadOutlined,
   DeleteOutlined,
+  UploadOutlined,
+  DownloadOutlined,
+  PaperClipOutlined,
+  EditOutlined,
 } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
+import { getStandardRowSelection } from "@/components/ui/tableUtils";
 import type { TripDetailed, TripStatus } from "@/types/trip";
+import { RETURN_DIRECTION_STATUSES, STATUS_ORDER } from "@/constants/tripStatuses";
+import type { Waybill } from "@/types/waybill";
 import type {
   ExpenseRequest,
   ExpenseRequestCreate,
@@ -34,36 +45,11 @@ import type {
 import { useAuth } from "@/contexts/AuthContext";
 import { AddExpenseModal } from "@/components/expenses/AddExpenseModal";
 import { UpdateTripStatusModal } from "@/components/trips/UpdateTripStatusModal";
+import { ExpenseStatusBadge } from "@/components/expenses/ExpenseStatusBadge";
+import { TripStatusTag } from "@/components/ui/TripStatusTag";
 
 const { Title, Text } = Typography;
 
-const TRIP_STATUS_COLORS: Record<TripStatus, string> = {
-  Waiting: "default",
-  Dispatch: "purple",
-  "Wait to Load": "lime",
-  Loading: "gold",
-  "In Transit": "blue",
-  "At Border": "purple",
-  Offloading: "cyan",
-  "Dispatch (Return)": "purple",
-  "Wait to Load (Return)": "lime",
-  "Loading (Return)": "gold",
-  "In Transit (Return)": "blue",
-  "At Border (Return)": "purple",
-  "Offloading (Return)": "cyan",
-  Returned: "geekblue",
-  "Waiting for PODs": "orange",
-  Completed: "green",
-  Cancelled: "red",
-};
-
-const EXPENSE_STATUS_COLORS: Record<ExpenseStatus, string> = {
-  "Pending Manager": "gold",
-  "Pending Finance": "blue",
-  Paid: "green",
-  Rejected: "red",
-  Returned: "orange",
-};
 
 export default function TripDetailPage() {
   const router = useRouter();
@@ -71,12 +57,24 @@ export default function TripDetailPage() {
   const tripId = params.id as string;
   const { user } = useAuth();
 
+  interface TripAttachment { key: string; filename: string; url: string; }
+
   const [trip, setTrip] = useState<TripDetailed | null>(null);
   const [expenses, setExpenses] = useState<ExpenseRequest[]>([]);
+  const [returnWaybill, setReturnWaybill] = useState<Waybill | null>(null);
+  const [exchangeRate, setExchangeRate] = useState<number>(2500);
+  const [displayCurrency, setDisplayCurrency] = useState<"TZS" | "USD">("TZS");
   const [loading, setLoading] = useState(true);
   const [expensesLoading, setExpensesLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isStatusModalOpen, setIsStatusModalOpen] = useState(false);
+  const [expenseRowKeys, setExpenseRowKeys] = useState<React.Key[]>([]);
+
+  // Attachments
+  const [tripAttachments, setTripAttachments] = useState<TripAttachment[]>([]);
+  const [attachmentsLoading, setAttachmentsLoading] = useState(false);
+  const [uploadingAttachment, setUploadingAttachment] = useState(false);
+  const [deletingAttachmentKey, setDeletingAttachmentKey] = useState<string | null>(null);
 
   const fetchTrip = useCallback(async () => {
     setLoading(true);
@@ -123,12 +121,97 @@ export default function TripDetailPage() {
     }
   }, [tripId, router]);
 
+  // Fetch return waybill whenever trip loads and has one
+  useEffect(() => {
+    if (!trip?.return_waybill_id) { setReturnWaybill(null); return; }
+    fetch(`/api/v1/waybills/${trip.return_waybill_id}`, { credentials: "include" })
+      .then((r) => r.ok ? r.json() : null)
+      .then((d) => setReturnWaybill(d))
+      .catch(() => {});
+  }, [trip?.return_waybill_id]);
+
+  const fetchTripAttachments = useCallback(async () => {
+    setAttachmentsLoading(true);
+    try {
+      const res = await fetch(`/api/v1/trips/${tripId}/attachments`, { credentials: "include" });
+      if (res.ok) setTripAttachments(await res.json());
+    } catch { /* silently fail */ } finally {
+      setAttachmentsLoading(false);
+    }
+  }, [tripId]);
+
+  const handleUploadAttachment = async (file: UploadFile) => {
+    const fileToUpload = (file.originFileObj || file) as File;
+    if (!fileToUpload) return false;
+    setUploadingAttachment(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", fileToUpload);
+      const res = await fetch(`/api/v1/trips/${tripId}/attachment`, {
+        method: "POST",
+        credentials: "include",
+        body: formData,
+      });
+      if (res.ok) {
+        message.success("Attachment uploaded");
+        fetchTripAttachments();
+        fetchTrip();
+      } else {
+        const err = await res.json();
+        message.error(err.detail || "Upload failed");
+      }
+    } catch {
+      message.error("Network error");
+    } finally {
+      setUploadingAttachment(false);
+    }
+    return false;
+  };
+
+  const handleDeleteAttachment = async (key: string) => {
+    setDeletingAttachmentKey(key);
+    try {
+      const res = await fetch(
+        `/api/v1/trips/${tripId}/attachment?key=${encodeURIComponent(key)}`,
+        { method: "DELETE", credentials: "include" }
+      );
+      if (res.ok) {
+        message.success("Attachment removed");
+        setTripAttachments((prev) => prev.filter((a) => a.key !== key));
+        fetchTrip();
+      } else {
+        const err = await res.json();
+        message.error(err.detail || "Delete failed");
+      }
+    } catch {
+      message.error("Network error");
+    } finally {
+      setDeletingAttachmentKey(null);
+    }
+  };
+
+  // Resolve exchange rate — mirrors backend fallback: current month → most recent → 2500
+  useEffect(() => {
+    const now = new Date();
+    const month = now.getMonth() + 1;
+    const year = now.getFullYear();
+    const resolve = async () => {
+      const r1 = await fetch(`/api/v1/finance/exchange-rates/current?month=${month}&year=${year}`, { credentials: "include" });
+      if (r1.ok) { const d = await r1.json(); if (d?.rate && Number(d.rate) > 1) return Number(d.rate); }
+      const r2 = await fetch(`/api/v1/finance/exchange-rates?limit=1`, { credentials: "include" });
+      if (r2.ok) { const d = await r2.json(); const first = d?.data?.[0]; if (first?.rate && Number(first.rate) > 1) return Number(first.rate); }
+      return 2500;
+    };
+    resolve().then(setExchangeRate).catch(() => setExchangeRate(2500));
+  }, []);
+
   useEffect(() => {
     if (user && tripId) {
       fetchTrip();
       fetchExpenses();
+      fetchTripAttachments();
     }
-  }, [user, tripId, fetchTrip, fetchExpenses]);
+  }, [user, tripId, fetchTrip, fetchExpenses, fetchTripAttachments]);
 
   const handleDeleteExpense = async (expense: ExpenseRequest) => {
     try {
@@ -178,9 +261,7 @@ export default function TripDetailPage() {
       title: "Status",
       dataIndex: "status",
       key: "status",
-      render: (status: ExpenseStatus) => (
-        <Tag color={EXPENSE_STATUS_COLORS[status]}>{status}</Tag>
-      ),
+      render: (status: ExpenseStatus) => <ExpenseStatusBadge status={status} compact />,
     },
     {
       title: "Created",
@@ -210,7 +291,43 @@ export default function TripDetailPage() {
     },
   ];
 
-  const totalExpenses = expenses.reduce((sum, e) => sum + e.amount, 0);
+  // Fix: use Number() to guard against string amounts from API
+  const countableExpenses = expenses.filter(
+    (e) => e.status !== "Voided" && e.status !== "Rejected" && e.status !== "Returned"
+  );
+  const totalExpenses = countableExpenses.reduce((sum, e) => sum + Number(e.amount), 0);
+
+  // Convert a value to displayCurrency using exchange rate
+  const toDisplay = (amount: number, currency: string): number => {
+    if (displayCurrency === currency) return amount;
+    if (displayCurrency === "TZS" && currency === "USD") return amount * exchangeRate;
+    if (displayCurrency === "USD" && currency === "TZS") return amount / exchangeRate;
+    return amount;
+  };
+
+  const fmt = (amount: number, currency: string) => {
+    const val = toDisplay(amount, currency);
+    return `${displayCurrency} ${val.toLocaleString("en-US", {
+      minimumFractionDigits: displayCurrency === "USD" ? 2 : 0,
+      maximumFractionDigits: displayCurrency === "USD" ? 2 : 0,
+    })}`;
+  };
+
+  // Combined income: go waybill + return waybill (if present), converted to displayCurrency
+  const goIncomeTZS = trip?.waybill_rate
+    ? toDisplay(Number(trip.waybill_rate), trip.waybill_currency || "USD")
+    : null;
+  const returnIncomeTZS = returnWaybill
+    ? toDisplay(Number(returnWaybill.agreed_rate), returnWaybill.currency || "USD")
+    : null;
+  const combinedIncome = (goIncomeTZS ?? 0) + (returnIncomeTZS ?? 0);
+
+  // Also convert total expenses to display currency (expenses are stored in their own currency)
+  const totalExpensesDisplay = countableExpenses.reduce((sum, e) => {
+    return sum + toDisplay(Number(e.amount), e.currency || "TZS");
+  }, 0);
+
+  const hasIncome = goIncomeTZS !== null || returnIncomeTZS !== null;
 
   if (loading) {
     return (
@@ -231,12 +348,65 @@ export default function TripDetailPage() {
     return null;
   }
 
+  const effectiveRoute =
+    new Set(RETURN_DIRECTION_STATUSES).has(trip.status) && trip.return_route_name
+      ? trip.return_route_name
+      : trip.route_name;
+
+  // Status color by category for Timeline dot
+  const getStatusColor = (status: TripStatus): string => {
+    if (status === "Completed") return "green";
+    if (status === "Cancelled") return "red";
+    if (status === "Breakdown") return "orange";
+    if (status === "Arrived at Yard" || status === "Waiting for PODs") return "cyan";
+    if (status.includes("(Return)")) return "purple";
+    return "blue"; // go leg
+  };
+
+  // Date associated with each status (operational date ops recorded)
+  const dateOfStatus = (status: TripStatus): string | null => {
+    switch (status) {
+      case "Waiting": return trip.created_at;
+      case "Dispatched": return trip.dispatch_date;
+      case "Arrived at Loading Point": return trip.arrival_loading_date;
+      case "Loading": case "Loaded": return trip.loading_end_date;
+      case "Arrived at Destination": return trip.arrival_offloading_date;
+      case "Offloading": case "Offloaded": return trip.offloading_date;
+      case "Returning Empty": case "Arrived at Yard": return trip.arrival_return_date;
+      case "Dispatched (Return)": return trip.dispatch_return_date;
+      case "Arrived at Loading Point (Return)": return trip.arrival_loading_return_date;
+      case "Loading (Return)": case "Loaded (Return)": return trip.loading_return_end_date;
+      case "Arrived at Destination (Return)": return trip.arrival_destination_return_date;
+      case "Offloading (Return)": case "Offloaded (Return)": return trip.offloading_return_date;
+      case "Completed": return trip.end_date;
+      default: return null; // pure workflow checkpoint — no date recorded
+    }
+  };
+
+  const historyItems = (() => {
+    const currentIdx = STATUS_ORDER.indexOf(trip.status);
+    const ordered = STATUS_ORDER.slice(0, currentIdx + 1);
+    // Newest-first (AC-5)
+    return [...ordered].reverse().map((status) => {
+      const date = dateOfStatus(status);
+      const isCurrent = status === trip.status;
+      const dateLabel = date
+        ? new Date(date).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })
+        : null;
+      // Extra info for Loading start date
+      const extra = status === "Loading" && trip.loading_start_date
+        ? `Start: ${new Date(trip.loading_start_date).toLocaleDateString("en-GB")}`
+        : null;
+      return { status, date, dateLabel, extra, isCurrent };
+    });
+  })();
+
   return (
     <div
       style={{
         minHeight: "100vh",
-        background: "#f0f2f5",
-        padding: "24px",
+        background: "var(--color-bg)",
+        padding: "var(--space-xl)",
       }}
     >
       <Card>
@@ -256,17 +426,25 @@ export default function TripDetailPage() {
                 Back
               </Button>
               <Title level={2} style={{ margin: 0 }}>
-                Trip: {trip.route_name}
+                Trip: {effectiveRoute}
               </Title>
-              <Tag color={TRIP_STATUS_COLORS[trip.status]}>{trip.status}</Tag>
-              <Button 
-                type="link" 
+              <TripStatusTag status={trip.status} isDelayed={trip.is_delayed} />
+              <Button
+                type="link"
                 onClick={() => setIsStatusModalOpen(true)}
               >
                 Update Status
               </Button>
             </Space>
           </div>
+
+          <Breadcrumb
+            style={{ marginBottom: 4 }}
+            items={[
+              { title: <Link href="/ops/trips">Trips</Link> },
+              { title: effectiveRoute },
+            ]}
+          />
 
           <Tabs
             defaultActiveKey="details"
@@ -277,12 +455,10 @@ export default function TripDetailPage() {
                 children: (
                   <Descriptions bordered column={2}>
                     <Descriptions.Item label="Route">
-                      {trip.route_name}
+                      {effectiveRoute}
                     </Descriptions.Item>
                     <Descriptions.Item label="Status">
-                      <Tag color={TRIP_STATUS_COLORS[trip.status]}>
-                        {trip.status}
-                      </Tag>
+                      <TripStatusTag status={trip.status} isDelayed={trip.is_delayed} />
                     </Descriptions.Item>
                     <Descriptions.Item label="Detailed Status/Location">
                       {trip.current_location || "-"}
@@ -315,6 +491,25 @@ export default function TripDetailPage() {
                         ? new Date(trip.created_at).toLocaleDateString()
                         : "-"}
                     </Descriptions.Item>
+                    {/* Story 6.13: Audit trail */}
+                    <Descriptions.Item label="Created By">
+                      {trip.created_by?.full_name || trip.created_by?.username || "-"}
+                    </Descriptions.Item>
+                    {trip.updated_by && (
+                      <Descriptions.Item label="Last Updated By">
+                        {trip.updated_by.full_name || trip.updated_by.username}
+                      </Descriptions.Item>
+                    )}
+                    {/* Story 6.9: Remarks — hidden when empty */}
+                    {trip.remarks && (
+                      <Descriptions.Item label="Remarks" span={2}>
+                        <Text style={{ whiteSpace: "pre-wrap" }}>{trip.remarks}</Text>
+                        <EditOutlined
+                          style={{ marginLeft: 8, cursor: "pointer", color: "var(--color-gold)" }}
+                          onClick={() => setIsStatusModalOpen(true)}
+                        />
+                      </Descriptions.Item>
+                    )}
                   </Descriptions>
                 ),
               },
@@ -331,6 +526,88 @@ export default function TripDetailPage() {
                         showIcon
                       />
                     )}
+
+                    {/* ── Currency toggle ── */}
+                    <div style={{ display: "flex", justifyContent: "flex-end" }}>
+                      <Space size={4}>
+                        <Text type="secondary">View in:</Text>
+                        {(["TZS", "USD"] as const).map((c) => (
+                          <Button
+                            key={c}
+                            size="small"
+                            type={displayCurrency === c ? "primary" : "default"}
+                            onClick={() => setDisplayCurrency(c)}
+                          >
+                            {c}
+                          </Button>
+                        ))}
+                        {displayCurrency === "USD" && (
+                          <Text type="secondary" style={{ fontSize: 11 }}>
+                            1 USD = {exchangeRate.toLocaleString("en-US")} TZS
+                          </Text>
+                        )}
+                      </Space>
+                    </div>
+
+                    {/* ── Income summary ── */}
+                    {hasIncome && (
+                      <Descriptions
+                        bordered
+                        size="small"
+                        column={1}
+                        title={<Text strong>Trip Income</Text>}
+                      >
+                        {trip.waybill_rate && (
+                          <Descriptions.Item
+                            label={
+                              <Space>
+                                <span>Go Waybill</span>
+                                {trip.waybill_currency && trip.waybill_currency !== "TZS" && (
+                                  <Text type="secondary" style={{ fontSize: 11 }}>
+                                    ({trip.waybill_currency} {Number(trip.waybill_rate).toLocaleString("en-US")})
+                                  </Text>
+                                )}
+                              </Space>
+                            }
+                          >
+                            <Text style={{ color: "var(--color-green)", fontWeight: 500 }}>
+                              {fmt(Number(trip.waybill_rate), trip.waybill_currency || "USD")}
+                            </Text>
+                          </Descriptions.Item>
+                        )}
+                        {returnWaybill && (
+                          <Descriptions.Item
+                            label={
+                              <Space>
+                                <span>Return Waybill</span>
+                                {returnWaybill.currency && returnWaybill.currency !== "TZS" && (
+                                  <Text type="secondary" style={{ fontSize: 11 }}>
+                                    ({returnWaybill.currency} {Number(returnWaybill.agreed_rate).toLocaleString("en-US")})
+                                  </Text>
+                                )}
+                              </Space>
+                            }
+                          >
+                            <Text style={{ color: "var(--color-green)", fontWeight: 500 }}>
+                              {fmt(Number(returnWaybill.agreed_rate), returnWaybill.currency || "USD")}
+                            </Text>
+                          </Descriptions.Item>
+                        )}
+                        {returnWaybill && (
+                          <Descriptions.Item label={<Text strong>Combined Income</Text>}>
+                            <Text strong style={{ color: "var(--color-green)", fontSize: "var(--font-lg)" }}>
+                              {displayCurrency}{" "}
+                              {combinedIncome.toLocaleString("en-US", {
+                                minimumFractionDigits: displayCurrency === "USD" ? 2 : 0,
+                                maximumFractionDigits: displayCurrency === "USD" ? 2 : 0,
+                              })}
+                            </Text>
+                          </Descriptions.Item>
+                        )}
+                      </Descriptions>
+                    )}
+
+                    {/* ── Expense list header ── */}
                     <div
                       style={{
                         display: "flex",
@@ -338,17 +615,39 @@ export default function TripDetailPage() {
                         alignItems: "center",
                       }}
                     >
-                      <Space>
+                      <Space align="center" wrap>
                         <Text strong>Total Expenses:</Text>
-                        <Text>
-                          TZS {Number(totalExpenses).toLocaleString("en-US")}
+                        <Text strong style={{ color: "var(--color-red)" }}>
+                          {displayCurrency}{" "}
+                          {totalExpensesDisplay.toLocaleString("en-US", {
+                            minimumFractionDigits: displayCurrency === "USD" ? 2 : 0,
+                            maximumFractionDigits: displayCurrency === "USD" ? 2 : 0,
+                          })}
                         </Text>
+                        <Text type="secondary" style={{ fontSize: 11 }}>(excl. Voided, Rejected & Returned)</Text>
+                        {hasIncome && (
+                          <>
+                            <Text type="secondary" style={{ fontSize: "var(--font-sm)", margin: "0 4px" }}>|</Text>
+                            <Text strong>Net Profit:</Text>
+                            <Text
+                              strong
+                              style={{
+                                color: (combinedIncome - totalExpensesDisplay) >= 0 ? "var(--color-green)" : "var(--color-red)",
+                                fontSize: "var(--font-lg)",
+                              }}
+                            >
+                              {(combinedIncome - totalExpensesDisplay) >= 0 ? "+" : ""}
+                              {displayCurrency}{" "}
+                              {(combinedIncome - totalExpensesDisplay).toLocaleString("en-US", {
+                                minimumFractionDigits: displayCurrency === "USD" ? 2 : 0,
+                                maximumFractionDigits: displayCurrency === "USD" ? 2 : 0,
+                              })}
+                            </Text>
+                          </>
+                        )}
                       </Space>
                       <Space>
-                        <Button
-                          icon={<ReloadOutlined />}
-                          onClick={fetchExpenses}
-                        >
+                        <Button icon={<ReloadOutlined />} onClick={fetchExpenses}>
                           Refresh
                         </Button>
                         <Tooltip
@@ -370,11 +669,173 @@ export default function TripDetailPage() {
                       columns={expenseColumns}
                       dataSource={expenses}
                       rowKey="id"
+                      rowSelection={getStandardRowSelection(
+                        1,
+                        expenses.length || 1,
+                        expenseRowKeys,
+                        setExpenseRowKeys
+                      )}
                       loading={expensesLoading}
                       sticky
+                      scroll={{ x: "max-content" }}
                       pagination={false}
                       size="small"
                     />
+                  </Space>
+                ),
+              },
+              {
+                key: "status-history",
+                label: `Status History (${historyItems.length})`,
+                children: (
+                  <Timeline
+                    mode="left"
+                    style={{ paddingTop: 8, maxWidth: 560 }}
+                    items={historyItems.map(({ status, date, dateLabel, extra, isCurrent }) => ({
+                      color: getStatusColor(status as TripStatus),
+                      label: dateLabel ? (
+                        <Text type="secondary">
+                          {dateLabel}
+                          {extra && <><br /><Text type="secondary" style={{ fontSize: 11 }}>{extra}</Text></>}
+                        </Text>
+                      ) : (
+                        <Tooltip title="This status does not record a date.">
+                          <Text type="secondary">—</Text>
+                        </Tooltip>
+                      ),
+                      children: (
+                        <Text strong={isCurrent} style={{ fontSize: "var(--font-sm)" }}>
+                          {status}
+                          {isCurrent && trip.updated_by && (
+                            <Text type="secondary" style={{ fontSize: 11, marginLeft: 8 }}>
+                              by {trip.updated_by.full_name || trip.updated_by.username}
+                            </Text>
+                          )}
+                        </Text>
+                      ),
+                    }))}
+                  />
+                ),
+              },
+              {
+                key: "attachments",
+                label: (
+                  <Space size={4}>
+                    <PaperClipOutlined />
+                    {`Attachments${tripAttachments.length > 0 ? ` (${tripAttachments.length})` : ""}`}
+                  </Space>
+                ),
+                children: (
+                  <Space direction="vertical" size="middle" style={{ width: "100%" }}>
+                    {isTripClosed && (
+                      <Alert
+                        type="info"
+                        showIcon
+                        message="Trip Closed"
+                        description="This trip is closed. Attachments are read-only."
+                        style={{ marginBottom: 4 }}
+                      />
+                    )}
+
+                    {!isTripClosed && (
+                      <Upload
+                        accept=".pdf,.jpg,.jpeg,.png,.webp,.gif,.doc,.docx,.xls,.xlsx"
+                        beforeUpload={(file) => {
+                          const maxSize = 5 * 1024 * 1024;
+                          if (file.size > maxSize) {
+                            message.error(`${file.name} exceeds 5 MB limit`);
+                            return Upload.LIST_IGNORE;
+                          }
+                          const allowed = [
+                            "application/pdf",
+                            "image/jpeg", "image/png", "image/webp", "image/gif",
+                            "application/msword",
+                            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                            "application/vnd.ms-excel",
+                            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                          ];
+                          if (!allowed.includes(file.type)) {
+                            message.error(`${file.name}: unsupported file type. Use PDF, images, Word, or Excel.`);
+                            return Upload.LIST_IGNORE;
+                          }
+                          handleUploadAttachment(file as unknown as UploadFile);
+                          return false;
+                        }}
+                        showUploadList={false}
+                        disabled={uploadingAttachment}
+                      >
+                        <Button icon={<UploadOutlined />} loading={uploadingAttachment}>
+                          Upload Document
+                        </Button>
+                      </Upload>
+                    )}
+                    {!isTripClosed && (
+                      <Text type="secondary" style={{ fontSize: 11 }}>
+                        Accepted: PDF, JPEG, PNG, WebP, GIF, Word (.doc/.docx), Excel (.xls/.xlsx) · Max 5 MB per file
+                      </Text>
+                    )}
+
+                    {attachmentsLoading ? (
+                      <div style={{ textAlign: "center", padding: 24 }}>
+                        <Spin />
+                      </div>
+                    ) : tripAttachments.length === 0 ? (
+                      <Text type="secondary">No attachments uploaded yet.</Text>
+                    ) : (
+                      <Table
+                        size="small"
+                        dataSource={tripAttachments}
+                        rowKey="key"
+                        scroll={{ x: "max-content" }}
+                        pagination={false}
+                        columns={[
+                          {
+                            title: "File",
+                            dataIndex: "filename",
+                            key: "filename",
+                            render: (name: string, rec: TripAttachment) => (
+                              <a href={rec.url} target="_blank" rel="noreferrer">
+                                <Space size={4}>
+                                  <PaperClipOutlined />
+                                  {name}
+                                </Space>
+                              </a>
+                            ),
+                          },
+                          {
+                            title: "",
+                            key: "actions",
+                            width: 80,
+                            align: "right" as const,
+                            render: (_: unknown, rec: TripAttachment) => (
+                              <Space>
+                                <Tooltip title="Download">
+                                  <Button
+                                    type="text"
+                                    size="small"
+                                    icon={<DownloadOutlined />}
+                                    href={rec.url}
+                                    target="_blank"
+                                  />
+                                </Tooltip>
+                                {!isTripClosed && (
+                                  <Tooltip title="Delete">
+                                    <Button
+                                      type="text"
+                                      size="small"
+                                      danger
+                                      icon={<DeleteOutlined />}
+                                      loading={deletingAttachmentKey === rec.key}
+                                      onClick={() => handleDeleteAttachment(rec.key)}
+                                    />
+                                  </Tooltip>
+                                )}
+                              </Space>
+                            ),
+                          },
+                        ]}
+                      />
+                    )}
                   </Space>
                 ),
               },
@@ -402,6 +863,7 @@ export default function TripDetailPage() {
           status: trip.status,
           current_location: trip.current_location,
           return_waybill_id: trip.return_waybill_id,
+          is_delayed: trip.is_delayed,
         }}
       />
     </div>

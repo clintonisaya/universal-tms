@@ -6,10 +6,11 @@ import re
 import uuid
 from typing import Any
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 from sqlmodel import func, select
 
 from app.api.deps import CurrentUser, SessionDep
+from app.core.db import commit_or_rollback
 from app.models import (
     Message,
     Trailer,
@@ -55,8 +56,8 @@ def format_plate_number(plate: str) -> str:
 def read_trailers(
     session: SessionDep,
     current_user: CurrentUser,
-    skip: int = 0,
-    limit: int = 100,
+    skip: int = Query(default=0, ge=0),
+    limit: int = Query(default=100, ge=1, le=500),
 ) -> Any:
     """
     Retrieve all trailers.
@@ -102,21 +103,23 @@ def create_trailer(
     # Normalize for comparison
     normalized_plate = normalize_for_comparison(trailer_in.plate_number)
 
-    # Check for duplicate - compare normalized versions
-    existing_trailers = session.exec(select(Trailer)).all()
-    for trailer in existing_trailers:
-        if normalize_for_comparison(trailer.plate_number) == normalized_plate:
-            raise HTTPException(
-                status_code=400,
-                detail="Trailer with this plate already exists",
-            )
+    # Check for duplicate - compare normalized versions (DB-filtered query)
+    normalized_col = func.upper(func.replace(Trailer.plate_number, ' ', ''))
+    existing_trailer = session.exec(
+        select(Trailer).where(normalized_col == normalized_plate)
+    ).first()
+    if existing_trailer:
+        raise HTTPException(
+            status_code=400,
+            detail="Trailer with this plate already exists",
+        )
 
     # Create trailer with formatted plate number
     trailer_data = trailer_in.model_dump()
     trailer_data["plate_number"] = formatted_plate
     trailer = Trailer.model_validate(trailer_data)
     session.add(trailer)
-    session.commit()
+    commit_or_rollback(session)
     session.refresh(trailer)
     return trailer
 
@@ -147,28 +150,33 @@ def update_trailer(
 
         # Only check duplicates if the plate is actually changing
         if normalized_new != normalized_current:
-            existing_trailers = session.exec(select(Trailer)).all()
-            for existing in existing_trailers:
-                if existing.id != trailer.id and normalize_for_comparison(existing.plate_number) == normalized_new:
-                    raise HTTPException(
-                        status_code=400,
-                        detail="Trailer with this plate already exists",
-                    )
+            normalized_col = func.upper(func.replace(Trailer.plate_number, ' ', ''))
+            existing_trailer = session.exec(
+                select(Trailer).where(
+                    normalized_col == normalized_new,
+                    Trailer.id != trailer.id,
+                )
+            ).first()
+            if existing_trailer:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Trailer with this plate already exists",
+                )
         update_dict["plate_number"] = formatted_plate
 
     trailer.sqlmodel_update(update_dict)
     session.add(trailer)
-    session.commit()
+    commit_or_rollback(session)
     session.refresh(trailer)
     return trailer
 
 
-@router.delete("/{id}")
+@router.delete("/{id}", status_code=204)
 def delete_trailer(
     session: SessionDep,
     current_user: CurrentUser,
     id: uuid.UUID,
-) -> Message:
+) -> None:
     """
     Delete a trailer.
     """
@@ -176,5 +184,4 @@ def delete_trailer(
     if not trailer:
         raise HTTPException(status_code=404, detail="Trailer not found")
     session.delete(trailer)
-    session.commit()
-    return Message(message="Trailer deleted successfully")
+    commit_or_rollback(session)

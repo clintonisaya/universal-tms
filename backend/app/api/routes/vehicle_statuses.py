@@ -5,10 +5,11 @@ CRUD endpoints for vehicle status management.
 import uuid
 from typing import Any
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 from sqlmodel import func, select
 
 from app.api.deps import CurrentUser, SessionDep
+from app.core.db import commit_or_rollback
 from app.models import (
     Message,
     VehicleStatus,
@@ -25,8 +26,8 @@ router = APIRouter(prefix="/vehicle-statuses", tags=["vehicle-statuses"])
 def read_vehicle_statuses(
     session: SessionDep,
     current_user: CurrentUser,
-    skip: int = 0,
-    limit: int = 100,
+    skip: int = Query(default=0, ge=0),
+    limit: int = Query(default=100, ge=1, le=500),
     active_only: bool = False,
 ) -> Any:
     """Retrieve all vehicle statuses. Optionally filter by active only."""
@@ -81,7 +82,7 @@ def create_vehicle_status(
 
     status = VehicleStatus.model_validate(status_in)
     session.add(status)
-    session.commit()
+    commit_or_rollback(session)
     session.refresh(status)
     return status
 
@@ -115,21 +116,20 @@ def update_vehicle_status(
 
     status.sqlmodel_update(update_dict)
     session.add(status)
-    session.commit()
+    commit_or_rollback(session)
     session.refresh(status)
     return status
 
 
-@router.delete("/{id}")
+@router.delete("/{id}", status_code=204)
 def delete_vehicle_status(
     session: SessionDep,
     current_user: CurrentUser,
     id: uuid.UUID,
-) -> Message:
+) -> None:
     """Delete a vehicle status."""
     status = session.get(VehicleStatus, id)
     if not status:
         raise HTTPException(status_code=404, detail="Vehicle status not found")
     session.delete(status)
-    session.commit()
-    return Message(message="Vehicle status deleted successfully")
+    commit_or_rollback(session)

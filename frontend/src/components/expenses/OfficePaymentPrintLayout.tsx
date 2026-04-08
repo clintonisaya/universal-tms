@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Modal, Button, Spin, message } from "antd";
 import { PrinterOutlined } from "@ant-design/icons";
 import type { ExpenseRequestDetailed } from "@/types/expense";
+import { sanitizeHtml } from "@/lib/sanitize";
 
 interface OfficePaymentPrintLayoutProps {
   open: boolean;
@@ -247,7 +248,7 @@ export function OfficePaymentPrintLayout({
           </style>
         </head>
         <body>
-          ${printContent.innerHTML}
+          ${sanitizeHtml(printContent.innerHTML)}
         </body>
       </html>
     `);

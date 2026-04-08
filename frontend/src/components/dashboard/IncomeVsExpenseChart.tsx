@@ -1,6 +1,6 @@
 "use client";
 
-import { Card, Typography } from "antd";
+import { Card } from "antd";
 import {
   BarChart,
   Bar,
@@ -8,12 +8,9 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-  Legend,
   ResponsiveContainer,
   Cell,
 } from "recharts";
-
-const { Title } = Typography;
 
 interface MonthlyStats {
   income: number;
@@ -27,16 +24,11 @@ interface IncomeVsExpenseChartProps {
   loading?: boolean;
 }
 
-const COLORS = {
-  income: "#52c41a",
-  expenses: "#ff4d4f",
-};
-
 export function IncomeVsExpenseChart({ data, loading }: IncomeVsExpenseChartProps) {
   const chartData = data
     ? [
-        { name: "Income", value: data.income, fill: COLORS.income },
-        { name: "Expenses", value: data.expenses, fill: COLORS.expenses },
+        { name: "Income", value: data.income, fill: "var(--color-green)" },
+        { name: "Expenses", value: data.expenses, fill: "var(--color-red)" },
       ]
     : [];
 
@@ -58,46 +50,52 @@ export function IncomeVsExpenseChart({ data, loading }: IncomeVsExpenseChartProp
       title={
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <span>Monthly Pulse</span>
-          {data && <span style={{ fontSize: 12, color: "#8c8c8c" }}>{data.month}</span>}
+          {data && <span style={{ fontSize: "var(--font-sm)", color: "var(--color-text-muted)" }}>{data.month}</span>}
         </div>
       }
       style={{ height: "100%" }}
     >
       {!hasData && !loading ? (
-        <div style={{ textAlign: "center", padding: 40, color: "#8c8c8c" }}>
+        <div style={{ textAlign: "center", padding: 40, color: "var(--color-text-muted)" }}>
           <div style={{ fontSize: 14, marginBottom: 8 }}>No financial data this month</div>
-          <div style={{ fontSize: 12 }}>Income and expenses will appear once trips with waybills are created and expenses are paid.</div>
+          <div style={{ fontSize: "var(--font-sm)" }}>Income and expenses will appear once trips with waybills are created and expenses are paid.</div>
         </div>
       ) : (
-      <ResponsiveContainer width="100%" height={250}>
-        <BarChart
-          data={chartData}
-          margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
-        >
-          <CartesianGrid strokeDasharray="3 3" vertical={false} />
-          <XAxis
-            dataKey="name"
-            axisLine={false}
-            tickLine={false}
-            tick={{ fontSize: 12, fill: "#8c8c8c" }}
-          />
-          <YAxis
-            axisLine={false}
-            tickLine={false}
-            tick={{ fontSize: 12, fill: "#8c8c8c" }}
-            tickFormatter={(value) => formatValue(value)}
-          />
-          <Tooltip
-            formatter={(value: any) => [`TZS ${Number(value).toLocaleString("en-US")}`, ""]}
-            contentStyle={{ borderRadius: 8 }}
-          />
-          <Bar dataKey="value" radius={[4, 4, 0, 0]}>
-            {chartData.map((entry, index) => (
-              <Cell key={`cell-${index}`} fill={entry.fill} />
-            ))}
-          </Bar>
-        </BarChart>
-      </ResponsiveContainer>
+        <ResponsiveContainer width="100%" height={250}>
+          <BarChart
+            data={chartData}
+            margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+          >
+            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--color-border)" />
+            <XAxis
+              dataKey="name"
+              axisLine={false}
+              tickLine={false}
+              tick={{ fontSize: 12, fill: "var(--color-text-muted)" }}
+            />
+            <YAxis
+              axisLine={false}
+              tickLine={false}
+              tick={{ fontSize: 12, fill: "var(--color-text-muted)" }}
+              tickFormatter={(value) => formatValue(value)}
+            />
+            <Tooltip
+              cursor={{ fill: "var(--color-surface)" }}
+              formatter={(value: any) => [`TZS ${Number(value).toLocaleString("en-US")}`, ""]}
+              contentStyle={{
+                borderRadius: 8,
+                background: "var(--color-card)",
+                border: "1px solid var(--color-border)",
+                color: "var(--color-text-primary)",
+              }}
+            />
+            <Bar dataKey="value" radius={[4, 4, 0, 0]}>
+              {chartData.map((entry, index) => (
+                <Cell key={`cell-${index}`} fill={entry.fill} />
+              ))}
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
       )}
       {data && hasData && (
         <div
@@ -105,15 +103,16 @@ export function IncomeVsExpenseChart({ data, loading }: IncomeVsExpenseChartProp
             textAlign: "center",
             marginTop: 12,
             padding: "8px 16px",
-            background: data.net_profit >= 0 ? "#f6ffed" : "#fff2f0",
+            background: "var(--color-surface)",
             borderRadius: 6,
+            border: "1px solid var(--color-border)",
           }}
         >
-          <span style={{ color: "#8c8c8c", fontSize: 12 }}>Net Profit: </span>
+          <span style={{ color: "var(--color-text-muted)", fontSize: "var(--font-sm)" }}>Net Profit: </span>
           <span
             style={{
               fontWeight: 600,
-              color: data.net_profit >= 0 ? "#52c41a" : "#ff4d4f",
+              color: data.net_profit >= 0 ? "var(--color-green)" : "var(--color-red)",
             }}
           >
             TZS {data.net_profit.toLocaleString("en-US")}

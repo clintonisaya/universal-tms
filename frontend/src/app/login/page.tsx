@@ -2,41 +2,44 @@
 
 import { useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Button, Card, Form, Input, Typography, message, Space, Spin } from "antd";
-import { UserOutlined, LockOutlined, CrownOutlined } from "@ant-design/icons";
+import { message, Spin } from "antd";
 import { useAuth } from "@/contexts/AuthContext";
-
-const { Title, Text } = Typography;
-
-interface LoginFormFields {
-  username: string;
-  password: string;
-}
+import { ThemeToggle } from "@/components/ui/ThemeToggle";
 
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { login } = useAuth();
   const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [usernameFocused, setUsernameFocused] = useState(false);
+  const [passwordFocused, setPasswordFocused] = useState(false);
   const [messageApi, contextHolder] = message.useMessage();
 
-  // Get the callback URL from query params (set by middleware when redirecting)
-  // Note: Redirect for already logged-in users is handled by AuthContext
-  const callbackUrl = searchParams.get("callbackUrl") || "/dashboard";
+  // P6: validate callbackUrl is relative to prevent open redirect
+  const raw = searchParams.get("callbackUrl") || "/dashboard";
+  const callbackUrl = raw.startsWith("/") ? raw : "/dashboard";
 
-  const onFinish = async (values: LoginFormFields) => {
+  const onSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!username || !password) {
+      setErrorMsg("Username and password are required.");
+      return;
+    }
     setLoading(true);
+    setErrorMsg(null);
     try {
-      const success = await login(values.username, values.password);
-
+      const success = await login(username, password);
       if (success) {
         messageApi.success("Login successful!");
         router.push(callbackUrl);
       } else {
-        messageApi.error("Invalid username or password");
+        setErrorMsg("Invalid username or password. Please try again.");
       }
     } catch {
-      messageApi.error("Network error. Please try again.");
+      setErrorMsg("Network error. Please check your connection and try again.");
     } finally {
       setLoading(false);
     }
@@ -45,109 +48,212 @@ function LoginForm() {
   return (
     <>
       {contextHolder}
+
       <div
         style={{
-          minHeight: "100vh",
+          width: "100%",
+          height: "100vh",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          background: "linear-gradient(135deg, #1F1F1F 0%, #2c3e50 100%)", // Dark Charcoal Gradient
-          padding: "20px",
+          background: "var(--color-login-bg)",
+
           position: "relative",
           overflow: "hidden",
+          transition: "background 0.4s",
         }}
       >
-        {/* Watermark Background */}
+        {/* Watermark — faded logo behind the card */}
         <div
           style={{
             position: "absolute",
             top: "50%",
             left: "50%",
-            transform: "translate(-50%, -50%)",
-            opacity: 0.03,
+            transform: "translate(-50%, -45%)",
+            width: 500,
             pointerEvents: "none",
-            zIndex: 0,
+            opacity: "var(--color-watermark-opacity)",
+            filter: "var(--color-watermark-filter)",
           }}
         >
-          <CrownOutlined style={{ fontSize: "600px", color: "#ffffff" }} />
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/images/logo-icon-full.png"
+            alt=""
+            style={{ width: "100%", height: "auto" }}
+          />
         </div>
 
-        <Card
+        {/* Theme toggle — top-right */}
+        <div style={{ position: "absolute", top: 24, right: 28 }}>
+          <ThemeToggle />
+        </div>
+
+        {/* Login card */}
+        <div
           style={{
-            width: "100%",
-            maxWidth: 400,
-            boxShadow: "0 12px 40px rgba(0, 0, 0, 0.2)",
-            borderRadius: "8px",
-            border: "none",
-            zIndex: 1,
-            background: "rgba(255, 255, 255, 0.98)",
+            width: 380,
+            background: "var(--color-login-card)",
+            backdropFilter: "blur(40px)",
+            border: "1px solid var(--color-border)",
+            borderRadius: 20,
+            padding: "48px 40px",
+            boxShadow: "var(--color-shadow)",
+            transition: "all 0.4s",
           }}
-          styles={{ body: { padding: "40px 32px" } }}
         >
-          <Space
-            orientation="vertical"
-            size="large"
-            style={{ width: "100%", textAlign: "center" }}
-          >
-            <div style={{ marginBottom: "16px" }}>
-              <CrownOutlined style={{ fontSize: "42px", color: "#D4AF37", marginBottom: "12px" }} />
-              <Title level={3} style={{ margin: 0, color: "#1F1F1F", letterSpacing: "-0.5px", fontWeight: 700 }}>
-                EDUPO
-              </Title>
-              <Text type="secondary" style={{ fontSize: "13px", letterSpacing: "1px", textTransform: "uppercase" }}>
-                Secure Login
-              </Text>
+          {/* Logo mark + brand */}
+          <div style={{ textAlign: "center", marginBottom: 40 }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/images/logo-icon-full.png"
+              alt="Edupo"
+              style={{
+                width: 120,
+                height: "auto",
+                marginBottom: 12,
+                display: "block",
+                marginLeft: "auto",
+                marginRight: "auto",
+                filter: "drop-shadow(0 8px 24px var(--color-gold-glow))",
+              }}
+            />
+
+            <div
+              style={{
+                fontSize: "var(--font-sm)",
+                color: "var(--color-text-muted)",
+                marginTop: 6,
+              }}
+            >
+              Fleet Management System
+            </div>
+          </div>
+
+          {/* Form */}
+          <form onSubmit={onSubmit}>
+            {/* Username */}
+            <div style={{ marginBottom: 20 }}>
+              <label
+                style={{
+                  display: "block",
+                  fontSize: 11,
+                  fontWeight: 600,
+                  color: "var(--color-text-muted)",
+                  letterSpacing: "0.08em",
+                  textTransform: "uppercase",
+                  marginBottom: 8,
+                }}
+              >
+                Username
+              </label>
+              <input
+                type="text"
+                value={username}
+                onChange={e => setUsername(e.target.value)}
+                onFocus={() => setUsernameFocused(true)}
+                onBlur={() => setUsernameFocused(false)}
+                autoComplete="username"
+                required
+                style={{
+                  width: "100%",
+                  padding: "12px 16px",
+                  background: usernameFocused ? "var(--color-input-focus-bg)" : "var(--color-surface)",
+                  border: `1px solid ${usernameFocused ? "var(--color-gold-dim)" : "var(--color-border)"}`,
+                  borderRadius: 10,
+                  color: "var(--color-text-primary)",
+                  fontSize: 14,
+                  outline: "none",
+                  // P8: visible focus ring for keyboard accessibility
+                  boxShadow: usernameFocused ? "0 0 0 2px var(--color-gold-dim)" : "none",
+                  transition: "all 0.2s",
+                  boxSizing: "border-box",
+                }}
+              />
             </div>
 
-            <Form
-              name="login"
-              onFinish={onFinish}
-              layout="vertical"
-              size="large"
-              style={{ textAlign: "left" }}
+            {/* Password */}
+            <div style={{ marginBottom: 32 }}>
+              <label
+                style={{
+                  display: "block",
+                  fontSize: 11,
+                  fontWeight: 600,
+                  color: "var(--color-text-muted)",
+                  letterSpacing: "0.08em",
+                  textTransform: "uppercase",
+                  marginBottom: 8,
+                }}
+              >
+                Password
+              </label>
+              <input
+                type="password"
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                onFocus={() => setPasswordFocused(true)}
+                onBlur={() => setPasswordFocused(false)}
+                autoComplete="current-password"
+                required
+                style={{
+                  width: "100%",
+                  padding: "12px 16px",
+                  background: passwordFocused ? "var(--color-input-focus-bg)" : "var(--color-surface)",
+                  border: `1px solid ${passwordFocused ? "var(--color-gold-dim)" : "var(--color-border)"}`,
+                  borderRadius: 10,
+                  color: "var(--color-text-primary)",
+                  fontSize: 14,
+                  outline: "none",
+                  // P8: visible focus ring for keyboard accessibility
+                  boxShadow: passwordFocused ? "0 0 0 2px var(--color-gold-dim)" : "none",
+                  transition: "all 0.2s",
+                  boxSizing: "border-box",
+                }}
+              />
+            </div>
+
+            {/* Error message — P4: use CSS vars for theme-aware error colors */}
+            {errorMsg && (
+              <div
+                style={{
+                  marginBottom: 20,
+                  padding: "10px 14px",
+                  background: "color-mix(in srgb, var(--color-red) 10%, transparent)",
+                  border: "1px solid color-mix(in srgb, var(--color-red) 30%, transparent)",
+                  borderRadius: 8,
+                  color: "var(--color-red)",
+                  fontSize: "var(--font-sm)",
+                }}
+              >
+                {errorMsg}
+              </div>
+            )}
+
+            {/* Submit */}
+            <button
+              type="submit"
+              disabled={loading}
+              style={{
+                width: "100%",
+                padding: "14px",
+                background: "linear-gradient(135deg, var(--color-gold), var(--color-gold-dim))",
+                border: "none",
+                borderRadius: 10,
+                color: "var(--color-gold-text)",
+                fontSize: "var(--font-sm)",
+                fontWeight: 700,
+                letterSpacing: "0.08em",
+                textTransform: "uppercase",
+                cursor: loading ? "not-allowed" : "pointer",
+                boxShadow: "0 4px 20px var(--color-gold-glow)",
+                opacity: loading ? 0.7 : 1,
+                transition: "all 0.2s",
+              }}
             >
-              <Form.Item
-                name="username"
-                rules={[
-                  { required: true, message: "Please enter your username" },
-                ]}
-              >
-                <Input
-                  prefix={<UserOutlined style={{ color: "#bfbfbf" }} />}
-                  placeholder="Username"
-                  autoComplete="username"
-                  style={{ borderRadius: "4px" }}
-                />
-              </Form.Item>
-
-              <Form.Item
-                name="password"
-                rules={[
-                  { required: true, message: "Please enter your password" },
-                ]}
-              >
-                <Input.Password
-                  prefix={<LockOutlined style={{ color: "#bfbfbf" }} />}
-                  placeholder="Password"
-                  autoComplete="current-password"
-                  style={{ borderRadius: "4px" }}
-                />
-              </Form.Item>
-
-              <Form.Item style={{ marginBottom: 0, marginTop: "24px" }}>
-                <Button
-                  type="primary"
-                  htmlType="submit"
-                  loading={loading}
-                  block
-                  style={{ height: "44px", fontSize: "14px", fontWeight: 600, letterSpacing: "0.5px" }}
-                >
-                  SIGN IN
-                </Button>
-              </Form.Item>
-            </Form>
-          </Space>
-        </Card>
+              {loading ? "Signing in…" : "Access System"}
+            </button>
+          </form>
+        </div>
       </div>
     </>
   );
@@ -155,11 +261,21 @@ function LoginForm() {
 
 export default function LoginPage() {
   return (
-    <Suspense fallback={
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', background: '#1F1F1F' }}>
-        <Spin size="large" />
-      </div>
-    }>
+    <Suspense
+      fallback={
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            height: "100vh",
+            background: "var(--color-bg)",
+          }}
+        >
+          <Spin size="large" />
+        </div>
+      }
+    >
       <LoginForm />
     </Suspense>
   );

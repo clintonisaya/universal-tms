@@ -1,7 +1,15 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
+// AC-4 (Story 5.7): Typed API error for field-level validation mapping
+export class ApiError extends Error {
+  constructor(public status: number, public detail: unknown) {
+    super(typeof detail === "string" ? detail : `API error: ${status}`);
+    this.name = "ApiError";
+  }
+}
+
 // Generic fetch function with error handling
-async function apiFetch<T>(url: string, options?: RequestInit): Promise<T> {
+export async function apiFetch<T>(url: string, options?: RequestInit): Promise<T> {
   const response = await fetch(url, {
     credentials: "include",
     ...options,
@@ -11,9 +19,14 @@ async function apiFetch<T>(url: string, options?: RequestInit): Promise<T> {
     if (response.status === 401) {
       // Dispatch event for UI to handle (e.g., show login modal)
       window.dispatchEvent(new Event("session-expired"));
-      throw new Error("Unauthorized");
+      throw new ApiError(401, "Unauthorized");
     }
-    throw new Error(`API error: ${response.status}`);
+    let detail: unknown = `API error: ${response.status}`;
+    try {
+      const body = await response.json();
+      detail = body.detail ?? body.message ?? detail;
+    } catch (_) {}
+    throw new ApiError(response.status, detail);
   }
 
   return response.json();
@@ -46,6 +59,11 @@ export const queryKeys = {
   borderPosts: ["borderPosts"] as const,
   tripBorderCrossings: (tripId: string) => ["tripBorderCrossings", tripId] as const,
   nextBorder: (tripId: string, direction: string) => ["nextBorder", tripId, direction] as const,
+  invoices: ["invoices"] as const,
+  invoicePayments: (id: string) => ["invoicePayments", id] as const,
+  invoicePopAttachments: (id: string) => ["invoicePopAttachments", id] as const,
+  invoice: (id: string) => ["invoices", id] as const,
+  companySettings: ["companySettings"] as const,
 };
 
 // Trucks
@@ -110,11 +128,54 @@ export function useWaybills(enabled = true) {
   });
 }
 
-// Expenses
-export function useExpenses(enabled = true) {
+// Invoices
+export function useInvoices(params?: { status?: string }, enabled = true) {
+  const qs = params?.status ? `?status=${params.status}` : "";
   return useQuery({
-    queryKey: queryKeys.expenses,
-    queryFn: () => apiFetch<{ data: any[]; count: number }>("/api/v1/expenses"),
+    queryKey: [...queryKeys.invoices, params?.status || "all"],
+    queryFn: () => apiFetch<{ data: any[]; count: number }>(`/api/v1/invoices${qs}`),
+    enabled,
+  });
+}
+
+export function useInvoice(id: string) {
+  return useQuery({
+    queryKey: queryKeys.invoice(id),
+    queryFn: () => apiFetch<any>(`/api/v1/invoices/${id}`),
+    enabled: !!id,
+  });
+}
+
+// Invoice Payments
+export function useInvoicePayments(invoiceId: string | null, enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.invoicePayments(invoiceId ?? ""),
+    queryFn: () => apiFetch<{ data: any[]; count: number }>(`/api/v1/invoices/${invoiceId}/payments`),
+    enabled: !!invoiceId && enabled,
+  });
+}
+
+// Invoice POP Attachments
+export function usePopAttachments(invoiceId: string | null, enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.invoicePopAttachments(invoiceId ?? ""),
+    queryFn: () => apiFetch<any[]>(`/api/v1/invoices/${invoiceId}/pop-attachments`),
+    enabled: !!invoiceId && enabled,
+  });
+}
+
+// Expenses
+export function useExpenses(params?: { skip?: number; limit?: number; status?: string; category?: string }, enabled = true) {
+  const filtered = params && Object.fromEntries(Object.entries(params).filter(([, v]) => v !== undefined && v !== ""));
+  const qs =
+    filtered && Object.keys(filtered).length
+      ? `?${new URLSearchParams(
+          Object.fromEntries(Object.entries(filtered).map(([k, v]) => [k, String(v)]))
+        ).toString()}`
+      : "";
+  return useQuery({
+    queryKey: [...queryKeys.expenses, params],
+    queryFn: () => apiFetch<{ data: any[]; count: number }>(`/api/v1/expenses${qs}`),
     enabled,
   });
 }
@@ -186,11 +247,21 @@ export function useFinancialPulse(enabled = true) {
   });
 }
 
-// Tracking report
-export function useTracking(enabled = true) {
+// Tracking report — server-side pagination & filtering (Story 6-19)
+export function useTracking(
+  params: { skip?: number; limit?: number; search?: string; status?: string; export?: boolean } = {},
+  enabled = true,
+) {
+  const qs = new URLSearchParams();
+  if (params.skip !== undefined) qs.set("skip", String(params.skip));
+  if (params.limit !== undefined) qs.set("limit", String(params.limit));
+  if (params.search) qs.set("search", params.search);
+  if (params.status) qs.set("status", params.status);
+  if (params.export) qs.set("export", "true");
+  const query = qs.toString();
   return useQuery({
-    queryKey: queryKeys.tracking,
-    queryFn: () => apiFetch<any[]>("/api/v1/reports/waybill-tracking"),
+    queryKey: [...queryKeys.tracking, query],
+    queryFn: () => apiFetch<{ data: any[]; count: number }>(`/api/v1/reports/waybill-tracking${query ? `?${query}` : ""}`),
     enabled,
   });
 }
@@ -280,6 +351,14 @@ export function useNextBorder(tripId: string | null, direction: "go" | "return")
   });
 }
 
+// Company Settings
+export function useCompanySettings() {
+  return useQuery({
+    queryKey: queryKeys.companySettings,
+    queryFn: () => apiFetch<any>("/api/v1/company-settings"),
+  });
+}
+
 // Hook to invalidate queries after mutations
 export function useInvalidateQueries() {
   const queryClient = useQueryClient();
@@ -309,6 +388,11 @@ export function useInvalidateQueries() {
     invalidateBorderPosts: () => queryClient.invalidateQueries({ queryKey: queryKeys.borderPosts }),
     invalidateTripBorderCrossings: (tripId: string) => queryClient.invalidateQueries({ queryKey: queryKeys.tripBorderCrossings(tripId) }),
     invalidateNextBorder: (tripId: string) => queryClient.invalidateQueries({ queryKey: ["nextBorder", tripId] }),
+    invalidateInvoices: () => queryClient.invalidateQueries({ queryKey: queryKeys.invoices }),
+    invalidateInvoice: (id: string) => queryClient.invalidateQueries({ queryKey: queryKeys.invoice(id) }),
+    invalidateInvoicePayments: (id: string) => queryClient.invalidateQueries({ queryKey: queryKeys.invoicePayments(id) }),
+    invalidatePopAttachments: (id: string) => queryClient.invalidateQueries({ queryKey: queryKeys.invoicePopAttachments(id) }),
+    invalidateCompanySettings: () => queryClient.invalidateQueries({ queryKey: queryKeys.companySettings }),
     invalidateAll: () => queryClient.invalidateQueries(),
   };
 }

@@ -41,7 +41,7 @@ export default function Home() {
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        background: "#f5f7fa",
+        background: "var(--color-bg)",
       }}
     >
       <Spin size="large" />

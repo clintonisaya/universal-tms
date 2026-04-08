@@ -99,7 +99,104 @@ development_status:
   4-7-expense-review-action-modal: ready-for-dev
   epic-4-retrospective: optional
 
-  # Epic 5: Speed & Functionality Quick Fixes
+  # Epic 5: UX Improvements & Accessibility (from UX Audit 2026-02-20)
   epic-5: in-progress
+  5-1-accessibility-compliance: review
   5-2-eliminate-auth-loading-flash: review
+  5-3-design-system-visual-consistency: review
+  5-4-bulk-action-bar-rollout: ready-for-dev
+  5-5-role-based-ux-personalization: review
+  5-6-navigation-breadcrumbs-ia: review
+  5-7-feedback-states-empty-loading-errors: in-progress
+  5-8-dashboard-visual-hierarchy: review
+  5-9-payment-workflow-ux: review
+  5-10-session-recovery-workflow-efficiency: review
+  5-11-mobile-responsiveness: ready-for-dev
+  5-12-inline-add-new-trip-creation: ready-for-dev
+  5-13-expense-history-in-review-modal: review
+  5-14-settings-section-split: review
+  5-15-font-size-audit: review
+  5-16-chart-colors-wcag: review
+  5-17-keyboard-navigation-modal-chains: ready-for-dev
+  5-18-form-field-label-association: ready-for-dev
   epic-5-retrospective: optional
+
+  # Epic 6: System Hardening & Quality (from Party Mode Audit 2026-03-04)
+  epic-6: in-progress
+  6-1-critical-quick-fixes: done
+  6-2-atomic-number-generation: ready-for-dev
+  6-3-waybill-data-integrity: ready-for-dev
+  6-4-trip-status-state-machine: ready-for-dev
+  6-5-status-dropdown-filtering: ready-for-dev
+  6-6-delayed-trip-visuals: ready-for-dev
+  6-7-status-history-improvements: ready-for-dev
+  6-8-breakdown-documentation: ready-for-dev
+  6-9-trip-remarks-visibility: ready-for-dev
+  6-10-shared-status-constants: ready-for-dev
+  6-11-expense-constants-centralization: ready-for-dev
+  6-12-payments-multicurrency-pagination: ready-for-dev
+  6-13-audit-trail-created-by: ready-for-dev
+  6-14-reports-data-integrity: ready-for-dev
+  6-15-db-constraints-indexes: ready-for-dev
+  6-16-driver-expiry-warnings: ready-for-dev
+  6-17-filter-state-persistence: ready-for-dev
+  6-18-maintenance-edit-delete: ready-for-dev
+  6-19-tracking-server-side-pagination: review
+  6-20-tracking-missing-data-fields: review
+  6-21-empty-states-with-cta: review
+  6-22-waybill-interaction-consistency: review
+  6-23-status-modal-stale-data: review
+  6-24-expense-review-modal-improvements: review
+  6-25-cancellation-modal-null-return-waybill: review
+  epic-6-retrospective: optional
+
+  # Epic 7: Visual Design System Migration (2026-03-21)
+  epic-7: in-progress
+  7-1-design-tokens-css-variables: done
+  7-2-theme-toggle-infrastructure: done
+  7-3-login-page-visual-restyle: done
+  7-4-sidebar-header-restyle: done
+  7-5-status-badges-exact-match: done
+  7-6-metric-cards-restyle: done
+  7-7-table-visual-styling: done
+  7-8-page-headers-action-buttons: done
+  7-9-global-font-scrollbar: done
+  epic-7-retrospective: optional
+
+  # Epic 8: Infrastructure & DevOps (from QA Scan 2026-04-06)
+  epic-8: in-progress
+  8-1-invoice-pop-attachments: review
+  8-5-environment-setup: review
+  8-6-docker-infra-fixes: review
+  8-7-cicd-pipeline: ready-for-dev
+  8-8-repository-cleanup: review
+  epic-8-retrospective: optional
+
+  # Epic 9: Security Hardening (from QA Scan 2026-04-06)
+  epic-9: in-progress
+  9-1-security-endpoint-hardening: review
+  9-2-secrets-and-xss-prevention: review
+  9-3-rate-limiting: review
+  9-4-security-headers-and-cors: review
+  epic-9-retrospective: optional
+
+  # Epic 10: Backend Stability (from QA Scan 2026-04-06)
+  epic-10: in-progress
+  10-1-transaction-safety: done
+  10-2-audit-trail-completion: ready-for-dev
+  10-3-frontend-error-handling: review
+  epic-10-retrospective: optional
+
+  # Epic 11: Testing (from QA Scan 2026-04-06)
+  epic-11: in-progress
+  11-1-backend-route-tests: ready-for-dev
+  11-2-frontend-critical-tests: ready-for-dev
+  epic-11-retrospective: optional
+
+  # Epic 12: Code Quality (from QA Scan 2026-04-06)
+  epic-12: in-progress
+  12-1-code-hygiene-cleanup: review
+  12-2-component-refactoring: review
+  12-3-typescript-type-safety: ready-for-dev
+  12-4-accessibility-improvements: ready-for-dev
+  epic-12-retrospective: optional

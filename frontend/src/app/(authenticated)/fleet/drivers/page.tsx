@@ -7,7 +7,6 @@ import {
   Button,
   Card,
   Space,
-  Tag,
   Modal,
   Form,
   Input,
@@ -16,6 +15,8 @@ import {
   Typography,
   Popconfirm,
   DatePicker,
+  Tooltip,
+  theme,
 } from "antd";
 import dayjs from "dayjs";
 import {
@@ -24,6 +25,8 @@ import {
   ArrowLeftOutlined,
   EditOutlined,
   DeleteOutlined,
+  WarningOutlined,
+  ClockCircleOutlined,
 } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
 import type {
@@ -42,10 +45,15 @@ import {
   getStandardRowSelection,
   useResizableColumns,
 } from "@/components/ui/tableUtils";
+import { EmptyState } from "@/components/ui";
+import { StatusBadge } from "@/components/ui/StatusBadge";
+import type { ColorKey } from "@/components/ui/StatusBadge";
 
-const { Title } = Typography;
+const { Title, Text } = Typography;
 
-const STATUS_COLORS: Record<DriverStatus, string> = {
+const EXPIRY_WARNING_DAYS = 30;
+
+const STATUS_COLORS: Record<DriverStatus, ColorKey> = {
   Active: "green",
   Assigned: "cyan",
   "On Trip": "blue",
@@ -77,6 +85,38 @@ export default function DriversPage() {
 
   const [createForm] = Form.useForm<DriverFormValues>();
   const [editForm] = Form.useForm<DriverFormValues>();
+  const { token } = theme.useToken();
+
+  const renderExpiryDate = (date: string | null) => {
+    if (!date) return <Text type="secondary">—</Text>;
+    const days = dayjs(date).diff(dayjs(), "day");
+    const formatted = new Date(date).toLocaleDateString();
+    if (days < 0) {
+      return (
+        <Tooltip title="Expired — renew immediately.">
+          <Text type="danger"><WarningOutlined /> {formatted}</Text>
+        </Tooltip>
+      );
+    }
+    if (days <= EXPIRY_WARNING_DAYS) {
+      return (
+        <Tooltip title={`Expires in ${days} days.`}>
+          <Text style={{ color: token.colorWarning }}><ClockCircleOutlined /> {formatted}</Text>
+        </Tooltip>
+      );
+    }
+    return <Text>{formatted}</Text>;
+  };
+
+  const pastDateValidator = {
+    validator: (_: unknown, value: dayjs.Dayjs | null) => {
+      if (value && dayjs(value).isBefore(dayjs(), "day")) {
+        return Promise.reject("This date is in the past. Are you sure?");
+      }
+      return Promise.resolve();
+    },
+    warningOnly: true,
+  };
 
   const handleCreate = async (values: DriverCreate) => {
     setSubmitting(true);
@@ -180,7 +220,7 @@ export default function DriversPage() {
       key: "full_name",
       width: 180,
       sorter: (a, b) => a.full_name.localeCompare(b.full_name),
-      render: (text: string) => <span style={{ fontWeight: 600 }}>{text}</span>,
+      render: (text: string) => text,
       ...getColumnSearchProps("full_name"),
     },
     {
@@ -204,7 +244,7 @@ export default function DriversPage() {
       dataIndex: "license_expiry_date",
       key: "license_expiry_date",
       width: 120,
-      render: (date: string | null) => date ? new Date(date).toLocaleDateString() : "-",
+      render: (date: string | null) => renderExpiryDate(date),
       sorter: (a, b) => (a.license_expiry_date || "").localeCompare(b.license_expiry_date || ""),
     },
     {
@@ -220,7 +260,7 @@ export default function DriversPage() {
       dataIndex: "passport_expiry_date",
       key: "passport_expiry_date",
       width: 120,
-      render: (date: string | null) => date ? new Date(date).toLocaleDateString() : "-",
+      render: (date: string | null) => renderExpiryDate(date),
       sorter: (a, b) => (a.passport_expiry_date || "").localeCompare(b.passport_expiry_date || ""),
     },
     {
@@ -229,7 +269,7 @@ export default function DriversPage() {
       key: "status",
       width: 100,
       render: (status: DriverStatus) => (
-        <Tag color={STATUS_COLORS[status]}>{status}</Tag>
+        <StatusBadge status={status} colorKey={STATUS_COLORS[status]} />
       ),
       ...getColumnFilterProps("status", STATUS_FILTERS),
     },
@@ -246,6 +286,7 @@ export default function DriversPage() {
               size="small"
               icon={<EditOutlined />}
               onClick={() => openEditModal(record)}
+              aria-label={`Edit Driver ${record.full_name}`}
             />
             <Popconfirm
               title="Delete driver"
@@ -255,7 +296,7 @@ export default function DriversPage() {
               cancelText="No"
               okButtonProps={{ danger: true }}
             >
-              <Button type="text" danger icon={<DeleteOutlined />} size="small" />
+              <Button type="text" danger icon={<DeleteOutlined />} size="small" aria-label={`Delete Driver ${record.full_name}`} />
             </Popconfirm>
           </Space>
         </div>
@@ -270,8 +311,8 @@ export default function DriversPage() {
     <div
       style={{
         minHeight: "100vh",
-        background: "#f0f2f5",
-        padding: "24px",
+        background: "var(--color-bg)",
+        padding: "var(--space-xl)",
       }}
     >
       <Card>
@@ -315,6 +356,8 @@ export default function DriversPage() {
             rowKey="id"
             loading={isLoading}
             sticky={{ offsetHeader: 64 }}
+            scroll={{ x: "max-content" }}
+            locale={{ emptyText: <EmptyState message="No drivers registered yet." action={{ label: "Add First Driver", onClick: () => setIsCreateModalOpen(true) }} /> }}
             rowSelection={getStandardRowSelection(
               currentPage,
               pageSize,
@@ -341,6 +384,7 @@ export default function DriversPage() {
       <Modal
         title="Register New Driver"
         open={isCreateModalOpen}
+        width={720}
         onCancel={() => {
           setIsCreateModalOpen(false);
           createForm.resetFields();
@@ -391,7 +435,7 @@ export default function DriversPage() {
             <Input placeholder="e.g., DL-998877" />
           </Form.Item>
 
-          <Form.Item name="license_expiry_date" label="License Expiry Date">
+          <Form.Item name="license_expiry_date" label="License Expiry Date" rules={[pastDateValidator]}>
             <DatePicker style={{ width: "100%" }} />
           </Form.Item>
 
@@ -403,7 +447,7 @@ export default function DriversPage() {
             <Input placeholder="e.g., AB1234567" />
           </Form.Item>
 
-          <Form.Item name="passport_expiry_date" label="Passport Expiry Date">
+          <Form.Item name="passport_expiry_date" label="Passport Expiry Date" rules={[pastDateValidator]}>
             <DatePicker style={{ width: "100%" }} />
           </Form.Item>
 
@@ -448,6 +492,7 @@ export default function DriversPage() {
       <Modal
         title="Edit Driver"
         open={isEditModalOpen}
+        width={720}
         onCancel={() => {
           setIsEditModalOpen(false);
           setEditingDriver(null);
@@ -498,7 +543,7 @@ export default function DriversPage() {
             <Input placeholder="e.g., DL-998877" />
           </Form.Item>
 
-          <Form.Item name="license_expiry_date" label="License Expiry Date">
+          <Form.Item name="license_expiry_date" label="License Expiry Date" rules={[pastDateValidator]}>
             <DatePicker style={{ width: "100%" }} />
           </Form.Item>
 
@@ -510,7 +555,7 @@ export default function DriversPage() {
             <Input placeholder="e.g., AB1234567" />
           </Form.Item>
 
-          <Form.Item name="passport_expiry_date" label="Passport Expiry Date">
+          <Form.Item name="passport_expiry_date" label="Passport Expiry Date" rules={[pastDateValidator]}>
             <DatePicker style={{ width: "100%" }} />
           </Form.Item>
 

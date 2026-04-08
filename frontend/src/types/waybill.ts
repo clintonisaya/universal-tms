@@ -2,6 +2,8 @@
  * Waybill types for Story 2.7: Waybill Management
  */
 
+import type { UserSummary } from "./expense";
+
 export type WaybillStatus = "Open" | "In Progress" | "Completed" | "Invoiced";
 
 export interface Waybill {
@@ -19,6 +21,17 @@ export interface Waybill {
   currency: string;
   risk_level: string;
   created_at: string | null;
+  // Audit trail (Story 6.13)
+  created_by_id: string | null;
+  updated_by_id: string | null;
+  created_by: UserSummary | null;
+  updated_by: UserSummary | null;
+  // Invoice enrichment
+  invoice_id?: string | null;
+  invoice_number?: string | null;
+  invoice_status?: string | null;
+  // Trip enrichment
+  trip_number?: string | null;
 }
 
 export interface WaybillCreate {
@@ -29,7 +42,6 @@ export interface WaybillCreate {
   origin: string;
   destination: string;
   expected_loading_date: string;
-  agreed_rate: number;
   currency: string;
   risk_level: string;
 }

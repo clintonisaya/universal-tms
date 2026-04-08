@@ -8,14 +8,15 @@ import {
   Flex,
   Space,
   Tabs,
-  Tag,
   Descriptions,
   Table,
   Statistic,
   message,
   Typography,
   Spin,
+  Breadcrumb,
 } from "antd";
+import Link from "next/link";
 import {
   ArrowLeftOutlined,
   ReloadOutlined,
@@ -32,19 +33,11 @@ import {
   getColumnSearchProps,
   getStandardRowSelection,
 } from "@/components/ui/tableUtils";
+import { VehicleStatusTag } from "@/components/ui/VehicleStatusTag";
+import { ExpenseStatusBadge } from "@/components/expenses/ExpenseStatusBadge";
 
 const { Title, Text } = Typography;
 
-const TRUCK_STATUS_COLORS: Record<string, string> = {
-  Idle: "green",
-  Loading: "cyan",
-  "In Transit": "blue",
-  "At Border": "gold",
-  Offloaded: "purple",
-  Returned: "default",
-  "Waiting for PODs": "magenta",
-  Maintenance: "orange",
-};
 
 export default function TruckDetailPage() {
   const router = useRouter();
@@ -160,14 +153,7 @@ export default function TruckDetailPage() {
       render: (_, record) => {
         const status = record.expense?.status;
         if (!status) return "-";
-        const colors: Record<string, string> = {
-          "Pending Manager": "gold",
-          "Pending Finance": "blue",
-          Paid: "green",
-          Rejected: "red",
-          Returned: "orange",
-        };
-        return <Tag color={colors[status] || "default"}>{status}</Tag>;
+        return <ExpenseStatusBadge status={status as any} compact />;
       },
     },
   ];
@@ -195,8 +181,8 @@ export default function TruckDetailPage() {
     <div
       style={{
         minHeight: "100vh",
-        background: "#f0f2f5",
-        padding: "24px",
+        background: "var(--color-bg)",
+        padding: "var(--space-xl)",
       }}
     >
       <Card>
@@ -218,11 +204,17 @@ export default function TruckDetailPage() {
               <Title level={2} style={{ margin: 0 }}>
                 {truck.plate_number}
               </Title>
-              <Tag color={TRUCK_STATUS_COLORS[truck.status]}>
-                {truck.status}
-              </Tag>
+              <VehicleStatusTag status={truck.status} />
             </Space>
           </div>
+
+          <Breadcrumb
+            style={{ marginBottom: 4 }}
+            items={[
+              { title: <Link href="/fleet/trucks">Trucks</Link> },
+              { title: truck.plate_number },
+            ]}
+          />
 
           <Tabs
             defaultActiveKey="details"
@@ -236,9 +228,7 @@ export default function TruckDetailPage() {
                       {truck.plate_number}
                     </Descriptions.Item>
                     <Descriptions.Item label="Status">
-                      <Tag color={TRUCK_STATUS_COLORS[truck.status]}>
-                        {truck.status}
-                      </Tag>
+                      <VehicleStatusTag status={truck.status} />
                     </Descriptions.Item>
                     <Descriptions.Item label="Make">
                       {truck.make}
@@ -276,7 +266,7 @@ export default function TruckDetailPage() {
                         precision={2}
                         prefix={<ToolOutlined />}
                         suffix="TZS"
-                        styles={{ content: { color: "#cf1322" } }}
+                        styles={{ content: { color: "var(--color-red)" } }}
                       />
                       <Button
                         icon={<ReloadOutlined />}
@@ -292,6 +282,7 @@ export default function TruckDetailPage() {
                       rowKey="id"
                       loading={maintenanceLoading}
                       sticky
+                      scroll={{ x: "max-content" }}
                       rowSelection={getStandardRowSelection(
                         currentPage,
                         pageSize,

@@ -15,13 +15,13 @@ import {
   Select,
   AutoComplete,
   Spin,
-  Tag,
 } from "antd";
 import { SaveOutlined, ArrowUpOutlined, ArrowDownOutlined, CloseOutlined } from "@ant-design/icons";
+import { StatusBadge } from "@/components/ui/StatusBadge";
 import { amountInputProps } from "@/lib/utils";
 import type { WaybillCreate } from "@/types/waybill";
 
-const { Title } = Typography;
+const { Title, Text } = Typography;
 const { Option } = Select;
 
 interface CreateWaybillDrawerProps {
@@ -79,8 +79,8 @@ export function CreateWaybillDrawer({
         const borderData = await borderRes.json();
         setBorderPosts(borderData.data);
       }
-    } catch (err) {
-      console.error("Failed to fetch master data", err);
+    } catch {
+      // master data fetch failed — UI will show empty dropdowns
     } finally {
       setLoadingResources(false);
     }
@@ -285,20 +285,7 @@ export function CreateWaybillDrawer({
             </Form.Item>
           </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
-            <Form.Item
-              name="agreed_rate"
-              label="Agreed Rate"
-              rules={[{ required: true, message: "Please enter rate" }]}
-            >
-              <InputNumber
-                style={{ width: "100%" }}
-                min={0}
-                precision={2}
-                placeholder="e.g. 3500.00"
-                {...amountInputProps}
-              />
-            </Form.Item>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: "16px" }}>
             <Form.Item
               name="currency"
               label="Currency"
@@ -309,6 +296,19 @@ export function CreateWaybillDrawer({
                 <Option value="TZS">TZS</Option>
               </Select>
             </Form.Item>
+          </div>
+
+          <div
+            style={{
+              padding: 12,
+              background: "var(--color-surface)",
+              borderRadius: 8,
+              border: "1px solid var(--color-border)",
+            }}
+          >
+            <Text type="secondary" style={{ fontSize: 13 }}>
+              Rate will be set when you generate an invoice for this waybill.
+            </Text>
           </div>
 
           <>
@@ -351,16 +351,14 @@ export function CreateWaybillDrawer({
                           gap: 8,
                           padding: "6px 8px",
                           marginBottom: 4,
-                          background: "#f5f5f5",
+                          background: "var(--color-surface)",
                           borderRadius: 6,
                         }}
                       >
-                        <Tag color="blue" style={{ margin: 0, minWidth: 24, textAlign: "center" }}>
-                          {index + 1}
-                        </Tag>
-                        <span style={{ flex: 1, fontSize: 13 }}>
+                        <StatusBadge status={String(index + 1)} colorKey="gray" />
+                        <span style={{ flex: 1, fontSize: "var(--font-sm)" }}>
                           <strong>{bp.display_name}</strong>{" "}
-                          <span style={{ color: "#888" }}>
+                          <span style={{ color: "var(--color-text-muted)" }}>
                             ({bp.side_a_name} → {bp.side_b_name})
                           </span>
                         </span>

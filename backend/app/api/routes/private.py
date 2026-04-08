@@ -1,9 +1,10 @@
 from typing import Any
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 
-from app.api.deps import SessionDep
+from app.api.deps import SessionDep, get_current_admin_user
+from app.core.db import commit_or_rollback
 from app.core.security import get_password_hash
 from app.models import (
     User,
@@ -20,9 +21,14 @@ class PrivateUserCreate(BaseModel):
 
 
 @router.post("/users/", response_model=UserPublic)
-def create_user(user_in: PrivateUserCreate, session: SessionDep) -> Any:
+def create_user(
+    user_in: PrivateUserCreate,
+    session: SessionDep,
+    _admin: User = Depends(get_current_admin_user),
+) -> Any:
     """
     Create a new user (private/internal endpoint).
+    Requires admin authentication.
     """
 
     user = User(
@@ -32,6 +38,6 @@ def create_user(user_in: PrivateUserCreate, session: SessionDep) -> Any:
     )
 
     session.add(user)
-    session.commit()
+    commit_or_rollback(session)
 
     return user

@@ -7,7 +7,6 @@ import {
   Button,
   Card,
   Space,
-  Tag,
   Modal,
   Form,
   Input,
@@ -27,19 +26,11 @@ import {
   getStandardRowSelection,
   useResizableColumns,
 } from "@/components/ui/tableUtils";
+import { VehicleStatusTag } from "@/components/ui/VehicleStatusTag";
+import { EmptyState } from "@/components/ui";
 
 const { Title } = Typography;
 
-const STATUS_COLORS: Record<string, string> = {
-  Idle: "green",
-  Loading: "cyan",
-  "In Transit": "blue",
-  "At Border": "gold",
-  Offloaded: "purple",
-  Returned: "default",
-  "Waiting for PODs": "magenta",
-  Maintenance: "orange",
-};
 
 const STATUS_FILTERS = [
   { text: "Idle", value: "Idle" },
@@ -163,9 +154,7 @@ export default function TrucksPage() {
       key: "plate_number",
       width: 150,
       sorter: (a, b) => a.plate_number.localeCompare(b.plate_number),
-      render: (text: string) => (
-        <div style={{ fontWeight: 600 }}>{text}</div>
-      ),
+      render: (text: string) => text,
       ...getColumnSearchProps("plate_number"),
     },
     {
@@ -189,9 +178,7 @@ export default function TrucksPage() {
       dataIndex: "status",
       key: "status",
       width: 120,
-      render: (status: string) => (
-        <Tag color={STATUS_COLORS[status] || "default"}>{status}</Tag>
-      ),
+      render: (status: string) => <VehicleStatusTag status={status} />,
       ...getColumnFilterProps("status", STATUS_FILTERS),
     },
     {
@@ -207,6 +194,7 @@ export default function TrucksPage() {
               size="small"
               icon={<EyeOutlined />}
               title="View Details"
+              aria-label={`View Truck ${record.plate_number}`}
               onClick={() => router.push(`/fleet/trucks/${record.id}`)}
             />
             <Button
@@ -214,6 +202,7 @@ export default function TrucksPage() {
               size="small"
               icon={<EditOutlined />}
               onClick={() => openEditModal(record)}
+              aria-label={`Edit Truck ${record.plate_number}`}
             />
             <Popconfirm
               title="Delete truck"
@@ -223,7 +212,7 @@ export default function TrucksPage() {
               cancelText="No"
               okButtonProps={{ danger: true }}
             >
-              <Button type="text" danger icon={<DeleteOutlined />} size="small" />
+              <Button type="text" danger icon={<DeleteOutlined />} size="small" aria-label={`Delete Truck ${record.plate_number}`} />
             </Popconfirm>
           </Space>
         </div>
@@ -238,8 +227,8 @@ export default function TrucksPage() {
     <div
       style={{
         minHeight: "100vh",
-        background: "#f0f2f5",
-        padding: "24px",
+        background: "var(--color-bg)",
+        padding: "var(--space-xl)",
       }}
     >
       <Card>
@@ -283,6 +272,8 @@ export default function TrucksPage() {
             rowKey="id"
             loading={isLoading}
             sticky={{ offsetHeader: 64 }}
+            scroll={{ x: "max-content" }}
+            locale={{ emptyText: <EmptyState message="No trucks registered yet." action={{ label: "Register First Truck", onClick: () => setIsCreateModalOpen(true) }} /> }}
             rowSelection={getStandardRowSelection(
               currentPage,
               pageSize,
@@ -309,6 +300,7 @@ export default function TrucksPage() {
       <Modal
         title="Register New Truck"
         open={isCreateModalOpen}
+        width={660}
         onCancel={() => {
           createForm.resetFields();
           setIsCreateModalOpen(false);
@@ -385,6 +377,7 @@ export default function TrucksPage() {
       <Modal
         title="Edit Truck"
         open={isEditModalOpen}
+        width={660}
         onCancel={() => {
           editForm.resetFields();
           setIsEditModalOpen(false);

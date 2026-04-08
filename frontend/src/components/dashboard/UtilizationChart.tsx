@@ -1,6 +1,6 @@
 "use client";
 
-import { Card, Typography } from "antd";
+import { Card } from "antd";
 import {
   BarChart,
   Bar,
@@ -33,15 +33,32 @@ export function UtilizationChart({ data, loading }: UtilizationChartProps) {
           data={data}
           margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
         >
-          <CartesianGrid strokeDasharray="3 3" vertical={false} />
-          <XAxis dataKey="name" axisLine={false} tickLine={false} />
-          <YAxis axisLine={false} tickLine={false} />
-          <Tooltip cursor={{ fill: 'transparent' }} />
-          <Legend wrapperStyle={{ paddingTop: 10 }} />
-          <Bar dataKey="Idle" stackId="a" fill="#faad14" />
-          <Bar dataKey="Transit" stackId="a" fill="#001529" />
-          <Bar dataKey="Border" stackId="a" fill="#13c2c2" />
-          <Bar dataKey="Maintenance" stackId="a" fill="#1890ff" />
+          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--color-border)" />
+          <XAxis
+            dataKey="name"
+            axisLine={false}
+            tickLine={false}
+            tick={{ fontSize: 12, fill: "var(--color-text-muted)" }}
+          />
+          <YAxis
+            axisLine={false}
+            tickLine={false}
+            tick={{ fontSize: 12, fill: "var(--color-text-muted)" }}
+          />
+          <Tooltip
+            cursor={{ fill: "var(--color-surface)" }}
+            contentStyle={{
+              borderRadius: 8,
+              background: "var(--color-card)",
+              border: "1px solid var(--color-border)",
+              color: "var(--color-text-primary)",
+            }}
+          />
+          <Legend wrapperStyle={{ paddingTop: 10, color: "var(--color-text-secondary)" }} />
+          <Bar dataKey="Idle"        stackId="a" fill="var(--color-text-muted)" />
+          <Bar dataKey="Transit"     stackId="a" fill="var(--color-blue)" />
+          <Bar dataKey="Border"      stackId="a" fill="var(--color-orange)" />
+          <Bar dataKey="Maintenance" stackId="a" fill="var(--color-red)" />
         </BarChart>
       </ResponsiveContainer>
     </Card>

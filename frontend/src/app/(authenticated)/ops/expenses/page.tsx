@@ -11,6 +11,7 @@ import {
   Typography,
   Modal,
   Select,
+  Tooltip,
 } from "antd";
 import {
   ReloadOutlined,
@@ -19,6 +20,7 @@ import {
   PlusOutlined,
   PrinterOutlined,
   HistoryOutlined,
+  QuestionCircleOutlined,
 } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
 import type { ExpenseRequestDetailed, ExpenseStatus } from "@/types/expense";
@@ -26,6 +28,7 @@ import type { Trip } from "@/types/trip";
 import { useAuth } from "@/contexts/AuthContext";
 import { useExpenses, useTrips, useInvalidateQueries } from "@/hooks/useApi";
 import { AddExpenseModal } from "@/components/expenses/AddExpenseModal";
+import { EmptyState } from "@/components/ui";
 
 import { ExpenseHistoryModal } from "@/components/expenses/ExpenseHistoryModal";
 import { ExpenseReviewModal } from "@/components/expenses/ExpenseReviewModal";
@@ -38,6 +41,7 @@ import {
   getStandardRowSelection,
   useResizableColumns,
 } from "@/components/ui/tableUtils";
+import { CATEGORY_FILTERS } from "@/constants/expenseConstants";
 
 const { Title } = Typography;
 
@@ -47,6 +51,7 @@ const STATUS_COLORS: Record<ExpenseStatus, string> = {
   Paid: "green",
   Rejected: "red",
   Returned: "purple",
+  Voided: "red",
 };
 
 const STATUS_FILTERS = Object.keys(STATUS_COLORS).map((status) => ({
@@ -54,13 +59,6 @@ const STATUS_FILTERS = Object.keys(STATUS_COLORS).map((status) => ({
   value: status,
 }));
 
-const CATEGORY_FILTERS = [
-  { text: "Fuel", value: "Fuel" },
-  { text: "Allowance", value: "Allowance" },
-  { text: "Maintenance", value: "Maintenance" },
-  { text: "Border", value: "Border" },
-  { text: "Other", value: "Other" },
-];
 
 export default function ExpensesPage() {
   const router = useRouter();
@@ -71,7 +69,7 @@ export default function ExpensesPage() {
   const isAuthenticated = !!user;
 
   // TanStack Query for expenses and trips data
-  const { data: expensesData, isLoading: loading, refetch } = useExpenses(isAuthenticated);
+  const { data: expensesData, isLoading: loading, refetch } = useExpenses(undefined, isAuthenticated);
   const { data: tripsData, isLoading: tripsLoading } = useTrips({ limit: 100 }, isAuthenticated);
 
   // Filter to show only trip expenses (NOT office expenses)
@@ -95,6 +93,13 @@ export default function ExpensesPage() {
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
+  const [tableFilters, setTableFilters] = useState<Record<string, any>>({});
+  const [tableKey, setTableKey] = useState(0);
+
+  const hasActiveFilters = Object.values(tableFilters).some(
+    (v) => v != null && (Array.isArray(v) ? v.length > 0 : true)
+  );
+  const clearAllFilters = () => { setTableFilters({}); setTableKey((k) => k + 1); };
 
   // Trip Selection State
   const [tripSelectModalOpen, setTripSelectModalOpen] = useState(false);
@@ -181,6 +186,7 @@ export default function ExpensesPage() {
             size="small"
             icon={<HistoryOutlined />}
             title="View History"
+            aria-label="View Expense History"
             onClick={() => handleViewHistory(record)}
           />
           {record.trip_id && (
@@ -189,6 +195,7 @@ export default function ExpensesPage() {
               size="small"
               icon={<EyeOutlined />}
               title="View Trip"
+              aria-label="View Trip"
               onClick={() => handleViewTrip(record.trip_id!)}
             />
           )}
@@ -198,6 +205,7 @@ export default function ExpensesPage() {
               size="small"
               icon={<PrinterOutlined />}
               title="Print Voucher"
+              aria-label="Print Expense Voucher"
               onClick={() => handlePrint(record.id)}
             />
           )}
@@ -212,7 +220,7 @@ export default function ExpensesPage() {
       render: (num: string | null, record: ExpenseRequestDetailed) => (
         <a
           onClick={() => handleViewDetail(record)}
-          style={{ fontWeight: 600, color: "#1890ff", cursor: "pointer" }}
+          style={{ fontWeight: 600, color: "var(--color-gold)", cursor: "pointer" }}
         >
           {num || record.id?.slice(0, 8).toUpperCase()}
         </a>
@@ -263,7 +271,7 @@ export default function ExpensesPage() {
       title: "Status",
       dataIndex: "status",
       key: "status",
-      width: 220,
+      width: 250,
       render: (status: ExpenseStatus) => <ExpenseStatusBadge status={status} />,
       ...getColumnFilterProps("status", STATUS_FILTERS),
     },
@@ -276,8 +284,8 @@ export default function ExpensesPage() {
     <div
       style={{
         minHeight: "100vh",
-        background: "#f0f2f5",
-        padding: "24px",
+        background: "var(--color-bg)",
+        padding: "var(--space-xl)",
       }}
     >
       <Card>
@@ -322,13 +330,37 @@ export default function ExpensesPage() {
             </Space>
           </div>
 
+          {user?.role === 'ops' && (
+            <div style={{ marginBottom: 8 }}>
+              <Typography.Text type="secondary">
+                Showing: all trip expenses · your office expenses{' '}
+                <Tooltip title="Ops users see all trip expenses and their own submitted office expenses. Managers and Finance see all office expenses.">
+                  <QuestionCircleOutlined style={{ cursor: 'help' }} />
+                </Tooltip>
+              </Typography.Text>
+            </div>
+          )}
+
           <Table<ExpenseRequestDetailed>
+            key={tableKey}
             columns={resizableColumns}
             components={components}
             dataSource={expenses}
             rowKey="id"
             loading={loading}
             sticky={{ offsetHeader: 64 }}
+            scroll={{ x: "max-content" }}
+            onChange={(_, filters) => setTableFilters(filters as Record<string, any>)}
+            locale={{
+              emptyText: hasActiveFilters ? (
+                <EmptyState
+                  message="No results match your filters."
+                  action={{ label: "Clear Filters", onClick: clearAllFilters }}
+                />
+              ) : (
+                <EmptyState message="No expenses found for this period." />
+              ),
+            }}
             rowSelection={getStandardRowSelection(
               currentPage,
               pageSize,
@@ -355,6 +387,7 @@ export default function ExpensesPage() {
       <Modal
         title="Select Trip for Expense"
         open={tripSelectModalOpen}
+        width={600}
         onCancel={() => {
           setTripSelectModalOpen(false);
           setSelectedTripId(null);

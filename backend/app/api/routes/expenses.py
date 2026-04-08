@@ -2,15 +2,20 @@
 Expense Request Submission - Story 2.2
 CRUD endpoints for expense management with RBAC and status workflow.
 """
+import logging
 import uuid
 from datetime import datetime, timezone
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Query, UploadFile, File
+from sqlalchemy import text
 from sqlmodel import func, select
 from sqlalchemy.orm import selectinload
 
+logger = logging.getLogger(__name__)
+
 from app.api.deps import CurrentUser, SessionDep
+from app.core.db import commit_or_rollback
 from app.core.socket import sio
 from app.core.storage import storage
 from app.models import (
@@ -37,18 +42,21 @@ router = APIRouter(prefix="/expenses", tags=["expenses"])
 def generate_expense_number(session: SessionDep, trip_id: uuid.UUID | None, trip: Trip | None) -> str:
     """Generate a human-readable expense number.
 
-    Trip expenses:     E{trip_number}{seq:03d}  (e.g. ETDLD937F-2026781001)
-    Non-trip expenses: EXP-{YYYY}-{seq:04d}     (e.g. EXP-2026-0001)
+    Trip expenses:     E{trip_number}-{seq:03d}  (e.g. ET512EZD-2026001-001)
+    Non-trip expenses: EX-{YYYY}-{seq:04d}      (e.g. EX-2026-0001)
     """
     if trip_id and trip:
-        # Count existing expenses for this trip
+        # Acquire advisory lock per-trip to prevent duplicate sequence numbers
+        session.execute(text("SELECT pg_advisory_xact_lock(1003)"))
         count_stmt = select(func.count()).select_from(ExpenseRequest).where(ExpenseRequest.trip_id == trip_id)
         existing_count = session.exec(count_stmt).one()
         seq = existing_count + 1
         return f"E{trip.trip_number}-{seq:03d}"
     else:
-        # Non-trip (Office): EX-YYYY-SEQ - Story 2.17 Scenario 4
+        # Non-trip (Office): EX-YYYY-SEQ
         year = datetime.now().year
+        # Acquire advisory lock to prevent concurrent office expense number collision
+        session.execute(text("SELECT pg_advisory_xact_lock(1004)"))
         pattern = f"EX-{year}-%"
         last_stmt = (
             select(ExpenseRequest.expense_number)
@@ -63,25 +71,33 @@ def generate_expense_number(session: SessionDep, trip_id: uuid.UUID | None, trip
                 last_seq = int(last_number.split("-")[-1])
                 seq = last_seq + 1
             except ValueError:
-                pass
+                logger.error("Failed to parse last office expense number: %s", last_number)
         return f"EX-{year}-{seq:04d}"
 
 # Valid status transitions by role
 # Format: {current_status: {role: [allowed_new_statuses]}}
 STATUS_TRANSITIONS = {
+    # Pending Manager: manager/admin can approve, reject, or return — NOT void.
+    # Voided is reserved for post-approval cancellations (Pending Finance / Paid).
     ExpenseStatus.pending_manager: {
         UserRole.manager: [ExpenseStatus.pending_finance, ExpenseStatus.rejected, ExpenseStatus.returned],
         UserRole.admin: [ExpenseStatus.pending_finance, ExpenseStatus.rejected, ExpenseStatus.returned],
     },
     ExpenseStatus.pending_finance: {
-        UserRole.finance: [ExpenseStatus.paid, ExpenseStatus.returned],
-        UserRole.admin: [ExpenseStatus.paid, ExpenseStatus.returned],
+        UserRole.finance: [ExpenseStatus.paid, ExpenseStatus.returned, ExpenseStatus.voided],
+        UserRole.manager: [ExpenseStatus.voided],
+        UserRole.admin: [ExpenseStatus.paid, ExpenseStatus.returned, ExpenseStatus.voided],
+    },
+    ExpenseStatus.paid: {
+        UserRole.finance: [ExpenseStatus.voided],
+        UserRole.manager: [ExpenseStatus.voided],
+        UserRole.admin: [ExpenseStatus.voided],
     },
     ExpenseStatus.returned: {
         UserRole.ops: [ExpenseStatus.pending_manager],  # Resubmit after correction
-        UserRole.finance: [ExpenseStatus.pending_manager],  # Finance can resubmit their own returned expenses
-        UserRole.manager: [ExpenseStatus.pending_manager],
-        UserRole.admin: [ExpenseStatus.pending_manager],
+        UserRole.finance: [ExpenseStatus.pending_manager, ExpenseStatus.voided],  # Finance can resubmit their own returned expenses
+        UserRole.manager: [ExpenseStatus.pending_manager, ExpenseStatus.voided],
+        UserRole.admin: [ExpenseStatus.pending_manager, ExpenseStatus.voided],
     },
 }
 
@@ -171,8 +187,8 @@ def check_trip_not_closed(session: SessionDep, trip_id: uuid.UUID | None) -> Tri
 def read_expenses(
     session: SessionDep,
     current_user: CurrentUser,
-    skip: int = 0,
-    limit: int = 100,
+    skip: int = Query(default=0, ge=0),
+    limit: int = Query(default=100, ge=1, le=500),
     trip_id: uuid.UUID | None = Query(default=None, description="Filter by trip ID"),
     status: str | None = Query(default=None, description="Filter by status"),
     category: str | None = Query(default=None, description="Filter by category"),
@@ -239,6 +255,7 @@ def read_expenses(
             selectinload(ExpenseRequest.trip),
             selectinload(ExpenseRequest.paid_by),
             selectinload(ExpenseRequest.approved_by),
+            selectinload(ExpenseRequest.voided_by),
         )
     )
     expenses = session.exec(query).all()
@@ -289,18 +306,6 @@ async def batch_update_expenses(
 
     updated_count = 0
 
-    # Check if any expenses are linked to closed trips
-    for expense in expenses:
-        if expense.trip_id:
-            trip = session.get(Trip, expense.trip_id)
-            if trip and is_trip_closed(trip):
-                trip_status = trip.status.value if hasattr(trip.status, "value") else str(trip.status)
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"Cannot modify expense {expense.expense_number}: Trip {trip.trip_number} is {trip_status}. "
-                           f"No expense changes allowed on completed or cancelled trips."
-                )
-
     for expense in expenses:
         # Check transition permission
         current_status = ExpenseStatus(expense.status) if isinstance(expense.status, str) else expense.status
@@ -319,17 +324,28 @@ async def batch_update_expenses(
 
         # Update
         expense.status = bulk_in.status
-        if bulk_in.comment:
-            expense.manager_comment = bulk_in.comment
-        # Record approver when moving to Pending Finance (manager approval)
-        if bulk_in.status == ExpenseStatus.pending_finance:
-            expense.approved_by_id = current_user.id
-            expense.approved_at = datetime.now(timezone.utc)
+        if bulk_in.status == ExpenseStatus.voided:
+            # Void reason is stored separately to preserve any manager approval remark
+            if bulk_in.comment:
+                expense.void_reason = bulk_in.comment
+            expense.voided_by_id = current_user.id
+            expense.voided_at = datetime.now(timezone.utc)
+        else:
+            if bulk_in.comment:
+                expense.manager_comment = bulk_in.comment
+            # Record approver when moving to Pending Finance (manager approval)
+            if bulk_in.status == ExpenseStatus.pending_finance:
+                expense.approved_by_id = current_user.id
+                expense.approved_at = datetime.now(timezone.utc)
+            # Story 6.24: Record when expense is returned for revision
+            if bulk_in.status == ExpenseStatus.returned:
+                expense.returned_at = datetime.now(timezone.utc)
         expense.updated_at = datetime.now(timezone.utc)
+        expense.updated_by_id = current_user.id  # Story 6.13: audit trail
         session.add(expense)
         updated_count += 1
 
-    session.commit()
+    commit_or_rollback(session)
 
     # Emit socket event
     await sio.emit("expense_updated", {"count": updated_count, "message": "Batch update processed"})
@@ -384,7 +400,7 @@ async def create_expense(
         created_by_id=current_user.id,
     )
     session.add(expense)
-    session.commit()
+    commit_or_rollback(session)
     session.refresh(expense)
     
     # Emit socket event - Story 2.6
@@ -418,10 +434,6 @@ async def update_expense(
     expense = session.get(ExpenseRequest, id)
     if not expense:
         raise HTTPException(status_code=404, detail="Expense not found")
-
-    # Check if associated trip is closed (Completed/Cancelled)
-    if expense.trip_id:
-        check_trip_not_closed(session, expense.trip_id)
 
     update_dict = expense_in.model_dump(exclude_unset=True)
 
@@ -462,8 +474,9 @@ async def update_expense(
     # Update the expense
     expense.sqlmodel_update(update_dict)
     expense.updated_at = datetime.now(timezone.utc)
+    expense.updated_by_id = current_user.id  # Story 6.13: audit trail
     session.add(expense)
-    session.commit()
+    commit_or_rollback(session)
     session.refresh(expense)
     
     # Emit socket event
@@ -513,10 +526,6 @@ async def process_payment(
     if not expense:
         raise HTTPException(status_code=404, detail="Expense not found")
 
-    # Check if associated trip is closed (Completed/Cancelled)
-    if expense.trip_id:
-        check_trip_not_closed(session, expense.trip_id)
-
     # Validate status
     current_status = ExpenseStatus(expense.status) if isinstance(expense.status, str) else expense.status
     if current_status != ExpenseStatus.pending_finance:
@@ -550,7 +559,7 @@ async def process_payment(
     expense.updated_at = datetime.now(timezone.utc)
 
     session.add(expense)
-    session.commit()
+    commit_or_rollback(session)
     session.refresh(expense)
     
     # Emit socket event
@@ -585,12 +594,10 @@ async def upload_attachment(
     if not expense:
         raise HTTPException(status_code=404, detail="Expense not found")
 
-    # Check if associated trip is closed (Completed/Cancelled)
-    if expense.trip_id:
-        check_trip_not_closed(session, expense.trip_id)
-
-    # Check permissions (same as modify)
-    if not can_modify_expense(expense, current_user):
+    # Admin/Manager can amend attachments on any expense (Expense Console use case).
+    # Regular users (ops, finance) can only upload when status allows modification.
+    AMEND_ROLES = {UserRole.admin, UserRole.manager}
+    if current_user.role not in AMEND_ROLES and not can_modify_expense(expense, current_user):
         raise HTTPException(
             status_code=403,
             detail="Can only add attachments when status is 'Pending Manager' and you are the creator"
@@ -613,6 +620,8 @@ async def upload_attachment(
         "image/jpeg", "image/png", "image/gif", "image/webp",
         "application/msword",
         "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "application/vnd.ms-excel",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     ]
     if file.content_type and file.content_type not in allowed_types:
         raise HTTPException(
@@ -639,7 +648,7 @@ async def upload_attachment(
     expense.updated_at = datetime.now(timezone.utc)
     
     session.add(expense)
-    session.commit()
+    commit_or_rollback(session)
     session.refresh(expense)
     
     return expense
@@ -669,22 +678,22 @@ def get_attachment_urls(
         url = storage.get_presigned_url(key, expiration=3600)
         # Extract readable filename from the key
         filename = key.split("/")[-1] if "/" in key else key
-        # Remove timestamp prefix (YYYYMMDDHHmmss_)
-        if len(filename) > 15 and filename[14] == "_":
-            filename = filename[15:]
+        # Strip the 8-char hex prefix added during upload (e.g. "a1b2c3d4_myfile.pdf")
+        if len(filename) > 9 and filename[8] == "_":
+            filename = filename[9:]
         result.append({"key": key, "filename": filename, "url": url})
 
     return result
 
 
-@router.delete("/{id}/attachment")
+@router.delete("/{id}/attachment", status_code=204)
 def delete_attachment(
     *,
     session: SessionDep,
     current_user: CurrentUser,
     id: uuid.UUID,
     key: str = Query(..., description="Object key of the attachment to delete"),
-) -> Message:
+) -> None:
     """
     Delete a specific attachment from an expense.
     Removes from R2 storage and updates the database.
@@ -693,7 +702,8 @@ def delete_attachment(
     if not expense:
         raise HTTPException(status_code=404, detail="Expense not found")
 
-    if not can_modify_expense(expense, current_user):
+    AMEND_ROLES = {UserRole.admin, UserRole.manager}
+    if current_user.role not in AMEND_ROLES and not can_modify_expense(expense, current_user):
         raise HTTPException(
             status_code=403,
             detail="Can only remove attachments when status is 'Pending Manager' and you are the creator"
@@ -711,17 +721,15 @@ def delete_attachment(
     expense.attachments = current_attachments
     expense.updated_at = datetime.now(timezone.utc)
     session.add(expense)
-    session.commit()
-
-    return Message(message="Attachment deleted successfully")
+    commit_or_rollback(session)
 
 
-@router.delete("/{id}")
+@router.delete("/{id}", status_code=204)
 def delete_expense(
     session: SessionDep,
     current_user: CurrentUser,
     id: uuid.UUID,
-) -> Message:
+) -> None:
     """Delete an expense. Only allowed when status is 'Pending Manager' and trip is not closed."""
     expense = session.get(ExpenseRequest, id)
     if not expense:
@@ -738,5 +746,4 @@ def delete_expense(
         )
 
     session.delete(expense)
-    session.commit()
-    return Message(message="Expense deleted successfully")
+    commit_or_rollback(session)

@@ -31,36 +31,9 @@ import type { Trip } from "@/types/trip";
 import type { TripExpenseType } from "@/types/trip-expense-type";
 import type { OfficeExpenseType } from "@/types/office-expense-type";
 import dayjs from "dayjs";
+import { COMPANY_NAME, EXPENSE_CATEGORIES, CATEGORY_MAPPING } from "@/constants/expenseConstants";
 
 const { Text } = Typography;
-
-const EXPENSE_CATEGORIES: ExpenseCategory[] = [
-  "Fuel",
-  "Allowance",
-  "Maintenance",
-  "Office",
-  "Border",
-  "Other",
-];
-
-// Map Trip Expense Type categories to ExpenseCategory
-const CATEGORY_MAPPING: Record<string, ExpenseCategory> = {
-  "Fuel": "Fuel",
-  "Driver Allowance": "Allowance",
-  "Cargo Charges": "Border",
-  "Transportation Costs-Others": "Other",
-  "Toll Gates": "Border",
-  "Road Toll": "Border",
-  "Port Fee": "Border",
-  "Parking Fee": "Other",
-  "Council": "Border",
-  "Bond": "Border",
-  "Agency Fee": "Border",
-  "CNPR Tax": "Border",
-  "Bonus": "Allowance",
-  "Border Expenses": "Border",
-  "Miscellaneous": "Other",
-};
 
 interface AddExpenseModalProps {
   open: boolean;
@@ -192,7 +165,7 @@ export function AddExpenseModal({
 
       // Set default values
       form.setFieldsValue({
-        company: "EDUPO COMPANY LIMITED",
+        company: COMPANY_NAME,
         application_date: dayjs(),
         payment_method: "Cash"
       });
@@ -375,7 +348,13 @@ export function AddExpenseModal({
         });
 
         if (!response.ok) {
-          throw new Error("Failed to create expense");
+          let detail = "Failed to create expense";
+          try {
+            const body = await response.json();
+            if (typeof body.detail === "string") detail = body.detail;
+            else if (Array.isArray(body.detail) && body.detail[0]?.msg) detail = body.detail[0].msg;
+          } catch (_) {}
+          throw new Error(detail);
         }
 
         const expense = await response.json();
@@ -412,8 +391,13 @@ export function AddExpenseModal({
       setFileList([]);
       onSuccess();
       onClose();
-    } catch {
-      message.error("Network error or failed to create expenses");
+    } catch (err: unknown) {
+      // Show API validation detail when available
+      if (err instanceof Error) {
+        message.error(err.message || "Failed to create expenses");
+      } else {
+        message.error("Network error or failed to create expenses");
+      }
     } finally {
       setSubmitting(false);
     }
@@ -540,7 +524,7 @@ export function AddExpenseModal({
           type="text"
           danger
           icon={<DeleteOutlined />}
-          aria-label="Delete Item"
+          aria-label="Delete Expense Item"
           onClick={() => handleDeleteRow(record.key)}
         />
       ),
@@ -551,7 +535,7 @@ export function AddExpenseModal({
   const BasicInfoTab = (
     <>
       {/* Header Grid */}
-      <div style={{ marginBottom: 24, padding: 16, background: '#f5f5f5', borderRadius: 8 }}>
+      <div style={{ marginBottom: 24, padding: 16, background: 'var(--color-surface)', borderRadius: 8 }}>
         <Row gutter={[16, 16]}>
           <Col span={8}>
             <Form.Item label="Company" name="company">
@@ -566,6 +550,7 @@ export function AddExpenseModal({
           <Col span={8}>
             <Form.Item label="Application Amount">
               <Input
+                aria-label="Application Amount"
                 value={totalAmount > 0 ? `${items[0]?.currency || 'TZS'} ${totalAmount.toLocaleString("en-US")}` : '-'}
                 readOnly
                 style={{ fontWeight: 'bold' }}
@@ -708,7 +693,7 @@ export function AddExpenseModal({
                     >
                       <Button icon={<UploadOutlined />}>Select File</Button>
                     </Upload>
-                    <div style={{ marginTop: 8, color: '#888' }}>
+                    <div style={{ marginTop: 8, color: 'var(--color-text-muted)' }}>
                       Supported formats: PDF, Images. Max 3MB.
                       (The selected files will be attached to all expense items in this application)
                       <br />

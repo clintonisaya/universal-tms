@@ -1,17 +1,18 @@
 import uuid
 from typing import Any
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 from sqlmodel import func, select
 
 from app.api.deps import CurrentUser, SessionDep
+from app.core.db import commit_or_rollback
 from app.models import City, CityCreate, CityPublic, CitiesPublic, CityUpdate, Message, Country
 
 router = APIRouter(prefix="/cities", tags=["cities"])
 
 @router.get("", response_model=CitiesPublic)
 def read_cities(
-    session: SessionDep, current_user: CurrentUser, skip: int = 0, limit: int = 100
+    session: SessionDep, current_user: CurrentUser, skip: int = Query(default=0, ge=0), limit: int = Query(default=100, ge=1, le=500)
 ) -> Any:
     """
     Retrieve cities.
@@ -46,7 +47,7 @@ def create_city(
         
     city = City.model_validate(city_in)
     session.add(city)
-    session.commit()
+    commit_or_rollback(session)
     session.refresh(city)
     return city
 
@@ -69,14 +70,14 @@ def update_city(
     update_data = city_in.model_dump(exclude_unset=True)
     city.sqlmodel_update(update_data)
     session.add(city)
-    session.commit()
+    commit_or_rollback(session)
     session.refresh(city)
     return city
 
-@router.delete("/{id}")
+@router.delete("/{id}", status_code=204)
 def delete_city(
     session: SessionDep, current_user: CurrentUser, id: uuid.UUID
-) -> Message:
+) -> None:
     """
     Delete a city.
     """
@@ -84,5 +85,4 @@ def delete_city(
     if not city:
         raise HTTPException(status_code=404, detail="City not found")
     session.delete(city)
-    session.commit()
-    return Message(message="City deleted successfully")
+    commit_or_rollback(session)

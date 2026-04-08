@@ -1,6 +1,5 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import {
   Modal,
   Form,
@@ -13,100 +12,26 @@ import {
   Row,
   Col,
   Alert,
-  DatePicker,
-  Timeline,
+  Spin,
   Typography,
+  Tooltip,
+  theme,
 } from "antd";
-import {
-  CheckCircleOutlined,
-  ClockCircleOutlined,
-} from "@ant-design/icons";
 import dayjs from "dayjs";
-import type { TripUpdate, TripStatus, Trip } from "@/types/trip";
-import type { Country } from "@/types/location";
+import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
+import type { TripStatus } from "@/types/trip";
+import { useTripStatusUpdate } from "@/hooks/useTripStatusUpdate";
+import { StatusTimeline } from "./StatusTimeline";
+import { StatusDateFields } from "./StatusDateFields";
 
-const { Text } = Typography;
-
-// Go leg statuses — only shown when no return waybill attached
-const GO_STATUSES: TripStatus[] = [
-  "Dispatch",
-  "Wait to Load",
-  "Loading",
-  "In Transit",
-  "At Border",
-  "Offloading",
-];
-
-// Return leg statuses — only shown when return_waybill_id is set
-const RETURN_STATUSES: TripStatus[] = [
-  "Dispatch (Return)",
-  "Wait to Load (Return)",
-  "Loading (Return)",
-  "In Transit (Return)",
-  "At Border (Return)",
-  "Offloading (Return)",
-];
-
-// Terminal statuses — always visible regardless of direction
-const TERMINAL_STATUSES: TripStatus[] = [
-  "Returned",
-  "Waiting for PODs",
-  "Completed",
-  "Cancelled",
-];
-
-const CLOSED_STATUSES: TripStatus[] = ["Completed", "Cancelled"];
-
-// Status order for timeline display — full lifecycle including return leg
-const STATUS_ORDER: TripStatus[] = [
-  "Waiting",
-  "Dispatch",
-  "Wait to Load",
-  "Loading",
-  "In Transit",
-  "At Border",
-  "Offloading",
-  "Dispatch (Return)",
-  "Wait to Load (Return)",
-  "Loading (Return)",
-  "In Transit (Return)",
-  "At Border (Return)",
-  "Offloading (Return)",
-  "Returned",
-  "Waiting for PODs",
-  "Completed",
-];
+const { Text, Link } = Typography;
 
 interface UpdateTripStatusModalProps {
   open: boolean;
   onClose: () => void;
   onSuccess: () => void;
   tripId: string;
-  initialValues?: Partial<TripUpdate & { status: string; return_waybill_id?: string | null }>;
-}
-
-// Helper to get the date label for a status from trip data
-function getStatusDate(trip: Trip | null, status: TripStatus): string | null {
-  if (!trip) return null;
-  switch (status) {
-    case "Waiting":      return trip.created_at;
-    case "Dispatch":     return trip.dispatch_date;
-    case "Wait to Load": return trip.arrival_loading_date;
-    case "Loading":      return trip.loading_end_date;
-    case "Offloading":   return trip.offloading_date;
-    case "Dispatch (Return)":    return (trip as any).dispatch_return_date;
-    case "Wait to Load (Return)": return (trip as any).arrival_loading_return_date;
-    case "Loading (Return)":     return (trip as any).loading_return_end_date;
-    case "Offloading (Return)":  return trip.arrival_return_date;
-    case "Returned":     return trip.arrival_return_date;
-    case "Completed":    return trip.end_date;
-    default:             return null;
-  }
-}
-
-function formatDate(dateStr: string | null | undefined): string {
-  if (!dateStr) return "-";
-  return dayjs(dateStr).format("DD/MM/YYYY");
+  initialValues?: Partial<{ status: string; current_location?: string | null; return_waybill_id?: string | null; is_delayed?: boolean }>;
 }
 
 export function UpdateTripStatusModal({
@@ -116,392 +41,41 @@ export function UpdateTripStatusModal({
   tripId,
   initialValues,
 }: UpdateTripStatusModalProps) {
-  const [form] = Form.useForm();
-  const [submitting, setSubmitting] = useState(false);
-  const [countries, setCountries] = useState<Country[]>([]);
-  const [loadingResources, setLoadingResources] = useState(false);
-  const [selectedStatus, setSelectedStatus] = useState<TripStatus | null>(null);
-  const [tripData, setTripData] = useState<Trip | null>(null);
-  // Border crossing sub-form state (Story 2.26)
-  const [nextBorder, setNextBorder] = useState<any | null>(null);
-  const [existingCrossing, setExistingCrossing] = useState<any | null>(null);
-  const [loadingBorder, setLoadingBorder] = useState(false);
-
-  const currentStatus = initialValues?.status as TripStatus | undefined;
-  const hasReturnWaybill = !!initialValues?.return_waybill_id;
-  const isTripClosed = currentStatus && CLOSED_STATUSES.includes(currentStatus);
-  const isReopening = isTripClosed && selectedStatus && !CLOSED_STATUSES.includes(selectedStatus);
-
-  // Go leg: show go statuses + terminals. Return leg: show return statuses + terminals.
-  const TRIP_STATUSES: TripStatus[] = hasReturnWaybill
-    ? [...RETURN_STATUSES, ...TERMINAL_STATUSES]
-    : [...GO_STATUSES, ...TERMINAL_STATUSES];
-
-  useEffect(() => {
-    if (open) {
-      fetchResources();
-      fetchTripData();
-      form.resetFields();
-      setNextBorder(null);
-      setExistingCrossing(null);
-      if (initialValues) {
-        const location = initialValues.current_location || "";
-        const parts = location.split(",").map((s) => s.trim());
-        form.setFieldsValue({
-          status: initialValues.status,
-          city: parts[0] || "",
-          country: parts.length > 1 ? parts.slice(1).join(", ") : "",
-        });
-        setSelectedStatus(initialValues.status as TripStatus);
-        // If the trip is already at a border when the modal opens, load border data immediately
-        if (initialValues.status === "At Border" || initialValues.status === "At Border (Return)") {
-          fetchBorderData(initialValues.status as TripStatus);
-        }
-      }
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, initialValues, form]);
-
-  // Pre-fill dates when status changes or tripData loads
-  useEffect(() => {
-    if (selectedStatus && tripData) {
-        const fields: any = {};
-        
-        if (selectedStatus === "Dispatch" && tripData.dispatch_date) {
-            fields.dispatch_date = dayjs(tripData.dispatch_date);
-        }
-        if (selectedStatus === "Wait to Load" && tripData.arrival_loading_date) {
-            fields.arrival_loading_date = dayjs(tripData.arrival_loading_date);
-        }
-        if (selectedStatus === "Loading") {
-            if (tripData.loading_start_date) fields.loading_start_date = dayjs(tripData.loading_start_date);
-            if (tripData.loading_end_date) fields.loading_end_date = dayjs(tripData.loading_end_date);
-        }
-        if (selectedStatus === "Offloading") {
-            if (tripData.arrival_offloading_date) fields.arrival_offloading_date = dayjs(tripData.arrival_offloading_date);
-            if (tripData.offloading_date) fields.offloading_date = dayjs(tripData.offloading_date);
-        }
-        if (selectedStatus === "Dispatch (Return)" && (tripData as any).dispatch_return_date) {
-            fields.dispatch_return_date = dayjs((tripData as any).dispatch_return_date);
-        }
-        if (selectedStatus === "Returned" && tripData.arrival_return_date) {
-            fields.arrival_return_date = dayjs(tripData.arrival_return_date);
-        }
-        if (selectedStatus === "Offloading (Return)" && tripData.arrival_return_date) {
-            fields.arrival_return_date = dayjs(tripData.arrival_return_date);
-        }
-        if (selectedStatus === "Wait to Load (Return)" && (tripData as any).arrival_loading_return_date) {
-            fields.arrival_loading_return_date = dayjs((tripData as any).arrival_loading_return_date);
-        }
-        if (selectedStatus === "Loading (Return)") {
-            if ((tripData as any).loading_return_start_date) fields.loading_return_start_date = dayjs((tripData as any).loading_return_start_date);
-            if ((tripData as any).loading_return_end_date) fields.loading_return_end_date = dayjs((tripData as any).loading_return_end_date);
-        }
-        if (selectedStatus === "In Transit (Return)" && (tripData as any).loading_return_end_date) {
-            fields.loading_return_end_date = dayjs((tripData as any).loading_return_end_date);
-        }
-
-        form.setFieldsValue(fields);
-    }
-  }, [selectedStatus, tripData, form]);
-
-  const fetchBorderData = async (status: TripStatus) => {
-    const isAtBorder = status === "At Border" || status === "At Border (Return)";
-    if (!isAtBorder) {
-      setNextBorder(null);
-      setExistingCrossing(null);
-      return;
-    }
-    const direction = status === "At Border" ? "go" : "return";
-    setLoadingBorder(true);
-    try {
-      const [nextRes, crossingsRes] = await Promise.all([
-        fetch(`/api/v1/trips/${tripId}/next-border?direction=${direction}`, { credentials: "include" }),
-        fetch(`/api/v1/trips/${tripId}/border-crossings`, { credentials: "include" }),
-      ]);
-      const nextData = nextRes.ok ? await nextRes.json() : null;
-      setNextBorder(nextData || null);
-      if (nextData && crossingsRes.ok) {
-        const crossings: any[] = await crossingsRes.json();
-        const match = crossings.find(
-          (c) => c.border_post_id === nextData.id && c.direction === direction
-        );
-        setExistingCrossing(match || null);
-        // Pre-fill the 7 date fields if existing crossing found
-        if (match) {
-          const fields: any = {};
-          const dateFields = [
-            "arrived_side_a_at",
-            "documents_submitted_side_a_at",
-            "documents_cleared_side_a_at",
-            "arrived_side_b_at",
-            "departed_border_at",
-          ];
-          dateFields.forEach((f) => {
-            if (match[f]) fields[`border_${f}`] = dayjs(match[f]);
-          });
-          form.setFieldsValue(fields);
-        }
-      } else {
-        setExistingCrossing(null);
-      }
-    } catch {
-      setNextBorder(null);
-      setExistingCrossing(null);
-    } finally {
-      setLoadingBorder(false);
-    }
-  };
-
-  const handleStatusChange = (value: TripStatus) => {
-    setSelectedStatus(value);
-    fetchBorderData(value);
-  };
-
-  const fetchResources = async () => {
-    setLoadingResources(true);
-    try {
-      const res = await fetch("/api/v1/countries", { credentials: "include" });
-      if (res.ok) {
-        const data = await res.json();
-        setCountries(data.data);
-      }
-    } catch (err) {
-      console.error("Failed to fetch resources", err);
-    } finally {
-      setLoadingResources(false);
-    }
-  };
-
-  const fetchTripData = async () => {
-    try {
-      const res = await fetch(`/api/v1/trips/${tripId}`, { credentials: "include" });
-      if (res.ok) {
-        const data = await res.json();
-        setTripData(data);
-      }
-    } catch {
-      // silently fail - timeline just won't show dates
-    }
-  };
-
-  const handleSubmit = async (values: any) => {
-    setSubmitting(true);
-    try {
-      // Story 2.26: If at border with a next border, upsert crossing first
-      if (nextBorder && (selectedStatus === "At Border" || selectedStatus === "At Border (Return)")) {
-        const direction = selectedStatus === "At Border" ? "go" : "return";
-        const dateFields = [
-          "arrived_side_a_at",
-          "documents_submitted_side_a_at",
-          "documents_cleared_side_a_at",
-          "arrived_side_b_at",
-          "departed_border_at",
-        ];
-        const crossingPayload: any = { direction };
-        dateFields.forEach((f) => {
-          const val = values[`border_${f}`];
-          if (val) crossingPayload[f] = val.format("YYYY-MM-DD");
-        });
-        await fetch(`/api/v1/trips/${tripId}/border-crossings/${nextBorder.id}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify(crossingPayload),
-        });
-      }
-
-      const city = (values.city || "").trim();
-      const country = (values.country || "").trim();
-      let current_location: string | null = null;
-      if (city && country) {
-        current_location = `${city}, ${country}`;
-      } else if (city) {
-        current_location = city;
-      } else if (country) {
-        current_location = country;
-      }
-
-      const payload: TripUpdate = {
-        status: values.status,
-        current_location,
-      };
-
-      // Add date fields based on selected status
-      if (values.dispatch_date) {
-        payload.dispatch_date = values.dispatch_date.format("YYYY-MM-DD");
-      }
-      if (values.arrival_loading_date) {
-        payload.arrival_loading_date = values.arrival_loading_date.format("YYYY-MM-DD");
-      }
-      if (values.loading_start_date) {
-        payload.loading_start_date = values.loading_start_date.format("YYYY-MM-DD");
-      }
-      if (values.loading_end_date) {
-        payload.loading_end_date = values.loading_end_date.format("YYYY-MM-DD");
-      }
-      if (values.arrival_offloading_date) {
-        payload.arrival_offloading_date = values.arrival_offloading_date.format("YYYY-MM-DD");
-      }
-      if (values.offloading_date) {
-        payload.offloading_date = values.offloading_date.format("YYYY-MM-DD");
-      }
-      if (values.arrival_return_date) {
-        payload.arrival_return_date = values.arrival_return_date.format("YYYY-MM-DD");
-      }
-      if (values.dispatch_return_date) {
-        payload.dispatch_return_date = values.dispatch_return_date.format("YYYY-MM-DD");
-      }
-      if (values.arrival_loading_return_date) {
-        payload.arrival_loading_return_date = values.arrival_loading_return_date.format("YYYY-MM-DD");
-      }
-      if (values.loading_return_start_date) {
-        payload.loading_return_start_date = values.loading_return_start_date.format("YYYY-MM-DD");
-      }
-      if (values.loading_return_end_date) {
-        payload.loading_return_end_date = values.loading_return_end_date.format("YYYY-MM-DD");
-      }
-
-      const response = await fetch(`/api/v1/trips/${tripId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify(payload),
-      });
-
-      if (response.ok) {
-        message.success("Trip status updated successfully!");
-        onSuccess();
-        onClose();
-      } else {
-        const error = await response.json();
-        message.error(error.detail || "Failed to update trip");
-      }
-    } catch {
-      message.error("Network error");
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  // Build timeline items from trip data showing completed statuses
-  const getTimelineItems = () => {
-    if (!tripData) return [];
-
-    const currentIdx = STATUS_ORDER.indexOf(currentStatus as TripStatus);
-    const items: any[] = [];
-
-    for (let i = 0; i <= currentIdx && i < STATUS_ORDER.length; i++) {
-      const status = STATUS_ORDER[i];
-      const date = getStatusDate(tripData, status);
-      const isCompleted = i < currentIdx || (i === currentIdx && currentStatus !== "Waiting");
-
-      // Show extra date details for statuses with multiple dates
-      let extraDates = "";
-      if (status === "Loading" && tripData.loading_start_date) {
-        extraDates = `Started: ${formatDate(tripData.loading_start_date)}`;
-      }
-      if (status === "Offloading" && tripData.arrival_offloading_date) {
-        extraDates = `Arrival: ${formatDate(tripData.arrival_offloading_date)}`;
-      }
-
-      items.push({
-        icon: isCompleted ? (
-          <CheckCircleOutlined style={{ fontSize: 14, color: "#52c41a" }} />
-        ) : (
-          <ClockCircleOutlined style={{ fontSize: 14, color: "#faad14" }} />
-        ),
-        content: (
-          <div>
-            <Text strong style={{ fontSize: 13 }}>{status}</Text>
-            {date && (
-              <Text type="secondary" style={{ fontSize: 12, display: "block" }}>
-                {formatDate(date)}
-              </Text>
-            )}
-            {extraDates && (
-              <Text type="secondary" style={{ fontSize: 11, display: "block" }}>
-                {extraDates}
-              </Text>
-            )}
-          </div>
-        ),
-      });
-    }
-
-    return items;
-  };
-
-  // Calculate trip duration display — overall + return leg separately
-  const getTripDuration = () => {
-    if (!tripData) return null;
-    const dispatch = tripData.dispatch_date;
-    const dispatchReturn = (tripData as any).dispatch_return_date;
-    const returnDate = tripData.arrival_return_date;
-
-    let overall: string | null = null;
-    if (dispatch) {
-      const end = returnDate || dayjs().format("YYYY-MM-DD");
-      const days = dayjs(end).diff(dayjs(dispatch), "day");
-      overall = `${days}d overall`;
-    } else if (tripData.trip_duration_days != null) {
-      overall = `${tripData.trip_duration_days}d overall`;
-    }
-
-    let returnLeg: string | null = null;
-    if (dispatchReturn && tripData.return_waybill_id) {
-      const end = returnDate || dayjs().format("YYYY-MM-DD");
-      const days = dayjs(end).diff(dayjs(dispatchReturn), "day");
-      returnLeg = `${days}d return`;
-    }
-
-    if (overall && returnLeg) return `${overall} · ${returnLeg}`;
-    return overall;
-  };
-
-  const timelineItems = getTimelineItems();
-  const tripDuration = getTripDuration();
+  const { token } = theme.useToken();
+  const d = useTripStatusUpdate({ tripId, open, onSuccess, onClose, initialValues });
 
   return (
+    <ErrorBoundary>
     <Modal
       title="Update Trip Status"
       open={open}
       onCancel={onClose}
       footer={null}
-      confirmLoading={loadingResources}
-      width={800}
+      confirmLoading={d.loadingResources}
+      width={900}
+      forceRender
+      styles={{ body: { maxHeight: "75vh", overflowY: "auto", paddingBottom: 8 } }}
     >
-      {/* Previous Status Timeline */}
-      {timelineItems.length > 0 && (
-        <>
-          <div style={{ marginBottom: 8 }}>
-            <Text strong style={{ fontSize: 13 }}>Status History</Text>
-            {tripDuration && (
-              <Text type="secondary" style={{ fontSize: 12, marginLeft: 12 }}>
-                Trip Duration: {tripDuration}
-              </Text>
-            )}
-          </div>
-          <Timeline items={timelineItems} style={{ marginBottom: 8, paddingTop: 8 }} />
-          <Divider style={{ margin: "8px 0 16px" }} />
-        </>
-      )}
+      <StatusTimeline currentStatus={d.currentStatus} tripData={d.tripData} />
 
-      <Form form={form} layout="vertical" onFinish={handleSubmit}>
-        {isTripClosed && (
+      <Spin spinning={d.loadingTrip}>
+      <Form form={d.form} layout="vertical" onFinish={d.handleSubmit} onValuesChange={d.onValuesChange}>
+        {d.isTripClosed && (
           <Alert
-            title={`Trip is currently ${currentStatus}`}
-            description="Only Manager or Admin can reopen this trip."
-            type="info"
+            title={`Trip is currently ${d.currentStatus}`}
+            description={d.canReopen
+              ? "Select a status below to reopen this trip."
+              : "Only Manager or Admin can reopen this trip."}
+            type={d.canReopen ? "warning" : "info"}
             showIcon
             style={{ marginBottom: 16 }}
           />
         )}
 
-        {isReopening && (
+        {d.isReopening && (
           <Alert
             title="Reopening Trip"
-            description={`You are about to change this trip from "${currentStatus}" to "${selectedStatus}".`}
+            description={`You are about to change this trip from "${d.currentStatus}" to "${d.selectedStatus}".`}
             type="warning"
             showIcon
             style={{ marginBottom: 16 }}
@@ -512,287 +86,57 @@ export function UpdateTripStatusModal({
           name="status"
           label="New Status"
           rules={[{ required: true, message: "Please select a status" }]}
+          extra={
+            !d.isTripClosed && (
+              <Link
+                style={{ fontSize: "var(--font-sm)" }}
+                onClick={() => message.info("Date correction feature coming soon. Contact your manager to adjust a date.")}
+              >
+                Need to correct a recorded date? →
+              </Link>
+            )
+          }
         >
-          <Select placeholder="Select status" onChange={handleStatusChange}>
-            {TRIP_STATUSES.map((status) => (
-              <Select.Option key={status} value={status}>
-                {status}
-              </Select.Option>
-            ))}
+          <Select
+            placeholder="Select status"
+            onChange={d.handleStatusChange}
+            disabled={d.isTripClosed && !d.canReopen}
+          >
+            {d.nextStepStatuses.length > 0 && (
+              <Select.OptGroup label="Next Steps">
+                {d.nextStepStatuses.map((status: TripStatus) => (
+                  <Select.Option key={status} value={status}>{status}</Select.Option>
+                ))}
+              </Select.OptGroup>
+            )}
+            {d.specialStatuses.length > 0 && (
+              <Select.OptGroup label="Special Actions">
+                {d.specialStatuses.map((status: TripStatus) => (
+                  <Select.Option key={status} value={status}>
+                    {status === "Breakdown" ? (
+                      <Tooltip title="Recoverable — ops manually advances status back when truck is repaired.">
+                        <span style={{ color: token.colorWarning, fontWeight: 500 }}>
+                          Breakdown
+                        </span>
+                      </Tooltip>
+                    ) : (
+                      <span style={{ color: token.colorError, fontWeight: 500 }}>
+                        {status}
+                      </span>
+                    )}
+                  </Select.Option>
+                ))}
+              </Select.OptGroup>
+            )}
           </Select>
         </Form.Item>
 
-        {/* Border Crossing Sub-Form (Story 2.26) */}
-        {(selectedStatus === "At Border" || selectedStatus === "At Border (Return)") && (
-          <div style={{ marginBottom: 12 }}>
-            {loadingBorder ? (
-              <Alert title="Loading next border..." type="info" showIcon />
-            ) : nextBorder ? (
-              <>
-                <Alert
-                  title={
-                    <span>
-                      <strong>Border Crossing: </strong>{nextBorder.display_name}
-                    </span>
-                  }
-                  description={
-                    selectedStatus === "At Border"
-                      ? `Going: ${nextBorder.side_a_name} → ${nextBorder.side_b_name}`
-                      : `Returning: ${nextBorder.side_b_name} → ${nextBorder.side_a_name}`
-                  }
-                  type="warning"
-                  showIcon
-                  style={{ marginBottom: 12 }}
-                />
-                <Divider style={{ margin: "8px 0" }}>
-                  Border Dates — {selectedStatus === "At Border" ? nextBorder.side_a_name : nextBorder.side_b_name}
-                </Divider>
-                <Row gutter={12}>
-                  <Col span={12}>
-                    <Form.Item
-                      name="border_arrived_side_a_at"
-                      label={`Arrived at ${selectedStatus === "At Border" ? nextBorder.side_a_name : nextBorder.side_b_name}`}
-                    >
-                      <DatePicker format="DD/MM/YYYY" style={{ width: "100%" }} />
-                    </Form.Item>
-                  </Col>
-                  <Col span={12}>
-                    <Form.Item
-                      name="border_documents_submitted_side_a_at"
-                      label={`Documents Submitted at ${selectedStatus === "At Border" ? nextBorder.side_a_name : nextBorder.side_b_name}`}
-                    >
-                      <DatePicker format="DD/MM/YYYY" style={{ width: "100%" }} />
-                    </Form.Item>
-                  </Col>
-                  <Col span={12}>
-                    <Form.Item
-                      name="border_documents_cleared_side_a_at"
-                      label={`Documents Cleared at ${selectedStatus === "At Border" ? nextBorder.side_a_name : nextBorder.side_b_name}`}
-                    >
-                      <DatePicker format="DD/MM/YYYY" style={{ width: "100%" }} />
-                    </Form.Item>
-                  </Col>
-                </Row>
-                <Divider style={{ margin: "8px 0" }}>
-                  Crossing
-                </Divider>
-                <Row gutter={12}>
-                  <Col span={12}>
-                    <Form.Item
-                      name="border_arrived_side_b_at"
-                      label={`Crossed ${selectedStatus === "At Border" ? nextBorder.side_a_name : nextBorder.side_b_name} (= Arrive at ${selectedStatus === "At Border" ? nextBorder.side_b_name : nextBorder.side_a_name})`}
-                    >
-                      <DatePicker format="DD/MM/YYYY" style={{ width: "100%" }} />
-                    </Form.Item>
-                  </Col>
-                  <Col span={12}>
-                    <Form.Item name="border_departed_border_at" label="Departed Border Zone">
-                      <DatePicker format="DD/MM/YYYY" style={{ width: "100%" }} />
-                    </Form.Item>
-                  </Col>
-                </Row>
-              </>
-            ) : (
-              <Alert
-                title="No border crossings declared for this waybill"
-                description="Add borders to the waybill to track crossing timestamps."
-                type="info"
-                showIcon
-              />
-            )}
-          </div>
-        )}
-
-        {/* Dispatch Date */}
-        {selectedStatus === "Dispatch" && (
-          <Form.Item
-            name="dispatch_date"
-            label="Dispatch Date"
-            rules={[{ required: true, message: "Please enter dispatch date" }]}
-          >
-            <DatePicker
-              format="DD/MM/YYYY"
-              style={{ width: "100%" }}
-              placeholder="Select dispatch date"
-            />
-          </Form.Item>
-        )}
-
-        {/* Wait to Load — Arrival at Loading Point */}
-        {selectedStatus === "Wait to Load" && (
-          <Form.Item
-            name="arrival_loading_date"
-            label="Arrival at Loading Point"
-            rules={[{ required: true, message: "Please enter arrival date" }]}
-          >
-            <DatePicker
-              format="DD/MM/YYYY"
-              style={{ width: "100%" }}
-              placeholder="Date arrived at loading point"
-            />
-          </Form.Item>
-        )}
-
-        {/* Loading Dates — Start and End */}
-        {selectedStatus === "Loading" && (
-          <Row gutter={12}>
-            <Col span={12}>
-              <Form.Item
-                name="loading_start_date"
-                label="Loading Start Date"
-                rules={[{ required: true, message: "Required" }]}
-              >
-                <DatePicker
-                  format="DD/MM/YYYY"
-                  style={{ width: "100%" }}
-                  placeholder="Loading started"
-                />
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item
-                name="loading_end_date"
-                label="Loading End Date"
-              >
-                <DatePicker
-                  format="DD/MM/YYYY"
-                  style={{ width: "100%" }}
-                  placeholder="Loading completed"
-                />
-              </Form.Item>
-            </Col>
-          </Row>
-        )}
-
-        {/* Offloading Dates */}
-        {selectedStatus === "Offloading" && (
-          <Row gutter={12}>
-            <Col span={12}>
-              <Form.Item
-                name="arrival_offloading_date"
-                label="Arrival at Offloading"
-                rules={[{ required: true, message: "Required" }]}
-              >
-                <DatePicker
-                  format="DD/MM/YYYY"
-                  style={{ width: "100%" }}
-                  placeholder="Arrival date"
-                />
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item
-                name="offloading_date"
-                label="Offloading Date"
-              >
-                <DatePicker
-                  format="DD/MM/YYYY"
-                  style={{ width: "100%" }}
-                  placeholder="Offloading date"
-                />
-              </Form.Item>
-            </Col>
-          </Row>
-        )}
-
-        {/* Return Date */}
-        {selectedStatus === "Returned" && (
-          <Form.Item
-            name="arrival_return_date"
-            label="Arrival at Yard"
-            rules={[{ required: true, message: "Please enter return date" }]}
-          >
-            <DatePicker
-              format="DD/MM/YYYY"
-              style={{ width: "100%" }}
-              placeholder="Date truck returned to yard"
-            />
-          </Form.Item>
-        )}
-
-        {/* Dispatch (Return) Date */}
-        {selectedStatus === "Dispatch (Return)" && (
-          <Form.Item
-            name="dispatch_return_date"
-            label="Dispatch Date (Return)"
-            rules={[{ required: true, message: "Please enter return dispatch date" }]}
-          >
-            <DatePicker
-              format="DD/MM/YYYY"
-              style={{ width: "100%" }}
-              placeholder="Date dispatched for return journey"
-            />
-          </Form.Item>
-        )}
-
-        {/* Offloading (Return) — arrival back at origin */}
-        {selectedStatus === "Offloading (Return)" && (
-          <Form.Item
-            name="arrival_return_date"
-            label="Arrival at Origin (Return Offloading)"
-            rules={[{ required: true, message: "Please enter arrival date" }]}
-          >
-            <DatePicker
-              format="DD/MM/YYYY"
-              style={{ width: "100%" }}
-              placeholder="Date arrived back at origin for offloading"
-            />
-          </Form.Item>
-        )}
-
-        {/* Wait to Load (Return) — Arrival at Return Loading Point */}
-        {selectedStatus === "Wait to Load (Return)" && (
-          <Form.Item
-            name="arrival_loading_return_date"
-            label="Arrival at Return Loading Point"
-            rules={[{ required: true, message: "Please enter arrival date" }]}
-          >
-            <DatePicker
-              format="DD/MM/YYYY"
-              style={{ width: "100%" }}
-              placeholder="Date arrived at return loading point"
-            />
-          </Form.Item>
-        )}
-
-        {/* Loading (Return) — Start and End */}
-        {selectedStatus === "Loading (Return)" && (
-          <Row gutter={12}>
-            <Col span={12}>
-              <Form.Item
-                name="loading_return_start_date"
-                label="Return Loading Start"
-                rules={[{ required: true, message: "Required" }]}
-              >
-                <DatePicker
-                  format="DD/MM/YYYY"
-                  style={{ width: "100%" }}
-                  placeholder="Return loading started"
-                />
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item name="loading_return_end_date" label="Return Loading End">
-                <DatePicker
-                  format="DD/MM/YYYY"
-                  style={{ width: "100%" }}
-                  placeholder="Return loading completed"
-                />
-              </Form.Item>
-            </Col>
-          </Row>
-        )}
-
-        {/* In Transit (Return) — loading end date if not already set */}
-        {selectedStatus === "In Transit (Return)" && (
-          <Form.Item name="loading_return_end_date" label="Return Loading Completed">
-            <DatePicker
-              format="DD/MM/YYYY"
-              style={{ width: "100%" }}
-              placeholder="Return loading completed"
-            />
-          </Form.Item>
-        )}
+        <StatusDateFields
+          selectedStatus={d.selectedStatus}
+          nextBorder={d.nextBorder}
+          existingCrossing={d.existingCrossing}
+          loadingBorder={d.loadingBorder}
+        />
 
         <Divider style={{ margin: "12px 0" }}>Location</Divider>
 
@@ -809,7 +153,7 @@ export function UpdateTripStatusModal({
               rules={[
                 {
                   validator: (_, value) => {
-                    const city = form.getFieldValue("city");
+                    const city = d.form.getFieldValue("city");
                     if (city && !value) {
                       return Promise.reject("Country is required when a city is entered");
                     }
@@ -823,9 +167,9 @@ export function UpdateTripStatusModal({
                 showSearch
                 optionFilterProp="children"
                 allowClear
-                loading={loadingResources}
+                loading={d.loadingResources}
               >
-                {countries.map((c) => (
+                {d.countries.map((c) => (
                   <Select.Option key={c.id} value={c.name}>
                     {c.name}
                   </Select.Option>
@@ -838,12 +182,14 @@ export function UpdateTripStatusModal({
         <Form.Item style={{ marginBottom: 0, textAlign: "right", marginTop: 16 }}>
           <Space>
             <Button onClick={onClose}>Cancel</Button>
-            <Button type="primary" htmlType="submit" loading={submitting}>
+            <Button type="primary" htmlType="submit" loading={d.submitting} disabled={d.loadingBorder}>
               Update Trip
             </Button>
           </Space>
         </Form.Item>
       </Form>
+      </Spin>
     </Modal>
+    </ErrorBoundary>
   );
 }

@@ -1,17 +1,18 @@
 import uuid
 from typing import Any
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 from sqlmodel import func, select
 
 from app.api.deps import CurrentUser, SessionDep
+from app.core.db import commit_or_rollback
 from app.models import Country, CountryCreate, CountryPublic, CountriesPublic, CountryUpdate, Message
 
 router = APIRouter(prefix="/countries", tags=["countries"])
 
 @router.get("", response_model=CountriesPublic)
 def read_countries(
-    session: SessionDep, current_user: CurrentUser, skip: int = 0, limit: int = 100
+    session: SessionDep, current_user: CurrentUser, skip: int = Query(default=0, ge=0), limit: int = Query(default=100, ge=1, le=500)
 ) -> Any:
     """
     Retrieve countries.
@@ -44,7 +45,7 @@ def create_country(
         raise HTTPException(status_code=400, detail="Country with this name already exists")
     country = Country.model_validate(country_in)
     session.add(country)
-    session.commit()
+    commit_or_rollback(session)
     session.refresh(country)
     return country
 
@@ -66,14 +67,14 @@ def update_country(
     update_data = country_in.model_dump(exclude_unset=True)
     country.sqlmodel_update(update_data)
     session.add(country)
-    session.commit()
+    commit_or_rollback(session)
     session.refresh(country)
     return country
 
-@router.delete("/{id}")
+@router.delete("/{id}", status_code=204)
 def delete_country(
     session: SessionDep, current_user: CurrentUser, id: uuid.UUID
-) -> Message:
+) -> None:
     """
     Delete a country.
     """
@@ -81,5 +82,4 @@ def delete_country(
     if not country:
         raise HTTPException(status_code=404, detail="Country not found")
     session.delete(country)
-    session.commit()
-    return Message(message="Country deleted successfully")
+    commit_or_rollback(session)

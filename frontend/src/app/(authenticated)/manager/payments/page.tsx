@@ -27,17 +27,10 @@ import {
 } from "@/components/ui/tableUtils";
 import { ExpenseStatusBadge } from "@/components/expenses/ExpenseStatusBadge";
 import { ExpenseReviewModal } from "@/components/expenses/ExpenseReviewModal";
+import { CATEGORY_FILTERS } from "@/constants/expenseConstants";
 
 const { Title, Text } = Typography;
 
-const CATEGORY_FILTERS = [
-  { text: "Fuel", value: "Fuel" },
-  { text: "Allowance", value: "Allowance" },
-  { text: "Maintenance", value: "Maintenance" },
-  { text: "Office", value: "Office" },
-  { text: "Border", value: "Border" },
-  { text: "Other", value: "Other" },
-];
 
 function PaymentsPageContent() {
   const router = useRouter();
@@ -59,8 +52,8 @@ function PaymentsPageContent() {
     setLoading(true);
     try {
       const params = new URLSearchParams();
-      params.append("limit", "100");
-      params.append("skip", "0");
+      params.append("limit", String(pageSize));
+      params.append("skip", String((currentPage - 1) * pageSize));
       params.append("status", "Pending Finance");
 
       const response = await fetch(`/api/v1/expenses/?${params.toString()}`, {
@@ -80,7 +73,7 @@ function PaymentsPageContent() {
     } finally {
       setLoading(false);
     }
-  }, [router, message]);
+  }, [router, message, currentPage, pageSize]);
 
   useEffect(() => {
     if (user) {
@@ -116,7 +109,12 @@ function PaymentsPageContent() {
     fetchExpenses();
   };
 
-  const totalPending = expenses.reduce((sum, e) => sum + Number(e.amount), 0);
+  // Story 6.12: Group totals by currency — avoids misleading mixed-currency sum
+  const totalsByCurrency = expenses.reduce((acc, e) => {
+    const cur = e.currency || "TZS";
+    acc[cur] = (acc[cur] || 0) + Number(e.amount || 0);
+    return acc;
+  }, {} as Record<string, number>);
 
   const columns: ColumnsType<ExpenseRequest> = [
     {
@@ -127,7 +125,7 @@ function PaymentsPageContent() {
       render: (num: string | null, record: ExpenseRequest) => (
         <a
           onClick={() => openReviewModal(record)}
-          style={{ fontWeight: 600, color: "#1890ff", cursor: "pointer" }}
+          style={{ fontWeight: 600, color: "var(--color-gold)", cursor: "pointer" }}
         >
           {num || record.id?.slice(0, 8).toUpperCase()}
         </a>
@@ -177,7 +175,7 @@ function PaymentsPageContent() {
       title: "Status",
       dataIndex: "status",
       key: "status",
-      width: 220,
+      width: 260,
       render: (status: ExpenseStatus) => <ExpenseStatusBadge status={status} />,
     },
     {
@@ -202,7 +200,7 @@ function PaymentsPageContent() {
   const { resizableColumns, components } = useResizableColumns(columns);
 
   return (
-    <div style={{ minHeight: "100vh", background: "#f0f2f5", padding: "24px" }}>
+    <div style={{ minHeight: "100vh", background: "var(--color-bg)", padding: "var(--space-xl)" }}>
       <Card>
         <Space orientation="vertical" size="middle" style={{ width: "100%" }}>
           {/* Header */}
@@ -227,13 +225,19 @@ function PaymentsPageContent() {
               </Title>
             </Space>
             <Space>
-              <Statistic
-                title="Pending Total"
-                value={totalPending}
-                precision={2}
-                prefix="TZS"
-                style={{ marginRight: 24 }}
-              />
+              {Object.entries(totalsByCurrency).map(([cur, total]) => (
+                <Statistic
+                  key={cur}
+                  title={`Pending (${cur})`}
+                  value={total}
+                  precision={2}
+                  prefix={cur}
+                  style={{ marginRight: 16 }}
+                />
+              ))}
+              {Object.keys(totalsByCurrency).length === 0 && (
+                <Statistic title="Pending Total" value={0} prefix="TZS" style={{ marginRight: 16 }} />
+              )}
               <Button icon={<ReloadOutlined />} onClick={fetchExpenses}>
                 Refresh
               </Button>
@@ -248,6 +252,7 @@ function PaymentsPageContent() {
             rowKey="id"
             loading={loading}
             sticky={{ offsetHeader: 64 }}
+            scroll={{ x: "max-content" }}
             rowSelection={getStandardRowSelection(
               currentPage,
               pageSize,

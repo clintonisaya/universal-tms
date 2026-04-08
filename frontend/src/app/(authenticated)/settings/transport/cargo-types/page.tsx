@@ -177,6 +177,7 @@ export default function CargoTypesPage() {
               size="small"
               icon={<EditOutlined />}
               onClick={() => openEditModal(record)}
+              aria-label="Edit Cargo Type"
             />
             <Popconfirm
               title="Delete cargo type"
@@ -186,7 +187,7 @@ export default function CargoTypesPage() {
               cancelText="No"
               okButtonProps={{ danger: true }}
             >
-              <Button type="text" danger size="small" icon={<DeleteOutlined />} />
+              <Button type="text" danger size="small" icon={<DeleteOutlined />} aria-label="Delete Cargo Type" />
             </Popconfirm>
           </Space>
         </div>
@@ -240,6 +241,7 @@ export default function CargoTypesPage() {
             rowKey="id"
             loading={loading}
             sticky={{ offsetHeader: 64 }}
+            scroll={{ x: "max-content" }}
             rowSelection={getStandardRowSelection(
               currentPage,
               pageSize,
@@ -266,6 +268,7 @@ export default function CargoTypesPage() {
       <Modal
         title="Add Cargo Type"
         open={isCreateModalOpen}
+        width={600}
         onCancel={() => {
           setIsCreateModalOpen(false);
           createForm.resetFields();
@@ -322,6 +325,7 @@ export default function CargoTypesPage() {
       <Modal
         title="Edit Cargo Type"
         open={isEditModalOpen}
+        width={600}
         onCancel={() => {
           setIsEditModalOpen(false);
           setEditingCargoType(null);

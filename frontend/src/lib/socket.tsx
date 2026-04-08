@@ -22,17 +22,17 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
 
     const socketInstance = io(socketUrl, {
       path: "/socket.io/",
-      transports: ["polling", "websocket"], // Start with polling, upgrade to WebSocket
+      transports: ["websocket"], // WebSocket only — avoids xhr poll error on initial handshake
+      upgrade: false, // unnecessary since we enforce websocket
       reconnectionAttempts: 5,
       reconnectionDelay: 2000,
-    });
-
-    socketInstance.on("connect", () => {
-      console.log("Socket connected:", socketInstance.id);
+      autoConnect: true,
     });
 
     socketInstance.on("connect_error", (err) => {
-      console.error("Socket connection error:", err);
+      if (process.env.NODE_ENV === "development") {
+        console.warn("Socket connection error:", err.message);
+      }
     });
 
     setSocket(socketInstance);

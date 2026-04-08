@@ -56,10 +56,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch (error) {
       clearTimeout(timeoutId);
       // Network error, timeout, or API not available - treat as not authenticated
-      if (error instanceof Error && error.name === "AbortError") {
-        console.warn("Auth check timed out");
-      } else {
-        console.warn("Auth check failed:", error);
+      if (process.env.NODE_ENV === "development") {
+        if (error instanceof Error && error.name === "AbortError") {
+          console.warn("Auth check timed out");
+        } else {
+          console.warn("Auth check failed:", error);
+        }
       }
       return null;
     }

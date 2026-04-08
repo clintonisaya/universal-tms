@@ -3,7 +3,6 @@
 import { useState, useEffect, useCallback, useRef, Suspense } from "react";
 import {
   Table,
-  Tag,
   Button,
   Flex,
   Space,
@@ -23,6 +22,8 @@ import {
   ReloadOutlined,
 } from "@ant-design/icons";
 import { useRouter, useSearchParams } from "next/navigation";
+import { StatusBadge } from "@/components/ui/StatusBadge";
+import type { ColorKey } from "@/components/ui/StatusBadge";
 import { useAuth } from "@/contexts/AuthContext";
 import { ExpenseReviewModal } from "@/components/expenses/ExpenseReviewModal";
 import type { ExpenseRequestDetailed } from "@/types/expense";
@@ -47,8 +48,8 @@ interface TodoTask {
 }
 
 
-const TASK_TYPE_LABELS: Record<string, { label: string; color: string }> = {
-  expense_approval: { label: "Expense Approval", color: "gold" },
+const TASK_TYPE_LABELS: Record<string, { label: string; color: ColorKey }> = {
+  expense_approval: { label: "Expense Approval", color: "orange" },
   payment_processing: { label: "Payment Processing", color: "blue" },
   expense_correction: { label: "Expense Correction", color: "orange" },
 };
@@ -80,6 +81,8 @@ function TasksContent() {
   const [typeFilter, setTypeFilter] = useState<string | undefined>(undefined);
   const [sortBy, setSortBy] = useState<string>("date");
   const [sortOrder, setSortOrder] = useState<string>("desc");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
 
   // Review modal state
   const [reviewModalVisible, setReviewModalVisible] = useState(false);
@@ -125,7 +128,7 @@ function TasksContent() {
       const row = document.getElementById(`task-row-${highlightTaskId}`);
       if (row) {
         row.scrollIntoView({ behavior: "smooth", block: "center" });
-        row.style.backgroundColor = "#fff7e6";
+        row.style.backgroundColor = "color-mix(in srgb, var(--color-gold) 10%, transparent)";
         highlightTimerRef.current = setTimeout(() => {
           row.style.transition = "background-color 1s ease";
           row.style.backgroundColor = "transparent";
@@ -179,8 +182,8 @@ function TasksContent() {
       key: "task_type",
       width: 140,
       render: (type: string) => {
-        const info = TASK_TYPE_LABELS[type] || { label: type, color: "default" };
-        return <Tag color={info.color}>{info.label}</Tag>;
+        const info = TASK_TYPE_LABELS[type] || { label: type, color: "gray" as ColorKey };
+        return <StatusBadge status={info.label} colorKey={info.color} />;
       },
     },
     {
@@ -191,7 +194,7 @@ function TasksContent() {
       render: (num: string, record: TodoTask) => (
         <Text
           strong
-          style={{ color: "#1890ff", cursor: "pointer" }}
+          style={{ color: "var(--color-gold)", cursor: "pointer" }}
           onClick={() => openReviewModal(record)}
         >
           {num || "-"}
@@ -231,7 +234,7 @@ function TasksContent() {
       title: "Date",
       dataIndex: "created_at",
       key: "created_at",
-      width: 100,
+      width: 130,
       render: (date: string) => (
         <Tooltip title={date ? new Date(date).toLocaleString() : ""}>
           <Text type="secondary">{formatTimeAgo(date)}</Text>
@@ -272,7 +275,7 @@ function TasksContent() {
   ];
 
   return (
-    <div style={{ minHeight: "100vh", background: "#f0f2f5", padding: "24px" }}>
+    <div style={{ minHeight: "100vh", background: "var(--color-bg)", padding: "var(--space-xl)" }}>
       <Card>
         <Flex vertical gap="middle" style={{ width: "100%" }}>
           {/* Header */}
@@ -294,14 +297,14 @@ function TasksContent() {
           <Space style={{ marginBottom: 16 }} wrap>
             <Select
               value={typeFilter || ""}
-              onChange={(val) => setTypeFilter(val || undefined)}
+              onChange={(val) => { setTypeFilter(val || undefined); setCurrentPage(1); }}
               options={typeOptions}
               style={{ width: 180 }}
               placeholder="Filter by type"
             />
             <Select
               value={sortBy}
-              onChange={setSortBy}
+              onChange={(val) => { setSortBy(val); setCurrentPage(1); }}
               options={[
                 { value: "date", label: "Sort by Date" },
                 { value: "amount", label: "Sort by Amount" },
@@ -310,7 +313,7 @@ function TasksContent() {
             />
             <Select
               value={sortOrder}
-              onChange={setSortOrder}
+              onChange={(val) => { setSortOrder(val); setCurrentPage(1); }}
               options={[
                 { value: "desc", label: "Newest First" },
                 { value: "asc", label: "Oldest First" },
@@ -321,7 +324,7 @@ function TasksContent() {
 
           {tasks.length === 0 && !loading ? (
             <Empty
-              image={<SmileOutlined style={{ fontSize: 64, color: "#52c41a" }} />}
+              image={<SmileOutlined style={{ fontSize: 64, color: "var(--color-green)" }} />}
               description={
                 <div>
                   <Text strong style={{ fontSize: 16 }}>
@@ -340,7 +343,18 @@ function TasksContent() {
               rowKey="id"
               loading={loading}
               size="small"
-              pagination={{ pageSize: 20 }}
+              pagination={{
+                current: currentPage,
+                pageSize,
+                total: tasks.length,
+                showTotal: (total) => `Total ${total} tasks`,
+                showSizeChanger: true,
+                pageSizeOptions: ["20", "50", "100"],
+                onChange: (page, size) => {
+                  setCurrentPage(page);
+                  setPageSize(size);
+                },
+              }}
               scroll={{ x: 900 }}
               onRow={(record) => ({
                 id: `task-row-${record.id}`,

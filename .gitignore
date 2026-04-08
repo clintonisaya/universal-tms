@@ -43,9 +43,13 @@ docker-compose.override.yml
 nul
 pic/
 
+# BMAD / AI tooling artifacts
 .claude/
-.agent/
-.gemini/
-.bmad/
-_bmad-output/
 _bmad/
+_bmad-output/
+
+# Scratch files
+edupo-invoice-generator*.jsx
+
+# TypeScript build info
+tsconfig.tsbuildinfo

@@ -1,7 +1,7 @@
 import uuid
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlmodel import col, delete, func, select
 
 from app import crud
@@ -13,8 +13,11 @@ from app.api.deps import (
     get_current_manager_or_admin,
 )
 from app.core.config import settings
+from app.core.limiter import limiter
+from app.core.db import commit_or_rollback
 from app.core.security import get_password_hash, verify_password
 from app.models import (
+    AdminPasswordReset,
     Item,
     Message,
     UpdatePassword,
@@ -38,7 +41,7 @@ router = APIRouter(prefix="/users", tags=["users"])
     response_model=UsersPublic,
 )
 def read_users(
-    session: SessionDep, current_user: CurrentUser, skip: int = 0, limit: int = 100
+    session: SessionDep, current_user: CurrentUser, skip: int = Query(default=0, ge=0), limit: int = Query(default=100, ge=1, le=500)
 ) -> Any:
     """
     Retrieve users.
@@ -82,8 +85,10 @@ def create_user(
 
     user = crud.create_user(session=session, user_create=user_in)
     if settings.emails_enabled and user_in.username:
+        from app.utils import generate_password_reset_token
+        reset_token = generate_password_reset_token(user_in.username)
         email_data = generate_new_account_email(
-            email_to=user_in.username, username=user_in.username, password=user_in.password
+            email_to=user_in.username, username=user_in.username, token=reset_token
         )
         send_email(
             email_to=user_in.username,
@@ -94,7 +99,8 @@ def create_user(
 
 
 @router.post("/signup", response_model=UserPublic)
-def register_user(session: SessionDep, user_in: UserRegister) -> Any:
+@limiter.limit(settings.RATE_LIMIT_LOGIN)
+def register_user(request: Request, session: SessionDep, user_in: UserRegister) -> Any:
     """
     Create new user without the need to be logged in (self-registration).
     """
@@ -119,7 +125,7 @@ def update_user_me(
     if user_in.full_name:
         current_user.full_name = user_in.full_name
     session.add(current_user)
-    session.commit()
+    commit_or_rollback(session)
     session.refresh(current_user)
     return current_user
 
@@ -141,7 +147,7 @@ def update_password_me(
     hashed_password = get_password_hash(body.new_password)
     current_user.hashed_password = hashed_password
     session.add(current_user)
-    session.commit()
+    commit_or_rollback(session)
     return Message(message="Password updated successfully")
 
 
@@ -153,10 +159,10 @@ def read_user_me(current_user: CurrentUser) -> Any:
     return current_user
 
 
-@router.delete("/me", response_model=Message)
+@router.delete("/me", status_code=204)
 def delete_user_me(
     session: SessionDep, current_user: CurrentUser
-) -> Any:
+) -> None:
     """
     Delete own user.
     """
@@ -165,8 +171,7 @@ def delete_user_me(
             status_code=403, detail="Super users are not allowed to delete themselves"
         )
     session.delete(current_user)
-    session.commit()
-    return Message(message="User deleted successfully")
+    commit_or_rollback(session)
 
 
 @router.get(
@@ -241,11 +246,11 @@ def update_user(
 @router.delete(
     "/{user_id}",
     dependencies=[Depends(get_current_admin_user)],
-    response_model=Message,
+    status_code=204,
 )
 def delete_user(
     session: SessionDep, current_user: CurrentUser, user_id: uuid.UUID
-) -> Any:
+) -> None:
     """
     Delete a user.
     """
@@ -257,8 +262,7 @@ def delete_user(
             status_code=403, detail="Super users are not allowed to delete themselves"
         )
     session.delete(user)
-    session.commit()
-    return Message(message="User deleted successfully")
+    commit_or_rollback(session)
 
 
 @router.post(
@@ -267,19 +271,15 @@ def delete_user(
     response_model=Message,
 )
 def admin_reset_password(
-    session: SessionDep, user_id: uuid.UUID
+    session: SessionDep, user_id: uuid.UUID, body: AdminPasswordReset
 ) -> Any:
     """
-    Admin override: Reset user password to default.
+    Admin override: Set a new password for a user.
     """
     user = session.get(User, user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-    
-    # Reset to default password (should be 'changethis' or env var, using hardcoded for now or generate random)
-    default_pwd = settings.FIRST_SUPERUSER_PASSWORD or "changethis"
-    hashed_password = get_password_hash(default_pwd)
-    user.hashed_password = hashed_password
+    user.hashed_password = get_password_hash(body.new_password)
     session.add(user)
-    session.commit()
-    return Message(message="Password reset successfully")
+    commit_or_rollback(session)
+    return Message(message="Password updated successfully")

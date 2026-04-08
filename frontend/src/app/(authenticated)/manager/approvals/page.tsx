@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import { useState, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   Table,
   Button,
@@ -10,15 +10,22 @@ import {
   Select,
   Typography,
   App,
+  Modal,
+  Input,
+  Flex,
 } from "antd";
 import {
   PlayCircleOutlined,
   ReloadOutlined,
   ArrowLeftOutlined,
+  CheckCircleOutlined,
+  CloseCircleOutlined,
+  UndoOutlined,
 } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
-import type { ExpenseRequest, ExpenseStatus, ExpenseCategory, ExpenseRequestDetailed } from "@/types/expense";
+import type { ExpenseRequest, ExpenseStatus, ExpenseRequestDetailed } from "@/types/expense";
 import { useAuth } from "@/contexts/AuthContext";
+import { useExpenses, useInvalidateQueries } from "@/hooks/useApi";
 import {
   getColumnSearchProps,
   getColumnFilterProps,
@@ -27,87 +34,51 @@ import {
 } from "@/components/ui/tableUtils";
 import { ExpenseStatusBadge } from "@/components/expenses/ExpenseStatusBadge";
 import { ExpenseReviewModal } from "@/components/expenses/ExpenseReviewModal";
+import { EmptyState } from "@/components/ui";
+import { CATEGORY_FILTERS, EXPENSE_STATUS_FILTERS, CATEGORY_OPTIONS, STATUS_OPTIONS } from "@/constants/expenseConstants";
 
 const { Title, Text } = Typography;
+const { TextArea } = Input;
 
-const CATEGORY_OPTIONS: { label: string; value: ExpenseCategory }[] = [
-  { label: "Fuel", value: "Fuel" },
-  { label: "Allowance", value: "Allowance" },
-  { label: "Maintenance", value: "Maintenance" },
-  { label: "Office", value: "Office" },
-  { label: "Border", value: "Border" },
-  { label: "Other", value: "Other" },
-];
-
-const STATUS_OPTIONS: { label: string; value: ExpenseStatus }[] = [
-  { label: "Pending Manager", value: "Pending Manager" },
-  { label: "Pending Finance", value: "Pending Finance" },
-  { label: "Paid", value: "Paid" },
-  { label: "Rejected", value: "Rejected" },
-  { label: "Returned", value: "Returned" },
-];
-
-const CATEGORY_FILTERS = CATEGORY_OPTIONS.map((o) => ({
-  text: o.label,
-  value: o.value,
-}));
-
-const STATUS_FILTERS = STATUS_OPTIONS.map((o) => ({
-  text: o.label,
-  value: o.value,
-}));
+const STATUS_FILTERS = EXPENSE_STATUS_FILTERS;
 
 function ApprovalPageContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user } = useAuth();
-  const { message } = App.useApp();
-  const [expenses, setExpenses] = useState<ExpenseRequest[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [totalCount, setTotalCount] = useState(0);
-  const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
-  const [statusFilter, setStatusFilter] = useState<ExpenseStatus>("Pending Manager");
-  const [categoryFilter, setCategoryFilter] = useState<ExpenseCategory | "">("");
+  const { message, modal } = App.useApp();
+  const { invalidateExpenses } = useInvalidateQueries();
+
+  // Initialise from URL (AC-3, Story 6.17)
+  const [statusFilter, setStatusFilter] = useState<ExpenseStatus>(
+    (searchParams.get("status") as ExpenseStatus) || "Pending Manager"
+  );
+  const [categoryFilter, setCategoryFilter] = useState<string>(
+    searchParams.get("category") || ""
+  );
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
+  const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
 
   // Review Modal State
   const [reviewModalOpen, setReviewModalOpen] = useState(false);
   const [reviewExpense, setReviewExpense] = useState<ExpenseRequestDetailed | null>(null);
   const [loadingExpense, setLoadingExpense] = useState(false);
 
-  const fetchExpenses = useCallback(async () => {
-    setLoading(true);
-    try {
-      const params = new URLSearchParams();
-      params.append("limit", "100");
-      params.append("skip", "0");
-      if (statusFilter) params.append("status", statusFilter);
-      if (categoryFilter) params.append("category", categoryFilter);
+  // Bulk action state
+  const [bulkProcessing, setBulkProcessing] = useState(false);
+  const [commentModalOpen, setCommentModalOpen] = useState(false);
+  const [commentModalAction, setCommentModalAction] = useState<"reject" | "return">("reject");
+  const [bulkComment, setBulkComment] = useState("");
 
-      const response = await fetch(`/api/v1/expenses/?${params.toString()}`, {
-        credentials: "include",
-      });
-      if (response.ok) {
-        const result = await response.json();
-        setExpenses(result.data);
-        setTotalCount(result.count);
-      } else if (response.status === 401) {
-        router.push("/login");
-      } else {
-        message.error("Failed to fetch expenses");
-      }
-    } catch {
-      message.error("Network error");
-    } finally {
-      setLoading(false);
-    }
-  }, [router, statusFilter, categoryFilter, message]);
-
-  useEffect(() => {
-    if (user) {
-      fetchExpenses();
-    }
-  }, [user, fetchExpenses]);
+  // Server-side paginated query
+  const isAuthenticated = !!user;
+  const { data: apiResponse, isLoading: loading, refetch } = useExpenses(
+    { skip: (currentPage - 1) * pageSize, limit: pageSize, status: statusFilter, category: categoryFilter || undefined },
+    isAuthenticated,
+  );
+  const expenses: ExpenseRequest[] = apiResponse?.data || [];
+  const totalCount = apiResponse?.count || 0;
 
   const openReviewModal = async (record: ExpenseRequest) => {
     setLoadingExpense(true);
@@ -134,7 +105,7 @@ function ApprovalPageContent() {
   const handleActionComplete = () => {
     setReviewModalOpen(false);
     setReviewExpense(null);
-    fetchExpenses();
+    refetch();
   };
 
   // Determine actions based on the expense status
@@ -146,6 +117,111 @@ function ApprovalPageContent() {
     return [];
   };
 
+  // -- Bulk actions --
+
+  const getSelectedExpenses = (): ExpenseRequest[] => {
+    const keySet = new Set(selectedRowKeys.map(String));
+    return expenses.filter((e) => keySet.has(String(e.id)));
+  };
+
+  const handleBulkAction = async (status: string, comment?: string) => {
+    const selected = getSelectedExpenses();
+    if (selected.length === 0) {
+      message.warning("No expenses selected");
+      return;
+    }
+
+    // Confirm destructive actions
+    if (status === "Rejected" || status === "Returned") {
+      const label = status === "Rejected" ? "reject" : "return";
+      modal.confirm({
+        title: `Batch ${label} ${selected.length} expense${selected.length > 1 ? "s" : ""}?`,
+        content: status === "Rejected"
+          ? "This action cannot be undone."
+          : "Expenses will be sent back for correction.",
+        okText: `Yes, ${label}`,
+        okType: status === "Rejected" ? "danger" : "primary",
+        onOk: () => executeBulkAction(status, selected, comment),
+      });
+      return;
+    }
+
+    await executeBulkAction(status, selected, comment);
+  };
+
+  const executeBulkAction = async (status: string, selected: ExpenseRequest[], comment?: string) => {
+    setBulkProcessing(true);
+    try {
+      const body: Record<string, unknown> = {
+        ids: selected.map((e) => e.id),
+        status,
+      };
+      if (comment?.trim()) body.comment = comment.trim();
+      const response = await fetch("/api/v1/expenses/batch", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(body),
+      });
+      if (response.ok) {
+        const label = status === "Pending Finance" ? "approved" : status === "Rejected" ? "rejected" : "returned";
+        message.success(`${selected.length} expense${selected.length > 1 ? "s" : ""} ${label}`);
+        setSelectedRowKeys([]);
+        refetch();
+      } else {
+        const err = await response.json();
+        message.error(err.detail || "Batch update failed");
+      }
+    } catch {
+      message.error("Network error");
+    } finally {
+      setBulkProcessing(false);
+    }
+  };
+
+  const handleBatchApprove = () => {
+    const pendingManager = getSelectedExpenses().filter((e) => e.status === "Pending Manager");
+    if (pendingManager.length === 0) {
+      message.warning("Select at least one Pending Manager expense");
+      return;
+    }
+    if (pendingManager.length < getSelectedExpenses().length) {
+      modal.confirm({
+        title: "Some selected expenses are not Pending Manager",
+        content: `Only ${pendingManager.length} of ${getSelectedExpenses().length} selected expenses can be approved. Continue?`,
+        onOk: () => {
+          // Temporarily update selection to only pending ones
+          const keySet = new Set(pendingManager.map((e) => String(e.id)));
+          setSelectedRowKeys(selectedRowKeys.filter((k) => keySet.has(String(k))));
+          executeBulkAction("Pending Finance", pendingManager);
+        },
+      });
+      return;
+    }
+    executeBulkAction("Pending Finance", pendingManager);
+  };
+
+  const openCommentModal = (action: "reject" | "return") => {
+    const selected = getSelectedExpenses();
+    if (selected.length === 0) {
+      message.warning("No expenses selected");
+      return;
+    }
+    setCommentModalAction(action);
+    setBulkComment("");
+    setCommentModalOpen(true);
+  };
+
+  const handleCommentModalSubmit = () => {
+    const targetStatus = commentModalAction === "reject" ? "Rejected" : "Returned";
+    handleBulkAction(targetStatus, bulkComment);
+    setCommentModalOpen(false);
+    setBulkComment("");
+  };
+
+  const hasPendingSelection = selectedRowKeys.length > 0 &&
+    getSelectedExpenses().some((e) => e.status === "Pending Manager");
+
   const columns: ColumnsType<ExpenseRequest> = [
     {
       title: "Expense #",
@@ -155,7 +231,7 @@ function ApprovalPageContent() {
       render: (num: string | null, record: ExpenseRequest) => (
         <a
           onClick={() => openReviewModal(record)}
-          style={{ fontWeight: 600, color: "#1890ff", cursor: "pointer" }}
+          style={{ fontWeight: 600, color: "var(--color-gold)", cursor: "pointer" }}
         >
           {num || record.id?.slice(0, 8).toUpperCase()}
         </a>
@@ -239,9 +315,9 @@ function ApprovalPageContent() {
   const { resizableColumns, components } = useResizableColumns(columns);
 
   return (
-    <div style={{ minHeight: "100vh", background: "#f0f2f5", padding: "24px" }}>
+    <div style={{ minHeight: "100vh", background: "var(--color-bg)", padding: "var(--space-xl)" }}>
       <Card>
-        <Space orientation="vertical" size="middle" style={{ width: "100%" }}>
+        <Flex vertical gap="middle" style={{ width: "100%" }}>
           {/* Header */}
           <div
             style={{
@@ -266,7 +342,12 @@ function ApprovalPageContent() {
             <Space wrap>
               <Select
                 value={statusFilter}
-                onChange={(val) => setStatusFilter(val)}
+                onChange={(val) => {
+                  setStatusFilter(val);
+                  const params = new URLSearchParams(searchParams.toString());
+                  if (val) params.set("status", val); else params.delete("status");
+                  router.replace(`?${params.toString()}`, { scroll: false });
+                }}
                 style={{ width: 180 }}
                 options={STATUS_OPTIONS}
                 allowClear
@@ -274,17 +355,73 @@ function ApprovalPageContent() {
               />
               <Select
                 value={categoryFilter || undefined}
-                onChange={(val) => setCategoryFilter(val || "")}
+                onChange={(val) => {
+                  setCategoryFilter(val || "");
+                  const params = new URLSearchParams(searchParams.toString());
+                  if (val) params.set("category", val); else params.delete("category");
+                  router.replace(`?${params.toString()}`, { scroll: false });
+                }}
                 style={{ width: 160 }}
                 options={CATEGORY_OPTIONS}
                 allowClear
                 placeholder="Filter by Category"
               />
-              <Button icon={<ReloadOutlined />} onClick={fetchExpenses}>
+              <Button icon={<ReloadOutlined />} onClick={() => refetch()}>
                 Refresh
               </Button>
             </Space>
           </div>
+
+          {/* Bulk Action Bar */}
+          {selectedRowKeys.length > 0 && (
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 12,
+                padding: "8px 16px",
+                background: "var(--color-surface)",
+                borderRadius: 8,
+                border: "1px solid var(--color-border)",
+              }}
+            >
+              <Text strong>{selectedRowKeys.length} selected</Text>
+              <Space>
+                <Button
+                  type="primary"
+                  icon={<CheckCircleOutlined />}
+                  onClick={handleBatchApprove}
+                  loading={bulkProcessing}
+                  disabled={!hasPendingSelection}
+                  style={{
+                    background: hasPendingSelection ? "var(--color-green)" : undefined,
+                    borderColor: hasPendingSelection ? "var(--color-green)" : undefined,
+                  }}
+                >
+                  Batch Approve
+                </Button>
+                <Button
+                  icon={<UndoOutlined />}
+                  onClick={() => openCommentModal("return")}
+                  loading={bulkProcessing}
+                  style={{ color: "var(--color-orange)", borderColor: "var(--color-orange)" }}
+                >
+                  Return
+                </Button>
+                <Button
+                  danger
+                  icon={<CloseCircleOutlined />}
+                  onClick={() => openCommentModal("reject")}
+                  loading={bulkProcessing}
+                >
+                  Reject
+                </Button>
+                <Button onClick={() => setSelectedRowKeys([])}>
+                  Clear Selection
+                </Button>
+              </Space>
+            </div>
+          )}
 
           {/* Table */}
           <Table<ExpenseRequest>
@@ -294,6 +431,25 @@ function ApprovalPageContent() {
             rowKey="id"
             loading={loading}
             sticky={{ offsetHeader: 64 }}
+            scroll={{ x: "max-content" }}
+            locale={{
+              emptyText:
+                statusFilter === "Pending Manager" && !categoryFilter ? (
+                  <EmptyState message="All caught up! No pending approvals." />
+                ) : (
+                  <EmptyState
+                    message="No results match your filters."
+                    action={{
+                      label: "Clear Filters",
+                      onClick: () => {
+                        setStatusFilter("Pending Manager");
+                        setCategoryFilter("");
+                        router.replace("?", { scroll: false });
+                      },
+                    }}
+                  />
+                ),
+            }}
             rowSelection={getStandardRowSelection(
               currentPage,
               pageSize,
@@ -313,7 +469,7 @@ function ApprovalPageContent() {
               },
             }}
           />
-        </Space>
+        </Flex>
       </Card>
 
       {/* Expense Review Modal with approve/reject/return actions */}
@@ -328,6 +484,39 @@ function ApprovalPageContent() {
         loading={loadingExpense}
         onActionComplete={handleActionComplete}
       />
+
+      {/* Bulk Comment Modal */}
+      <Modal
+        title={commentModalAction === "reject" ? "Reject Expenses" : "Return Expenses"}
+        open={commentModalOpen}
+        onCancel={() => { setCommentModalOpen(false); setBulkComment(""); }}
+        onOk={handleCommentModalSubmit}
+        okText={commentModalAction === "reject" ? "Reject" : "Return"}
+        okButtonProps={{
+          danger: commentModalAction === "reject",
+          loading: bulkProcessing,
+          style: commentModalAction === "return"
+            ? { color: "var(--color-orange)", borderColor: "var(--color-orange)" }
+            : undefined,
+        }}
+        confirmLoading={bulkProcessing}
+      >
+        <div style={{ marginBottom: 12 }}>
+          <Text type="secondary">
+            {commentModalAction === "reject"
+              ? `Reject ${selectedRowKeys.length} expense${selectedRowKeys.length > 1 ? "s" : ""}. Provide a reason:`
+              : `Return ${selectedRowKeys.length} expense${selectedRowKeys.length > 1 ? "s" : ""} for correction. What needs to be fixed?`}
+          </Text>
+        </div>
+        <TextArea
+          rows={3}
+          value={bulkComment}
+          onChange={(e) => setBulkComment(e.target.value)}
+          placeholder={commentModalAction === "reject"
+            ? "e.g. Not a valid business expense"
+            : "e.g. Attach receipt, correct amount"}
+        />
+      </Modal>
     </div>
   );
 }
@@ -335,7 +524,9 @@ function ApprovalPageContent() {
 export default function ApprovalPage() {
   return (
     <App>
-      <ApprovalPageContent />
+      <Suspense>
+        <ApprovalPageContent />
+      </Suspense>
     </App>
   );
 }

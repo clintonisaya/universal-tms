@@ -31,6 +31,11 @@ export const AVAILABLE_PERMISSIONS = [
   // Finance
   { label: "Pay Expenses", value: "expenses:pay", group: "Finance" },
   { label: "Exchange Rates", value: "settings:exchange-rates", group: "Finance" },
+  { label: "Expense Console Access", value: "expenses:audit-console", group: "Finance" },
+  { label: "Void Expenses", value: "expenses:void", group: "Finance" },
+  { label: "Amend Attachments", value: "expenses:amend-attachment", group: "Finance" },
+  { label: "Manage POP Attachments", value: "invoices:pop-manage", group: "Finance" },
+  { label: "Verify Invoices", value: "invoices:verify", group: "Finance" },
   // Reports
   { label: "View Reports", value: "reports:view", group: "Reports" },
   // Settings – granular per feature
@@ -40,6 +45,7 @@ export const AVAILABLE_PERMISSIONS = [
   { label: "Locations", value: "settings:locations", group: "Settings" },
   { label: "Cargo Types", value: "settings:cargo-types", group: "Settings" },
   { label: "Vehicle Statuses", value: "settings:vehicle-statuses", group: "Settings" },
+  { label: "Border Posts", value: "settings:border-posts", group: "Settings" },
   // Admin
   { label: "Manage Users", value: "users:manage", group: "Admin" },
 ] as const;

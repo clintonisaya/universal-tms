@@ -45,6 +45,7 @@ export function SessionExpiredModal({ open, onSuccess }: SessionExpiredModalProp
       maskClosable={false}
       centered
       zIndex={2000} // Ensure it appears above everything
+      forceRender
     >
       <div style={{ textAlign: "center", marginBottom: 24 }}>
         <Text type="secondary">

@@ -182,6 +182,7 @@ export default function ClientsPage() {
               type="text"
               icon={<EditOutlined />}
               onClick={() => openEditModal(record)}
+              aria-label="Edit Client"
             />
             <Popconfirm
               title="Delete client"
@@ -191,7 +192,7 @@ export default function ClientsPage() {
               cancelText="No"
               okButtonProps={{ danger: true }}
             >
-              <Button type="text" danger icon={<DeleteOutlined />} />
+              <Button type="text" danger icon={<DeleteOutlined />} aria-label="Delete Client" />
             </Popconfirm>
           </Space>
         </div>
@@ -200,7 +201,7 @@ export default function ClientsPage() {
   ];
 
   return (
-    <div style={{ padding: "24px" }}>
+    <div style={{ padding: "var(--space-xl)" }}>
       <Card>
         <Space orientation="vertical" size="middle" style={{ width: "100%" }}>
           <div
@@ -241,6 +242,7 @@ export default function ClientsPage() {
             rowKey="id"
             loading={loading}
             sticky={{ offsetHeader: 64 }}
+            scroll={{ x: "max-content" }}
             rowSelection={getStandardRowSelection(
               currentPage,
               pageSize,
@@ -267,6 +269,7 @@ export default function ClientsPage() {
       <Modal
         title="Add Client"
         open={isCreateModalOpen}
+        width={600}
         onCancel={() => {
           setIsCreateModalOpen(false);
           createForm.resetFields();
@@ -328,6 +331,7 @@ export default function ClientsPage() {
       <Modal
         title="Edit Client"
         open={isEditModalOpen}
+        width={600}
         onCancel={() => {
           setIsEditModalOpen(false);
           setEditingClient(null);

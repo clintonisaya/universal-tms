@@ -17,7 +17,8 @@ import {
   List,
   Spin,
   Empty,
-  Tag,
+  Result,
+  Descriptions,
 } from "antd";
 import {
   DollarOutlined,
@@ -27,9 +28,13 @@ import {
   FileImageOutlined,
   FileWordOutlined,
   FileUnknownOutlined,
+  PrinterOutlined,
 } from "@ant-design/icons";
+import { PrintPreviewModal } from "./PrintPreviewModal";
+import { StatusBadge } from "@/components/ui/StatusBadge";
 import type { ExpenseRequestDetailed } from "@/types/expense";
 import dayjs from "dayjs";
+import { COMPANY_NAME } from "@/constants/expenseConstants";
 
 interface AttachmentInfo {
   key: string;
@@ -37,10 +42,19 @@ interface AttachmentInfo {
   url: string | null;
 }
 
+interface PaymentResult {
+  amount: number;
+  currency: string;
+  method: string;
+  reference: string | null;
+  paidAt: string;
+  recipient: string;
+}
+
 function getFileIcon(filename: string) {
   const lower = filename.toLowerCase();
-  const style = { color: "#8c8c8c", fontSize: 18 };
-  if (lower.endsWith(".pdf")) return <FilePdfOutlined style={{ ...style, color: "#ff4d4f" }} />;
+  const style = { color: "var(--color-text-muted)", fontSize: 18 };
+  if (lower.endsWith(".pdf")) return <FilePdfOutlined style={{ ...style, color: "var(--color-red)" }} />;
   if (lower.match(/\.(jpe?g|png|gif|webp)$/)) return <FileImageOutlined style={style} />;
   if (lower.match(/\.(docx?)$/)) return <FileWordOutlined style={style} />;
   return <FileUnknownOutlined style={style} />;
@@ -60,6 +74,8 @@ export function PaymentModal({ open, onClose, onSuccess, expense }: PaymentModal
   const [submitting, setSubmitting] = useState(false);
   const [attachments, setAttachments] = useState<AttachmentInfo[]>([]);
   const [attachmentsLoading, setAttachmentsLoading] = useState(false);
+  const [paymentResult, setPaymentResult] = useState<PaymentResult | null>(null);
+  const [printReceiptOpen, setPrintReceiptOpen] = useState(false);
 
   // Watch Payment Method for conditional fields
   const paymentMethod = Form.useWatch("method", form);
@@ -120,10 +136,16 @@ export function PaymentModal({ open, onClose, onSuccess, expense }: PaymentModal
       });
 
       if (response.ok) {
-        message.success("Payment processed successfully");
-        form.resetFields();
-        onSuccess();
-        onClose();
+        const methodLabel = values.method === "CASH" ? "Cash" : "Bank Transfer / M-Pesa";
+        setPaymentResult({
+          amount: expense.amount,
+          currency: expense.currency ?? "TZS",
+          method: methodLabel,
+          reference: values.reference || null,
+          paidAt: new Date().toLocaleString(),
+          recipient: expense.created_by?.full_name ?? expense.created_by?.username ?? "—",
+        });
+        onSuccess(); // invalidate React Query — do NOT call onClose() yet
       } else {
         const error = await response.json();
         message.error(error.detail || "Payment failed");
@@ -207,55 +229,55 @@ export function PaymentModal({ open, onClose, onSuccess, expense }: PaymentModal
   const BasicInfoTab = (
     <>
       {/* Header Grid - matching ExpenseReviewModal pattern */}
-      <div style={{ marginBottom: 24, padding: 16, background: "#f5f5f5", borderRadius: 8 }}>
+      <div style={{ marginBottom: 24, padding: 16, background: "var(--color-surface)", borderRadius: 8 }}>
         <Row gutter={[16, 16]}>
           <Col span={8}>
             <div style={{ marginBottom: 4 }}>
-              <Text type="secondary" style={{ fontSize: 12 }}>Company</Text>
+              <Text type="secondary">Company</Text>
             </div>
-            <Input value="EDUPO COMPANY LIMITED" readOnly />
+            <Input value={COMPANY_NAME} readOnly />
           </Col>
           <Col span={8}>
             <div style={{ marginBottom: 4 }}>
-              <Text type="secondary" style={{ fontSize: 12 }}>Application Date</Text>
+              <Text type="secondary">Application Date</Text>
             </div>
             <Input value={formatDate(expense.expense_metadata?.application_date || expense.created_at)} readOnly />
           </Col>
           <Col span={8}>
             <div style={{ marginBottom: 4 }}>
-              <Text type="secondary" style={{ fontSize: 12 }}>Total Amount</Text>
+              <Text type="secondary">Total Amount</Text>
             </div>
-            <Input value={formatCurrency(expense.amount, expense.currency)} readOnly style={{ fontWeight: "bold" }} />
+            <Input value={formatCurrency(expense.amount, expense.currency)} readOnly style={{ fontWeight: 700 }} />
           </Col>
           <Col span={8}>
             <div style={{ marginBottom: 4 }}>
-              <Text type="secondary" style={{ fontSize: 12 }}>Requester</Text>
+              <Text type="secondary">Requester</Text>
             </div>
             <Input value={expense.created_by?.full_name || expense.created_by?.username || "Unknown"} readOnly />
           </Col>
           <Col span={8}>
             <div style={{ marginBottom: 4 }}>
-              <Text type="secondary" style={{ fontSize: 12 }}>Expense Number</Text>
+              <Text type="secondary">Expense Number</Text>
             </div>
             <Input value={expense.expense_number || "-"} readOnly />
           </Col>
           <Col span={8}>
             <div style={{ marginBottom: 4 }}>
-              <Text type="secondary" style={{ fontSize: 12 }}>Status</Text>
+              <Text type="secondary">Status</Text>
             </div>
             <Input value={expense.status} readOnly />
           </Col>
           {isTripExpense && (
             <Col span={8}>
               <div style={{ marginBottom: 4 }}>
-                <Text type="secondary" style={{ fontSize: 12 }}>Trip</Text>
+                <Text type="secondary">Trip</Text>
               </div>
               <Input value={tripNumber || expense.trip_id || "-"} readOnly />
             </Col>
           )}
           <Col span={isTripExpense ? 16 : 16}>
             <div style={{ marginBottom: 4 }}>
-              <Text type="secondary" style={{ fontSize: 12 }}>Description / Remarks</Text>
+              <Text type="secondary">Description / Remarks</Text>
             </div>
             <Input value={expense.expense_metadata?.remarks || expense.description || "-"} readOnly />
           </Col>
@@ -266,13 +288,13 @@ export function PaymentModal({ open, onClose, onSuccess, expense }: PaymentModal
           <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
             <Col span={8}>
               <div style={{ marginBottom: 4 }}>
-                <Text type="secondary" style={{ fontSize: 12 }}>Approved By</Text>
+                <Text type="secondary">Approved By</Text>
               </div>
               <Input value={expense.approved_by.full_name || expense.approved_by.username} readOnly />
             </Col>
             <Col span={8}>
               <div style={{ marginBottom: 4 }}>
-                <Text type="secondary" style={{ fontSize: 12 }}>Approved At</Text>
+                <Text type="secondary">Approved At</Text>
               </div>
               <Input value={formatDate(expense.approved_at)} readOnly />
             </Col>
@@ -284,9 +306,9 @@ export function PaymentModal({ open, onClose, onSuccess, expense }: PaymentModal
           <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
             <Col span={24}>
               <div style={{ marginBottom: 4 }}>
-                <Text type="secondary" style={{ fontSize: 12 }}>Manager Comment</Text>
+                <Text type="secondary">Manager Comment</Text>
               </div>
-              <Input value={expense.manager_comment} readOnly style={{ color: "#d4b106" }} />
+              <Input value={expense.manager_comment} readOnly style={{ color: "var(--color-gold)" }} />
             </Col>
           </Row>
         )}
@@ -302,7 +324,7 @@ export function PaymentModal({ open, onClose, onSuccess, expense }: PaymentModal
           bordered
           scroll={{ x: 900 }}
           footer={() => (
-            <div style={{ textAlign: "right", fontWeight: "bold", fontSize: 16 }}>
+            <div style={{ textAlign: "right", fontWeight: 700, fontSize: 16 }}>
               Total: {formatCurrency(expense.amount, expense.currency)}
             </div>
           )}
@@ -310,7 +332,7 @@ export function PaymentModal({ open, onClose, onSuccess, expense }: PaymentModal
       </div>
 
       {/* Payment Form */}
-      <div style={{ padding: 16, background: "#f0f5ff", borderRadius: 8, border: "1px solid #d6e4ff" }}>
+      <div style={{ padding: 16, background: "var(--color-surface)", borderRadius: 8, border: "1px solid var(--color-border)" }}>
         <Row gutter={[16, 16]}>
           <Col span={8}>
             <Form.Item
@@ -378,10 +400,11 @@ export function PaymentModal({ open, onClose, onSuccess, expense }: PaymentModal
       style={{ top: 20 }}
       styles={{ body: { maxHeight: "calc(100vh - 200px)", overflowY: "auto" } }}
       onCancel={() => {
+        setPaymentResult(null);
         form.resetFields();
         onClose();
       }}
-      footer={[
+      footer={paymentResult ? null : [
         <Button key="cancel" onClick={onClose}>
           Cancel
         </Button>,
@@ -389,8 +412,42 @@ export function PaymentModal({ open, onClose, onSuccess, expense }: PaymentModal
           Confirm Payment
         </Button>,
       ]}
-      destroyOnHidden
+      forceRender
     >
+      {paymentResult ? (
+        <Result
+          status="success"
+          title="Payment Processed Successfully"
+          subTitle={`${paymentResult.currency} ${Number(paymentResult.amount).toLocaleString("en-US")} via ${paymentResult.method}`}
+          extra={[
+            <Button
+              key="print"
+              icon={<PrinterOutlined />}
+              onClick={() => setPrintReceiptOpen(true)}
+            >
+              Print Receipt
+            </Button>,
+            <Button
+              key="close"
+              type="primary"
+              onClick={() => {
+                setPaymentResult(null);
+                form.resetFields();
+                onClose();
+              }}
+            >
+              Close
+            </Button>,
+          ]}
+        >
+          <Descriptions size="small" column={2} bordered>
+            <Descriptions.Item label="Recipient">{paymentResult.recipient}</Descriptions.Item>
+            <Descriptions.Item label="Reference">{paymentResult.reference ?? "—"}</Descriptions.Item>
+            <Descriptions.Item label="Payment Date">{paymentResult.paidAt}</Descriptions.Item>
+            <Descriptions.Item label="Method">{paymentResult.method}</Descriptions.Item>
+          </Descriptions>
+        </Result>
+      ) : (
       <Form form={form} layout="vertical" onFinish={handleFinish}>
         <Tabs
           defaultActiveKey="1"
@@ -406,7 +463,7 @@ export function PaymentModal({ open, onClose, onSuccess, expense }: PaymentModal
                 <span>
                   <PaperClipOutlined /> Attachments
                   {expense.attachments && expense.attachments.length > 0 && (
-                    <Tag color="blue" style={{ marginLeft: 6 }}>{expense.attachments.length}</Tag>
+                    <StatusBadge status={String(expense.attachments.length)} colorKey="gray" />
                   )}
                 </span>
               ),
@@ -462,6 +519,13 @@ export function PaymentModal({ open, onClose, onSuccess, expense }: PaymentModal
           ]}
         />
       </Form>
+      )}
+
+      <PrintPreviewModal
+        open={printReceiptOpen}
+        onClose={() => setPrintReceiptOpen(false)}
+        expenseIds={[expense.id]}
+      />
     </Modal>
   );
 }

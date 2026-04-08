@@ -15,9 +15,9 @@ import {
   Select,
   AutoComplete,
   Spin,
-  Tag,
 } from "antd";
 import { SaveOutlined, ArrowUpOutlined, ArrowDownOutlined, CloseOutlined } from "@ant-design/icons";
+import { StatusBadge } from "@/components/ui/StatusBadge";
 import dayjs from "dayjs";
 import { amountInputProps } from "@/lib/utils";
 
@@ -148,7 +148,7 @@ export function EditWaybillDrawer({
       open={open}
       onClose={onClose}
       styles={{ wrapper: { width: 1200 } }}
-      destroyOnHidden
+      forceRender
       extra={
         <Space>
           <Button onClick={onClose}>Cancel</Button>
@@ -163,12 +163,13 @@ export function EditWaybillDrawer({
         </Space>
       }
     >
+      <Form form={form} layout="vertical" onFinish={onFinish} size="large">
       {loading ? (
         <div style={{ display: "flex", justifyContent: "center", padding: 50 }}>
           <Spin size="large" />
         </div>
       ) : (
-        <Form form={form} layout="vertical" onFinish={onFinish} size="large">
+        <>
           <Title level={5}>Client & Cargo</Title>
 
           <Form.Item
@@ -349,16 +350,14 @@ export function EditWaybillDrawer({
                       gap: 8,
                       padding: "6px 8px",
                       marginBottom: 4,
-                      background: "#f5f5f5",
+                      background: "var(--color-surface)",
                       borderRadius: 6,
                     }}
                   >
-                    <Tag color="blue" style={{ margin: 0, minWidth: 24, textAlign: "center" }}>
-                      {index + 1}
-                    </Tag>
-                    <span style={{ flex: 1, fontSize: 13 }}>
+                    <StatusBadge status={String(index + 1)} colorKey="gray" />
+                    <span style={{ flex: 1, fontSize: "var(--font-sm)" }}>
                       <strong>{bp.display_name}</strong>{" "}
-                      <span style={{ color: "#888" }}>
+                      <span style={{ color: "var(--color-text-muted)" }}>
                         ({bp.side_a_name} → {bp.side_b_name})
                       </span>
                     </span>
@@ -390,8 +389,9 @@ export function EditWaybillDrawer({
               })}
             </div>
           )}
-        </Form>
+        </>
       )}
+      </Form>
     </Drawer>
   );
 }

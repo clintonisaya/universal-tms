@@ -14,7 +14,6 @@ import {
   Typography,
   Popconfirm,
   InputNumber,
-  Tag,
   Flex,
 } from "antd";
 import {
@@ -256,6 +255,7 @@ export default function LocationsPage() {
                 type="text"
                 size="small"
                 icon={<EditOutlined />}
+                aria-label="Edit Location"
                 onClick={() => {
                   setEditingItem(record);
                   if (isCountry) {
@@ -274,7 +274,7 @@ export default function LocationsPage() {
                 cancelText="No"
                 okButtonProps={{ danger: true }}
               >
-                <Button type="text" danger size="small" icon={<DeleteOutlined />} />
+                <Button type="text" danger size="small" icon={<DeleteOutlined />} aria-label="Delete Location" />
               </Popconfirm>
             </Space>
           </div>
@@ -333,6 +333,7 @@ export default function LocationsPage() {
             rowKey="id"
             loading={loading}
             sticky={{ offsetHeader: 64 }}
+            scroll={{ x: "max-content" }}
             pagination={false}
             rowSelection={getStandardRowSelection(
               1,
@@ -348,13 +349,14 @@ export default function LocationsPage() {
       <Modal
         title={editingItem ? "Edit Country" : "Add Country"}
         open={isCountryModalOpen}
+        width={660}
         onCancel={() => {
           setIsCountryModalOpen(false);
           setEditingItem(null);
           countryForm.resetFields();
         }}
         footer={null}
-        destroyOnHidden
+        forceRender
       >
         <Form
           form={countryForm}
@@ -394,13 +396,14 @@ export default function LocationsPage() {
             : `Add City to ${selectedCountryName}`
         }
         open={isCityModalOpen}
+        width={600}
         onCancel={() => {
           setIsCityModalOpen(false);
           setEditingItem(null);
           cityForm.resetFields();
         }}
         footer={null}
-        destroyOnHidden
+        forceRender
       >
         <Form
           form={cityForm}

@@ -15,7 +15,6 @@ import {
   InputNumber,
   Select,
   AutoComplete,
-  Tag,
 } from "antd";
 import {
   ArrowLeftOutlined,
@@ -25,6 +24,7 @@ import {
   CloseOutlined,
 } from "@ant-design/icons";
 import { useAuth } from "@/contexts/AuthContext";
+import { StatusBadge } from "@/components/ui/StatusBadge";
 import { amountInputProps } from "@/lib/utils";
 import type { WaybillCreate } from "@/types/waybill";
 
@@ -75,8 +75,8 @@ export default function NewWaybillPage() {
         const d = await borderRes.json();
         setBorderPosts(d.data);
       }
-    } catch (err) {
-      console.error("Failed to fetch master data", err);
+    } catch {
+      // master data fetch failed — UI will show empty dropdowns
     } finally {
       setLoadingResources(false);
     }
@@ -137,8 +137,8 @@ export default function NewWaybillPage() {
     <div
       style={{
         minHeight: "100vh",
-        background: "#f0f2f5",
-        padding: "24px",
+        background: "var(--color-bg)",
+        padding: "var(--space-xl)",
       }}
     >
       <div style={{ maxWidth: 800, margin: "0 auto" }}>
@@ -345,16 +345,14 @@ export default function NewWaybillPage() {
                           gap: 8,
                           padding: "6px 8px",
                           marginBottom: 4,
-                          background: "#f5f5f5",
+                          background: "var(--color-surface)",
                           borderRadius: 6,
                         }}
                       >
-                        <Tag color="blue" style={{ margin: 0, minWidth: 24, textAlign: "center" }}>
-                          {index + 1}
-                        </Tag>
-                        <span style={{ flex: 1, fontSize: 13 }}>
+                        <StatusBadge status={String(index + 1)} colorKey="gray" />
+                        <span style={{ flex: 1, fontSize: "var(--font-sm)" }}>
                           <strong>{bp.display_name}</strong>{" "}
-                          <span style={{ color: "#888" }}>
+                          <span style={{ color: "var(--color-text-muted)" }}>
                             ({bp.side_a_name} → {bp.side_b_name})
                           </span>
                         </span>

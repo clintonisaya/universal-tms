@@ -14,8 +14,8 @@ import {
   message,
   Typography,
   Popconfirm,
-  Tag,
 } from "antd";
+import StatusBadge from "@/components/ui/StatusBadge";
 import {
   PlusOutlined,
   ReloadOutlined,
@@ -178,7 +178,7 @@ export default function BorderPostsPage() {
       dataIndex: "side_a_name",
       key: "side_a_name",
       width: 180,
-      render: (text: string) => <Tag color="blue">{text}</Tag>,
+      render: (text: string) => <StatusBadge status={text} colorKey="gray" />,
       ...getColumnSearchProps("side_a_name"),
     },
     {
@@ -186,7 +186,7 @@ export default function BorderPostsPage() {
       dataIndex: "side_b_name",
       key: "side_b_name",
       width: 180,
-      render: (text: string) => <Tag color="green">{text}</Tag>,
+      render: (text: string) => <StatusBadge status={text} colorKey="blue" />,
       ...getColumnSearchProps("side_b_name"),
     },
     {
@@ -195,7 +195,7 @@ export default function BorderPostsPage() {
       key: "is_active",
       width: 80,
       render: (active: boolean) =>
-        active ? <Tag color="success">Active</Tag> : <Tag color="default">Inactive</Tag>,
+        active ? <StatusBadge status="Active" colorKey="green" /> : <StatusBadge status="Inactive" colorKey="gray" />,
       filters: [
         { text: "Active", value: true },
         { text: "Inactive", value: false },
@@ -216,6 +216,7 @@ export default function BorderPostsPage() {
                 size="small"
                 icon={<EditOutlined />}
                 onClick={() => openEditModal(record)}
+                aria-label="Edit Border Post"
               />
             )}
             {canWrite && record.is_active && (
@@ -227,7 +228,7 @@ export default function BorderPostsPage() {
                 cancelText="Cancel"
                 okButtonProps={{ danger: true }}
               >
-                <Button type="text" danger size="small" icon={<StopOutlined />} />
+                <Button type="text" danger size="small" icon={<StopOutlined />} aria-label="Deactivate Border Post" />
               </Popconfirm>
             )}
           </Space>
@@ -283,6 +284,7 @@ export default function BorderPostsPage() {
             rowKey="id"
             loading={loading}
             sticky={{ offsetHeader: 64 }}
+            scroll={{ x: "max-content" }}
             rowSelection={getStandardRowSelection(
               currentPage,
               pageSize,
@@ -309,6 +311,7 @@ export default function BorderPostsPage() {
       <Modal
         title="Add Border Post"
         open={isCreateModalOpen}
+        width={660}
         onCancel={() => {
           setIsCreateModalOpen(false);
           createForm.resetFields();
@@ -371,6 +374,7 @@ export default function BorderPostsPage() {
       <Modal
         title="Edit Border Post"
         open={isEditModalOpen}
+        width={660}
         onCancel={() => {
           setIsEditModalOpen(false);
           setEditingPost(null);
