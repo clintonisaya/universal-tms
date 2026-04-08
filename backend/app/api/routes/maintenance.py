@@ -5,6 +5,7 @@ from fastapi import APIRouter, HTTPException
 from sqlmodel import func, select
 
 from app.api.deps import CurrentUser, SessionDep
+from app.core.db import commit_or_rollback
 from app.api.routes.expenses import generate_expense_number
 from app.models import (
     MaintenanceEvent,
@@ -129,7 +130,7 @@ def create_maintenance_event(
             session.add(trailer)
     
     # 4. Commit transaction
-    session.commit()
+    commit_or_rollback(session)
     session.refresh(event)
     return event
 
@@ -171,7 +172,7 @@ def update_maintenance_event(
 
     event.sqlmodel_update(update_dict)
     session.add(event)
-    session.commit()
+    commit_or_rollback(session)
     session.refresh(event)
     return event
 
@@ -209,5 +210,5 @@ def delete_maintenance_event(
     if expense and expense.status in deletable_statuses:
         session.delete(expense)
 
-    session.commit()
+    commit_or_rollback(session)
     return Message(message="Maintenance event deleted successfully")

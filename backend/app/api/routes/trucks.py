@@ -12,6 +12,7 @@ from sqlmodel import func, select
 from decimal import Decimal
 
 from app.api.deps import CurrentUser, SessionDep
+from app.core.db import commit_or_rollback
 from app.models import (
     ExpenseRequest,
     MaintenanceEvent,
@@ -153,21 +154,23 @@ def create_truck(
     # Normalize for comparison
     normalized_plate = normalize_for_comparison(truck_in.plate_number)
 
-    # Check for duplicate - compare normalized versions
-    existing_trucks = session.exec(select(Truck)).all()
-    for truck in existing_trucks:
-        if normalize_for_comparison(truck.plate_number) == normalized_plate:
-            raise HTTPException(
-                status_code=400,
-                detail="Truck with this plate already exists",
-            )
+    # Check for duplicate - compare normalized versions (DB-filtered query)
+    normalized_col = func.upper(func.replace(Truck.plate_number, ' ', ''))
+    existing_truck = session.exec(
+        select(Truck).where(normalized_col == normalized_plate)
+    ).first()
+    if existing_truck:
+        raise HTTPException(
+            status_code=400,
+            detail="Truck with this plate already exists",
+        )
 
     # Create truck with formatted plate number
     truck_data = truck_in.model_dump()
     truck_data["plate_number"] = formatted_plate
     truck = Truck.model_validate(truck_data)
     session.add(truck)
-    session.commit()
+    commit_or_rollback(session)
     session.refresh(truck)
     return truck
 
@@ -198,18 +201,23 @@ def update_truck(
 
         # Only check duplicates if the plate is actually changing
         if normalized_new != normalized_current:
-            existing_trucks = session.exec(select(Truck)).all()
-            for existing in existing_trucks:
-                if existing.id != truck.id and normalize_for_comparison(existing.plate_number) == normalized_new:
-                    raise HTTPException(
-                        status_code=400,
-                        detail="Truck with this plate already exists",
-                    )
+            normalized_col = func.upper(func.replace(Truck.plate_number, ' ', ''))
+            existing_truck = session.exec(
+                select(Truck).where(
+                    normalized_col == normalized_new,
+                    Truck.id != truck.id,
+                )
+            ).first()
+            if existing_truck:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Truck with this plate already exists",
+                )
         update_dict["plate_number"] = formatted_plate
 
     truck.sqlmodel_update(update_dict)
     session.add(truck)
-    session.commit()
+    commit_or_rollback(session)
     session.refresh(truck)
     return truck
 
@@ -227,5 +235,5 @@ def delete_truck(
     if not truck:
         raise HTTPException(status_code=404, detail="Truck not found")
     session.delete(truck)
-    session.commit()
+    commit_or_rollback(session)
     return Message(message="Truck deleted successfully")

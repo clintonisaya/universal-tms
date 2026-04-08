@@ -5,6 +5,7 @@ from fastapi import APIRouter, HTTPException
 from sqlmodel import func, select
 
 from app.api.deps import CurrentUser, SessionDep
+from app.core.db import commit_or_rollback
 from app.models import City, CityCreate, CityPublic, CitiesPublic, CityUpdate, Message, Country
 
 router = APIRouter(prefix="/cities", tags=["cities"])
@@ -46,7 +47,7 @@ def create_city(
         
     city = City.model_validate(city_in)
     session.add(city)
-    session.commit()
+    commit_or_rollback(session)
     session.refresh(city)
     return city
 
@@ -69,7 +70,7 @@ def update_city(
     update_data = city_in.model_dump(exclude_unset=True)
     city.sqlmodel_update(update_data)
     session.add(city)
-    session.commit()
+    commit_or_rollback(session)
     session.refresh(city)
     return city
 
@@ -84,5 +85,5 @@ def delete_city(
     if not city:
         raise HTTPException(status_code=404, detail="City not found")
     session.delete(city)
-    session.commit()
+    commit_or_rollback(session)
     return Message(message="City deleted successfully")

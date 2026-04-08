@@ -182,7 +182,7 @@ development_status:
 
   # Epic 10: Backend Stability (from QA Scan 2026-04-06)
   epic-10: in-progress
-  10-1-transaction-safety: ready-for-dev
+  10-1-transaction-safety: done
   10-2-audit-trail-completion: ready-for-dev
   10-3-frontend-error-handling: ready-for-dev
   epic-10-retrospective: optional

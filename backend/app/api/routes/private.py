@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 
 from app.api.deps import SessionDep, get_current_admin_user
+from app.core.db import commit_or_rollback
 from app.core.security import get_password_hash
 from app.models import (
     User,
@@ -37,6 +38,6 @@ def create_user(
     )
 
     session.add(user)
-    session.commit()
+    commit_or_rollback(session)
 
     return user

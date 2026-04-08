@@ -10,6 +10,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlmodel import select, func, and_
 
 from app.api.deps import CurrentUser, SessionDep
+from app.core.db import commit_or_rollback
 from app.models import (
     ExchangeRate,
     ExchangeRateCreate,
@@ -145,7 +146,7 @@ def update_exchange_rate(
 
     rate.rate = rate_in.rate
     session.add(rate)
-    session.commit()
+    commit_or_rollback(session)
     session.refresh(rate)
     return rate
 
@@ -164,5 +165,5 @@ def delete_exchange_rate(
         raise HTTPException(status_code=404, detail="Exchange rate not found")
 
     session.delete(rate)
-    session.commit()
+    commit_or_rollback(session)
     return Message(message="Exchange rate deleted successfully")

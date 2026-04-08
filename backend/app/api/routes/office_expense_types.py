@@ -9,6 +9,7 @@ from fastapi import APIRouter, HTTPException
 from sqlmodel import func, select
 
 from app.api.deps import CurrentUser, SessionDep
+from app.core.db import commit_or_rollback
 from app.models import (
     OfficeExpenseType,
     OfficeExpenseTypeCreate,
@@ -104,7 +105,7 @@ def create_office_expense_type(
 
     expense_type = OfficeExpenseType.model_validate(expense_type_in)
     session.add(expense_type)
-    session.commit()
+    commit_or_rollback(session)
     session.refresh(expense_type)
     return expense_type
 
@@ -138,7 +139,7 @@ def update_office_expense_type(
 
     expense_type.sqlmodel_update(update_dict)
     session.add(expense_type)
-    session.commit()
+    commit_or_rollback(session)
     session.refresh(expense_type)
     return expense_type
 
@@ -154,7 +155,7 @@ def delete_office_expense_type(
     if not expense_type:
         raise HTTPException(status_code=404, detail="Office expense type not found")
     session.delete(expense_type)
-    session.commit()
+    commit_or_rollback(session)
     return Message(message="Office expense type deleted successfully")
 
 
@@ -318,5 +319,5 @@ def seed_office_expense_types(
             session.add(expense_type)
             created_count += 1
 
-    session.commit()
+    commit_or_rollback(session)
     return Message(message=f"Seeded {created_count} office expense types successfully")

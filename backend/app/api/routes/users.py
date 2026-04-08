@@ -14,6 +14,7 @@ from app.api.deps import (
 )
 from app.core.config import settings
 from app.core.limiter import limiter
+from app.core.db import commit_or_rollback
 from app.core.security import get_password_hash, verify_password
 from app.models import (
     AdminPasswordReset,
@@ -124,7 +125,7 @@ def update_user_me(
     if user_in.full_name:
         current_user.full_name = user_in.full_name
     session.add(current_user)
-    session.commit()
+    commit_or_rollback(session)
     session.refresh(current_user)
     return current_user
 
@@ -146,7 +147,7 @@ def update_password_me(
     hashed_password = get_password_hash(body.new_password)
     current_user.hashed_password = hashed_password
     session.add(current_user)
-    session.commit()
+    commit_or_rollback(session)
     return Message(message="Password updated successfully")
 
 
@@ -170,7 +171,7 @@ def delete_user_me(
             status_code=403, detail="Super users are not allowed to delete themselves"
         )
     session.delete(current_user)
-    session.commit()
+    commit_or_rollback(session)
     return Message(message="User deleted successfully")
 
 
@@ -262,7 +263,7 @@ def delete_user(
             status_code=403, detail="Super users are not allowed to delete themselves"
         )
     session.delete(user)
-    session.commit()
+    commit_or_rollback(session)
     return Message(message="User deleted successfully")
 
 
@@ -282,5 +283,5 @@ def admin_reset_password(
         raise HTTPException(status_code=404, detail="User not found")
     user.hashed_password = get_password_hash(body.new_password)
     session.add(user)
-    session.commit()
+    commit_or_rollback(session)
     return Message(message="Password updated successfully")

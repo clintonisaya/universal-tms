@@ -1,11 +1,29 @@
 import os
+import logging
+
+from fastapi import HTTPException
 from sqlmodel import Session, create_engine, select
 
 from app import crud
 from app.core.config import settings
 from app.models import CargoType, User, UserCreate, UserRole, VehicleStatus, Country, City
 
+logger = logging.getLogger(__name__)
+
 engine = create_engine(str(settings.SQLALCHEMY_DATABASE_URI))
+
+
+def commit_or_rollback(session: Session) -> None:
+    """Commit the session; rollback and re-raise on failure.
+
+    Ensures the connection is returned to the pool even when the
+    commit fails (e.g. IntegrityError, operational errors).
+    """
+    try:
+        session.commit()
+    except Exception:
+        session.rollback()
+        raise
 
 
 # make sure all SQLModel models are imported (app.models) before initializing DB

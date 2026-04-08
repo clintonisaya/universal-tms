@@ -5,6 +5,7 @@ from fastapi import APIRouter, HTTPException
 from sqlmodel import func, select
 
 from app.api.deps import CurrentUser, SessionDep
+from app.core.db import commit_or_rollback
 from app.models import Item, ItemCreate, ItemPublic, ItemsPublic, ItemUpdate, Message
 
 router = APIRouter(prefix="/items", tags=["items"])
@@ -66,7 +67,7 @@ def create_item(
     """
     item = Item.model_validate(item_in, update={"owner_id": current_user.id})
     session.add(item)
-    session.commit()
+    commit_or_rollback(session)
     session.refresh(item)
     return item
 
@@ -90,7 +91,7 @@ def update_item(
     update_dict = item_in.model_dump(exclude_unset=True)
     item.sqlmodel_update(update_dict)
     session.add(item)
-    session.commit()
+    commit_or_rollback(session)
     session.refresh(item)
     return item
 
@@ -108,5 +109,5 @@ def delete_item(
     if not current_user.is_superuser and (item.owner_id != current_user.id):
         raise HTTPException(status_code=403, detail="Not enough permissions")
     session.delete(item)
-    session.commit()
+    commit_or_rollback(session)
     return Message(message="Item deleted successfully")

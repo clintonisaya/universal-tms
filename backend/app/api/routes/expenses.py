@@ -15,6 +15,7 @@ from sqlalchemy.orm import selectinload
 logger = logging.getLogger(__name__)
 
 from app.api.deps import CurrentUser, SessionDep
+from app.core.db import commit_or_rollback
 from app.core.socket import sio
 from app.core.storage import storage
 from app.models import (
@@ -344,7 +345,7 @@ async def batch_update_expenses(
         session.add(expense)
         updated_count += 1
 
-    session.commit()
+    commit_or_rollback(session)
 
     # Emit socket event
     await sio.emit("expense_updated", {"count": updated_count, "message": "Batch update processed"})
@@ -399,7 +400,7 @@ async def create_expense(
         created_by_id=current_user.id,
     )
     session.add(expense)
-    session.commit()
+    commit_or_rollback(session)
     session.refresh(expense)
     
     # Emit socket event - Story 2.6
@@ -475,7 +476,7 @@ async def update_expense(
     expense.updated_at = datetime.now(timezone.utc)
     expense.updated_by_id = current_user.id  # Story 6.13: audit trail
     session.add(expense)
-    session.commit()
+    commit_or_rollback(session)
     session.refresh(expense)
     
     # Emit socket event
@@ -558,7 +559,7 @@ async def process_payment(
     expense.updated_at = datetime.now(timezone.utc)
 
     session.add(expense)
-    session.commit()
+    commit_or_rollback(session)
     session.refresh(expense)
     
     # Emit socket event
@@ -647,7 +648,7 @@ async def upload_attachment(
     expense.updated_at = datetime.now(timezone.utc)
     
     session.add(expense)
-    session.commit()
+    commit_or_rollback(session)
     session.refresh(expense)
     
     return expense
@@ -720,7 +721,7 @@ def delete_attachment(
     expense.attachments = current_attachments
     expense.updated_at = datetime.now(timezone.utc)
     session.add(expense)
-    session.commit()
+    commit_or_rollback(session)
 
     return Message(message="Attachment deleted successfully")
 
@@ -747,5 +748,5 @@ def delete_expense(
         )
 
     session.delete(expense)
-    session.commit()
+    commit_or_rollback(session)
     return Message(message="Expense deleted successfully")

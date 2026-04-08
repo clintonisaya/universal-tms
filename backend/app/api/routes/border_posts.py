@@ -9,6 +9,7 @@ from fastapi import APIRouter, HTTPException, Query
 from sqlmodel import func, select
 
 from app.api.deps import CurrentUser, SessionDep
+from app.core.db import commit_or_rollback
 from app.models import (
     BorderPost,
     BorderPostCreate,
@@ -79,7 +80,7 @@ def create_border_post(
 
     border_post = BorderPost.model_validate(border_post_in)
     session.add(border_post)
-    session.commit()
+    commit_or_rollback(session)
     session.refresh(border_post)
     return border_post
 
@@ -103,7 +104,7 @@ def update_border_post(
     update_data = border_post_in.model_dump(exclude_unset=True)
     border_post.sqlmodel_update(update_data)
     session.add(border_post)
-    session.commit()
+    commit_or_rollback(session)
     session.refresh(border_post)
     return border_post
 
@@ -137,9 +138,9 @@ def delete_border_post(
         # Soft delete — crossing records must be preserved for audit
         border_post.is_active = False
         session.add(border_post)
-        session.commit()
+        commit_or_rollback(session)
         return Message(message="Border post deactivated (crossing records exist and are preserved)")
 
     session.delete(border_post)
-    session.commit()
+    commit_or_rollback(session)
     return Message(message="Border post deleted successfully")

@@ -5,6 +5,7 @@ from fastapi import APIRouter, HTTPException
 from sqlmodel import func, select
 
 from app.api.deps import CurrentUser, SessionDep
+from app.core.db import commit_or_rollback
 from app.models import Country, CountryCreate, CountryPublic, CountriesPublic, CountryUpdate, Message
 
 router = APIRouter(prefix="/countries", tags=["countries"])
@@ -44,7 +45,7 @@ def create_country(
         raise HTTPException(status_code=400, detail="Country with this name already exists")
     country = Country.model_validate(country_in)
     session.add(country)
-    session.commit()
+    commit_or_rollback(session)
     session.refresh(country)
     return country
 
@@ -66,7 +67,7 @@ def update_country(
     update_data = country_in.model_dump(exclude_unset=True)
     country.sqlmodel_update(update_data)
     session.add(country)
-    session.commit()
+    commit_or_rollback(session)
     session.refresh(country)
     return country
 
@@ -81,5 +82,5 @@ def delete_country(
     if not country:
         raise HTTPException(status_code=404, detail="Country not found")
     session.delete(country)
-    session.commit()
+    commit_or_rollback(session)
     return Message(message="Country deleted successfully")

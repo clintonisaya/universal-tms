@@ -9,6 +9,7 @@ from fastapi import APIRouter, HTTPException
 from sqlmodel import func, select
 
 from app.api.deps import CurrentUser, SessionDep
+from app.core.db import commit_or_rollback
 from app.models import (
     Client,
     ClientCreate,
@@ -76,7 +77,7 @@ def create_client(
 
     client = Client.model_validate(client_in)
     session.add(client)
-    session.commit()
+    commit_or_rollback(session)
     session.refresh(client)
     return client
 
@@ -109,7 +110,7 @@ def update_client(
 
     client.sqlmodel_update(update_dict)
     session.add(client)
-    session.commit()
+    commit_or_rollback(session)
     session.refresh(client)
     return client
 
@@ -127,5 +128,5 @@ def delete_client(
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
     session.delete(client)
-    session.commit()
+    commit_or_rollback(session)
     return Message(message="Client deleted successfully")

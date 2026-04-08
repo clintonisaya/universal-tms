@@ -9,6 +9,7 @@ from fastapi import APIRouter, HTTPException
 from sqlmodel import func, select
 
 from app.api.deps import CurrentUser, SessionDep
+from app.core.db import commit_or_rollback
 from app.models import (
     Message,
     VehicleStatus,
@@ -81,7 +82,7 @@ def create_vehicle_status(
 
     status = VehicleStatus.model_validate(status_in)
     session.add(status)
-    session.commit()
+    commit_or_rollback(session)
     session.refresh(status)
     return status
 
@@ -115,7 +116,7 @@ def update_vehicle_status(
 
     status.sqlmodel_update(update_dict)
     session.add(status)
-    session.commit()
+    commit_or_rollback(session)
     session.refresh(status)
     return status
 
@@ -131,5 +132,5 @@ def delete_vehicle_status(
     if not status:
         raise HTTPException(status_code=404, detail="Vehicle status not found")
     session.delete(status)
-    session.commit()
+    commit_or_rollback(session)
     return Message(message="Vehicle status deleted successfully")

@@ -16,6 +16,7 @@ from sqlmodel import func, select
 logger = logging.getLogger(__name__)
 
 from app.api.deps import CurrentUser, SessionDep
+from app.core.db import commit_or_rollback
 from app.core.storage import storage
 from app.models import (
     Client,
@@ -288,7 +289,7 @@ def create_invoice_from_waybill(
 
     compute_totals(invoice)
     session.add(invoice)
-    session.commit()
+    commit_or_rollback(session)
     session.refresh(invoice)
     return invoice
 
@@ -329,7 +330,7 @@ def update_invoice(
 
     compute_totals(invoice)
     session.add(invoice)
-    session.commit()
+    commit_or_rollback(session)
     session.refresh(invoice)
     return invoice
 
@@ -390,7 +391,7 @@ def issue_invoice(
             session.add(waybill)
 
     session.add(invoice)
-    session.commit()
+    commit_or_rollback(session)
     session.refresh(invoice)
     return invoice
 
@@ -422,7 +423,7 @@ def void_invoice(
     invoice.updated_at = datetime.now(timezone.utc)
 
     session.add(invoice)
-    session.commit()
+    commit_or_rollback(session)
     session.refresh(invoice)
     return invoice
 
@@ -502,7 +503,7 @@ def record_payment(
 
     session.add(invoice)
     session.add(payment)
-    session.commit()
+    commit_or_rollback(session)
     session.refresh(invoice)
     return invoice
 
@@ -601,7 +602,7 @@ async def upload_pop_attachment(
     flag_modified(payment, "attachments")
     payment.updated_at = datetime.now(timezone.utc)
     session.add(payment)
-    session.commit()
+    commit_or_rollback(session)
 
     return attachment_entry
 
@@ -676,7 +677,7 @@ def delete_pop_attachment(
             flag_modified(payment, "attachments")
             payment.updated_at = datetime.now(timezone.utc)
             session.add(payment)
-            session.commit()
+            commit_or_rollback(session)
             return Message(message="POP attachment deleted successfully")
 
     raise HTTPException(status_code=404, detail="Attachment not found")

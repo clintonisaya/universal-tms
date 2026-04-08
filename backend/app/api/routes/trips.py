@@ -15,6 +15,7 @@ from sqlalchemy.orm.attributes import flag_modified
 logger = logging.getLogger(__name__)
 
 from app.api.deps import CurrentUser, SessionDep
+from app.core.db import commit_or_rollback
 from app.core.storage import storage
 from app.models import (
     AttachReturnWaybillRequest,
@@ -612,7 +613,7 @@ def create_trip(
             waybill.status = WaybillStatus.in_progress
             session.add(waybill)
 
-    session.commit()
+    commit_or_rollback(session)
     session.refresh(trip)
     return trip
 
@@ -905,7 +906,7 @@ def update_trip(
     trip.sqlmodel_update(update_dict)
     trip.updated_by_id = current_user.id  # Story 6.13: audit trail
     session.add(trip)
-    session.commit()
+    commit_or_rollback(session)
     session.refresh(trip)
     return trip
 
@@ -1020,7 +1021,7 @@ def swap_truck(
     trip.updated_by_id = current_user.id
     session.add(trip)
 
-    session.commit()
+    commit_or_rollback(session)
     session.refresh(trip)
     return trip
 
@@ -1104,7 +1105,7 @@ def attach_return_waybill(
     return_waybill.status = WaybillStatus.in_progress
     session.add(return_waybill)
 
-    session.commit()
+    commit_or_rollback(session)
     session.refresh(trip)
     return trip
 
@@ -1155,7 +1156,7 @@ def delete_trip(
             session.add(return_waybill)
 
     session.delete(trip)
-    session.commit()
+    commit_or_rollback(session)
     return Message(message="Trip deleted successfully")
 
 
@@ -1372,7 +1373,7 @@ def upsert_border_crossing(
                 session.add(driver)
             session.add(trip)
 
-    session.commit()
+    commit_or_rollback(session)
     session.refresh(crossing)
 
     return TripBorderCrossingPublic(
@@ -1465,7 +1466,7 @@ async def upload_trip_attachment(
     flag_modified(trip, "attachments")
     trip.updated_at = datetime.now(timezone.utc)
     session.add(trip)
-    session.commit()
+    commit_or_rollback(session)
     session.refresh(trip)
     return trip
 
@@ -1530,5 +1531,5 @@ def delete_trip_attachment(
     flag_modified(trip, "attachments")
     trip.updated_at = datetime.now(timezone.utc)
     session.add(trip)
-    session.commit()
+    commit_or_rollback(session)
     return Message(message="Attachment deleted successfully")

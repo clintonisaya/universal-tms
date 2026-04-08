@@ -14,6 +14,7 @@ from sqlmodel import func, select
 logger = logging.getLogger(__name__)
 
 from app.api.deps import CurrentUser, SessionDep
+from app.core.db import commit_or_rollback
 from app.models import (
     BorderPost,
     Invoice,
@@ -185,7 +186,7 @@ def create_waybill(
             )
             session.add(wb_border)
 
-    session.commit()
+    commit_or_rollback(session)
     session.refresh(waybill)
     return waybill
 
@@ -260,7 +261,7 @@ def update_waybill(
                 wb.sequence = seq
                 session.add(wb)
 
-    session.commit()
+    commit_or_rollback(session)
     session.refresh(waybill)
     return waybill
 
@@ -331,5 +332,5 @@ def delete_waybill(
         )
 
     session.delete(waybill)
-    session.commit()
+    commit_or_rollback(session)
     return Message(message="Waybill deleted successfully")

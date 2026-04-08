@@ -9,6 +9,7 @@ from fastapi import APIRouter, HTTPException
 from sqlmodel import func, select
 
 from app.api.deps import CurrentUser, SessionDep
+from app.core.db import commit_or_rollback
 from app.models import (
     CargoType,
     CargoTypeCreate,
@@ -75,7 +76,7 @@ def create_cargo_type(
 
     cargo_type = CargoType.model_validate(cargo_type_in)
     session.add(cargo_type)
-    session.commit()
+    commit_or_rollback(session)
     session.refresh(cargo_type)
     return cargo_type
 
@@ -109,7 +110,7 @@ def update_cargo_type(
 
     cargo_type.sqlmodel_update(update_dict)
     session.add(cargo_type)
-    session.commit()
+    commit_or_rollback(session)
     session.refresh(cargo_type)
     return cargo_type
 
@@ -125,5 +126,5 @@ def delete_cargo_type(
     if not cargo_type:
         raise HTTPException(status_code=404, detail="Cargo type not found")
     session.delete(cargo_type)
-    session.commit()
+    commit_or_rollback(session)
     return Message(message="Cargo type deleted successfully")
