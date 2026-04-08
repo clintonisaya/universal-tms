@@ -187,8 +187,8 @@ def check_trip_not_closed(session: SessionDep, trip_id: uuid.UUID | None) -> Tri
 def read_expenses(
     session: SessionDep,
     current_user: CurrentUser,
-    skip: int = 0,
-    limit: int = 100,
+    skip: int = Query(default=0, ge=0),
+    limit: int = Query(default=100, ge=1, le=500),
     trip_id: uuid.UUID | None = Query(default=None, description="Filter by trip ID"),
     status: str | None = Query(default=None, description="Filter by status"),
     category: str | None = Query(default=None, description="Filter by category"),

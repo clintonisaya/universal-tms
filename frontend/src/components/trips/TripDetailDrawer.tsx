@@ -28,6 +28,7 @@ import {
   PaperClipOutlined,
   EditOutlined,
 } from "@ant-design/icons";
+import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import type { ColumnsType } from "antd/es/table";
 import type { TripDetailed, TripStatus, PodDocument } from "@/types/trip";
 import type { Waybill } from "@/types/waybill";
@@ -145,7 +146,7 @@ export function TripDetailDrawer({ open, onClose, tripId, onEdit }: TripDetailDr
         setBorderCrossings(data);
       }
     } catch {
-      // silently fail
+      message.error("Failed to load border crossings");
     } finally {
       setLoadingCrossings(false);
     }
@@ -158,7 +159,9 @@ export function TripDetailDrawer({ open, onClose, tripId, onEdit }: TripDetailDr
     try {
       const res = await fetch(`/api/v1/trips/${tripId}/attachments`, { credentials: "include" });
       if (res.ok) setTripAttachments(await res.json());
-    } catch { /* silently fail */ } finally {
+    } catch {
+      message.error("Failed to load trip attachments");
+    } finally {
       setAttachmentsLoading(false);
     }
   }, [tripId]);
@@ -228,7 +231,7 @@ export function TripDetailDrawer({ open, onClose, tripId, onEdit }: TripDetailDr
         });
         setExchangeRateMap(map);
       })
-      .catch(() => {}); // silently fail — conversion falls back gracefully
+      .catch(() => { message.error("Failed to load exchange rates"); });
   }, [open]);
 
   useEffect(() => {
@@ -503,6 +506,7 @@ export function TripDetailDrawer({ open, onClose, tripId, onEdit }: TripDetailDr
   const showFinancials = user?.role === "admin" || user?.role === "manager" || user?.is_superuser;
 
   return (
+    <ErrorBoundary>
     <>
       <Drawer
         title={
@@ -1256,5 +1260,6 @@ export function TripDetailDrawer({ open, onClose, tripId, onEdit }: TripDetailDr
       </Modal>
 
     </>
+    </ErrorBoundary>
   );
 }

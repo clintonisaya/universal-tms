@@ -6,7 +6,7 @@ import re
 import uuid
 from typing import Any
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 from sqlmodel import func, select
 
 from decimal import Decimal
@@ -62,8 +62,8 @@ def format_plate_number(plate: str) -> str:
 def read_trucks(
     session: SessionDep,
     current_user: CurrentUser,
-    skip: int = 0,
-    limit: int = 100,
+    skip: int = Query(default=0, ge=0),
+    limit: int = Query(default=100, ge=1, le=500),
 ) -> Any:
     """
     Retrieve all trucks.
@@ -97,8 +97,8 @@ def read_truck_maintenance_history(
     session: SessionDep,
     current_user: CurrentUser,
     id: uuid.UUID,
-    skip: int = 0,
-    limit: int = 100,
+    skip: int = Query(default=0, ge=0),
+    limit: int = Query(default=100, ge=1, le=500),
 ) -> Any:
     """
     Get maintenance history for a specific truck.

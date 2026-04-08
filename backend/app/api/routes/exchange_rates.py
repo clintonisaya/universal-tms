@@ -37,8 +37,8 @@ def require_finance_role(user: Any) -> None:
 def read_exchange_rates(
     session: SessionDep,
     current_user: CurrentUser,
-    skip: int = 0,
-    limit: int = 100,
+    skip: int = Query(default=0, ge=0),
+    limit: int = Query(default=100, ge=1, le=500),
 ) -> Any:
     """Retrieve all exchange rates, ordered by year desc, month desc."""
     count_query = select(func.count()).select_from(ExchangeRate)

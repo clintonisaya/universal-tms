@@ -28,6 +28,7 @@ import {
   ClockCircleOutlined,
 } from "@ant-design/icons";
 import dayjs from "dayjs";
+import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import type { TripUpdate, TripStatus, Trip } from "@/types/trip";
 import type { Country } from "@/types/location";
 import {
@@ -309,8 +310,8 @@ export function UpdateTripStatusModal({
         const data = await res.json();
         setCountries(data.data);
       }
-    } catch (err) {
-      console.error("Failed to fetch resources", err);
+    } catch {
+      message.error("Failed to load countries");
     } finally {
       setLoadingResources(false);
     }
@@ -325,7 +326,7 @@ export function UpdateTripStatusModal({
         setTripData(data);
       }
     } catch {
-      // silently fail - timeline just won't show dates
+      message.error("Failed to load trip data");
     } finally {
       setLoadingTrip(false);
     }
@@ -543,6 +544,7 @@ export function UpdateTripStatusModal({
   const tripDuration = getTripDuration();
 
   return (
+    <ErrorBoundary>
     <Modal
       title="Update Trip Status"
       open={open}
@@ -1088,5 +1090,6 @@ export function UpdateTripStatusModal({
       </Form>
       </Spin>
     </Modal>
+    </ErrorBoundary>
   );
 }

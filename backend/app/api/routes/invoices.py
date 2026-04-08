@@ -110,8 +110,8 @@ def compute_totals(invoice: Invoice) -> None:
 def read_invoices(
     session: SessionDep,
     current_user: CurrentUser,
-    skip: int = 0,
-    limit: int = 100,
+    skip: int = Query(default=0, ge=0),
+    limit: int = Query(default=100, ge=1, le=500),
     status: str | None = Query(default=None, description="Filter by status"),
     client_id: str | None = Query(default=None, description="Filter by client ID"),
 ) -> Any:

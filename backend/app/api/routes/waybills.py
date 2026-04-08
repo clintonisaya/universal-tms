@@ -68,8 +68,8 @@ def generate_waybill_number(session: SessionDep) -> str:
 def read_waybills(
     session: SessionDep,
     current_user: CurrentUser,
-    skip: int = 0,
-    limit: int = 100,
+    skip: int = Query(default=0, ge=0),
+    limit: int = Query(default=100, ge=1, le=500),
     status: str | None = Query(default=None, description="Filter by status"),
 ) -> Any:
     """Retrieve all waybills, enriched with invoice data."""

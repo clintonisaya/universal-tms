@@ -184,7 +184,7 @@ development_status:
   epic-10: in-progress
   10-1-transaction-safety: done
   10-2-audit-trail-completion: ready-for-dev
-  10-3-frontend-error-handling: ready-for-dev
+  10-3-frontend-error-handling: review
   epic-10-retrospective: optional
 
   # Epic 11: Testing (from QA Scan 2026-04-06)

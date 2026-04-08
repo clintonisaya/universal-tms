@@ -470,8 +470,8 @@ def get_available_drivers(
 def read_trips(
     session: SessionDep,
     current_user: CurrentUser,
-    skip: int = 0,
-    limit: int = 100,
+    skip: int = Query(default=0, ge=0),
+    limit: int = Query(default=100, ge=1, le=500),
 ) -> Any:
     """Retrieve all trips with waybill enrichment (Story 4.6)."""
     count_statement = select(func.count()).select_from(Trip)

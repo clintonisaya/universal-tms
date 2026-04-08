@@ -29,8 +29,8 @@ router = APIRouter(prefix="/border-posts", tags=["border-posts"])
 def read_border_posts(
     session: SessionDep,
     current_user: CurrentUser,
-    skip: int = 0,
-    limit: int = 200,
+    skip: int = Query(default=0, ge=0),
+    limit: int = Query(default=200, ge=1, le=500),
     active_only: bool = Query(default=False, description="Filter to active border posts only"),
 ) -> Any:
     """Retrieve all border posts."""

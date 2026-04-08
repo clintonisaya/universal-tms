@@ -26,6 +26,7 @@ import {
 } from "antd";
 import dayjs from "dayjs";
 import { amountInputProps, fmtAmount, fmtCurrency } from "@/lib/utils";
+import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import {
   CheckCircleOutlined,
   CloseCircleOutlined,
@@ -207,7 +208,7 @@ export function ExpenseReviewModal({
             else setOfficeExpenseTypes(data.data);
           }
         } catch {
-          /* ignore */
+          message.error("Failed to load expense types");
         } finally {
           setExpenseTypesLoading(false);
         }
@@ -224,7 +225,7 @@ export function ExpenseReviewModal({
             setCurrentExchangeRate(data?.rate || null);
           }
         } catch {
-          /* ignore */
+          message.error("Failed to load exchange rate");
         }
       };
       fetchTypes();
@@ -1325,6 +1326,7 @@ export function ExpenseReviewModal({
   const commentRequired = showReject || showReturn;
 
   return (
+    <ErrorBoundary>
     <Modal
       title={
         <div
@@ -1626,5 +1628,6 @@ export function ExpenseReviewModal({
         </>
       ) : null}
     </Modal>
+    </ErrorBoundary>
   );
 }

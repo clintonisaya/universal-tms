@@ -5,7 +5,7 @@ CRUD endpoints for office expense type management.
 import uuid
 from typing import Any
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 from sqlmodel import func, select
 
 from app.api.deps import CurrentUser, SessionDep
@@ -26,8 +26,8 @@ router = APIRouter(prefix="/office-expense-types", tags=["office-expense-types"]
 def read_office_expense_types(
     session: SessionDep,
     current_user: CurrentUser,
-    skip: int = 0,
-    limit: int = 200,
+    skip: int = Query(default=0, ge=0),
+    limit: int = Query(default=200, ge=1, le=500),
     category: str | None = None,
     active_only: bool = True,
 ) -> Any:
