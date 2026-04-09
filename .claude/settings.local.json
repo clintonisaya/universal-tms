@@ -123,7 +123,8 @@
       "Bash(grep -rn \"#[0-9a-fA-F]\\\\{3,8\\\\}\" /home/clinton/dev/edupo-tms/frontend/src/app /home/clinton/dev/edupo-tms/frontend/src/components --include=\"*.tsx\")",
       "Bash(find src:*)",
       "Bash(find . -name \"*.tsx\" -path \"*/authenticated/*\" -exec grep -l 'padding: \"\"\"\"24px\"\"\"\"' {})",
-      "Bash(git revert:*)"
+      "Bash(git revert:*)",
+      "Bash(git diff:*)"
     ]
   }
 }
