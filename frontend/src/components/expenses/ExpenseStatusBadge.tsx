@@ -25,7 +25,7 @@ export function ExpenseStatusBadge({ status, compact = false }: ExpenseStatusBad
   const financeLabel = compact ? "F" : "Finance";
 
   return (
-    <span style={{ display: "inline-flex", alignItems: "center", gap: 4, flexWrap: "wrap" }}>
+    <span style={{ display: "inline-flex", alignItems: "center", gap: 4, flexWrap: "nowrap" }}>
       {getDualStatusBadges(status, managerLabel, financeLabel, compact)}
     </span>
   );
