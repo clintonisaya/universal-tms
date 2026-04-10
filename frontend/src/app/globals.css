@@ -271,6 +271,7 @@ tr:hover > td .row-actions {
 
 /* 4. Corner cell: fixed-left + header (the "No." checkbox header) — highest z-index */
 .ant-table-sticky-holder .ant-table-cell-fix-left,
+.ant-table-sticky-holder .ant-table-cell-fix-left-first,
 .ant-table-sticky-holder .ant-table-cell-fix-right {
   z-index: 30 !important;
   background: var(--color-card) !important;

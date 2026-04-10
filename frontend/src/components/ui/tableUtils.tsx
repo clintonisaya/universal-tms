@@ -107,7 +107,6 @@ export function getStandardRowSelection<T>(
       </div>
     ),
     columnWidth: 80,
-    fixed: true,
     selectedRowKeys,
     onChange,
     renderCell: (checked, record, index, originNode) => (
