@@ -285,7 +285,7 @@ export default function TripExpenseTypesPage() {
     {
       title: "Status",
       key: "status",
-      width: 125,
+      width: 275,
       render: (_, record: TreeNode) => {
         if ("isCategory" in record && record.isCategory) {
           return <StatusBadge status={`${record.children?.length || 0} items`} colorKey="gray" />;
