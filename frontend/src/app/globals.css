@@ -235,7 +235,7 @@ tr:hover > td .row-actions {
   letter-spacing: 0.06em !important;
   padding: var(--space-md) var(--space-lg) !important;
   border-bottom: 1px solid var(--color-border) !important;
-  background: transparent !important;
+  background: var(--color-card) !important;
   white-space: nowrap;
 }
 
@@ -245,6 +245,46 @@ tr:hover > td .row-actions {
   border-bottom: 1px solid var(--color-border) !important;
   color: var(--color-text-primary);
   white-space: nowrap !important;
+}
+
+/* ── Z-INDEX HIERARCHY for sticky headers + fixed columns ── */
+/* 1. Sticky header holder — sits above scrolling body rows */
+.ant-table-sticky-holder {
+  z-index: 20 !important;
+}
+.ant-table-sticky-holder .ant-table-thead > tr > th {
+  z-index: 20 !important;
+  background: var(--color-card) !important;
+}
+
+/* 2. Fixed left columns (row number / checkbox) — above body, below headers */
+.ant-table-cell-fix-left {
+  z-index: 10 !important;
+  background: var(--color-card) !important;
+}
+
+/* 3. Fixed right columns (actions) — same level as left */
+.ant-table-cell-fix-right {
+  z-index: 10 !important;
+  background: var(--color-card) !important;
+}
+
+/* 4. Corner cell: fixed-left + header (the "No." checkbox header) — highest z-index */
+.ant-table-sticky-holder .ant-table-cell-fix-left,
+.ant-table-sticky-holder .ant-table-cell-fix-left-first,
+.ant-table-sticky-holder .ant-table-cell-fix-right {
+  z-index: 30 !important;
+  background: var(--color-card) !important;
+}
+
+/* Ensure body fixed cells also get proper background on hover */
+.ant-table-tbody > tr > td.ant-table-cell-fix-left,
+.ant-table-tbody > tr > td.ant-table-cell-fix-right {
+  background: var(--color-card) !important;
+}
+.ant-table-tbody > tr:hover > td.ant-table-cell-fix-left,
+.ant-table-tbody > tr:hover > td.ant-table-cell-fix-right {
+  background: var(--color-table-hover) !important;
 }
 
 .ant-table-tbody > tr:last-child > td {

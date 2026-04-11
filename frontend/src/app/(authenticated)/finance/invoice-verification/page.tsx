@@ -161,7 +161,7 @@ export default function InvoiceVerificationPage() {
       title: "Status",
       dataIndex: "status",
       key: "status",
-      width: 100,
+      width: 125,
       render: (status: InvoiceStatus) => {
         const badge = STATUS_BADGE[status] || STATUS_BADGE.draft;
         return (

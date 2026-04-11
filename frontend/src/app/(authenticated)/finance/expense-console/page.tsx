@@ -129,7 +129,7 @@ export default function ExpenseConsolePage() {
     {
       title: "Status",
       key: "status",
-      width: 250,
+      width: 275,
       render: (_, record) => <ExpenseStatusBadge status={record.status} />,
     },
     {
