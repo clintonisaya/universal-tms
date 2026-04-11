@@ -337,7 +337,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
       >
         {/* P12: inner flex wrapper pins collapse button to bottom */}
         <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
-          {/* Logo area */}
+          {/* Brand area */}
           <div
             style={{
               padding: collapsed ? "var(--space-lg) 0" : "var(--space-xl)",
@@ -349,32 +349,16 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
               minHeight: 65,
             }}
           >
-            {collapsed ? (
-              <>
-                {/* Crest logo — only when collapsed */}
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src="/images/logo-icon-full.png"
-                  alt="Nablafleet"
-                  style={{
-                    width: 40,
-                    height: "auto",
-                    filter: "drop-shadow(0 2px 8px var(--color-gold-glow))",
-                  }}
-                />
-              </>
-            ) : (
-              <span
-                style={{
-                  fontSize:18,
-                  fontWeight: 700,
-                  color: "var(--color-text-primary)",
-                  letterSpacing: "0.12em",
-                }}
-              >
-                NABLAFLEET
-              </span>
-            )}
+            <span
+              style={{
+                fontSize:18,
+                fontWeight: 700,
+                color: "var(--color-text-primary)",
+                letterSpacing: "0.12em",
+              }}
+            >
+              NABLAFLEET
+            </span>
           </div>
 
           {/* Navigation menu — P3: global ConfigProvider tokens handle styling; use dynamic theme */}
@@ -487,7 +471,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                     flexShrink: 0,
                   }}
                 >
-                  <span style={{ fontSize: "var(--font-sm)", fontWeight: 700, color: "var(--color-logo-icon)" }}>
+                  <span style={{ fontSize: "var(--font-sm)", fontWeight: 700, color: "var(--color-text-primary)" }}>
                     {userInitial}
                   </span>
                 </div>

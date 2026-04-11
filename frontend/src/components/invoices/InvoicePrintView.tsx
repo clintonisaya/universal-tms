@@ -58,13 +58,6 @@ export const InvoicePrintView: React.FC<InvoicePrintViewProps> = ({ invoice }) =
     >
       {/* === HEADER BANNER === */}
       <div style={{ display: "flex", alignItems: "stretch", background: DARK_CARD, minHeight: 130, position: "relative", overflow: "hidden" }}>
-        <div style={{ width: 150, display: "flex", alignItems: "center", justifyContent: "center", padding: "12px 16px", flexShrink: 0 }}>
-          <img
-            src="/images/nablafleet-logo.png"
-            alt="Nablafleet Company Limited"
-            style={{ width: "auto", height: 120, objectFit: "contain" }}
-          />
-        </div>
         <div style={{ flex: 1, padding: "22px 24px", display: "flex", flexDirection: "column", justifyContent: "center" }}>
           <div style={{ fontSize: 22, fontWeight: 800, color: GOLD, letterSpacing: "0.02em", marginBottom: 4 }}>
             {invoice.company_name}

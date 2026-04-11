@@ -63,27 +63,6 @@ function LoginForm() {
           transition: "background 0.4s",
         }}
       >
-        {/* Watermark — faded logo behind the card */}
-        <div
-          style={{
-            position: "absolute",
-            top: "50%",
-            left: "50%",
-            transform: "translate(-50%, -45%)",
-            width: 500,
-            pointerEvents: "none",
-            opacity: "var(--color-watermark-opacity)",
-            filter: "var(--color-watermark-filter)",
-          }}
-        >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src="/images/logo-icon-full.png"
-            alt=""
-            style={{ width: "100%", height: "auto" }}
-          />
-        </div>
-
         {/* Theme toggle — top-right */}
         <div style={{ position: "absolute", top: 24, right: 28 }}>
           <ThemeToggle />
@@ -102,23 +81,8 @@ function LoginForm() {
             transition: "all 0.4s",
           }}
         >
-          {/* Logo mark + brand */}
+          {/* Brand */}
           <div style={{ textAlign: "center", marginBottom: 40 }}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src="/images/logo-icon-full.png"
-              alt="Nablafleet"
-              style={{
-                width: 120,
-                height: "auto",
-                marginBottom: 12,
-                display: "block",
-                marginLeft: "auto",
-                marginRight: "auto",
-                filter: "drop-shadow(0 8px 24px var(--color-gold-glow))",
-              }}
-            />
-
             <div
               style={{
                 fontSize: "var(--font-sm)",

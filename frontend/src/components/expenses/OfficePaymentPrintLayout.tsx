@@ -103,12 +103,6 @@ export function OfficePaymentPrintLayout({
               padding-bottom: 15px;
               border-bottom: 2px solid #000;
             }
-            .logo {
-              width: 100px;
-              height: 100px;
-              object-fit: contain;
-              flex-shrink: 0;
-            }
             .document-title h1 {
               font-size: 16pt;
               font-weight: bold;
@@ -406,12 +400,6 @@ export function OfficePaymentPrintLayout({
                 borderBottom: "2px solid #000",
                 position: "relative",
               }}>
-                <img src="/nablafleet-logo.png" alt="Logo" className="logo" style={{
-                  width: "100px",
-                  height: "100px",
-                  objectFit: "contain",
-                  flexShrink: 0,
-                }} />
                 <div className="document-title" style={{ position: "absolute", left: 0, right: 0, textAlign: "center", pointerEvents: "none" }}>
                   <h1 style={{
                     fontSize: "16pt",

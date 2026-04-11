@@ -168,7 +168,6 @@ tr:hover > td .row-actions {
   --color-login-shadow: 0 40px 80px rgba(0,0,0,0.5);
   --color-card-shadow: none;
   --color-table-hover: #191D25;
-  --color-logo-icon: #0C0E12;
   --color-switch-bg: #191D25;
   --color-green: #3DD68C;
   --color-red: #E85454;
@@ -202,7 +201,6 @@ tr:hover > td .row-actions {
   --color-login-shadow: 0 40px 80px rgba(0,0,0,0.08);
   --color-card-shadow: 0 1px 3px rgba(0,0,0,0.04);
   --color-table-hover: #FAF8F4;
-  --color-logo-icon: #FFFFFF;
   --color-switch-bg: #E2DDD4;
   --color-green: #2EAE6E;
   --color-red: #D94444;

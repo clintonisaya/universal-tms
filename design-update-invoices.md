@@ -125,9 +125,7 @@ The invoice is a single A4 page (210mm × 297mm) with the following zones from t
 |---|---|
 | Height | ~130px |
 | Background | `#13161C` (always dark for print, regardless of app theme) |
-| Layout | Flex row: Logo (160px) + Company Info (flex: 1) + Decorative edge (80px) |
-
-**Logo area**: The Nablafleet heraldic crest rendered at ~100px height inside a 160px-wide column. Use the `logo-icon-full.png` asset. Always gold-on-dark for print.
+| Layout | Company Info (flex: 1) + Decorative edge (80px) |
 
 **Company info**:
 - Company name: `font-size: 22px; font-weight: 800; color: white`
