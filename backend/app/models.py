@@ -1337,11 +1337,11 @@ class InvoiceBase(SQLModel):
     status: InvoiceStatus = Field(default=InvoiceStatus.draft, description="Invoice lifecycle status")
 
     # Company (static, from system settings)
-    company_name: str = Field(default="EDUPO COMPANY LIMITED", max_length=255)
+    company_name: str = Field(default="NABLAFLEET COMPANY LIMITED", max_length=255)
     company_address: str = Field(default="P.O.Box 999, Dar es Salaam, Tanzania", max_length=500)
     company_tin: str = Field(default="168883285", max_length=50)
     company_phone: str = Field(default="+255 718 478 666", max_length=50)
-    company_email: str = Field(default="info@edupocompany.com", max_length=255)
+    company_email: str = Field(default="info@nablafleetcompany.com", max_length=255)
 
     # Customer
     customer_name: str = Field(max_length=255, description="Customer company name")
@@ -1525,7 +1525,7 @@ class InvoicePaymentsPublic(SQLModel):
 class CompanySettingsBase(SQLModel):
     bank_name_tzs: str = Field(default="CRDB BANK - AZIKIWE BRANCH", max_length=255)
     bank_account_tzs: str = Field(default="015C001CVAW00", max_length=100)
-    bank_account_name: str = Field(default="EDUPO COMPANY LIMITED", max_length=255)
+    bank_account_name: str = Field(default="NABLAFLEET COMPANY LIMITED", max_length=255)
     bank_currency_tzs: str = Field(default="Tanzanian Shilling", max_length=50)
     bank_name_usd: str = Field(default="CRDB BANK - AZIKIWE BRANCH", max_length=255)
     bank_account_usd: str = Field(default="025C001CVAW00", max_length=100)

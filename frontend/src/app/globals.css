@@ -139,7 +139,7 @@ tr:hover > td .row-actions {
 /* Secondary text — eliminates per-instance fontSize: 12 overrides */
 .ant-typography-secondary { font-size: var(--font-sm); }
 
-/* ─── DESIGN SYSTEM TOKENS — edupo-redesign.jsx ──────────────────────────── */
+/* ─── DESIGN SYSTEM TOKENS — nablafleet-redesign.jsx ──────────────────────────── */
 
 /* P13: :root fallback — dark defaults ensure variables resolve in portals/iframes
    and any context where data-theme attribute is absent.

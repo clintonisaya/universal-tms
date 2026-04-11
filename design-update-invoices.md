@@ -1,12 +1,12 @@
-# Edupo TMS — Invoice & Payment Verification Design
+# Nablafleet TMS — Invoice & Payment Verification Design
 
-**Scope**: Add invoice generation, payment tracking, and payment verification to the Edupo TMS. Invoices are generated per-waybill from trip data, the invoice becomes the source of truth for trip rates, and Finance verifies payments (advance, full, balance) against issued invoices.
+**Scope**: Add invoice generation, payment tracking, and payment verification to the Nablafleet TMS. Invoices are generated per-waybill from trip data, the invoice becomes the source of truth for trip rates, and Finance verifies payments (advance, full, balance) against issued invoices.
 
 ---
 
 ## 1. Overview
 
-The invoice module replaces the manual Microsoft Word invoice process and introduces a complete accounts-receivable lifecycle: **Issue → Pay → Verify**. It pulls data directly from the TMS (waybills, trips, clients) and renders a pixel-perfect commercial invoice matching the Edupo brand identity.
+The invoice module replaces the manual Microsoft Word invoice process and introduces a complete accounts-receivable lifecycle: **Issue → Pay → Verify**. It pulls data directly from the TMS (waybills, trips, clients) and renders a pixel-perfect commercial invoice matching the Nablafleet brand identity.
 
 ### Core Principles
 
@@ -127,7 +127,7 @@ The invoice is a single A4 page (210mm × 297mm) with the following zones from t
 | Background | `#13161C` (always dark for print, regardless of app theme) |
 | Layout | Flex row: Logo (160px) + Company Info (flex: 1) + Decorative edge (80px) |
 
-**Logo area**: The Edupo heraldic crest rendered at ~100px height inside a 160px-wide column. Use the `logo-icon-full.png` asset. Always gold-on-dark for print.
+**Logo area**: The Nablafleet heraldic crest rendered at ~100px height inside a 160px-wide column. Use the `logo-icon-full.png` asset. Always gold-on-dark for print.
 
 **Company info**:
 - Company name: `font-size: 22px; font-weight: 800; color: white`
@@ -672,7 +672,7 @@ src/
 ### Phase 1 — Invoice Generation (Ops workflow)
 1. **Invoice data model** — Backend: Invoice table + migration
 2. **Invoice API** — CRUD, auto-generate from waybill, issue with rate write-back
-3. **InvoicePrintView** — Pure HTML/CSS A4 invoice (port from `edupo-invoice-generator.jsx`)
+3. **InvoicePrintView** — Pure HTML/CSS A4 invoice (port from `nablafleet-invoice-generator.jsx`)
 4. **InvoiceForm** — Ant Design edit panel
 5. **InvoiceGenerator page** — Two-panel layout with preview + edit (accessed via waybill row action)
 6. **Waybill table enhancement** — Add invoice status column + "Generate/View Invoice" row action

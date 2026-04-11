@@ -1,6 +1,6 @@
 /**
  * InvoicePrintView — Pure HTML/CSS A4 invoice (no Ant Design).
- * Ported from edupo-invoice-generator.jsx.
+ * Ported from nablafleet-invoice-generator.jsx.
  * Always renders in light/print mode regardless of app theme.
  */
 import React from "react";
@@ -60,8 +60,8 @@ export const InvoicePrintView: React.FC<InvoicePrintViewProps> = ({ invoice }) =
       <div style={{ display: "flex", alignItems: "stretch", background: DARK_CARD, minHeight: 130, position: "relative", overflow: "hidden" }}>
         <div style={{ width: 150, display: "flex", alignItems: "center", justifyContent: "center", padding: "12px 16px", flexShrink: 0 }}>
           <img
-            src="/images/edupo-logo.png"
-            alt="Edupo Company Limited"
+            src="/images/nablafleet-logo.png"
+            alt="Nablafleet Company Limited"
             style={{ width: "auto", height: 120, objectFit: "contain" }}
           />
         </div>

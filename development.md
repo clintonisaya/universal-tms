@@ -11,7 +11,7 @@
 ### 1. Clone and configure
 
 ```bash
-git clone <repo-url> && cd edupo-tms
+git clone <repo-url> && cd nablafleet-tms
 cp .env.example .env
 # Edit .env — at minimum change SECRET_KEY, POSTGRES_PASSWORD, FIRST_SUPERUSER_PASSWORD
 ```
@@ -114,7 +114,7 @@ npm run lint
 ## Project Structure
 
 ```
-edupo-tms/
+nablafleet-tms/
 ├── backend/              # FastAPI + SQLModel backend
 │   ├── app/
 │   │   ├── api/routes/   # API endpoint handlers

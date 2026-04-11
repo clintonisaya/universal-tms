@@ -11,7 +11,7 @@ import { SessionExpiredModal } from "@/components/auth/SessionExpiredModal";
 const { Text } = Typography;
 
 // Key to track if user was previously authenticated in this browser session
-const WAS_AUTHENTICATED_KEY = "edupo_was_authenticated";
+const WAS_AUTHENTICATED_KEY = "nablafleet_was_authenticated";
 
 interface ProtectedLayoutProps {
   children: React.ReactNode;

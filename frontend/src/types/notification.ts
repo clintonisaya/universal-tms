@@ -19,7 +19,7 @@ export interface Notification {
   metadata?: Record<string, unknown>;
 }
 
-export const NOTIFICATION_STORAGE_KEY_PREFIX = "edupo_notifications_";
+export const NOTIFICATION_STORAGE_KEY_PREFIX = "nablafleet_notifications_";
 export const MAX_NOTIFICATIONS = 50;
 export const NOTIFICATION_TTL_DAYS = 7;
 export const TOAST_DURATION_SECONDS = 5;

@@ -79,7 +79,7 @@ describe("AddExpenseModal", () => {
     await waitFor(() => {
         // Check for header fields
         expect(screen.getByText("Company")).toBeInTheDocument();
-        expect(screen.getByDisplayValue("EDUPO COMPANY LIMITED")).toBeInTheDocument();
+        expect(screen.getByDisplayValue("NABLAFLEET COMPANY LIMITED")).toBeInTheDocument();
         expect(screen.getByText("Application Date")).toBeInTheDocument();
         expect(screen.getByText("Payment Method")).toBeInTheDocument();
     });

@@ -1,7 +1,7 @@
 import type { ExpenseCategory } from "@/types/expense";
 
 /** Company name used across all expense form headers. */
-export const COMPANY_NAME = "EDUPO COMPANY LIMITED";
+export const COMPANY_NAME = "NABLAFLEET COMPANY LIMITED";
 
 /** All valid expense categories. */
 export const EXPENSE_CATEGORIES: ExpenseCategory[] = [

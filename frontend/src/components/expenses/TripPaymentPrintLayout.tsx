@@ -406,7 +406,7 @@ export function TripPaymentPrintLayout({
                 borderBottom: "2px solid #000",
                 position: "relative",
               }}>
-                <img src="/edupo-logo.png" alt="Logo" className="logo" style={{
+                <img src="/nablafleet-logo.png" alt="Logo" className="logo" style={{
                   width: "100px",
                   height: "100px",
                   objectFit: "contain",
@@ -447,7 +447,7 @@ export function TripPaymentPrintLayout({
                   </tr>
                   <tr>
                     <td className="label" style={{ width: "35%", fontWeight: 600, background: "#f9f9f9", padding: "6px 10px", border: "1px solid #ccc" }}>Payment Company</td>
-                    <td className="value" style={{ padding: "6px 10px", border: "1px solid #ccc" }}>Edupo Company Limited</td>
+                    <td className="value" style={{ padding: "6px 10px", border: "1px solid #ccc" }}>Nablafleet Company Limited</td>
                   </tr>
                   <tr>
                     <td className="label" style={{ width: "35%", fontWeight: 600, background: "#f9f9f9", padding: "6px 10px", border: "1px solid #ccc" }}>Applicant</td>
@@ -606,7 +606,7 @@ export function TripPaymentPrintLayout({
                 justifyContent: "space-between",
               }}>
                 <div>Printed on: {new Date().toLocaleString("en-GB")}</div>
-                <div>Edupo Transport Management System</div>
+                <div>Nablafleet Transport Management System</div>
                 <div>Page {pageIndex + 1} of {expenses.length}</div>
               </div>
             </div>

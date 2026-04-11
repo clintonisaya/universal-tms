@@ -49,7 +49,7 @@ _bmad/
 _bmad-output/
 
 # Scratch files
-edupo-invoice-generator*.jsx
+nablafleet-invoice-generator*.jsx
 
 # TypeScript build info
 tsconfig.tsbuildinfo

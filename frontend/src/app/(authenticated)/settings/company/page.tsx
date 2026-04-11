@@ -144,7 +144,7 @@ export default function CompanySettingsPage() {
                 label="Account Holder Name"
                 rules={[{ required: true, message: "Account holder name is required" }, { max: 255 }]}
               >
-                <Input placeholder="e.g. EDUPO COMPANY LIMITED" />
+                <Input placeholder="e.g. NABLAFLEET COMPANY LIMITED" />
               </Form.Item>
               <Form.Item
                 name="bank_currency_tzs"

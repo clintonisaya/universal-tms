@@ -1,4 +1,4 @@
-# Edupo TMS - Development Docker Compose
+# Nablafleet TMS - Development Docker Compose
 # Runs PostgreSQL database and FastAPI backend
 
 services:
@@ -12,7 +12,7 @@ services:
       start_period: 30s
       timeout: 10s
     volumes:
-      - edupo-db-data:/var/lib/postgresql/data/pgdata
+      - nablafleet-db-data:/var/lib/postgresql/data/pgdata
     env_file:
       - .env
     environment:
@@ -59,4 +59,4 @@ services:
       "
 
 volumes:
-  edupo-db-data:
+  nablafleet-db-data:

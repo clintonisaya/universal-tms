@@ -28,11 +28,11 @@ def upgrade() -> None:
         sa.Column("due_date", sa.String(length=10), nullable=True),
         sa.Column("status", sa.String(), nullable=False, server_default="draft"),
         # Company
-        sa.Column("company_name", sa.String(length=255), nullable=False, server_default="EDUPO COMPANY LIMITED"),
+        sa.Column("company_name", sa.String(length=255), nullable=False, server_default="NABLAFLEET COMPANY LIMITED"),
         sa.Column("company_address", sa.String(length=500), nullable=False, server_default="P.O.Box 999, Dar es Salaam, Tanzania"),
         sa.Column("company_tin", sa.String(length=50), nullable=False, server_default="168883285"),
         sa.Column("company_phone", sa.String(length=50), nullable=False, server_default="+255 718 478 666"),
-        sa.Column("company_email", sa.String(length=255), nullable=False, server_default="info@edupocompany.com"),
+        sa.Column("company_email", sa.String(length=255), nullable=False, server_default="info@nablafleetcompany.com"),
         # Customer
         sa.Column("customer_name", sa.String(length=255), nullable=False),
         sa.Column("customer_tin", sa.String(length=50), nullable=False, server_default=""),

@@ -24,7 +24,7 @@ const dmSans = DM_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "Edupo TMS",
+  title: "Nablafleet TMS",
   description: "Transport Management System",
   icons: {
     icon: [

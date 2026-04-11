@@ -334,7 +334,7 @@ export function useTrackingExport() {
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `Edupo_Control_Tower_${new Date().toISOString().slice(0, 10)}.xlsx`;
+    a.download = `Nablafleet_Control_Tower_${new Date().toISOString().slice(0, 10)}.xlsx`;
     a.click();
     window.URL.revokeObjectURL(url);
   };
@@ -490,7 +490,7 @@ export function useTrackingExport() {
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `Edupo_Trucks_Report_${new Date().toISOString().slice(0, 10)}.xlsx`;
+    a.download = `Nablafleet_Trucks_Report_${new Date().toISOString().slice(0, 10)}.xlsx`;
     a.click();
     window.URL.revokeObjectURL(url);
   };

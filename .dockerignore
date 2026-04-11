@@ -33,7 +33,7 @@ Thumbs.db
 *.log
 
 # Scratch files
-edupo-invoice-generator*.jsx
+nablafleet-invoice-generator*.jsx
 
 # Docs (not needed in containers)
 docs/

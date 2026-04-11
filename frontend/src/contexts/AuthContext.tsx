@@ -103,7 +103,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(null);
       // Clear the "was authenticated" flag so next visit is treated as first visit
       if (typeof window !== "undefined") {
-        sessionStorage.removeItem("edupo_was_authenticated");
+        sessionStorage.removeItem("nablafleet_was_authenticated");
       }
       router.push("/login");
     }

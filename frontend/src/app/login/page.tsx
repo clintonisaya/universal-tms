@@ -107,7 +107,7 @@ function LoginForm() {
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src="/images/logo-icon-full.png"
-              alt="Edupo"
+              alt="Nablafleet"
               style={{
                 width: 120,
                 height: "auto",

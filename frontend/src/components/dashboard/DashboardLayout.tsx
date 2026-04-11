@@ -312,7 +312,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   const matchedKey = Object.keys(PAGE_TITLES)
     .filter(k => pathname.startsWith(k))
     .sort((a, b) => b.length - a.length)[0];
-  const pageTitle = PAGE_TITLES[pathname] ?? PAGE_TITLES[matchedKey] ?? "Edupo TMS";
+  const pageTitle = PAGE_TITLES[pathname] ?? PAGE_TITLES[matchedKey] ?? "Nablafleet TMS";
   const userInitial = (user?.full_name || user?.username || "U").charAt(0).toUpperCase();
 
   return (
@@ -355,7 +355,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src="/images/logo-icon-full.png"
-                  alt="Edupo"
+                  alt="Nablafleet"
                   style={{
                     width: 40,
                     height: "auto",
@@ -372,7 +372,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                   letterSpacing: "0.12em",
                 }}
               >
-                EDUPO
+                NABLAFLEET
               </span>
             )}
           </div>

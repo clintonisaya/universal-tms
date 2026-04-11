@@ -30,7 +30,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const [mode, setMode] = useState<ThemeMode>(() => {
     if (typeof window === "undefined") return "dark";
     try {
-      const saved = localStorage.getItem("edupo-theme") as ThemeMode | null;
+      const saved = localStorage.getItem("nablafleet-theme") as ThemeMode | null;
       if (saved === "light" || saved === "dark") return saved;
     } catch {
       // localStorage unavailable (privacy mode, sandboxed iframe) — use default
@@ -42,7 +42,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", mode);
     try {
-      localStorage.setItem("edupo-theme", mode);
+      localStorage.setItem("nablafleet-theme", mode);
     } catch {
       // localStorage unavailable — theme not persisted
     }

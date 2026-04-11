@@ -27,7 +27,7 @@ const MoonIcon = () => (
 );
 
 /**
- * ThemeToggle — matches edupo-redesign.jsx ThemeToggle component exactly.
+ * ThemeToggle — matches nablafleet-redesign.jsx ThemeToggle component exactly.
  * Spec: padding 7px 12px, switchBg background, 1px border, borderRadius 10px
  * Icon: 15px in textSecondary color
  * Text: 11px, fontWeight 500, textSecondary
