@@ -19,22 +19,26 @@ depends_on = None
 
 def upgrade():
     # Create new enum types for updated statuses
-    # TruckStatus - add new values
-    op.execute("ALTER TYPE truckstatus ADD VALUE IF NOT EXISTS 'loading'")
-    op.execute("ALTER TYPE truckstatus ADD VALUE IF NOT EXISTS 'at_border'")
-    op.execute("ALTER TYPE truckstatus ADD VALUE IF NOT EXISTS 'offloaded'")
-    op.execute("ALTER TYPE truckstatus ADD VALUE IF NOT EXISTS 'returned'")
-    op.execute("ALTER TYPE truckstatus ADD VALUE IF NOT EXISTS 'waiting_for_pods'")
+    # IMPORTANT: ALTER TYPE ... ADD VALUE must be committed before the new values
+    # can be used in queries. We use autocommit_block() to commit the enum
+    # additions immediately.
+    with op.get_context().autocommit_block():
+        # TruckStatus - add new values
+        op.execute("ALTER TYPE truckstatus ADD VALUE IF NOT EXISTS 'loading'")
+        op.execute("ALTER TYPE truckstatus ADD VALUE IF NOT EXISTS 'at_border'")
+        op.execute("ALTER TYPE truckstatus ADD VALUE IF NOT EXISTS 'offloaded'")
+        op.execute("ALTER TYPE truckstatus ADD VALUE IF NOT EXISTS 'returned'")
+        op.execute("ALTER TYPE truckstatus ADD VALUE IF NOT EXISTS 'waiting_for_pods'")
 
-    # TrailerStatus - add new values
-    op.execute("ALTER TYPE trailerstatus ADD VALUE IF NOT EXISTS 'loading'")
-    op.execute("ALTER TYPE trailerstatus ADD VALUE IF NOT EXISTS 'at_border'")
-    op.execute("ALTER TYPE trailerstatus ADD VALUE IF NOT EXISTS 'offloaded'")
-    op.execute("ALTER TYPE trailerstatus ADD VALUE IF NOT EXISTS 'returned'")
-    op.execute("ALTER TYPE trailerstatus ADD VALUE IF NOT EXISTS 'waiting_for_pods'")
+        # TrailerStatus - add new values
+        op.execute("ALTER TYPE trailerstatus ADD VALUE IF NOT EXISTS 'loading'")
+        op.execute("ALTER TYPE trailerstatus ADD VALUE IF NOT EXISTS 'at_border'")
+        op.execute("ALTER TYPE trailerstatus ADD VALUE IF NOT EXISTS 'offloaded'")
+        op.execute("ALTER TYPE trailerstatus ADD VALUE IF NOT EXISTS 'returned'")
+        op.execute("ALTER TYPE trailerstatus ADD VALUE IF NOT EXISTS 'waiting_for_pods'")
 
-    # DriverStatus - add 'assigned' value
-    op.execute("ALTER TYPE driverstatus ADD VALUE IF NOT EXISTS 'assigned'")
+        # DriverStatus - add 'assigned' value
+        op.execute("ALTER TYPE driverstatus ADD VALUE IF NOT EXISTS 'assigned'")
 
     # Create TripStatus enum if it doesn't exist
     op.execute("""

@@ -36,20 +36,25 @@ def upgrade() -> None:
     # ── 1. Add new enum values to tripstatus ────────────────────────────────
     # Guard: tripstatus enum was dropped in b2c3d4e5f6g7; trip.status is VARCHAR.
     # Only ALTER the enum if it still exists (legacy DBs that skipped that migration).
-    op.execute("""
-        DO $$ BEGIN
-            IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'tripstatus') THEN
-                ALTER TYPE tripstatus ADD VALUE IF NOT EXISTS 'Arrived at Loading Point';
-                ALTER TYPE tripstatus ADD VALUE IF NOT EXISTS 'Arrived at Loading Point (Return)';
-                ALTER TYPE tripstatus ADD VALUE IF NOT EXISTS 'Returning Empty';
-                ALTER TYPE tripstatus ADD VALUE IF NOT EXISTS 'Loaded';
-                ALTER TYPE tripstatus ADD VALUE IF NOT EXISTS 'Loaded (Return)';
-                ALTER TYPE tripstatus ADD VALUE IF NOT EXISTS 'Offloaded (Return)';
-                ALTER TYPE tripstatus ADD VALUE IF NOT EXISTS 'Arrived at Destination';
-                ALTER TYPE tripstatus ADD VALUE IF NOT EXISTS 'Arrived at Destination (Return)';
-            END IF;
-        END $$;
-    """)
+    #
+    # IMPORTANT: ALTER TYPE ... ADD VALUE must be committed before the new value
+    # can be used in queries. We use autocommit_block() to commit the enum
+    # additions immediately so subsequent UPDATE statements can reference them.
+    with op.get_context().autocommit_block():
+        op.execute("""
+            DO $$ BEGIN
+                IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'tripstatus') THEN
+                    ALTER TYPE tripstatus ADD VALUE IF NOT EXISTS 'Arrived at Loading Point';
+                    ALTER TYPE tripstatus ADD VALUE IF NOT EXISTS 'Arrived at Loading Point (Return)';
+                    ALTER TYPE tripstatus ADD VALUE IF NOT EXISTS 'Returning Empty';
+                    ALTER TYPE tripstatus ADD VALUE IF NOT EXISTS 'Loaded';
+                    ALTER TYPE tripstatus ADD VALUE IF NOT EXISTS 'Loaded (Return)';
+                    ALTER TYPE tripstatus ADD VALUE IF NOT EXISTS 'Offloaded (Return)';
+                    ALTER TYPE tripstatus ADD VALUE IF NOT EXISTS 'Arrived at Destination';
+                    ALTER TYPE tripstatus ADD VALUE IF NOT EXISTS 'Arrived at Destination (Return)';
+                END IF;
+            END $$;
+        """)
 
     # ── 2. Migrate existing trip.status rows (renames) ───────────────────────
     op.execute("UPDATE trip SET status = 'Arrived at Loading Point'         WHERE status = 'Waiting for Loading'")
