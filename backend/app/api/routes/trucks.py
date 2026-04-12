@@ -18,6 +18,7 @@ from app.models import (
     MaintenanceEvent,
     MaintenanceHistoryPublic,
     Message,
+    Trailer,
     Truck,
     TruckCreate,
     TruckPublic,
@@ -154,15 +155,26 @@ def create_truck(
     # Normalize for comparison
     normalized_plate = normalize_for_comparison(truck_in.plate_number)
 
-    # Check for duplicate - compare normalized versions (DB-filtered query)
-    normalized_col = func.upper(func.replace(Truck.plate_number, ' ', ''))
+    # Check for duplicate truck - compare normalized versions (DB-filtered query)
+    normalized_truck_col = func.upper(func.replace(Truck.plate_number, ' ', ''))
     existing_truck = session.exec(
-        select(Truck).where(normalized_col == normalized_plate)
+        select(Truck).where(normalized_truck_col == normalized_plate)
     ).first()
     if existing_truck:
         raise HTTPException(
             status_code=400,
             detail="Truck with this plate already exists",
+        )
+
+    # Cross-check: ensure no trailer has the same plate number
+    normalized_trailer_col = func.upper(func.replace(Trailer.plate_number, ' ', ''))
+    existing_trailer = session.exec(
+        select(Trailer).where(normalized_trailer_col == normalized_plate)
+    ).first()
+    if existing_trailer:
+        raise HTTPException(
+            status_code=400,
+            detail="A trailer with this registration number already exists",
         )
 
     # Create truck with formatted plate number
@@ -201,10 +213,10 @@ def update_truck(
 
         # Only check duplicates if the plate is actually changing
         if normalized_new != normalized_current:
-            normalized_col = func.upper(func.replace(Truck.plate_number, ' ', ''))
+            normalized_truck_col = func.upper(func.replace(Truck.plate_number, ' ', ''))
             existing_truck = session.exec(
                 select(Truck).where(
-                    normalized_col == normalized_new,
+                    normalized_truck_col == normalized_new,
                     Truck.id != truck.id,
                 )
             ).first()
@@ -212,6 +224,17 @@ def update_truck(
                 raise HTTPException(
                     status_code=400,
                     detail="Truck with this plate already exists",
+                )
+
+            # Cross-check: ensure no trailer has the same plate number
+            normalized_trailer_col = func.upper(func.replace(Trailer.plate_number, ' ', ''))
+            existing_trailer = session.exec(
+                select(Trailer).where(normalized_trailer_col == normalized_new)
+            ).first()
+            if existing_trailer:
+                raise HTTPException(
+                    status_code=400,
+                    detail="A trailer with this registration number already exists",
                 )
         update_dict["plate_number"] = formatted_plate
 

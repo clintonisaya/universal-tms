@@ -12,6 +12,7 @@ from sqlmodel import Session
 from app.core.config import settings
 from app.models import TrailerStatus
 from tests.utils.trailer import create_random_trailer
+from tests.utils.truck import create_random_truck
 
 
 def test_create_trailer(
@@ -297,3 +298,80 @@ def test_create_trailer_all_types(
         assert response.status_code == 200
         content = response.json()
         assert content["type"] == trailer_type
+
+
+# ============================================================================
+# Cross-table registration uniqueness tests
+# ============================================================================
+
+
+def test_create_trailer_rejects_truck_plate(
+    client: TestClient, superuser_token_headers: dict[str, str], db: Session
+) -> None:
+    """
+    A trailer cannot be registered with a plate number that belongs to an existing truck.
+    """
+    truck = create_random_truck(db)
+
+    data = {
+        "plate_number": truck.plate_number,
+        "type": "Flatbed",
+        "make": "Hambure",
+        "status": "Idle",
+    }
+    response = client.post(
+        f"{settings.API_V1_STR}/trailers/",
+        headers=superuser_token_headers,
+        json=data,
+    )
+    assert response.status_code == 400
+    content = response.json()
+    assert content["detail"] == "A truck with this registration number already exists"
+
+
+def test_create_trailer_rejects_truck_plate_with_different_spacing(
+    client: TestClient, superuser_token_headers: dict[str, str], db: Session
+) -> None:
+    """
+    Cross-check is case/space insensitive: if truck has "KCB 456 B",
+    trailer with "KCB456B" is also rejected.
+    """
+    truck = create_random_truck(db)
+
+    # Strip spaces from truck's plate to create a differently-spaced version
+    raw_plate = truck.plate_number.replace(" ", "")
+
+    data = {
+        "plate_number": raw_plate,
+        "type": "Flatbed",
+        "make": "Hambure",
+        "status": "Idle",
+    }
+    response = client.post(
+        f"{settings.API_V1_STR}/trailers/",
+        headers=superuser_token_headers,
+        json=data,
+    )
+    assert response.status_code == 400
+    content = response.json()
+    assert content["detail"] == "A truck with this registration number already exists"
+
+
+def test_update_trailer_rejects_truck_plate(
+    client: TestClient, superuser_token_headers: dict[str, str], db: Session
+) -> None:
+    """
+    Updating a trailer's plate to an existing truck's plate is rejected.
+    """
+    trailer = create_random_trailer(db)
+    truck = create_random_truck(db)
+
+    data = {"plate_number": truck.plate_number}
+    response = client.patch(
+        f"{settings.API_V1_STR}/trailers/{trailer.id}",
+        headers=superuser_token_headers,
+        json=data,
+    )
+    assert response.status_code == 400
+    content = response.json()
+    assert content["detail"] == "A truck with this registration number already exists"
