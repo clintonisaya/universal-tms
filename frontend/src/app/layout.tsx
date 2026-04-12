@@ -4,6 +4,7 @@ import { Geist, Geist_Mono, DM_Sans } from "next/font/google";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { QueryProvider } from "@/lib/queryClient";
 import { ThemeProvider } from "@/contexts/ThemeContext";
+import { TabProvider } from "@/contexts/TabContext";
 import "react-resizable/css/styles.css";
 import "./globals.css";
 
@@ -41,7 +42,9 @@ export default function RootLayout({
         <AntdRegistry>
           <QueryProvider>
             <ThemeProvider>
-              <AuthProvider>{children}</AuthProvider>
+              <TabProvider>
+                <AuthProvider>{children}</AuthProvider>
+              </TabProvider>
             </ThemeProvider>
           </QueryProvider>
         </AntdRegistry>

@@ -15,6 +15,8 @@ import {
   Modal,
 } from "antd";
 import { SaveOutlined, PlusOutlined } from "@ant-design/icons";
+import { useRouter } from "next/navigation";
+import { EmptyAwareSelect } from "@/components/ui/EmptyAwareSelect";
 
 const { Title } = Typography;
 const { Option } = Select;
@@ -70,6 +72,7 @@ export function CreateTripDrawer({
   const [form] = Form.useForm();
   const [addTruckForm] = Form.useForm();
   const [addDriverForm] = Form.useForm();
+  const router = useRouter();
 
   const [trucks, setTrucks] = useState<Truck[]>([]);
   const [trailers, setTrailers] = useState<Trailer[]>([]);
@@ -315,7 +318,7 @@ export function CreateTripDrawer({
                 rules={[{ required: true, message: "Please select a waybill" }]}
                 help="Only 'Open' waybills are listed"
               >
-                <Select
+                <EmptyAwareSelect
                   placeholder="Select a waybill"
                   showSearch
                   optionFilterProp="children"
@@ -325,13 +328,16 @@ export function CreateTripDrawer({
                     setSelectedWaybill(null);
                     form.setFieldsValue({ route_name: "" });
                   }}
-                >
-                  {waybills.map((waybill) => (
-                    <Option key={waybill.id} value={waybill.id}>
-                      {waybill.waybill_number} - {waybill.client_name} ({waybill.origin} → {waybill.destination})
-                    </Option>
-                  ))}
-                </Select>
+                  options={waybills.map((w) => ({
+                    value: w.id,
+                    label: `${w.waybill_number} - ${w.client_name} (${w.origin} → ${w.destination})`,
+                  }))}
+                  emptyMessage="No open waybills"
+                  emptyDescription="Create a waybill to assign to this trip"
+                  createLabel="Create Waybill"
+                  onCreate={() => router.push("/ops/waybills/new")}
+                  loading={loading}
+                />
               </Form.Item>
 
               <Form.Item
@@ -357,35 +363,20 @@ export function CreateTripDrawer({
                 rules={[{ required: true, message: "Please select a truck" }]}
                 help="Only 'Idle' or 'Offloaded' trucks are listed"
               >
-                <Select
+                <EmptyAwareSelect
                   placeholder="Select a truck"
                   showSearch
                   optionFilterProp="children"
-                  popupRender={(menu) => (
-                    <>
-                      {menu}
-                      <Divider style={{ margin: "8px 0" }} />
-                      <Button
-                        type="link"
-                        icon={<PlusOutlined />}
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          setAddTruckOpen(true);
-                        }}
-                        style={{ width: "100%", textAlign: "left", paddingLeft: 12 }}
-                      >
-                        Add New Truck
-                      </Button>
-                    </>
-                  )}
-                >
-                  {trucks.map((truck) => (
-                    <Option key={truck.id} value={truck.id}>
-                      {truck.plate_number} ({truck.make} {truck.model})
-                    </Option>
-                  ))}
-                </Select>
+                  options={trucks.map((t) => ({
+                    value: t.id,
+                    label: `${t.plate_number} (${t.make} ${t.model})`,
+                  }))}
+                  emptyMessage="No available trucks"
+                  emptyDescription="Register a truck to assign to this trip"
+                  createLabel="Register Truck"
+                  onCreate={() => setAddTruckOpen(true)}
+                  loading={loading}
+                />
               </Form.Item>
 
               <Form.Item
@@ -394,13 +385,20 @@ export function CreateTripDrawer({
                 rules={[{ required: true, message: "Please select a trailer" }]}
                 help="Only 'Idle' or 'Offloaded' trailers are listed"
               >
-                <Select placeholder="Select a trailer" showSearch optionFilterProp="children">
-                  {trailers.map((trailer) => (
-                    <Option key={trailer.id} value={trailer.id}>
-                      {trailer.plate_number} ({trailer.type})
-                    </Option>
-                  ))}
-                </Select>
+                <EmptyAwareSelect
+                  placeholder="Select a trailer"
+                  showSearch
+                  optionFilterProp="children"
+                  options={trailers.map((t) => ({
+                    value: t.id,
+                    label: `${t.plate_number} (${t.type})`,
+                  }))}
+                  emptyMessage="No available trailers"
+                  emptyDescription="Register a trailer to assign to this trip"
+                  createLabel="Register Trailer"
+                  onCreate={() => router.push("/fleet/trailers")}
+                  loading={loading}
+                />
               </Form.Item>
 
               {/* AC-3: Driver Select with inline "+ Add New Driver" */}
@@ -410,35 +408,20 @@ export function CreateTripDrawer({
                 rules={[{ required: true, message: "Please select a driver" }]}
                 help="Only 'Active' drivers are listed"
               >
-                <Select
+                <EmptyAwareSelect
                   placeholder="Select a driver"
                   showSearch
                   optionFilterProp="children"
-                  popupRender={(menu) => (
-                    <>
-                      {menu}
-                      <Divider style={{ margin: "8px 0" }} />
-                      <Button
-                        type="link"
-                        icon={<PlusOutlined />}
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          setAddDriverOpen(true);
-                        }}
-                        style={{ width: "100%", textAlign: "left", paddingLeft: 12 }}
-                      >
-                        Add New Driver
-                      </Button>
-                    </>
-                  )}
-                >
-                  {drivers.map((driver) => (
-                    <Option key={driver.id} value={driver.id}>
-                      {driver.full_name} ({driver.license_number})
-                    </Option>
-                  ))}
-                </Select>
+                  options={drivers.map((d) => ({
+                    value: d.id,
+                    label: `${d.full_name} (${d.license_number})`,
+                  }))}
+                  emptyMessage="No active drivers"
+                  emptyDescription="Add a driver to assign to this trip"
+                  createLabel="Add Driver"
+                  onCreate={() => setAddDriverOpen(true)}
+                  loading={loading}
+                />
               </Form.Item>
             </>
           )}

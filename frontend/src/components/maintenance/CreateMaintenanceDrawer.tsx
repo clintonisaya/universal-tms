@@ -18,7 +18,9 @@ import {
   Col,
 } from "antd";
 import { SaveOutlined } from "@ant-design/icons";
+import { useRouter } from "next/navigation";
 import { amountInputProps } from "@/lib/utils";
+import { EmptyAwareSelect } from "@/components/ui/EmptyAwareSelect";
 import type { Truck, TrucksResponse } from "@/types/truck";
 import type { Trailer, TrailersResponse } from "@/types/trailer";
 import type { MaintenanceEvent, MaintenanceEventCreate } from "@/types/maintenance";
@@ -41,6 +43,7 @@ export function CreateMaintenanceDrawer({
   initialValues,
 }: CreateMaintenanceDrawerProps) {
   const [form] = Form.useForm();
+  const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [trucks, setTrucks] = useState<Truck[]>([]);
   const [trailers, setTrailers] = useState<Trailer[]>([]);
@@ -219,24 +222,30 @@ export function CreateMaintenanceDrawer({
                   label={assetType === "truck" ? "Select Truck" : "Select Trailer"}
                   rules={[{ required: true, message: `Please select a ${assetType}` }]}
                 >
-                  <Select
+                  <EmptyAwareSelect
                     placeholder={`Select ${assetType === "truck" ? "Truck" : "Trailer"}`}
                     showSearch
                     optionFilterProp="children"
                     disabled={isEditMode}
-                  >
-                    {assetType === "truck"
-                      ? trucks.map((truck) => (
-                          <Select.Option key={truck.id} value={truck.id}>
-                            {truck.plate_number} - {truck.make} {truck.model} ({truck.status})
-                          </Select.Option>
-                        ))
-                      : trailers.map((trailer) => (
-                          <Select.Option key={trailer.id} value={trailer.id}>
-                            {trailer.plate_number} - {trailer.make} ({trailer.status})
-                          </Select.Option>
-                        ))}
-                  </Select>
+                    options={
+                      assetType === "truck"
+                        ? trucks.map((t) => ({
+                            value: t.id,
+                            label: `${t.plate_number} - ${t.make} ${t.model} (${t.status})`,
+                          }))
+                        : trailers.map((t) => ({
+                            value: t.id,
+                            label: `${t.plate_number} - ${t.make} (${t.status})`,
+                          }))
+                    }
+                    emptyMessage={`No ${assetType === "truck" ? "trucks" : "trailers"} available`}
+                    emptyDescription={`Register a ${assetType} to create a maintenance record`}
+                    createLabel={assetType === "truck" ? "Register Truck" : "Register Trailer"}
+                    onCreate={() =>
+                      router.push(assetType === "truck" ? "/fleet/trucks" : "/fleet/trailers")
+                    }
+                    loading={resourcesLoading}
+                  />
                 </Form.Item>
               </Col>
             </Row>

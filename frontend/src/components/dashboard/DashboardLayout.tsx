@@ -17,10 +17,13 @@ import {
   BarChartOutlined,
   AuditOutlined,
   BankOutlined,
+  CloseOutlined,
 } from "@ant-design/icons";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useThemeMode } from "@/contexts/ThemeContext";
+import { SECTION_MAP, resolveSection } from "@/constants/navigation";
+import { useTabs } from "@/contexts/TabContext";
 import { NotificationCenter } from "@/components/layout/NotificationCenter";
 import { clearNotifications } from "@/hooks/useNotifications";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
@@ -190,32 +193,10 @@ function filterMenuItems(
   return result;
 }
 
-const PAGE_TITLES: Record<string, string> = {
-  "/dashboard": "Dashboard",
-  "/fleet/trucks": "Trucks",
-  "/fleet/trailers": "Trailers",
-  "/fleet/drivers": "Drivers",
-  "/fleet/maintenance": "Maintenance",
-  "/ops/tracking": "Tracking",
-  "/ops/waybills": "Waybills",
-  "/ops/trips": "Trips",
-  "/ops/expenses": "Expenses",
-  "/office-expenses": "Office Expenses",
-  "/manager/approvals": "Approvals",
-  "/manager/payments": "Payments",
-  "/finance/expense-console": "Expense Console",
-  "/finance/invoice-verification": "Invoice Verification",
-  "/reports/profitability": "Trip Profitability",
-  "/settings/clients": "Clients",
-  "/settings/finance": "Exchange Rates",
-  "/settings/finance/office-expense-types": "Office Expense Types",
-  "/settings/trip-expenses": "Trip Expense Types",
-  "/settings/transport/locations": "Locations",
-  "/settings/transport/cargo-types": "Cargo Types",
-  "/settings/transport/vehicle-statuses": "Vehicle Statuses",
-  "/settings/transport/border-posts": "Border Posts",
-  "/settings/users": "Users",
-};
+/** Build a lookup map from SECTION_MAP for backward-compatible use in getSelectedKeys. */
+const PAGE_TITLES: Record<string, string> = Object.fromEntries(
+  SECTION_MAP.map((s) => [s.path, s.label])
+);
 
 export function DashboardLayout({ children }: DashboardLayoutProps) {
   const router = useRouter();
@@ -223,6 +204,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   const { user, logout } = useAuth();
   const { hasAnyPermission } = usePermissions();
   const { mode } = useThemeMode();
+  const { tabs, activeKey, openTab, closeTab, switchTab } = useTabs();
   const [collapsed, setCollapsed] = useState(false);
   const [isCompact, setIsCompact] = useState(false);
 
@@ -252,7 +234,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
 
   const handleMenuClick: MenuProps["onClick"] = ({ key }) => {
     if (key.startsWith("/")) {
-      router.push(key);
+      openTab(key);
     }
   };
 
@@ -308,11 +290,8 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
     return [];
   };
 
-  // P11: fall back to startsWith match for dynamic sub-routes like /ops/trips/123
-  const matchedKey = Object.keys(PAGE_TITLES)
-    .filter(k => pathname.startsWith(k))
-    .sort((a, b) => b.length - a.length)[0];
-  const pageTitle = PAGE_TITLES[pathname] ?? PAGE_TITLES[matchedKey] ?? "Nablafleet TMS";
+  // Resolve page title from shared SECTION_MAP
+  const pageTitle = resolveSection(pathname)?.label ?? "Nablafleet TMS";
   const userInitial = (user?.full_name || user?.username || "U").charAt(0).toUpperCase();
 
   return (
@@ -421,16 +400,91 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
             zIndex: 10,
           }}
         >
-          {/* Page title */}
-          <span
-            style={{
-              fontSize: 18,
-              fontWeight: 700,
-              color: "var(--color-text-primary)",
-            }}
-          >
-            {pageTitle}
-          </span>
+          {/* Tab bar (only when more than just Dashboard is open) */}
+          {tabs.length > 1 ? (
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 0,
+                height: "100%",
+                overflowX: "auto",
+                scrollbarWidth: "none",
+                msOverflowStyle: "none",
+              }}
+              className="tab-bar"
+            >
+              {tabs.map((tab) => {
+                const isActive = tab.key === activeKey;
+                return (
+                  <div
+                    key={tab.key}
+                    onClick={() => switchTab(tab.key)}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 6,
+                      padding: "0 16px",
+                      height: "100%",
+                      cursor: "pointer",
+                      fontSize: 14,
+                      fontWeight: isActive ? 700 : 400,
+                      color: isActive
+                        ? "var(--color-text-primary)"
+                        : "var(--color-text-secondary)",
+                      borderBottom: isActive
+                        ? "2px solid var(--color-primary)"
+                        : "2px solid transparent",
+                      whiteSpace: "nowrap",
+                      transition: "all 0.15s",
+                      position: "relative",
+                    }}
+                  >
+                    {tab.label}
+                    {tab.closable && (
+                      <span
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          closeTab(tab.key);
+                        }}
+                        style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          width: 16,
+                          height: 16,
+                          borderRadius: 4,
+                          fontSize: 10,
+                          color: isActive
+                            ? "var(--color-text-primary)"
+                            : "var(--color-text-muted)",
+                          opacity: isActive ? 1 : 0,
+                          transition: "opacity 0.15s",
+                        }}
+                        className="tab-close-btn"
+                      >
+                        <CloseOutlined />
+                      </span>
+                    )}
+                  </div>
+                );
+              })}
+              <style>{`
+                .tab-bar:hover .tab-close-btn { opacity: 1 !important; }
+                .tab-bar::-webkit-scrollbar { display: none; }
+              `}</style>
+            </div>
+          ) : (
+            <span
+              style={{
+                fontSize: 18,
+                fontWeight: 700,
+                color: "var(--color-text-primary)",
+              }}
+            >
+              {pageTitle}
+            </span>
+          )}
 
           {/* Right controls */}
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
