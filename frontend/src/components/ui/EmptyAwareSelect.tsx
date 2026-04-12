@@ -112,7 +112,7 @@ export function EmptyAwareSelect<T extends string | number>({
     <Select
       popupRender={popupRender}
       options={options}
-      notFoundContent={loading ? <Spin size="small" /> : null}
+      notFoundContent={loading ? <Spin size="small" /> : "\u00A0"}
       {...selectProps}
     />
   );
