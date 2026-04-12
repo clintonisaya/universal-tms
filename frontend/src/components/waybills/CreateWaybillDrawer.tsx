@@ -17,7 +17,9 @@ import {
   Spin,
 } from "antd";
 import { SaveOutlined, ArrowUpOutlined, ArrowDownOutlined, CloseOutlined } from "@ant-design/icons";
+import { useRouter } from "next/navigation";
 import { StatusBadge } from "@/components/ui/StatusBadge";
+import { EmptyAwareSelect } from "@/components/ui/EmptyAwareSelect";
 import { amountInputProps } from "@/lib/utils";
 import type { WaybillCreate } from "@/types/waybill";
 
@@ -36,6 +38,7 @@ export function CreateWaybillDrawer({
   onSuccess,
 }: CreateWaybillDrawerProps) {
   const { message } = App.useApp();
+  const router = useRouter();
   const [form] = Form.useForm<WaybillCreate>();
   const [submitting, setSubmitting] = useState(false);
   const [locations, setLocations] = useState<any[]>([]);
@@ -178,22 +181,20 @@ export function CreateWaybillDrawer({
             label="Client"
             rules={[{ required: true, message: "Please select a client" }]}
           >
-            <Select
-              showSearch
+            <EmptyAwareSelect
               placeholder="Select or search client..."
+              showSearch
               optionFilterProp="children"
-              filterOption={(input, option) =>
-                (option?.children as unknown as string)
-                  .toLowerCase()
-                  .indexOf(input.toLowerCase()) >= 0
-              }
-            >
-              {clients.map((client) => (
-                <Option key={client.id} value={client.name}>
-                  {client.name} ({client.system_id})
-                </Option>
-              ))}
-            </Select>
+              options={clients.map((client) => ({
+                value: client.name,
+                label: `${client.name} (${client.system_id})`,
+              }))}
+              emptyMessage="No clients found"
+              emptyDescription="Create a client to assign to this waybill"
+              createLabel="Create Client"
+              onCreate={() => router.push("/settings/clients")}
+              loading={loadingResources}
+            />
           </Form.Item>
 
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
@@ -202,13 +203,18 @@ export function CreateWaybillDrawer({
               label="Cargo Type"
               rules={[{ required: true, message: "Please select cargo type" }]}
             >
-              <Select placeholder="Select cargo type">
-                {cargoTypes.map((ct: any) => (
-                  <Option key={ct.id} value={ct.name}>
-                    {ct.name}
-                  </Option>
-                ))}
-              </Select>
+              <EmptyAwareSelect
+                placeholder="Select cargo type"
+                options={cargoTypes.map((ct: any) => ({
+                  value: ct.name,
+                  label: ct.name,
+                }))}
+                emptyMessage="No cargo types found"
+                emptyDescription="Add a cargo type in Settings"
+                createLabel="Add Cargo Type"
+                onCreate={() => router.push("/settings/transport/cargo-types")}
+                loading={loadingResources}
+              />
             </Form.Item>
             <Form.Item
               name="weight_kg"
