@@ -505,7 +505,7 @@ export default function TripDetailPage() {
                       <Descriptions.Item label="Remarks" span={2}>
                         <Text style={{ whiteSpace: "pre-wrap" }}>{trip.remarks}</Text>
                         <EditOutlined
-                          style={{ marginLeft: 8, cursor: "pointer", color: "var(--color-gold)" }}
+                          style={{ marginLeft: 8, cursor: "pointer", color: "var(--color-primary)" }}
                           onClick={() => setIsStatusModalOpen(true)}
                         />
                       </Descriptions.Item>

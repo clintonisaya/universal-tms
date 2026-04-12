@@ -234,7 +234,7 @@ export default function WaybillsPage() {
             <Button
               type="link"
               size="small"
-              style={{ padding: 0, height: "auto", color: "#D4A843", fontWeight: 600 }}
+              style={{ padding: 0, height: "auto", color: "var(--color-primary)", fontWeight: 600 }}
               onClick={() => router.push(`/ops/invoices/${record.invoice_id}`)}
             >
               {record.invoice_number}

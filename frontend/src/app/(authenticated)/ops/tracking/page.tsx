@@ -137,7 +137,7 @@ function TrackingPageContent() {
       render: (_, r) => (
         <Flex vertical gap={2}>
           {r.waybill_number && (
-            <Text strong style={{ color: "var(--color-gold)", fontSize: "var(--font-sm)" }}>{r.waybill_number}</Text>
+            <Text strong style={{ color: "var(--color-primary)", fontSize: "var(--font-sm)" }}>{r.waybill_number}</Text>
           )}
           {r.return_waybill_number && (
             <Tooltip title="Return Waybill">

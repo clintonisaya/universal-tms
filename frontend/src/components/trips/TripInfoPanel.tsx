@@ -65,7 +65,7 @@ export function TripInfoPanel({ trip, onEditRemarks }: TripInfoPanelProps) {
             <Text style={{ whiteSpace: "pre-wrap" }}>{trip.remarks}</Text>
             {onEditRemarks && (
               <EditOutlined
-                style={{ marginLeft: 8, cursor: "pointer", color: "var(--color-gold)" }}
+                style={{ marginLeft: 8, cursor: "pointer", color: "var(--color-primary)" }}
                 onClick={onEditRemarks}
               />
             )}
@@ -76,7 +76,7 @@ export function TripInfoPanel({ trip, onEditRemarks }: TripInfoPanelProps) {
       {/* Go Waybill */}
       {trip.waybill_id && (
         <Descriptions
-          title={<Text strong style={{ color: "var(--color-gold)" }}>Go Waybill</Text>}
+          title={<Text strong style={{ color: "var(--color-primary)" }}>Go Waybill</Text>}
           bordered column={2} size="small"
         >
           <Descriptions.Item label="Waybill #" span={2}>

@@ -3,7 +3,7 @@
  * These resolve to the correct value for both dark and light themes.
  */
 export const CHART_COLORS = {
-  primary: "var(--color-gold)",
+  primary: "var(--color-primary)",
   blue:    "var(--color-blue)",
   green:   "var(--color-green)",
   red:     "var(--color-red)",

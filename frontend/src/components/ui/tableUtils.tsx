@@ -61,7 +61,7 @@ export function getColumnSearchProps<T extends Record<string, any>>(
       </div>
     ),
     filterIcon: (filtered: boolean) => (
-      <SearchOutlined style={{ color: filtered ? "var(--color-gold)" : undefined }} />
+      <SearchOutlined style={{ color: filtered ? "var(--color-primary)" : undefined }} />
     ),
     onFilter: (value, record) => {
       const cellValue = record[dataIndex];

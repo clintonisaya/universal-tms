@@ -88,7 +88,7 @@ export function ProfitTrendChart({ data, loading }: ProfitTrendChartProps) {
           />
           <Bar dataKey="revenue" fill="var(--color-green)" radius={[4, 4, 0, 0]} />
           <Bar dataKey="expense" fill="var(--color-red)" radius={[4, 4, 0, 0]} />
-          <Bar dataKey="profit" fill="var(--color-gold)" radius={[4, 4, 0, 0]} />
+          <Bar dataKey="profit" fill="var(--color-primary)" radius={[4, 4, 0, 0]} />
         </BarChart>
       </ResponsiveContainer>
     </Card>

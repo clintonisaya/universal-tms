@@ -79,7 +79,7 @@ const PERMISSION_GROUPS = AVAILABLE_PERMISSIONS.reduce<
 }, {});
 
 /** Brand color for active toggles */
-const BRAND_GOLD = "var(--color-gold)";
+const BRAND_PRIMARY = "var(--color-primary)";
 
 /** Grouped toggle switches for permissions – used as a Form control via value/onChange. */
 function PermissionToggles({
@@ -132,7 +132,7 @@ function PermissionToggles({
                   checked={allOn}
                   style={
                     allOn
-                      ? { background: BRAND_GOLD }
+                      ? { background: BRAND_PRIMARY }
                       : someOn
                         ? { background: "rgba(212,175,55,0.45)" }
                         : undefined
@@ -153,7 +153,7 @@ function PermissionToggles({
                     <Switch
                       size="small"
                       checked={isOn}
-                      style={isOn ? { background: BRAND_GOLD } : undefined}
+                      style={isOn ? { background: BRAND_PRIMARY } : undefined}
                       onChange={(c) => toggle(p.value, c)}
                     />
                   </Flex>

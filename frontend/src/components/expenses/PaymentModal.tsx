@@ -308,7 +308,7 @@ export function PaymentModal({ open, onClose, onSuccess, expense }: PaymentModal
               <div style={{ marginBottom: 4 }}>
                 <Text type="secondary">Manager Comment</Text>
               </div>
-              <Input value={expense.manager_comment} readOnly style={{ color: "var(--color-gold)" }} />
+              <Input value={expense.manager_comment} readOnly style={{ color: "var(--color-primary)" }} />
             </Col>
           </Row>
         )}

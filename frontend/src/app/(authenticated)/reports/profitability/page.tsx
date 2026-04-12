@@ -227,7 +227,7 @@ export default function TripProfitabilityPage() {
       render: (num: string, record) => (
         <a
           onClick={() => openTripDrawer(record.trip_id)}
-          style={{ fontWeight: 600, color: "var(--color-gold)", cursor: "pointer" }}
+          style={{ fontWeight: 600, color: "var(--color-primary)", cursor: "pointer" }}
         >
           {num}
         </a>

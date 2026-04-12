@@ -3,21 +3,21 @@
 import { useThemeMode } from "@/contexts/ThemeContext";
 
 const DARK = {
-  blue:   "#4A9FF5",
-  green:  "#3DD68C",
-  orange: "#E8A034",
-  red:    "#E85454",
-  cyan:   "#3DD6C8",
-  gray:   "#8A8F9C",
+  blue:   "#3F83F8",
+  green:  "#059669",
+  orange: "#D97706",
+  red:    "#E02424",
+  cyan:   "#06B6D4",
+  gray:   "#A1A1AA",
 };
 
 const LIGHT = {
-  blue:   "#3B8DE5",
-  green:  "#2EAE6E",
-  orange: "#D48A20",
-  red:    "#D94444",
-  cyan:   "#2EB8AB",
-  gray:   "#6B6E76",
+  blue:   "#2563EB",
+  green:  "#059669",
+  orange: "#D97706",
+  red:    "#DC2626",
+  cyan:   "#0891B2",
+  gray:   "#71717A",
 };
 
 export type ColorKey = keyof typeof DARK;

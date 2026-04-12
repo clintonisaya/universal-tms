@@ -128,7 +128,7 @@ function TasksContent() {
       const row = document.getElementById(`task-row-${highlightTaskId}`);
       if (row) {
         row.scrollIntoView({ behavior: "smooth", block: "center" });
-        row.style.backgroundColor = "color-mix(in srgb, var(--color-gold) 10%, transparent)";
+        row.style.backgroundColor = "color-mix(in srgb, var(--color-primary) 10%, transparent)";
         highlightTimerRef.current = setTimeout(() => {
           row.style.transition = "background-color 1s ease";
           row.style.backgroundColor = "transparent";
@@ -194,7 +194,7 @@ function TasksContent() {
       render: (num: string, record: TodoTask) => (
         <Text
           strong
-          style={{ color: "var(--color-gold)", cursor: "pointer" }}
+          style={{ color: "var(--color-primary)", cursor: "pointer" }}
           onClick={() => openReviewModal(record)}
         >
           {num || "-"}

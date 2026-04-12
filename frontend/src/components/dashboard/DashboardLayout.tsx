@@ -464,7 +464,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                     width: 30,
                     height: 30,
                     borderRadius: 8,
-                    background: "linear-gradient(135deg, var(--color-gold), var(--color-gold-dim))",
+                    background: "var(--color-primary)",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",

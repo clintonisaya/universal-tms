@@ -25,7 +25,7 @@ const CATEGORY_COLORS: Record<string, string> = {
   Allowance:   "var(--color-orange)",
   Maintenance: "var(--color-red)",
   Office:      "var(--color-cyan)",
-  Border:      "var(--color-gold)",
+  Border:      "var(--color-primary)",
   Other:       "var(--color-text-secondary)",
 };
 

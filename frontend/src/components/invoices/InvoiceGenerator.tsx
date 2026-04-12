@@ -145,7 +145,7 @@ export const InvoiceGenerator: React.FC<InvoiceGeneratorProps> = ({ invoiceId })
   <style>
     @page { size: A4; margin: 0; }
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: 'DM Sans', 'Segoe UI', sans-serif; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    body { font-family: 'Inter', 'Segoe UI', sans-serif; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   </style>
 </head>
 <body>${printContent}</body>

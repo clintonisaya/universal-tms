@@ -212,7 +212,7 @@ export function RecordPaymentModal({
           <DollarOutlined style={{ color: "#52c41a" }} />
           <span>
             Record Payment —{" "}
-            <span style={{ color: "#D4A843" }}>{inv.invoice_number ?? inv.id?.slice(0, 8).toUpperCase() ?? "..."}</span>
+            <span style={{ color: "var(--color-primary)" }}>{inv.invoice_number ?? inv.id?.slice(0, 8).toUpperCase() ?? "..."}</span>
           </span>
         </Space>
       }

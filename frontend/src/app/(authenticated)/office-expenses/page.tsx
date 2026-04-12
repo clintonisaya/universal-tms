@@ -156,7 +156,7 @@ export default function OfficeExpensesPage() {
       render: (num: string | null, record: ExpenseRequestDetailed) => (
         <a
           onClick={() => handleViewDetail(record)}
-          style={{ fontWeight: 600, color: "var(--color-gold)", cursor: "pointer" }}
+          style={{ fontWeight: 600, color: "var(--color-primary)", cursor: "pointer" }}
         >
           {num || record.id?.slice(0, 8).toUpperCase()}
         </a>

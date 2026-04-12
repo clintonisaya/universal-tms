@@ -80,7 +80,7 @@ export default function InvoiceVerificationPage() {
         <Button
           type="link"
           onClick={() => router.push(`/ops/invoices/${record.id}`)}
-          style={{ padding: 0, height: "auto", fontWeight: 600, color: "#D4A843" }}
+          style={{ padding: 0, height: "auto", fontWeight: 600, color: "var(--color-primary)" }}
         >
           {text}
         </Button>

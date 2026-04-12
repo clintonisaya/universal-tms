@@ -7,14 +7,14 @@ import React from "react";
 import type { Invoice } from "@/types/invoice";
 
 // Brand colors (always light mode for print)
-const GOLD = "#D4A843";
-const GOLD_DIM = "#B8922E";
-const DARK = "#1A1C20";
-const DARK_CARD = "#13161C";
-const BORDER = "#E2DDD4";
-const TEXT = "#1A1C20";
-const TEXT_SEC = "#6B6E76";
-const TEXT_MUT = "#9A9DA6";
+const PRIMARY = "#2563EB";
+const PRIMARY_HOVER = "#1D4ED8";
+const DARK = "#09090B";
+const DARK_CARD = "#09090B";
+const BORDER = "#E4E4E7";
+const TEXT = "#09090B";
+const TEXT_SEC = "#71717A";
+const TEXT_MUT = "#A1A1AA";
 const WHITE = "#FFFFFF";
 
 const formatNum = (n: number) => {
@@ -46,7 +46,7 @@ export const InvoicePrintView: React.FC<InvoicePrintViewProps> = ({ invoice }) =
     <div
       id="invoice-print-area"
       style={{
-        fontFamily: "'DM Sans', 'Segoe UI', sans-serif",
+        fontFamily: "'Inter', 'Segoe UI', sans-serif",
         color: TEXT,
         background: WHITE,
         width: "210mm",
@@ -59,28 +59,28 @@ export const InvoicePrintView: React.FC<InvoicePrintViewProps> = ({ invoice }) =
       {/* === HEADER BANNER === */}
       <div style={{ display: "flex", alignItems: "stretch", background: DARK_CARD, minHeight: 130, position: "relative", overflow: "hidden" }}>
         <div style={{ flex: 1, padding: "22px 24px", display: "flex", flexDirection: "column", justifyContent: "center" }}>
-          <div style={{ fontSize: 22, fontWeight: 800, color: GOLD, letterSpacing: "0.02em", marginBottom: 4 }}>
+          <div style={{ fontSize: 22, fontWeight: 800, color: PRIMARY, letterSpacing: "0.02em", marginBottom: 4 }}>
             {invoice.company_name}
           </div>
           <div style={{ fontSize: 11, color: "rgba(255,255,255,0.7)", lineHeight: 1.7 }}>
             <span>TEL: {invoice.company_phone}</span><br />
-            <span style={{ fontWeight: 600, color: GOLD }}>Email: </span><span>{invoice.company_email}</span><br />
+            <span style={{ fontWeight: 600, color: PRIMARY }}>Email: </span><span>{invoice.company_email}</span><br />
             <span>{invoice.company_address}</span>
           </div>
         </div>
         <div style={{ width: 80, position: "relative" }}>
           <div style={{ position: "absolute", top: 0, right: 0, width: 60, height: "100%", background: DARK, transform: "skewX(-12deg)", transformOrigin: "top right" }} />
-          <div style={{ position: "absolute", top: "35%", right: 15, width: 8, height: 8, borderRadius: "50%", background: GOLD }} />
-          <div style={{ position: "absolute", top: "35%", right: 28, width: 50, height: 2, background: GOLD, opacity: 0.7 }} />
-          <div style={{ position: "absolute", top: "50%", right: 20, width: 6, height: 6, borderRadius: "50%", background: GOLD_DIM }} />
-          <div style={{ position: "absolute", top: "50%", right: 30, width: 40, height: 2, background: GOLD_DIM, opacity: 0.5 }} />
+          <div style={{ position: "absolute", top: "35%", right: 15, width: 8, height: 8, borderRadius: "50%", background: PRIMARY }} />
+          <div style={{ position: "absolute", top: "35%", right: 28, width: 50, height: 2, background: PRIMARY, opacity: 0.7 }} />
+          <div style={{ position: "absolute", top: "50%", right: 20, width: 6, height: 6, borderRadius: "50%", background: PRIMARY_HOVER }} />
+          <div style={{ position: "absolute", top: "50%", right: 30, width: 40, height: 2, background: PRIMARY_HOVER, opacity: 0.5 }} />
         </div>
       </div>
 
       {/* === INVOICE TITLE BAR === */}
       <div style={{ display: "flex", justifyContent: "flex-end", padding: "0 40px" }}>
         <div style={{ display: "flex", gap: 0 }}>
-          <div style={{ background: GOLD, padding: "8px 24px", fontSize: 11, fontWeight: 700, color: WHITE, letterSpacing: "0.1em" }}>
+          <div style={{ background: PRIMARY, padding: "8px 24px", fontSize: 11, fontWeight: 700, color: WHITE, letterSpacing: "0.1em" }}>
             COMMERCIAL INVOICE
           </div>
         </div>
@@ -101,8 +101,8 @@ export const InvoicePrintView: React.FC<InvoicePrintViewProps> = ({ invoice }) =
             <table style={{ borderCollapse: "collapse", marginLeft: "auto" }}>
               <thead>
                 <tr>
-                  <th style={{ background: GOLD, color: WHITE, padding: "6px 20px", fontSize: 10, fontWeight: 700, letterSpacing: "0.05em", border: `1px solid ${GOLD}` }}>INVOICE #</th>
-                  <th style={{ background: GOLD, color: WHITE, padding: "6px 20px", fontSize: 10, fontWeight: 700, letterSpacing: "0.05em", border: `1px solid ${GOLD}` }}>DATE</th>
+                  <th style={{ background: PRIMARY, color: WHITE, padding: "6px 20px", fontSize: 10, fontWeight: 700, letterSpacing: "0.05em", border: `1px solid ${PRIMARY}` }}>INVOICE #</th>
+                  <th style={{ background: PRIMARY, color: WHITE, padding: "6px 20px", fontSize: 10, fontWeight: 700, letterSpacing: "0.05em", border: `1px solid ${PRIMARY}` }}>DATE</th>
                 </tr>
               </thead>
               <tbody>
@@ -174,13 +174,13 @@ export const InvoicePrintView: React.FC<InvoicePrintViewProps> = ({ invoice }) =
               <div style={{ fontWeight: 600, color: TEXT }}>{bankTzs.bank}</div>
               <div>A/C No. <strong>{bankTzs.account}</strong></div>
               <div>Name: {bankTzs.name}</div>
-              <div style={{ color: GOLD_DIM, fontWeight: 600 }}>({bankTzs.currency})</div>
+              <div style={{ color: PRIMARY_HOVER, fontWeight: 600 }}>({bankTzs.currency})</div>
             </div>
             <div style={{ padding: "8px 10px", background: "#FAFAF8", borderRadius: 4, border: `1px solid ${BORDER}` }}>
               <div style={{ fontWeight: 600, color: TEXT }}>{bankUsd.bank}</div>
               <div>A/C No. <strong>{bankUsd.account}</strong></div>
               <div>Name: {bankUsd.name}</div>
-              <div style={{ color: GOLD_DIM, fontWeight: 600 }}>({bankUsd.currency} Account)</div>
+              <div style={{ color: PRIMARY_HOVER, fontWeight: 600 }}>({bankUsd.currency} Account)</div>
             </div>
           </div>
           <div style={{ width: 260 }}>
@@ -196,9 +196,9 @@ export const InvoicePrintView: React.FC<InvoicePrintViewProps> = ({ invoice }) =
                 </tr>
                 <tr style={{ background: DARK }}>
                   <td style={{ padding: "10px 12px", fontSize: 12, fontWeight: 800, color: WHITE }}>TOTAL — USD</td>
-                  <td style={{ padding: "10px 12px", fontSize: 14, fontWeight: 800, textAlign: "right", color: GOLD, fontFamily: "'Fira Code', monospace" }}>{formatNum(totalUsd)}</td>
+                  <td style={{ padding: "10px 12px", fontSize: 14, fontWeight: 800, textAlign: "right", color: PRIMARY, fontFamily: "'Fira Code', monospace" }}>{formatNum(totalUsd)}</td>
                 </tr>
-                <tr style={{ background: GOLD }}>
+                <tr style={{ background: PRIMARY }}>
                   <td style={{ padding: "10px 12px", fontSize: 12, fontWeight: 800, color: WHITE }}>TOTAL — TZS</td>
                   <td style={{ padding: "10px 12px", fontSize: 14, fontWeight: 800, textAlign: "right", color: WHITE, fontFamily: "'Fira Code', monospace" }}>{formatNum(totalTzs)}</td>
                 </tr>
@@ -211,8 +211,8 @@ export const InvoicePrintView: React.FC<InvoicePrintViewProps> = ({ invoice }) =
         </div>
 
         {/* Thank you + contact */}
-        <div style={{ marginTop: 28, textAlign: "center", borderTop: `2px solid ${GOLD}`, paddingTop: 16 }}>
-          <div style={{ fontSize: 12, fontStyle: "italic", fontWeight: 600, color: GOLD_DIM, marginBottom: 6 }}>Thank you for your business!</div>
+        <div style={{ marginTop: 28, textAlign: "center", borderTop: `2px solid ${PRIMARY}`, paddingTop: 16 }}>
+          <div style={{ fontSize: 12, fontStyle: "italic", fontWeight: 600, color: PRIMARY_HOVER, marginBottom: 6 }}>Thank you for your business!</div>
           <div style={{ fontSize: 9.5, color: TEXT_SEC }}>
             If you have any questions about this invoice, please contact<br />
             <strong>{invoice.company_phone}</strong> | <strong>{invoice.company_email}</strong>
@@ -222,9 +222,9 @@ export const InvoicePrintView: React.FC<InvoicePrintViewProps> = ({ invoice }) =
 
       {/* === FOOTER BANNER === */}
       <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 40, overflow: "hidden" }}>
-        <div style={{ width: "85%", height: "100%", background: GOLD, position: "absolute", left: 0, bottom: 0 }} />
+        <div style={{ width: "85%", height: "100%", background: PRIMARY, position: "absolute", left: 0, bottom: 0 }} />
         <div style={{ width: "8%", height: "100%", background: WHITE, position: "absolute", right: "7%", bottom: 0, transform: "skewX(-12deg)" }} />
-        <div style={{ width: "12%", height: "100%", background: GOLD_DIM, position: "absolute", right: 0, bottom: 0 }} />
+        <div style={{ width: "12%", height: "100%", background: PRIMARY_HOVER, position: "absolute", right: 0, bottom: 0 }} />
       </div>
     </div>
   );

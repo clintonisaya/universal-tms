@@ -13,7 +13,7 @@ interface MetricCardProps {
   status?: "active" | "critical" | "normal";
   isRevenue?: boolean;
   onClick?: () => void;
-  accent?: string; // Top gradient bar start color — defaults to var(--color-gold)
+  accent?: string; // Top gradient bar start color — defaults to var(--color-primary)
   chart?: number[]; // Optional MiniBar sparkline data
 }
 
@@ -29,7 +29,7 @@ export function MetricCard({
   accent,
   chart,
 }: MetricCardProps) {
-  const accentColor = accent ?? "var(--color-gold)";
+  const accentColor = accent ?? "var(--color-primary)";
 
   return (
     <div

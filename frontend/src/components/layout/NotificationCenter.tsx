@@ -189,7 +189,7 @@ export function NotificationCenter({
                     borderBottom: "1px solid var(--color-border)",
                   }}
                   onMouseEnter={(e) =>
-                    (e.currentTarget.style.background = "var(--color-gold-glow)")
+                    (e.currentTarget.style.background = "var(--color-primary-glow)")
                   }
                   onMouseLeave={(e) =>
                     (e.currentTarget.style.background = "transparent")

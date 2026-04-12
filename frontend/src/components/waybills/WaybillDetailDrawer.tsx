@@ -117,7 +117,7 @@ export function WaybillDetailDrawer({ open, onClose, waybillId }: WaybillDetailD
                     <Button
                       type="link"
                       size="small"
-                      style={{ padding: 0, height: "auto", color: "#D4A843", fontSize: 12 }}
+                      style={{ padding: 0, height: "auto", color: "var(--color-primary)", fontSize: 12 }}
                       onClick={() => router.push(`/ops/invoices/${waybill.invoice_id}`)}
                     >
                       {waybill.invoice_number}

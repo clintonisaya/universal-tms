@@ -21,7 +21,7 @@
 body {
   background: var(--color-bg);
   color: var(--color-text-primary);
-  font-family: 'DM Sans', var(--font-dm-sans), 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   transition: background 0.35s;
@@ -139,74 +139,74 @@ tr:hover > td .row-actions {
 /* Secondary text — eliminates per-instance fontSize: 12 overrides */
 .ant-typography-secondary { font-size: var(--font-sm); }
 
-/* ─── DESIGN SYSTEM TOKENS — nablafleet-redesign.jsx ──────────────────────────── */
+/* ─── DESIGN SYSTEM TOKENS — Blue & Zinc redesign ──────────────────────────── */
 
 /* P13: :root fallback — dark defaults ensure variables resolve in portals/iframes
    and any context where data-theme attribute is absent.
    P4: combined with [data-theme="dark"] — identical values, single source of truth */
 :root,
 [data-theme="dark"] {
-  --color-bg: #0C0E12;
-  --color-card: #13161C;
-  --color-surface: #191D25;
-  --color-border: #252A35;
-  --color-gold: #D4A843;
-  --color-gold-dim: #B8922E;
-  --color-gold-glow: rgba(212,168,67,0.15);
-  --color-gold-text: #0C0E12;
-  --color-text-primary: #E8E4DC;
-  --color-text-secondary: #8A8F9C;
-  --color-text-muted: #5A5F6C;
-  --color-login-bg: radial-gradient(ellipse at 50% 30%, #1a1d24 0%, #0C0E12 70%);
-  --color-login-card: rgba(19,22,28,0.85);
-  --color-header-bg: rgba(12,14,18,0.6);
-  --color-ring-a: rgba(212,168,67,0.06);
-  --color-ring-b: rgba(212,168,67,0.03);
-  --color-scroll-thumb: #252A35;
-  --color-input-focus-bg: rgba(212,168,67,0.06);
+  --color-bg: #000000;
+  --color-card: #09090B;
+  --color-surface: #18181B;
+  --color-border: #27272A;
+  --color-primary: #3B82F6;
+  --color-primary-hover: #2563EB;
+  --color-primary-glow: rgba(59,130,246,0.15);
+  --color-primary-text: #FFFFFF;
+  --color-text-primary: #FAFAFA;
+  --color-text-secondary: #A1A1AA;
+  --color-text-muted: #71717A;
+  --color-login-bg: radial-gradient(ellipse at 50% 30%, #09090B 0%, #000000 70%);
+  --color-login-card: rgba(9,9,11,0.85);
+  --color-header-bg: rgba(0,0,0,0.6);
+  --color-ring-a: rgba(59,130,246,0.06);
+  --color-ring-b: rgba(59,130,246,0.03);
+  --color-scroll-thumb: #27272A;
+  --color-input-focus-bg: rgba(59,130,246,0.06);
   --color-shadow: 0 40px 80px rgba(0,0,0,0.5);
   --color-login-shadow: 0 40px 80px rgba(0,0,0,0.5);
   --color-card-shadow: none;
-  --color-table-hover: #191D25;
-  --color-switch-bg: #191D25;
-  --color-green: #3DD68C;
-  --color-red: #E85454;
-  --color-orange: #E8A034;
-  --color-blue: #4A9FF5;
-  --color-cyan: #3DD6C8;
+  --color-table-hover: #18181B;
+  --color-switch-bg: #18181B;
+  --color-green: #059669;
+  --color-red: #E02424;
+  --color-orange: #D97706;
+  --color-blue: #3F83F8;
+  --color-cyan: #06B6D4;
   --color-watermark-opacity: 0.04;
   --color-watermark-filter: none;
 }
 
 [data-theme="light"] {
-  --color-bg: #F4F2EE;
+  --color-bg: #F4F5F8;
   --color-card: #FFFFFF;
-  --color-surface: #F0EDE8;
-  --color-border: #E2DDD4;
-  --color-gold: #B8922E;
-  --color-gold-dim: #9A7A20;
-  --color-gold-glow: rgba(184,146,46,0.10);
-  --color-gold-text: #FFFFFF;
-  --color-text-primary: #1A1C20;
-  --color-text-secondary: #6B6E76;
-  --color-text-muted: #9A9DA6;
-  --color-login-bg: radial-gradient(ellipse at 50% 30%, #FAF8F4 0%, #F4F2EE 70%);
+  --color-surface: #FFFFFF;
+  --color-border: #E4E4E7;
+  --color-primary: #2563EB;
+  --color-primary-hover: #1D4ED8;
+  --color-primary-glow: rgba(37,99,235,0.10);
+  --color-primary-text: #FFFFFF;
+  --color-text-primary: #09090B;
+  --color-text-secondary: #71717A;
+  --color-text-muted: #A1A1AA;
+  --color-login-bg: radial-gradient(ellipse at 50% 30%, #FFFFFF 0%, #F4F5F8 70%);
   --color-login-card: rgba(255,255,255,0.92);
-  --color-header-bg: rgba(244,242,238,0.75);
-  --color-ring-a: rgba(184,146,46,0.08);
-  --color-ring-b: rgba(184,146,46,0.04);
-  --color-scroll-thumb: #D4CFC6;
-  --color-input-focus-bg: rgba(184,146,46,0.06);
+  --color-header-bg: rgba(244,245,248,0.75);
+  --color-ring-a: rgba(37,99,235,0.08);
+  --color-ring-b: rgba(37,99,235,0.04);
+  --color-scroll-thumb: #D4D4D8;
+  --color-input-focus-bg: rgba(37,99,235,0.06);
   --color-shadow: 0 40px 80px rgba(0,0,0,0.08);
   --color-login-shadow: 0 40px 80px rgba(0,0,0,0.08);
   --color-card-shadow: 0 1px 3px rgba(0,0,0,0.04);
-  --color-table-hover: #FAF8F4;
-  --color-switch-bg: #E2DDD4;
-  --color-green: #2EAE6E;
-  --color-red: #D94444;
-  --color-orange: #D48A20;
-  --color-blue: #3B8DE5;
-  --color-cyan: #2EB8AB;
+  --color-table-hover: #FAFAFA;
+  --color-switch-bg: #E4E4E7;
+  --color-green: #059669;
+  --color-red: #DC2626;
+  --color-orange: #D97706;
+  --color-blue: #2563EB;
+  --color-cyan: #0891B2;
   --color-watermark-opacity: 0.03;
   --color-watermark-filter: invert(1);
 }
@@ -324,11 +324,11 @@ tr:hover > td .row-actions {
 }
 
 .ant-drawer .ant-tabs-tab-active .ant-tabs-tab-btn {
-  color: var(--color-gold) !important;
+  color: var(--color-primary) !important;
 }
 
 .ant-drawer .ant-tabs-ink-bar {
-  background: var(--color-gold) !important;
+  background: var(--color-primary) !important;
 }
 
 /* Collapse panels inside drawers */
@@ -392,14 +392,14 @@ tr:hover > td .row-actions {
 /* ── BUTTON OVERRIDES (Story 7.8) ── */
 
 .ant-btn-primary:not(:disabled) {
-  background: linear-gradient(135deg, var(--color-gold), var(--color-gold-dim)) !important;
+  background: var(--color-primary) !important;
   border: none !important;
-  color: var(--color-gold-text) !important;
-  box-shadow: 0 2px 12px var(--color-gold-glow) !important;
+  color: var(--color-primary-text) !important;
+  box-shadow: 0 2px 12px var(--color-primary-glow) !important;
 }
 
 .ant-btn-primary:not(:disabled):hover {
-  background: linear-gradient(135deg, var(--color-gold-dim), var(--color-gold)) !important;
+  background: var(--color-primary-hover) !important;
   opacity: 0.92;
 }
 
@@ -420,7 +420,7 @@ tr:hover > td .row-actions {
 
 .ant-btn-default:not(:disabled):hover {
   background: var(--color-card) !important;
-  border-color: var(--color-gold-dim) !important;
+  border-color: var(--color-primary) !important;
   color: var(--color-text-primary) !important;
 }
 
