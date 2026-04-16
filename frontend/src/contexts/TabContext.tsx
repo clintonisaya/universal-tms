@@ -200,19 +200,22 @@ export function TabProvider({ children }: { children: ReactNode }) {
         if (idx === -1) return prev;
         if (!prev[idx].closable) return prev;
 
+        const isClosingActive = prev[idx].key === activeKey;
         const newTabs = prev.filter((_, i) => i !== idx);
 
-        // Determine which tab to activate next
-        let nextIdx = idx;
-        if (nextIdx >= newTabs.length) nextIdx = newTabs.length - 1;
-        const nextTab = newTabs[nextIdx];
-        setActiveKey(nextTab.key);
-        router.push(nextTab.lastPath);
+        // Only switch tabs if the user closed the one they're currently viewing
+        if (isClosingActive && newTabs.length > 0) {
+          let nextIdx = idx;
+          if (nextIdx >= newTabs.length) nextIdx = newTabs.length - 1;
+          const nextTab = newTabs[nextIdx];
+          setActiveKey(nextTab.key);
+          router.push(nextTab.lastPath);
+        }
 
         return newTabs;
       });
     },
-    [router]
+    [router, activeKey]
   );
 
   const updateActivePath = useCallback((path: string) => {
