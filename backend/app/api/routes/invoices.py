@@ -241,25 +241,10 @@ def create_invoice_from_waybill(
     # Auto-suggest next sequential number (user can change it later)
     invoice_number, invoice_seq = generate_next_invoice_number(session)
 
-    # Get bank details from company_settings table
-    company = session.exec(select(CompanySettings)).first()
-    if company:
-        bank_details_tzs = {
-            "bank": company.bank_name_tzs,
-            "account": company.bank_account_tzs,
-            "name": company.bank_account_name,
-            "currency": company.bank_currency_tzs,
-        }
-        bank_details_usd = {
-            "bank": company.bank_name_usd,
-            "account": company.bank_account_usd,
-            "name": company.bank_account_name,
-            "currency": company.bank_currency_usd,
-        }
-    else:
-        # Fallback if company_settings not yet seeded
-        bank_details_tzs = {"bank": "", "account": "", "name": "", "currency": "Tanzanian Shilling"}
-        bank_details_usd = {"bank": "", "account": "", "name": "", "currency": "USD"}
+    # Bank details are NOT snapshotted at draft creation — they will be fetched
+    # live from company_settings until the invoice is issued. Only then are they
+    # frozen into the invoice record so that post-issue settings changes don't
+    # retroactively alter issued invoices.
 
     # Build line item
     route = f"{waybill.origin} - {waybill.destination}"
@@ -287,8 +272,6 @@ def create_invoice_from_waybill(
         exchange_rate=exchange_rate,
         vat_rate=Decimal("0"),
         items=items,
-        bank_details_tzs=bank_details_tzs,
-        bank_details_usd=bank_details_usd,
         waybill_id=waybill_id,
         trip_id=trip_id,
         created_by_id=current_user.id,
@@ -379,6 +362,23 @@ def issue_invoice(
     )
     if total_rate <= 0:
         raise HTTPException(status_code=422, detail="Cannot issue invoice with zero rate. Enter a unit price first.")
+
+    # Snapshot bank details at issue time (drafts fetch live from company_settings)
+    if not invoice.bank_details_tzs or not invoice.bank_details_tzs.get("bank"):
+        company = session.exec(select(CompanySettings)).first()
+        if company:
+            invoice.bank_details_tzs = {
+                "bank": company.bank_name_tzs,
+                "account": company.bank_account_tzs,
+                "name": company.bank_account_name,
+                "currency": company.bank_currency_tzs,
+            }
+            invoice.bank_details_usd = {
+                "bank": company.bank_name_usd,
+                "account": company.bank_account_usd,
+                "name": company.bank_account_name,
+                "currency": company.bank_currency_usd,
+            }
 
     # Transition status
     invoice.status = InvoiceStatus.issued

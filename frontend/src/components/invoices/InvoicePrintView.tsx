@@ -3,8 +3,8 @@
  * Ported from nablafleet-invoice-generator.jsx.
  * Always renders in light/print mode regardless of app theme.
  */
-import React from "react";
-import type { Invoice } from "@/types/invoice";
+import React, { useState, useEffect } from "react";
+import type { Invoice, BankDetails } from "@/types/invoice";
 
 // Brand colors (always light mode for print)
 const PRIMARY = "#2563EB";
@@ -39,8 +39,38 @@ export const InvoicePrintView: React.FC<InvoicePrintViewProps> = ({ invoice }) =
   const totalUsd = subtotal + vat;
   const totalTzs = totalUsd * Number(invoice.exchange_rate);
 
-  const bankTzs = invoice.bank_details_tzs || {};
-  const bankUsd = invoice.bank_details_usd || {};
+  // Draft invoices fetch live bank details from company settings;
+  // issued/paid/voided invoices use the snapshotted values.
+  const [liveBank, setLiveBank] = useState<{ tzs: BankDetails; usd: BankDetails } | null>(null);
+
+  useEffect(() => {
+    if (invoice.status !== "draft") return;
+    let cancelled = false;
+    fetch("/api/v1/company-settings", { credentials: "include" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (cancelled || !data) return;
+        setLiveBank({
+          tzs: {
+            bank: data.bank_name_tzs || "",
+            account: data.bank_account_tzs || "",
+            name: data.bank_account_name || "",
+            currency: data.bank_currency_tzs || "",
+          },
+          usd: {
+            bank: data.bank_name_usd || "",
+            account: data.bank_account_usd || "",
+            name: data.bank_account_name || "",
+            currency: data.bank_currency_usd || "",
+          },
+        });
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [invoice.status]);
+
+  const bankTzs = (invoice.status === "draft" && liveBank ? liveBank.tzs : invoice.bank_details_tzs) || {};
+  const bankUsd = (invoice.status === "draft" && liveBank ? liveBank.usd : invoice.bank_details_usd) || {};
 
   return (
     <div
