@@ -39,6 +39,13 @@ from app.models import (
 router = APIRouter(prefix="/expenses", tags=["expenses"])
 
 
+def _has_permission(user, permission: str) -> bool:
+    """Check granular permission — admin/superuser bypasses all checks."""
+    if user.is_superuser or user.role == UserRole.admin:
+        return True
+    return permission in (user.permissions or [])
+
+
 def generate_expense_number(session: SessionDep, trip_id: uuid.UUID | None, trip: Trip | None) -> str:
     """Generate a human-readable expense number.
 
@@ -508,7 +515,7 @@ async def process_payment(
     - Records payment_method, payment_reference, payment_date, paid_by_id
     """
     # Check role
-    if current_user.role not in [UserRole.finance, UserRole.admin]:
+    if not _has_permission(current_user, "expenses:pay"):
         raise HTTPException(
             status_code=403,
             detail="Only Finance officers can process payments",
@@ -596,8 +603,7 @@ async def upload_attachment(
 
     # Admin/Manager can amend attachments on any expense (Expense Console use case).
     # Regular users (ops, finance) can only upload when status allows modification.
-    AMEND_ROLES = {UserRole.admin, UserRole.manager}
-    if current_user.role not in AMEND_ROLES and not can_modify_expense(expense, current_user):
+    if not _has_permission(current_user, "expenses:amend-attachment") and not can_modify_expense(expense, current_user):
         raise HTTPException(
             status_code=403,
             detail="Can only add attachments when status is 'Pending Manager' and you are the creator"
@@ -702,8 +708,7 @@ def delete_attachment(
     if not expense:
         raise HTTPException(status_code=404, detail="Expense not found")
 
-    AMEND_ROLES = {UserRole.admin, UserRole.manager}
-    if current_user.role not in AMEND_ROLES and not can_modify_expense(expense, current_user):
+    if not _has_permission(current_user, "expenses:amend-attachment") and not can_modify_expense(expense, current_user):
         raise HTTPException(
             status_code=403,
             detail="Can only remove attachments when status is 'Pending Manager' and you are the creator"

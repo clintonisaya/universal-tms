@@ -20,7 +20,11 @@ from app.models import (
     UserRole,
 )
 
-WRITE_ROLES = {UserRole.admin, UserRole.manager}
+def _has_permission(user, permission: str) -> bool:
+    """Check granular permission — admin/superuser bypasses all checks."""
+    if user.is_superuser or user.role == UserRole.admin:
+        return True
+    return permission in (user.permissions or [])
 
 router = APIRouter(prefix="/border-posts", tags=["border-posts"])
 
@@ -68,7 +72,7 @@ def create_border_post(
     border_post_in: BorderPostCreate,
 ) -> Any:
     """Create a new border post. Requires admin or manager role."""
-    if current_user.role not in WRITE_ROLES:
+    if not _has_permission(current_user, "settings:border-posts"):
         raise HTTPException(status_code=403, detail="Only admin or manager can manage border posts")
 
     # Check for duplicate display name
@@ -94,7 +98,7 @@ def update_border_post(
     border_post_in: BorderPostUpdate,
 ) -> Any:
     """Update a border post. Requires admin or manager role."""
-    if current_user.role not in WRITE_ROLES:
+    if not _has_permission(current_user, "settings:border-posts"):
         raise HTTPException(status_code=403, detail="Only admin or manager can manage border posts")
 
     border_post = session.get(BorderPost, id)
@@ -121,7 +125,7 @@ def delete_border_post(
     hard-deletes if no crossings have been recorded.
     Requires admin role.
     """
-    if current_user.role not in {UserRole.admin}:
+    if not _has_permission(current_user, "settings:border-posts"):
         raise HTTPException(status_code=403, detail="Only admin can delete border posts")
 
     border_post = session.get(BorderPost, id)

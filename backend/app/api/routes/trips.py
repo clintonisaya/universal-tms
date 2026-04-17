@@ -52,12 +52,12 @@ from app.models import (
     WaybillStatus,
 )
 
-# Roles allowed to create/update trips
-WRITE_ROLES = {UserRole.admin, UserRole.manager, UserRole.ops}
-# Roles allowed to delete trips
-DELETE_ROLES = {UserRole.admin}
-# Roles allowed to reopen closed trips (Completed/Cancelled -> active)
-REOPEN_ROLES = {UserRole.admin, UserRole.manager}
+def _has_permission(user, permission: str) -> bool:
+    """Check granular permission — admin/superuser bypasses all checks."""
+    if user.is_superuser or user.role == UserRole.admin:
+        return True
+    return permission in (user.permissions or [])
+
 # Closed trip statuses
 CLOSED_STATUSES = {TripStatus.completed, TripStatus.cancelled}
 
@@ -564,7 +564,7 @@ def create_trip(
     - Updates driver status to "Assigned"
     """
     # RBAC: Only admin, manager, and ops can create trips
-    if current_user.role not in WRITE_ROLES:
+    if not _has_permission(current_user, "trips:create"):
         raise HTTPException(status_code=403, detail="Not enough permissions to create trips")
 
     # Validate and fetch truck
@@ -633,7 +633,7 @@ def update_trip(
     Manager/Admin can reopen closed trips (Completed/Cancelled -> active status).
     """
     # RBAC: Only admin, manager, and ops can update trips
-    if current_user.role not in WRITE_ROLES:
+    if not _has_permission(current_user, "trips:edit"):
         raise HTTPException(status_code=403, detail="Not enough permissions to update trips")
 
     trip = session.get(Trip, id)
@@ -713,7 +713,7 @@ def update_trip(
             all_waybills_invoiced = go_invoiced and (
                 trip.return_waybill_id is None or ret_invoiced
             )
-            if all_waybills_invoiced and current_user.role not in REOPEN_ROLES:
+            if all_waybills_invoiced and not _has_permission(current_user, "trips:reopen"):
                 raise HTTPException(
                     status_code=403,
                     detail="Cannot update trip status: all waybills are Invoiced. Contact a Manager or Admin.",
@@ -723,7 +723,7 @@ def update_trip(
         is_reopen = current_status in CLOSED_STATUSES and new_status not in CLOSED_STATUSES
         if is_reopen:
             # Only Manager/Admin can reopen closed trips
-            if current_user.role not in REOPEN_ROLES:
+            if not _has_permission(current_user, "trips:reopen"):
                 raise HTTPException(
                     status_code=403,
                     detail="Only Manager or Admin can reopen completed/cancelled trips"
@@ -923,7 +923,7 @@ def swap_truck_preview(
     Preview what a truck swap would change (trip number, expense count).
     Does NOT modify any data — read-only preview for confirmation dialog.
     """
-    if current_user.role not in WRITE_ROLES:
+    if not _has_permission(current_user, "trips:edit"):
         raise HTTPException(status_code=403, detail="Not enough permissions")
 
     trip = session.get(Trip, id)
@@ -968,7 +968,7 @@ def swap_truck(
     - Linked expense numbers are updated to reflect the new trip number
     """
     # RBAC: Only admin, manager, and ops can swap trucks
-    if current_user.role not in WRITE_ROLES:
+    if not _has_permission(current_user, "trips:edit"):
         raise HTTPException(status_code=403, detail="Not enough permissions to swap trucks")
 
     trip = session.get(Trip, id)
@@ -1041,7 +1041,7 @@ def attach_return_waybill(
     - The waybill must be 'Open' and not linked to another active trip
     - Sets the return waybill to 'In Progress' immediately
     """
-    if current_user.role not in WRITE_ROLES:
+    if not _has_permission(current_user, "trips:edit"):
         raise HTTPException(status_code=403, detail="Not enough permissions to update trips")
 
     trip = session.get(Trip, id)
@@ -1118,7 +1118,7 @@ def delete_trip(
 ) -> None:
     """Delete a trip."""
     # RBAC: Only admin can delete trips
-    if current_user.role not in DELETE_ROLES:
+    if not _has_permission(current_user, "trips:delete"):
         raise HTTPException(status_code=403, detail="Only admin can delete trips")
 
     trip = session.get(Trip, id)
@@ -1300,7 +1300,7 @@ def upsert_border_crossing(
     Creates a new record or updates an existing one (matched by trip_id + border_post_id + direction).
     All 7 date fields are optional and can be filled progressively.
     """
-    if current_user.role not in WRITE_ROLES:
+    if not _has_permission(current_user, "trips:edit"):
         raise HTTPException(status_code=403, detail="Not enough permissions to record border crossings")
 
     trip = session.get(Trip, trip_id)
@@ -1429,7 +1429,7 @@ async def upload_trip_attachment(
     if not trip:
         raise HTTPException(status_code=404, detail="Trip not found")
 
-    if current_user.role not in WRITE_ROLES:
+    if not _has_permission(current_user, "trips:edit"):
         raise HTTPException(status_code=403, detail="Not enough permissions to add trip attachments")
 
     if trip.status in CLOSED_STATUSES:
@@ -1514,7 +1514,7 @@ def delete_trip_attachment(
     if not trip:
         raise HTTPException(status_code=404, detail="Trip not found")
 
-    if current_user.role not in WRITE_ROLES:
+    if not _has_permission(current_user, "trips:edit"):
         raise HTTPException(status_code=403, detail="Not enough permissions to delete trip attachments")
 
     if trip.status in CLOSED_STATUSES:

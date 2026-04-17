@@ -185,7 +185,7 @@ def read_user_by_id(
     Get a specific user by id.
     """
     # Check permissions before revealing whether user exists
-    if not current_user.is_superuser and current_user.role not in [UserRole.admin, UserRole.manager]:
+    if not current_user.is_superuser and current_user.role != UserRole.admin and "users:manage" not in (current_user.permissions or []):
         if current_user.id != user_id:
             raise HTTPException(
                 status_code=403, detail="The user doesn't have enough privileges"

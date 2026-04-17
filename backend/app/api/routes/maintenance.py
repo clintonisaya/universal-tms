@@ -24,10 +24,11 @@ from app.models import (
     UserRole,
 )
 
-# Roles allowed to create/update maintenance events
-WRITE_ROLES = {UserRole.admin, UserRole.manager, UserRole.ops}
-# Roles allowed to delete maintenance events
-DELETE_ROLES = {UserRole.admin}
+def _has_permission(user, permission: str) -> bool:
+    """Check granular permission — admin/superuser bypasses all checks."""
+    if user.is_superuser or user.role == UserRole.admin:
+        return True
+    return permission in (user.permissions or [])
 
 router = APIRouter(prefix="/maintenance", tags=["maintenance"])
 
@@ -79,7 +80,7 @@ def create_maintenance_event(
     Optionally sets Truck or Trailer Status to 'Maintenance'.
     """
     # RBAC: Only admin, manager, and ops can create maintenance events
-    if current_user.role not in WRITE_ROLES:
+    if not _has_permission(current_user, "fleet:maintenance-edit"):
         raise HTTPException(status_code=403, detail="Not enough permissions to create maintenance events")
 
     # 1. Create ExpenseRequest with generated expense_number - Story 2.17
@@ -147,7 +148,7 @@ def update_maintenance_event(
     Updates associated ExpenseRequest amount if cost is changed.
     """
     # RBAC: Only admin, manager, and ops can update maintenance events
-    if current_user.role not in WRITE_ROLES:
+    if not _has_permission(current_user, "fleet:maintenance-edit"):
         raise HTTPException(status_code=403, detail="Not enough permissions to update maintenance events")
 
     event = session.get(MaintenanceEvent, id)
@@ -187,7 +188,7 @@ def delete_maintenance_event(
     Also deletes the associated ExpenseRequest.
     """
     # RBAC: Only admin can delete maintenance events
-    if current_user.role not in DELETE_ROLES:
+    if not _has_permission(current_user, "fleet:maintenance-delete"):
         raise HTTPException(status_code=403, detail="Only admin can delete maintenance events")
 
     event = session.get(MaintenanceEvent, id)

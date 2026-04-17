@@ -19,7 +19,12 @@ from app.models import (
 
 router = APIRouter(prefix="/company-settings", tags=["company-settings"])
 
-ADMIN_ROLES = {UserRole.admin, UserRole.finance}
+
+def _has_permission(user, permission: str) -> bool:
+    """Check granular permission — admin/superuser bypasses all checks."""
+    if user.is_superuser or user.role == UserRole.admin:
+        return True
+    return permission in (user.permissions or [])
 
 
 @router.get("", response_model=CompanySettingsPublic)
@@ -42,7 +47,7 @@ def update_company_settings(
     settings_in: CompanySettingsUpdate,
 ) -> Any:
     """Update company settings (bank details). Admin/Finance only."""
-    if current_user.role not in ADMIN_ROLES and not current_user.is_superuser:
+    if not _has_permission(current_user, "settings:company"):
         raise HTTPException(status_code=403, detail="Only Admin or Finance can update company settings")
 
     settings = session.exec(select(CompanySettings)).first()

@@ -32,10 +32,11 @@ from app.models import (
     WaybillUpdate,
 )
 
-# Roles allowed to create/update waybills
-WRITE_ROLES = {UserRole.admin, UserRole.manager, UserRole.ops}
-# Roles allowed to delete waybills
-DELETE_ROLES = {UserRole.admin}
+def _has_permission(user, permission: str) -> bool:
+    """Check granular permission — admin/superuser bypasses all checks."""
+    if user.is_superuser or user.role == UserRole.admin:
+        return True
+    return permission in (user.permissions or [])
 
 router = APIRouter(prefix="/waybills", tags=["waybills"])
 
@@ -161,7 +162,7 @@ def create_waybill(
 ) -> Any:
     """Create a new waybill."""
     # RBAC: Only admin, manager, and ops can create waybills
-    if current_user.role not in WRITE_ROLES:
+    if not _has_permission(current_user, "waybills:create"):
         raise HTTPException(status_code=403, detail="Not enough permissions to create waybills")
 
     border_ids = waybill_in.border_ids
@@ -201,18 +202,17 @@ def update_waybill(
 ) -> Any:
     """Update a waybill."""
     # RBAC: Only admin, manager, and ops can update waybills
-    if current_user.role not in WRITE_ROLES:
+    if not _has_permission(current_user, "waybills:edit"):
         raise HTTPException(status_code=403, detail="Not enough permissions to update waybills")
 
     waybill = session.get(Waybill, id)
     if not waybill:
         raise HTTPException(status_code=404, detail="Waybill not found")
 
-    # Edit lock: Completed/Invoiced waybills are locked — only admin/manager can edit
-    UNLOCK_ROLES = {UserRole.admin, UserRole.manager}
+    # Edit lock: Completed/Invoiced waybills are locked — only users with unlock permission can edit
     locked_statuses = {WaybillStatus.completed, WaybillStatus.invoiced}
     current_wb_status = WaybillStatus(waybill.status) if isinstance(waybill.status, str) else waybill.status
-    if current_wb_status in locked_statuses and current_user.role not in UNLOCK_ROLES:
+    if current_wb_status in locked_statuses and not _has_permission(current_user, "waybills:unlock"):
         raise HTTPException(
             status_code=403,
             detail="Waybill is locked for editing. Only Manager or Admin can edit completed waybills."
@@ -304,7 +304,7 @@ def delete_waybill(
 ) -> None:
     """Delete a waybill."""
     # RBAC: Only admin can delete waybills
-    if current_user.role not in DELETE_ROLES:
+    if not _has_permission(current_user, "waybills:delete"):
         raise HTTPException(status_code=403, detail="Only admin can delete waybills")
 
     waybill = session.get(Waybill, id)

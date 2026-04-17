@@ -42,11 +42,24 @@ from app.models import (
     WaybillStatus,
 )
 
-# RBAC role sets
-WRITE_ROLES = {UserRole.admin, UserRole.manager, UserRole.ops}
-ISSUE_ROLES = {UserRole.admin, UserRole.manager, UserRole.ops}
-VOID_ROLES = {UserRole.admin, UserRole.manager}
-PAYMENT_ROLES = {UserRole.admin, UserRole.finance}
+# Legacy role sets removed — permission checks now use granular permissions
+# via _has_permission() matching frontend hasPermission() logic.
+
+# Permission strings (mirrors frontend usePermissions.ts)
+PERM_INVOICES_CREATE = "invoices:create"
+PERM_INVOICES_EDIT = "invoices:edit"
+PERM_INVOICES_ISSUE = "invoices:issue"
+PERM_INVOICES_VOID = "invoices:void"
+PERM_INVOICES_REISSUE = "invoices:reissue"
+PERM_INVOICES_PAYMENT = "invoices:payment"
+PERM_INVOICES_POP_MANAGE = "invoices:pop-manage"
+
+
+def _has_permission(user, permission: str) -> bool:
+    """Check granular permission — admin/superuser bypasses all checks."""
+    if user.is_superuser or user.role == UserRole.admin:
+        return True
+    return permission in (user.permissions or [])
 
 router = APIRouter(prefix="/invoices", tags=["invoices"])
 
@@ -180,7 +193,7 @@ def create_invoice_from_waybill(
     waybill_id: uuid.UUID,
 ) -> Any:
     """Auto-generate a draft invoice from waybill data."""
-    if current_user.role not in WRITE_ROLES:
+    if not _has_permission(current_user, PERM_INVOICES_CREATE):
         raise HTTPException(status_code=403, detail="Not enough permissions to create invoices")
 
     # Check waybill exists
@@ -297,7 +310,7 @@ def update_invoice(
     invoice_in: InvoiceUpdate,
 ) -> Any:
     """Update a draft invoice. Rejects if invoice is not in draft status."""
-    if current_user.role not in WRITE_ROLES:
+    if not _has_permission(current_user, PERM_INVOICES_EDIT):
         raise HTTPException(status_code=403, detail="Not enough permissions to update invoices")
 
     invoice = session.get(Invoice, id)
@@ -337,7 +350,7 @@ def issue_invoice(
     id: uuid.UUID,
 ) -> Any:
     """Transition invoice from draft to issued. Writes rate back to waybill."""
-    if current_user.role not in ISSUE_ROLES:
+    if not _has_permission(current_user, PERM_INVOICES_ISSUE):
         raise HTTPException(status_code=403, detail="Not enough permissions to issue invoices")
 
     invoice = session.get(Invoice, id)
@@ -415,7 +428,7 @@ def void_invoice(
     id: uuid.UUID,
 ) -> Any:
     """Void an invoice (any status → voided)."""
-    if current_user.role not in VOID_ROLES:
+    if not _has_permission(current_user, PERM_INVOICES_VOID):
         raise HTTPException(status_code=403, detail="Only Manager or Admin can void invoices")
 
     invoice = session.get(Invoice, id)
@@ -447,7 +460,7 @@ def reissue_invoice(
     id: uuid.UUID,
 ) -> Any:
     """Void the invoice and create a fresh draft from the same waybill."""
-    if current_user.role not in VOID_ROLES:
+    if not _has_permission(current_user, PERM_INVOICES_REISSUE):
         raise HTTPException(status_code=403, detail="Only Manager or Admin can reissue invoices")
 
     invoice = session.get(Invoice, id)
@@ -590,7 +603,7 @@ def record_payment(
     body: InvoicePaymentCreate,
 ) -> Any:
     """Record a payment against an issued or partially-paid invoice."""
-    if current_user.role not in PAYMENT_ROLES:
+    if not _has_permission(current_user, PERM_INVOICES_PAYMENT):
         raise HTTPException(status_code=403, detail="Only Finance or Admin can record invoice payments")
 
     invoice = session.get(Invoice, id)
@@ -690,7 +703,6 @@ POP_ALLOWED_TYPES = [
     "image/webp",
 ]
 POP_MAX_SIZE = 5 * 1024 * 1024  # 5 MB
-POP_ROLES = {UserRole.admin, UserRole.finance}
 
 
 @router.post("/{invoice_id}/payments/{payment_id}/attachment")
@@ -703,7 +715,7 @@ async def upload_pop_attachment(
     file: UploadFile = File(...),
 ) -> Any:
     """Upload a proof-of-payment attachment for a specific payment record."""
-    if current_user.role not in POP_ROLES:
+    if not _has_permission(current_user, PERM_INVOICES_POP_MANAGE):
         raise HTTPException(status_code=403, detail="Only Finance or Admin can upload POP attachments")
 
     invoice = session.get(Invoice, invoice_id)
@@ -802,7 +814,7 @@ def delete_pop_attachment(
     attachment_id: str,
 ) -> None:
     """Delete a POP attachment by its ID."""
-    if current_user.role not in POP_ROLES:
+    if not _has_permission(current_user, PERM_INVOICES_POP_MANAGE):
         raise HTTPException(status_code=403, detail="Only Finance or Admin can delete POP attachments")
 
     invoice = session.get(Invoice, invoice_id)
