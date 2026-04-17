@@ -436,6 +436,148 @@ def void_invoice(
 
 
 # ---------------------------------------------------------------------------
+# Reissue (void + create new draft from same waybill)
+# ---------------------------------------------------------------------------
+
+@router.post("/{id}/reissue", response_model=InvoicePublic)
+def reissue_invoice(
+    *,
+    session: SessionDep,
+    current_user: CurrentUser,
+    id: uuid.UUID,
+) -> Any:
+    """Void the invoice and create a fresh draft from the same waybill."""
+    if current_user.role not in VOID_ROLES:
+        raise HTTPException(status_code=403, detail="Only Manager or Admin can reissue invoices")
+
+    invoice = session.get(Invoice, id)
+    if not invoice:
+        raise HTTPException(status_code=404, detail="Invoice not found")
+
+    if invoice.status == InvoiceStatus.voided:
+        raise HTTPException(status_code=422, detail="Cannot reissue a voided invoice")
+    if invoice.status == InvoiceStatus.draft:
+        raise HTTPException(status_code=422, detail="Cannot reissue a draft invoice — edit it instead")
+    if invoice.status == InvoiceStatus.fully_paid:
+        raise HTTPException(status_code=422, detail="Cannot reissue a fully paid invoice")
+
+    # Block if payments exist
+    payment_count = session.exec(
+        select(func.count()).select_from(InvoicePayment).where(InvoicePayment.invoice_id == id)
+    ).one()
+    if payment_count > 0:
+        raise HTTPException(
+            status_code=422,
+            detail="Cannot reissue invoice with recorded payments. Void payments first.",
+        )
+
+    waybill_id = invoice.waybill_id
+    if not waybill_id:
+        raise HTTPException(status_code=422, detail="Invoice has no linked waybill")
+
+    waybill = session.get(Waybill, waybill_id)
+    if not waybill:
+        raise HTTPException(status_code=404, detail="Linked waybill not found")
+
+    # --- 1. Void the existing invoice ---
+    invoice.status = InvoiceStatus.voided
+    invoice.waybill_id = None  # Free the unique constraint
+    invoice.updated_by_id = current_user.id
+    invoice.updated_at = datetime.now(timezone.utc)
+    session.add(invoice)
+
+    # --- 2. Revert the waybill ---
+    waybill.status = WaybillStatus.completed
+    waybill.agreed_rate = None
+    waybill.currency = None
+    waybill.updated_by_id = current_user.id
+    session.add(waybill)
+
+    # --- 3. Create a new draft invoice from the waybill ---
+    # Reuse the same logic as create_invoice_from_waybill
+
+    # Find linked trip (go or return leg)
+    trip = session.exec(
+        select(Trip).where(
+            (Trip.waybill_id == waybill_id) | (Trip.return_waybill_id == waybill_id)
+        )
+    ).first()
+
+    truck_plate = ""
+    trailer_plate = ""
+    trip_id = None
+    if trip:
+        trip_id = trip.id
+        truck = session.get(Truck, trip.truck_id)
+        trailer = session.get(Trailer, trip.trailer_id)
+        if truck:
+            truck_plate = truck.plate_number
+        if trailer:
+            trailer_plate = trailer.plate_number
+
+    # Look up client TIN
+    customer_tin = ""
+    client_id = None
+    client = session.exec(
+        select(Client).where(Client.name == waybill.client_name)
+    ).first()
+    if client:
+        customer_tin = client.tin or ""
+        client_id = client.id
+
+    # Get latest exchange rate
+    exchange_rate = Decimal("0")
+    now = datetime.now()
+    latest_rate = session.exec(
+        select(ExchangeRate)
+        .where(ExchangeRate.year == now.year, ExchangeRate.month == now.month)
+    ).first()
+    if latest_rate:
+        exchange_rate = latest_rate.rate
+
+    # Auto-suggest next sequential number
+    invoice_number, invoice_seq = generate_next_invoice_number(session)
+
+    # Build line item
+    route = f"{waybill.origin} - {waybill.destination}"
+    items = [
+        {
+            "route": route,
+            "truck_plate": truck_plate,
+            "trailer_plate": trailer_plate,
+            "qty": 1,
+            "unit_price": 0,
+            "payment_schedule": "100%",
+            "amount": 0,
+        }
+    ]
+
+    new_invoice = Invoice(
+        invoice_number=invoice_number,
+        invoice_seq=invoice_seq,
+        date=now.strftime("%Y-%m-%d"),
+        status=InvoiceStatus.draft,
+        customer_name=waybill.client_name,
+        customer_tin=customer_tin,
+        client_id=client_id,
+        currency=waybill.currency or "USD",
+        exchange_rate=exchange_rate,
+        vat_rate=Decimal("0"),
+        items=items,
+        waybill_id=waybill_id,
+        trip_id=trip_id,
+        created_by_id=current_user.id,
+    )
+
+    compute_totals(new_invoice)
+    session.add(new_invoice)
+
+    commit_or_rollback(session)
+    session.refresh(new_invoice)
+    return new_invoice
+
+
+# ---------------------------------------------------------------------------
 # Payment Recording (Phase 2)
 # ---------------------------------------------------------------------------
 

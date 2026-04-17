@@ -8,6 +8,7 @@ import {
   EditOutlined,
   EyeOutlined,
   PrinterOutlined,
+  RedoOutlined,
   SaveOutlined,
   SendOutlined,
   StopOutlined,
@@ -36,6 +37,7 @@ export const InvoiceGenerator: React.FC<InvoiceGeneratorProps> = ({ invoiceId })
   const [editMode, setEditMode] = useState(true);
   const [saving, setSaving] = useState(false);
   const [issuing, setIssuing] = useState(false);
+  const [reissuing, setReissuing] = useState(false);
   const printRef = useRef<HTMLDivElement>(null);
 
   // Sync server data to local state
@@ -118,6 +120,24 @@ export const InvoiceGenerator: React.FC<InvoiceGeneratorProps> = ({ invoiceId })
     }
   };
 
+  const handleReissue = async () => {
+    setReissuing(true);
+    try {
+      const newInvoice = await apiFetch<Invoice>(`/api/v1/invoices/${invoiceId}/reissue`, {
+        method: "POST",
+      });
+      invalidateInvoice(invoiceId);
+      invalidateInvoices();
+      invalidateWaybills();
+      message.success(`Invoice voided. New draft ${newInvoice.invoice_number} created.`);
+      router.push(`/ops/invoices/${newInvoice.id}`);
+    } catch (err: any) {
+      message.error(err?.detail || "Failed to reissue invoice");
+    } finally {
+      setReissuing(false);
+    }
+  };
+
   const handlePrint = () => {
     if (!printRef.current) return;
 
@@ -177,6 +197,8 @@ export const InvoiceGenerator: React.FC<InvoiceGeneratorProps> = ({ invoiceId })
 
   const isDraft = localInvoice.status === "draft";
   const canVoid = (user?.role === "admin" || user?.role === "manager") && localInvoice.status !== "voided";
+  const canReissue = (user?.role === "admin" || user?.role === "manager") &&
+    (localInvoice.status === "issued" || localInvoice.status === "partially_paid");
 
   return (
     <div style={{ minHeight: "100vh", background: "var(--color-bg)" }}>
@@ -266,6 +288,18 @@ export const InvoiceGenerator: React.FC<InvoiceGeneratorProps> = ({ invoiceId })
             >
               <Button danger icon={<StopOutlined />}>
                 Void
+              </Button>
+            </Popconfirm>
+          )}
+          {canReissue && (
+            <Popconfirm
+              title="Reissue this invoice?"
+              description="This will void the current invoice and create a new draft from the same waybill."
+              onConfirm={handleReissue}
+              okText="Reissue"
+            >
+              <Button icon={<RedoOutlined />} loading={reissuing}>
+                Reissue
               </Button>
             </Popconfirm>
           )}
