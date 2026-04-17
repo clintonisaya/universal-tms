@@ -11,6 +11,7 @@ import {
   CLOSED_STATUSES,
 } from "@/constants/tripStatuses";
 import { useAuth } from "@/contexts/AuthContext";
+import { usePermissions } from "@/hooks/usePermissions";
 
 interface UseTripStatusUpdateProps {
   tripId: string;
@@ -22,7 +23,8 @@ interface UseTripStatusUpdateProps {
 
 export function useTripStatusUpdate({ tripId, open, onSuccess, onClose, initialValues }: UseTripStatusUpdateProps) {
   const { user } = useAuth();
-  const canReopen = user?.role === "admin" || user?.role === "manager";
+  const { hasPermission } = usePermissions();
+  const canReopen = hasPermission("trips:reopen");
   const [form] = Form.useForm();
   const [submitting, setSubmitting] = useState(false);
   const [countries, setCountries] = useState<Country[]>([]);

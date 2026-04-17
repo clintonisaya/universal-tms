@@ -25,6 +25,7 @@ import {
 } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
 import { useAuth } from "@/contexts/AuthContext";
+import { usePermissions } from "@/hooks/usePermissions";
 import { useBorderPosts, useInvalidateQueries } from "@/hooks/useApi";
 import {
   getColumnSearchProps,
@@ -53,6 +54,7 @@ interface BorderPostCreate {
 export default function BorderPostsPage() {
   const router = useRouter();
   const { user } = useAuth();
+  const { hasPermission } = usePermissions();
 
   const { data, isLoading: loading, refetch } = useBorderPosts(false);
   const { invalidateBorderPosts } = useInvalidateQueries();
@@ -71,7 +73,7 @@ export default function BorderPostsPage() {
   const [createForm] = Form.useForm<BorderPostCreate>();
   const [editForm] = Form.useForm<Partial<BorderPostCreate>>();
 
-  const canWrite = user?.role === "admin" || user?.role === "manager";
+  const canWrite = hasPermission("settings:border-posts");
 
   // Auto-fill display_name when side_a or side_b changes (create form only)
   const handleSideChange = () => {

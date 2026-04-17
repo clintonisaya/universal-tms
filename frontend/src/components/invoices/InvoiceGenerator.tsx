@@ -16,6 +16,7 @@ import {
 import { useInvoice, useInvalidateQueries, apiFetch } from "@/hooks/useApi";
 import { sanitizeHtml } from "@/lib/sanitize";
 import { useAuth } from "@/contexts/AuthContext";
+import { usePermissions } from "@/hooks/usePermissions";
 import type { Invoice } from "@/types/invoice";
 import { InvoicePrintView } from "./InvoicePrintView";
 import { InvoiceForm } from "./InvoiceForm";
@@ -30,6 +31,7 @@ interface InvoiceGeneratorProps {
 export const InvoiceGenerator: React.FC<InvoiceGeneratorProps> = ({ invoiceId }) => {
   const router = useRouter();
   const { user } = useAuth();
+  const { hasPermission } = usePermissions();
   const { data: serverInvoice, isLoading } = useInvoice(invoiceId);
   const { invalidateInvoices, invalidateInvoice, invalidateWaybills } = useInvalidateQueries();
 
@@ -196,8 +198,8 @@ export const InvoiceGenerator: React.FC<InvoiceGeneratorProps> = ({ invoiceId })
   }
 
   const isDraft = localInvoice.status === "draft";
-  const canVoid = (user?.role === "admin" || user?.role === "manager") && localInvoice.status !== "voided";
-  const canReissue = (user?.role === "admin" || user?.role === "manager") &&
+  const canVoid = hasPermission("invoices:void") && localInvoice.status !== "voided";
+  const canReissue = hasPermission("invoices:reissue") &&
     (localInvoice.status === "issued" || localInvoice.status === "partially_paid");
 
   return (

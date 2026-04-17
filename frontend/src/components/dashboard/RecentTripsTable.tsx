@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import type { ColumnsType } from "antd/es/table";
 import type { Trip, TripStatus } from "@/types/trip";
 import { useAuth } from "@/contexts/AuthContext";
+import { usePermissions } from "@/hooks/usePermissions";
 import { TripStatusTag } from "@/components/ui/TripStatusTag";
 
 const { Title, Text } = Typography;
@@ -56,7 +57,8 @@ interface RecentTripsTableProps {
 export function RecentTripsTable({ data, loading }: RecentTripsTableProps) {
   const router = useRouter();
   const { user } = useAuth();
-  const showFinancialData = user?.role === "admin" || user?.role === "manager";
+  const { hasPermission } = usePermissions();
+  const showFinancialData = hasPermission("trips:view-financials");
 
   const columns: ColumnsType<Trip> = [
     {

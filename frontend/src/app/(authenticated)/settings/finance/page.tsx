@@ -25,6 +25,7 @@ import { amountInputProps } from "@/lib/utils";
 import type { ColumnsType } from "antd/es/table";
 import type { ExchangeRate, ExchangeRateCreate } from "@/types/finance";
 import { useAuth } from "@/contexts/AuthContext";
+import { usePermissions } from "@/hooks/usePermissions";
 import { useExchangeRates, useInvalidateQueries } from "@/hooks/useApi";
 import { getStandardRowSelection, useResizableColumns } from "@/components/ui/tableUtils";
 
@@ -38,6 +39,7 @@ const MONTHS = [
 export default function ExchangeRateSettingsPage() {
   const router = useRouter();
   const { user } = useAuth();
+  const { hasPermission } = usePermissions();
   
   // TanStack Query
   const { data, isLoading: loading, refetch } = useExchangeRates();
@@ -215,7 +217,7 @@ export default function ExchangeRateSettingsPage() {
               <Button icon={<ReloadOutlined />} onClick={() => refetch()}>
                 Refresh
               </Button>
-              {(user?.role === "finance" || user?.role === "admin" || user?.is_superuser) && (
+              {hasPermission("settings:exchange-rates") && (
                 <Button
                   type="primary"
                   icon={<PlusOutlined />}

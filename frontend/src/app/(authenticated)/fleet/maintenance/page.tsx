@@ -22,6 +22,7 @@ import {
 import type { ColumnsType } from "antd/es/table";
 import type { MaintenanceEvent } from "@/types/maintenance";
 import { useAuth } from "@/contexts/AuthContext";
+import { usePermissions } from "@/hooks/usePermissions";
 import { useMaintenance, useInvalidateQueries } from "@/hooks/useApi";
 import { CreateMaintenanceDrawer } from "@/components/maintenance/CreateMaintenanceDrawer";
 import {
@@ -37,6 +38,7 @@ const { Title } = Typography;
 function MaintenancePageContent() {
   const router = useRouter();
   const { user } = useAuth();
+  const { hasPermission } = usePermissions();
   const { message } = App.useApp();
 
   // TanStack Query for maintenance data
@@ -52,8 +54,8 @@ function MaintenancePageContent() {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
 
-  const canWrite = user?.role === "admin" || user?.role === "manager" || user?.role === "ops";
-  const canDelete = user?.role === "admin";
+  const canWrite = hasPermission("fleet:maintenance-edit");
+  const canDelete = hasPermission("fleet:maintenance-delete");
 
   const handleDelete = (record: MaintenanceEvent) => {
     Modal.confirm({

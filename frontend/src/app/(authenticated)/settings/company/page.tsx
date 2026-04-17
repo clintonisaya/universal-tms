@@ -19,6 +19,7 @@ import {
   BankOutlined,
 } from "@ant-design/icons";
 import { useAuth } from "@/contexts/AuthContext";
+import { usePermissions } from "@/hooks/usePermissions";
 import { useCompanySettings, useInvalidateQueries } from "@/hooks/useApi";
 
 const { Title, Text } = Typography;
@@ -36,12 +37,13 @@ interface BankFormValues {
 export default function CompanySettingsPage() {
   const router = useRouter();
   const { user } = useAuth();
+  const { hasPermission } = usePermissions();
   const { data, isLoading: loading, refetch } = useCompanySettings();
   const { invalidateCompanySettings } = useInvalidateQueries();
 
   const [form] = Form.useForm<BankFormValues>();
   const [submitting, setSubmitting] = useState(false);
-  const canEdit = user?.role === "admin" || user?.role === "finance" || user?.is_superuser;
+  const canEdit = hasPermission("settings:company");
 
   useEffect(() => {
     if (data) {

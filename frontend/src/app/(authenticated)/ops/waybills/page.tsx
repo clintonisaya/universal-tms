@@ -27,6 +27,7 @@ import {
 import type { ColumnsType } from "antd/es/table";
 import type { Waybill, WaybillStatus } from "@/types/waybill";
 import { useAuth } from "@/contexts/AuthContext";
+import { usePermissions } from "@/hooks/usePermissions";
 import { useWaybills, useInvalidateQueries, apiFetch } from "@/hooks/useApi";
 import { fmtCurrency } from "@/lib/utils";
 import { CreateWaybillDrawer } from "@/components/waybills/CreateWaybillDrawer";
@@ -51,6 +52,7 @@ const STATUS_FILTERS = ["Open", "In Progress", "Completed", "Invoiced"].map(
 export default function WaybillsPage() {
   const router = useRouter();
   const { user } = useAuth();
+  const { hasPermission } = usePermissions();
   const { invalidateWaybills } = useInvalidateQueries();
 
   // Only fetch when user is authenticated
@@ -198,7 +200,7 @@ export default function WaybillsPage() {
       sorter: (a, b) => (a.expected_loading_date || "").localeCompare(b.expected_loading_date || ""),
     },
     // Rate column — visible to admin/manager only
-    ...((user?.role === "admin" || user?.role === "manager") ? [{
+    ...(hasPermission("waybills:view-rate") ? [{
       title: "Rate",
       dataIndex: "agreed_rate",
       key: "agreed_rate",
@@ -305,7 +307,7 @@ export default function WaybillsPage() {
               </Tooltip>
             )}
             {(record.status === "Completed" || record.status === "Invoiced") &&
-             user?.role !== "admin" && user?.role !== "manager" ? (
+             !hasPermission("waybills:unlock") ? (
               <Tooltip title="Locked — only Manager/Admin can edit">
                 <Button size="small" icon={<LockOutlined />} disabled />
               </Tooltip>

@@ -12,6 +12,7 @@ import {
   Alert,
 } from "antd";
 import { useAuth } from "@/contexts/AuthContext";
+import { usePermissions } from "@/hooks/usePermissions";
 import type { Waybill } from "@/types/waybill";
 import { AddExpenseModal } from "@/components/expenses/AddExpenseModal";
 import { UpdateTripStatusModal } from "@/components/trips/UpdateTripStatusModal";
@@ -35,12 +36,13 @@ interface TripDetailDrawerProps {
 
 export function TripDetailDrawer({ open, onClose, tripId, onEdit }: TripDetailDrawerProps) {
   const { user } = useAuth();
+  const { hasPermission } = usePermissions();
   const [isAddExpenseOpen, setIsAddExpenseOpen] = useState(false);
   const [isStatusModalOpen, setIsStatusModalOpen] = useState(false);
 
   const d = useTripDetail(tripId, open);
 
-  const showFinancials = user?.role === "admin" || user?.role === "manager" || !!user?.is_superuser;
+  const showFinancials = hasPermission("trips:view-financials");
 
   return (
     <ErrorBoundary>

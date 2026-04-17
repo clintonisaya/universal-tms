@@ -113,7 +113,7 @@ function TripsPageContent() {
   const trips = data?.data || [];
   const totalCount = data?.count || 0;
 
-  const showFinancialData = user?.role === "admin" || user?.role === "manager";
+  const showFinancialData = hasPermission("trips:view-financials");
 
   const hasActiveFilters = Object.values(tableFilters).some(
     (v) => v != null && (Array.isArray(v) ? v.length > 0 : true)

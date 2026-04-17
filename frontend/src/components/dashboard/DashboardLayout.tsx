@@ -138,7 +138,7 @@ const allMenuItems: PermissionMenuItem[] = [
         label: "Administration",
         type: "group",
         children: [
-          { key: "/settings/company", label: "Company", requires: ["users:manage"] },
+          { key: "/settings/company", label: "Company", requires: ["settings:company"] },
           { key: "/settings/users", label: "Users", requires: ["users:manage"] },
         ],
       },
