@@ -488,8 +488,8 @@ def reissue_invoice(
 
     # --- 2. Revert the waybill ---
     waybill.status = WaybillStatus.completed
-    waybill.agreed_rate = None
-    waybill.currency = None
+    waybill.agreed_rate = Decimal("0")
+    waybill.currency = waybill.currency or "USD"
     waybill.updated_by_id = current_user.id
     session.add(waybill)
 
