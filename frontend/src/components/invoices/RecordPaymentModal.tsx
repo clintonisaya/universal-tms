@@ -21,7 +21,7 @@ import type { UploadFile } from "antd/es/upload/interface";
 import { DollarOutlined, CheckCircleOutlined, UploadOutlined } from "@ant-design/icons";
 import { useInvalidateQueries, useInvoicePayments } from "@/hooks/useApi";
 import { fmtCurrency } from "@/lib/utils";
-import type { Invoice, PaymentType, InvoicePayment } from "@/types/invoice";
+import { getInvoiceDisplayNumber, type Invoice, type PaymentType, type InvoicePayment } from "@/types/invoice";
 import dayjs from "dayjs";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePermissions } from "@/hooks/usePermissions";
@@ -39,6 +39,14 @@ interface RecordPaymentModalProps {
   onClose: () => void;
   onSuccess: () => void;
   invoice: Invoice | null;
+}
+
+interface RecordPaymentFormValues {
+  payment_type: PaymentType;
+  amount: number;
+  payment_date: string | Date | dayjs.Dayjs;
+  reference?: string;
+  notes?: string;
 }
 
 export function RecordPaymentModal({
@@ -120,7 +128,7 @@ export function RecordPaymentModal({
     // advance: leave amount field editable (defaults to 50% set above)
   }, [paymentType, inv?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const handleFinish = async (values: any) => {
+  const handleFinish = async (values: RecordPaymentFormValues) => {
     if (!inv) return;
 
     // Client-side validation
@@ -165,7 +173,7 @@ export function RecordPaymentModal({
             const latestPayment = payData.data?.[payData.data.length - 1];
             if (latestPayment) {
               for (const file of fileList) {
-                const fileToUpload = file.originFileObj || (file as any);
+                const fileToUpload = file.originFileObj;
                 if (fileToUpload) {
                   const formData = new FormData();
                   formData.append("file", fileToUpload as Blob);
@@ -212,7 +220,7 @@ export function RecordPaymentModal({
           <DollarOutlined style={{ color: "#52c41a" }} />
           <span>
             Record Payment —{" "}
-            <span style={{ color: "var(--color-primary)" }}>{inv.invoice_number ?? inv.id?.slice(0, 8).toUpperCase() ?? "..."}</span>
+            <span style={{ color: "var(--color-primary)" }}>{getInvoiceDisplayNumber(inv) || inv.id?.slice(0, 8).toUpperCase() || "..."}</span>
           </span>
         </Space>
       }
@@ -453,7 +461,7 @@ export function RecordPaymentModal({
                 {p.notes && (
                   <div style={{ marginTop: 2 }}>
                     <Text italic style={{ fontSize: 12 }}>
-                      "{p.notes}"
+                      &quot;{p.notes}&quot;
                     </Text>
                   </div>
                 )}

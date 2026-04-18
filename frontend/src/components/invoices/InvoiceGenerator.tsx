@@ -15,9 +15,8 @@ import {
 } from "@ant-design/icons";
 import { useInvoice, useInvalidateQueries, apiFetch } from "@/hooks/useApi";
 import { sanitizeHtml } from "@/lib/sanitize";
-import { useAuth } from "@/contexts/AuthContext";
 import { usePermissions } from "@/hooks/usePermissions";
-import type { Invoice } from "@/types/invoice";
+import { getInvoiceDisplayNumber, type Invoice } from "@/types/invoice";
 import { InvoicePrintView } from "./InvoicePrintView";
 import { InvoiceForm } from "./InvoiceForm";
 
@@ -30,7 +29,6 @@ interface InvoiceGeneratorProps {
 
 export const InvoiceGenerator: React.FC<InvoiceGeneratorProps> = ({ invoiceId }) => {
   const router = useRouter();
-  const { user } = useAuth();
   const { hasPermission } = usePermissions();
   const { data: serverInvoice, isLoading } = useInvoice(invoiceId);
   const { invalidateInvoices, invalidateInvoice, invalidateWaybills } = useInvalidateQueries();
@@ -55,11 +53,18 @@ export const InvoiceGenerator: React.FC<InvoiceGeneratorProps> = ({ invoiceId })
     setLocalInvoice((prev) => (prev ? { ...prev, ...updates } : prev));
   }, []);
 
+  const getErrorMessage = (error: unknown, fallback: string) => {
+    if (typeof error === "object" && error !== null && "detail" in error && typeof error.detail === "string") {
+      return error.detail;
+    }
+    return fallback;
+  };
+
   const handleSave = async () => {
     if (!localInvoice) return;
     setSaving(true);
     try {
-      const body: any = {
+      const body = {
         invoice_number: localInvoice.invoice_number,
         date: localInvoice.date,
         due_date: localInvoice.due_date,
@@ -79,8 +84,8 @@ export const InvoiceGenerator: React.FC<InvoiceGeneratorProps> = ({ invoiceId })
       setLocalInvoice(updated);
       invalidateInvoice(invoiceId);
       message.success("Invoice saved");
-    } catch (err: any) {
-      message.error(err?.detail || "Failed to save invoice");
+    } catch (err: unknown) {
+      message.error(getErrorMessage(err, "Failed to save invoice"));
     } finally {
       setSaving(false);
     }
@@ -100,8 +105,8 @@ export const InvoiceGenerator: React.FC<InvoiceGeneratorProps> = ({ invoiceId })
       invalidateInvoices();
       invalidateWaybills();
       message.success("Invoice issued — rate written back to waybill");
-    } catch (err: any) {
-      message.error(err?.detail || "Failed to issue invoice");
+    } catch (err: unknown) {
+      message.error(getErrorMessage(err, "Failed to issue invoice"));
     } finally {
       setIssuing(false);
     }
@@ -117,8 +122,8 @@ export const InvoiceGenerator: React.FC<InvoiceGeneratorProps> = ({ invoiceId })
       invalidateInvoices();
       invalidateWaybills();
       message.success("Invoice voided");
-    } catch (err: any) {
-      message.error(err?.detail || "Failed to void invoice");
+    } catch (err: unknown) {
+      message.error(getErrorMessage(err, "Failed to void invoice"));
     }
   };
 
@@ -131,10 +136,10 @@ export const InvoiceGenerator: React.FC<InvoiceGeneratorProps> = ({ invoiceId })
       invalidateInvoice(invoiceId);
       invalidateInvoices();
       invalidateWaybills();
-      message.success(`Invoice voided. New draft ${newInvoice.invoice_number} created.`);
+      message.success(`Invoice voided. New draft ${getInvoiceDisplayNumber(newInvoice)} created.`);
       router.push(`/ops/invoices/${newInvoice.id}`);
-    } catch (err: any) {
-      message.error(err?.detail || "Failed to reissue invoice");
+    } catch (err: unknown) {
+      message.error(getErrorMessage(err, "Failed to reissue invoice"));
     } finally {
       setReissuing(false);
     }
@@ -162,7 +167,7 @@ export const InvoiceGenerator: React.FC<InvoiceGeneratorProps> = ({ invoiceId })
     doc.write(`<!DOCTYPE html>
 <html>
 <head>
-  <title>Invoice ${localInvoice?.invoice_number || ""}</title>
+  <title>Invoice ${localInvoice ? getInvoiceDisplayNumber(localInvoice) : ""}</title>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
   <style>
     @page { size: A4; margin: 0; }
@@ -200,7 +205,7 @@ export const InvoiceGenerator: React.FC<InvoiceGeneratorProps> = ({ invoiceId })
   const isDraft = localInvoice.status === "draft";
   const canVoid = hasPermission("invoices:void") && localInvoice.status !== "voided";
   const canReissue = hasPermission("invoices:reissue") &&
-    (localInvoice.status === "issued" || localInvoice.status === "partially_paid");
+    (localInvoice.status === "issued" || localInvoice.status === "partially_paid" || localInvoice.status === "voided");
 
   return (
     <div style={{ minHeight: "100vh", background: "var(--color-bg)" }}>
@@ -223,7 +228,7 @@ export const InvoiceGenerator: React.FC<InvoiceGeneratorProps> = ({ invoiceId })
             Back
           </Button>
           <Title level={4} style={{ margin: 0 }}>
-            {localInvoice.invoice_number}
+            {getInvoiceDisplayNumber(localInvoice)}
           </Title>
           <span
             style={{

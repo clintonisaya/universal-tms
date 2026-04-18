@@ -29,7 +29,7 @@ import {
 import { usePermissions } from "@/hooks/usePermissions";
 import { useInvalidateQueries } from "@/hooks/useApi";
 import { fmtCurrency } from "@/lib/utils";
-import type { Invoice, PopAttachmentsGroup, PopAttachment } from "@/types/invoice";
+import { getInvoiceDisplayNumber, type Invoice, type PopAttachmentsGroup, type PopAttachment } from "@/types/invoice";
 
 const { Text, Title } = Typography;
 
@@ -124,7 +124,7 @@ export function PopAttachmentsDrawer({ invoice, open, onClose }: PopAttachmentsD
     setUploading(true);
     try {
       for (const file of fileList) {
-        const fileToUpload = file.originFileObj || (file as any);
+        const fileToUpload = file.originFileObj;
         if (fileToUpload) {
           const formData = new FormData();
           formData.append("file", fileToUpload as Blob);
@@ -165,7 +165,7 @@ export function PopAttachmentsDrawer({ invoice, open, onClose }: PopAttachmentsD
         title={
           <Space>
             <PaperClipOutlined />
-            <span>POP Attachments — {invoice.invoice_number}</span>
+            <span>POP Attachments — {getInvoiceDisplayNumber(invoice)}</span>
           </Space>
         }
         open={open}

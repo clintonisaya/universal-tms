@@ -28,7 +28,7 @@ import {
   getStandardRowSelection,
   useResizableColumns,
 } from "@/components/ui/tableUtils";
-import type { Invoice, InvoiceStatus } from "@/types/invoice";
+import { getInvoiceDisplayNumber, type Invoice, type InvoiceStatus } from "@/types/invoice";
 import { RecordPaymentModal } from "@/components/invoices/RecordPaymentModal";
 import { PopAttachmentsDrawer } from "@/components/invoices/PopAttachmentsDrawer";
 
@@ -68,6 +68,10 @@ export default function InvoiceVerificationPage() {
     isAuthenticated
   );
   const invoices: Invoice[] = data?.data || [];
+  const displayInvoices: Invoice[] = invoices.map((invoice) => ({
+    ...invoice,
+    invoice_number: getInvoiceDisplayNumber(invoice),
+  }));
   const totalCount = data?.count || 0;
 
   const columns: ColumnsType<Invoice> = [
@@ -267,7 +271,7 @@ export default function InvoiceVerificationPage() {
             rowKey="id"
             columns={resizableColumns}
             components={components}
-            dataSource={invoices}
+            dataSource={displayInvoices}
             rowSelection={getStandardRowSelection(
               1,
               20,

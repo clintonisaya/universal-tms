@@ -64,6 +64,27 @@ def _has_permission(user, permission: str) -> bool:
 router = APIRouter(prefix="/invoices", tags=["invoices"])
 
 
+def get_invoice_display_number(invoice: Invoice) -> str | None:
+    """Prefer the active number; fall back to the archived snapshot for voided records."""
+    return invoice.invoice_number or invoice.archived_invoice_number
+
+
+def build_invoice_public(session: SessionDep, invoice: Invoice) -> InvoicePublic:
+    """Serialize invoice with display number fallback and resolved references."""
+    pub = InvoicePublic.model_validate(invoice)
+    pub.invoice_number = get_invoice_display_number(invoice)
+
+    if invoice.waybill_id:
+        pub.waybill_number = session.exec(
+            select(Waybill.waybill_number).where(Waybill.id == invoice.waybill_id)
+        ).first()
+    if invoice.trip_id:
+        pub.trip_number = session.exec(
+            select(Trip.trip_number).where(Trip.id == invoice.trip_id)
+        ).first()
+    return pub
+
+
 def generate_next_invoice_number(session: SessionDep) -> tuple[str, int]:
     """Suggest the next sequential invoice number. User can override it."""
     # Advisory lock — prevents concurrent requests generating the same number
@@ -149,6 +170,7 @@ def read_invoices(
     public_invoices = []
     for inv in invoices:
         pub = InvoicePublic.model_validate(inv)
+        pub.invoice_number = get_invoice_display_number(inv)
         pub.waybill_number = waybill_number_map.get(inv.waybill_id) if inv.waybill_id else None
         pub.trip_number = trip_number_map.get(inv.trip_id) if inv.trip_id else None
         public_invoices.append(pub)
@@ -178,12 +200,11 @@ def read_invoice(
     invoice = session.get(Invoice, id)
     if not invoice:
         raise HTTPException(status_code=404, detail="Invoice not found")
-    return invoice
+    return build_invoice_public(session, invoice)
 
 
 # ---------------------------------------------------------------------------
-# Create from Waybill (primary creation path)
-# ---------------------------------------------------------------------------
+# Create from Waybill (primary creation path)# ---------------------------------------------------------------------------
 
 @router.post("/from-waybill/{waybill_id}", response_model=InvoicePublic)
 def create_invoice_from_waybill(
@@ -294,7 +315,7 @@ def create_invoice_from_waybill(
     session.add(invoice)
     commit_or_rollback(session)
     session.refresh(invoice)
-    return invoice
+    return build_invoice_public(session, invoice)
 
 
 # ---------------------------------------------------------------------------
@@ -335,7 +356,7 @@ def update_invoice(
     session.add(invoice)
     commit_or_rollback(session)
     session.refresh(invoice)
-    return invoice
+    return build_invoice_public(session, invoice)
 
 
 # ---------------------------------------------------------------------------
@@ -413,7 +434,7 @@ def issue_invoice(
     session.add(invoice)
     commit_or_rollback(session)
     session.refresh(invoice)
-    return invoice
+    return build_invoice_public(session, invoice)
 
 
 # ---------------------------------------------------------------------------
@@ -438,6 +459,9 @@ def void_invoice(
     if invoice.status == InvoiceStatus.voided:
         raise HTTPException(status_code=422, detail="Invoice is already voided")
 
+    if invoice.invoice_number and not invoice.archived_invoice_number:
+        invoice.archived_invoice_number = invoice.invoice_number
+    invoice.invoice_number = None
     invoice.status = InvoiceStatus.voided
     invoice.updated_by_id = current_user.id
     invoice.updated_at = datetime.now(timezone.utc)
@@ -445,7 +469,7 @@ def void_invoice(
     session.add(invoice)
     commit_or_rollback(session)
     session.refresh(invoice)
-    return invoice
+    return build_invoice_public(session, invoice)
 
 
 # ---------------------------------------------------------------------------
@@ -467,8 +491,6 @@ def reissue_invoice(
     if not invoice:
         raise HTTPException(status_code=404, detail="Invoice not found")
 
-    if invoice.status == InvoiceStatus.voided:
-        raise HTTPException(status_code=422, detail="Cannot reissue a voided invoice")
     if invoice.status == InvoiceStatus.draft:
         raise HTTPException(status_code=422, detail="Cannot reissue a draft invoice — edit it instead")
     if invoice.status == InvoiceStatus.fully_paid:
@@ -492,7 +514,14 @@ def reissue_invoice(
     if not waybill:
         raise HTTPException(status_code=404, detail="Linked waybill not found")
 
+    replacement_invoice_number = get_invoice_display_number(invoice)
+    if not replacement_invoice_number:
+        raise HTTPException(status_code=422, detail="Invoice has no reusable invoice number")
+
     # --- 1. Void the existing invoice ---
+    if not invoice.archived_invoice_number:
+        invoice.archived_invoice_number = replacement_invoice_number
+    invoice.invoice_number = None
     invoice.status = InvoiceStatus.voided
     invoice.waybill_id = None  # Free the unique constraint
     invoice.updated_by_id = current_user.id
@@ -548,8 +577,8 @@ def reissue_invoice(
     if latest_rate:
         exchange_rate = latest_rate.rate
 
-    # Auto-suggest next sequential number
-    invoice_number, invoice_seq = generate_next_invoice_number(session)
+    # Keep the original visible number, but continue advancing the internal sequence.
+    _, invoice_seq = generate_next_invoice_number(session)
 
     # Build line item
     route = f"{waybill.origin} - {waybill.destination}"
@@ -566,7 +595,7 @@ def reissue_invoice(
     ]
 
     new_invoice = Invoice(
-        invoice_number=invoice_number,
+        invoice_number=replacement_invoice_number,
         invoice_seq=invoice_seq,
         date=now.strftime("%Y-%m-%d"),
         status=InvoiceStatus.draft,
@@ -587,7 +616,7 @@ def reissue_invoice(
 
     commit_or_rollback(session)
     session.refresh(new_invoice)
-    return new_invoice
+    return build_invoice_public(session, new_invoice)
 
 
 # ---------------------------------------------------------------------------
@@ -667,7 +696,7 @@ def record_payment(
     session.add(payment)
     commit_or_rollback(session)
     session.refresh(invoice)
-    return invoice
+    return build_invoice_public(session, invoice)
 
 
 @router.get("/{id}/payments", response_model=InvoicePaymentsPublic)

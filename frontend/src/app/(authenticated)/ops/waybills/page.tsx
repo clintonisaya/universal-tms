@@ -25,7 +25,8 @@ import {
   EyeOutlined,
 } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
-import type { Waybill, WaybillStatus } from "@/types/waybill";
+import type { FilterValue } from "antd/es/table/interface";
+import { getWaybillProgressStatus, type Waybill, type WaybillProgressStatus, type WaybillStatus } from "@/types/waybill";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useWaybills, useInvalidateQueries, apiFetch } from "@/hooks/useApi";
@@ -44,8 +45,9 @@ import { WaybillStatusTag } from "@/components/ui/WaybillStatusTag";
 import { EmptyState } from "@/components/ui";
 
 const { Title } = Typography;
+type TableFilters = Record<string, FilterValue | null>;
 
-const STATUS_FILTERS = ["Open", "In Progress", "Completed", "Invoiced"].map(
+const STATUS_FILTERS: { text: WaybillProgressStatus; value: WaybillProgressStatus }[] = (["Open", "In Progress", "Completed"] as const).map(
   (s) => ({ text: s, value: s })
 );
 
@@ -74,7 +76,7 @@ export default function WaybillsPage() {
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
-  const [tableFilters, setTableFilters] = useState<Record<string, any>>({});
+  const [tableFilters, setTableFilters] = useState<TableFilters>({});
   const [tableKey, setTableKey] = useState(0);
 
   const hasActiveFilters = Object.values(tableFilters).some(
@@ -124,11 +126,14 @@ export default function WaybillsPage() {
       message.success("Invoice draft created");
       invalidateWaybills();
       router.push(`/ops/invoices/${invoice.id}`);
-    } catch (err: any) {
-      if (err?.status === 409) {
+    } catch (err: unknown) {
+      if (typeof err === "object" && err !== null && "status" in err && err.status === 409) {
         message.info("Invoice already exists for this waybill");
       } else {
-        message.error(err?.detail || "Failed to generate invoice");
+        const detail = typeof err === "object" && err !== null && "detail" in err
+          ? err.detail
+          : undefined;
+        message.error(typeof detail === "string" ? detail : "Failed to generate invoice");
       }
     } finally {
       setGeneratingInvoice(null);
@@ -267,6 +272,7 @@ export default function WaybillsPage() {
       render: (status: WaybillStatus) => (
         <WaybillStatusTag status={status} />
       ),
+      onFilter: (value, record) => getWaybillProgressStatus(record.status) === value,
       ...getColumnFilterProps("status", STATUS_FILTERS),
     },
     {
@@ -391,7 +397,7 @@ export default function WaybillsPage() {
             loading={loading}
             sticky={{ offsetHeader: 64 }}
             scroll={{ x: "max-content" }}
-            onChange={(_, filters) => setTableFilters(filters as Record<string, any>)}
+            onChange={(_, filters) => setTableFilters(filters)}
             locale={{
               emptyText: hasActiveFilters ? (
                 <EmptyState

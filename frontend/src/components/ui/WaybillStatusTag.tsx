@@ -1,20 +1,21 @@
 "use client";
 
 import { StatusBadge, type ColorKey } from "./StatusBadge";
-import type { WaybillStatus } from "@/types/waybill";
+import { getWaybillProgressStatus, type WaybillProgressStatus, type WaybillStatus } from "@/types/waybill";
 
-const WAYBILL_STATUS_COLOR_KEYS: Record<WaybillStatus, ColorKey> = {
+const WAYBILL_STATUS_COLOR_KEYS: Record<WaybillProgressStatus, ColorKey> = {
   Open:          "gray",
   "In Progress": "orange",
   Completed:     "green",
-  Invoiced:      "cyan",
 };
 
 export function WaybillStatusTag({ status }: { status: WaybillStatus }) {
+  const progressStatus = getWaybillProgressStatus(status);
+
   return (
     <StatusBadge
-      status={status}
-      colorKey={WAYBILL_STATUS_COLOR_KEYS[status] ?? "gray"}
+      status={progressStatus}
+      colorKey={WAYBILL_STATUS_COLOR_KEYS[progressStatus] ?? "gray"}
     />
   );
 }

@@ -32,7 +32,8 @@ export interface BankDetails {
 
 export interface Invoice {
   id: string;
-  invoice_number: string;
+  invoice_number: string | null;
+  archived_invoice_number?: string | null;
   invoice_seq: number;
   date: string;
   due_date: string | null;
@@ -84,6 +85,10 @@ export interface Invoice {
   created_by: UserSummary | null;
   updated_by: UserSummary | null;
   issued_by: UserSummary | null;
+}
+
+export function getInvoiceDisplayNumber(invoice: Pick<Invoice, "invoice_number" | "archived_invoice_number">): string {
+  return invoice.invoice_number || invoice.archived_invoice_number || "";
 }
 
 export interface InvoicesResponse {

@@ -1330,7 +1330,8 @@ class InvoiceStatus(str, Enum):
 
 
 class InvoiceBase(SQLModel):
-    invoice_number: str = Field(index=True, unique=True, description="Display number: INV-YYYY-NNNN")
+    invoice_number: str | None = Field(default=None, index=True, unique=True, description="Active display number for live invoices")
+    archived_invoice_number: str | None = Field(default=None, max_length=50, description="Archived snapshot of a released invoice number")
     invoice_seq: int = Field(description="Sequential integer for auto-increment")
     date: str = Field(max_length=10, description="Invoice date ISO: YYYY-MM-DD")
     due_date: str | None = Field(default=None, max_length=10, description="Optional payment due date")

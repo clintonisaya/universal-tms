@@ -5,6 +5,11 @@
 import type { UserSummary } from "./expense";
 
 export type WaybillStatus = "Open" | "In Progress" | "Completed" | "Invoiced";
+export type WaybillProgressStatus = Exclude<WaybillStatus, "Invoiced">;
+
+export function getWaybillProgressStatus(status: WaybillStatus): WaybillProgressStatus {
+  return status === "Invoiced" ? "Completed" : status;
+}
 
 export interface Waybill {
   id: string;

@@ -113,7 +113,7 @@ def read_waybills(
         inv = invoice_map.get(wb.id)
         if inv:
             pub.invoice_id = inv.id
-            pub.invoice_number = inv.invoice_number
+            pub.invoice_number = inv.invoice_number or inv.archived_invoice_number
             pub.invoice_status = inv.status
         pub.trip_number = trip_number_map.get(wb.id)
         enriched.append(pub)
@@ -138,7 +138,7 @@ def read_waybill(
     ).first()
     if inv:
         pub.invoice_id = inv.id
-        pub.invoice_number = inv.invoice_number
+        pub.invoice_number = inv.invoice_number or inv.archived_invoice_number
         pub.invoice_status = inv.status
 
     # Link to trip number via either go leg or return leg

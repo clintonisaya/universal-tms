@@ -4,7 +4,7 @@
  * Always renders in light/print mode regardless of app theme.
  */
 import React, { useState, useEffect } from "react";
-import type { Invoice, BankDetails } from "@/types/invoice";
+import { getInvoiceDisplayNumber, type Invoice, type BankDetails } from "@/types/invoice";
 
 // Brand colors (always light mode for print)
 const PRIMARY = "#2563EB";
@@ -137,7 +137,7 @@ export const InvoicePrintView: React.FC<InvoicePrintViewProps> = ({ invoice }) =
               </thead>
               <tbody>
                 <tr>
-                  <td style={{ padding: "6px 20px", fontSize: 12, fontWeight: 600, textAlign: "center", border: `1px solid ${BORDER}` }}>{invoice.invoice_number}</td>
+                  <td style={{ padding: "6px 20px", fontSize: 12, fontWeight: 600, textAlign: "center", border: `1px solid ${BORDER}` }}>{getInvoiceDisplayNumber(invoice)}</td>
                   <td style={{ padding: "6px 20px", fontSize: 12, textAlign: "center", border: `1px solid ${BORDER}` }}>{formatDate(invoice.date)}</td>
                 </tr>
               </tbody>

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useRef } from "react";
 import { Form, Input, InputNumber, DatePicker, Select, Divider } from "antd";
 import type { Invoice, InvoiceItem } from "@/types/invoice";
 import { amountInputProps } from "@/lib/utils";
@@ -59,14 +59,6 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({ invoice, onChange, rea
     }, 500);
   };
 
-  // Reset validation state when invoice changes (e.g. after save)
-  useEffect(() => {
-    if (invoice.invoice_number) {
-      setNumberStatus("");
-      setNumberHelp("");
-    }
-  }, [invoice.id]);
-
   const item: InvoiceItem = invoice.items?.[0] || {
     route: "",
     truck_plate: "",
@@ -77,7 +69,7 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({ invoice, onChange, rea
     amount: 0,
   };
 
-  const updateItem = (field: keyof InvoiceItem, value: any) => {
+  const updateItem = (field: keyof InvoiceItem, value: InvoiceItem[keyof InvoiceItem]) => {
     const updated = { ...item, [field]: value };
     updated.amount = (updated.qty || 1) * (updated.unit_price || 0);
     onChange({ items: [updated] });
@@ -94,7 +86,7 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({ invoice, onChange, rea
           required
         >
           <Input
-            value={invoice.invoice_number}
+            value={invoice.invoice_number ?? ""}
             onChange={(e) => handleInvoiceNumberChange(e.target.value)}
             placeholder="Enter invoice number"
             style={{ fontWeight: 600 }}
@@ -204,7 +196,7 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({ invoice, onChange, rea
             value={Number(invoice.vat_rate)}
             min={0}
             max={100}
-            onChange={(v) => onChange({ vat_rate: v || 0 } as any)}
+            onChange={(v) => onChange({ vat_rate: v || 0 })}
             style={{ width: "100%" }}
           />
         </Form.Item>
@@ -213,7 +205,7 @@ export const InvoiceForm: React.FC<InvoiceFormProps> = ({ invoice, onChange, rea
           <InputNumber
             value={Number(invoice.exchange_rate)}
             min={0}
-            onChange={(v) => onChange({ exchange_rate: v || 0 } as any)}
+            onChange={(v) => onChange({ exchange_rate: v || 0 })}
             style={{ width: "100%", fontFamily: "'Fira Code', monospace" }}
             {...amountInputProps}
           />
