@@ -10,7 +10,6 @@ import {
   ReactNode,
 } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { message } from "antd";
 import { resolveSection, SECTION_MAP } from "@/constants/navigation";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -129,8 +128,15 @@ export function TabProvider({ children }: { children: ReactNode }) {
         );
       }
       // Auto-create tab for direct URL navigation
+      let next = prev;
+      if (prev.length >= MAX_TABS) {
+        // Evict the oldest closable tab (first non-Dashboard tab)
+        const evictionIdx = prev.findIndex((t) => t.closable);
+        if (evictionIdx === -1) return prev; // shouldn't happen
+        next = prev.filter((_, i) => i !== evictionIdx);
+      }
       return [
-        ...prev,
+        ...next,
         { key: section.key, label: section.label, path: section.path, lastPath: pathname, closable: true },
       ];
     });
@@ -154,15 +160,17 @@ export function TabProvider({ children }: { children: ReactNode }) {
           );
         }
 
-        // Check max tabs
+        // Evict oldest closable tab if at max
+        let next = prev;
         if (prev.length >= MAX_TABS) {
-          message.warning("Close a tab first (max 7 tabs)");
-          return prev;
+          const evictionIdx = prev.findIndex((t) => t.closable);
+          if (evictionIdx === -1) return prev;
+          next = prev.filter((_, i) => i !== evictionIdx);
         }
 
         // Create new tab
         return [
-          ...prev,
+          ...next,
           {
             key: section.key,
             label: section.label,
