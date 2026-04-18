@@ -419,7 +419,7 @@ export default function TripExpenseTypesPage() {
               setSelectedRowKeys
             )}
             expandable={{
-              defaultExpandAllRows: true,
+              defaultExpandAllRows: false,
             }}
           />
         </Flex>
