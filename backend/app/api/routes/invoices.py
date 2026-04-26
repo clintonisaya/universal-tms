@@ -427,7 +427,6 @@ def issue_invoice(
         if waybill:
             waybill.agreed_rate = total_rate
             waybill.currency = invoice.currency
-            waybill.status = WaybillStatus.invoiced
             waybill.updated_by_id = current_user.id
             session.add(waybill)
 
@@ -529,7 +528,6 @@ def reissue_invoice(
     session.add(invoice)
 
     # --- 2. Revert the waybill ---
-    waybill.status = WaybillStatus.completed
     waybill.agreed_rate = Decimal("0")
     waybill.currency = waybill.currency or "USD"
     waybill.updated_by_id = current_user.id
