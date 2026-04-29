@@ -443,27 +443,45 @@ def get_financial_pulse(
     # Go waybill revenue (current year)
     # AC-3: attribute revenue to dispatch_date (or end_date, then created_at as last resort)
     _revenue_date = func.coalesce(Trip.dispatch_date, Trip.end_date, Trip.created_at)
-    revenue_stmt = (
+    # Deduplicate waybills: one waybill may have multiple trips (truck swaps)
+    waybill_revenue_subq = (
         select(
-            func.date(_revenue_date).label("date"),
-            Waybill.agreed_rate,
-            Waybill.currency,
+            Trip.waybill_id.label("wb_id"),
+            func.max(func.date(_revenue_date)).label("date"),
         )
-        .join(Waybill, Waybill.id == Trip.waybill_id)
+        .where(Trip.waybill_id.isnot(None))
         .where(_revenue_date >= year_start)
         .where(Trip.status.in_(_active_statuses))
+        .group_by(Trip.waybill_id)
+        .subquery()
     )
-    # Return waybill revenue (current year) — only trips that have return waybill attached
-    return_revenue_stmt = (
+    revenue_stmt = (
         select(
-            func.date(_revenue_date).label("date"),
+            waybill_revenue_subq.c.date,
             Waybill.agreed_rate,
             Waybill.currency,
         )
-        .join(Waybill, Waybill.id == Trip.return_waybill_id)
+        .join(Waybill, Waybill.id == waybill_revenue_subq.c.wb_id)
+    )
+    # Return waybill revenue (current year) — only trips that have return waybill attached
+    return_waybill_revenue_subq = (
+        select(
+            Trip.return_waybill_id.label("wb_id"),
+            func.max(func.date(_revenue_date)).label("date"),
+        )
         .where(Trip.return_waybill_id.isnot(None))
         .where(_revenue_date >= year_start)
         .where(Trip.status.in_(_active_statuses))
+        .group_by(Trip.return_waybill_id)
+        .subquery()
+    )
+    return_revenue_stmt = (
+        select(
+            return_waybill_revenue_subq.c.date,
+            Waybill.agreed_rate,
+            Waybill.currency,
+        )
+        .join(Waybill, Waybill.id == return_waybill_revenue_subq.c.wb_id)
     )
     revenue_rows = list(session.exec(revenue_stmt).all()) + list(session.exec(return_revenue_stmt).all())
 
@@ -522,19 +540,31 @@ def get_financial_pulse(
     # ============================================================
 
     # Monthly Revenue: go waybills
+    # Bug fix: use _revenue_date (same as quarterly) and deduplicate waybills
+    monthly_waybill_ids = (
+        select(Trip.waybill_id)
+        .where(Trip.waybill_id.isnot(None))
+        .where(_revenue_date >= current_month_start)
+        .where(Trip.status.in_(_active_statuses))
+        .distinct()
+        .subquery()
+    )
     monthly_revenue_stmt = (
         select(Waybill.agreed_rate, Waybill.currency)
-        .join(Trip, Waybill.id == Trip.waybill_id)
-        .where(Trip.created_at >= current_month_start)
-        .where(Trip.status.in_(_active_statuses))
+        .where(Waybill.id.in_(monthly_waybill_ids))
     )
     # Monthly Revenue: return waybills
+    monthly_return_waybill_ids = (
+        select(Trip.return_waybill_id)
+        .where(Trip.return_waybill_id.isnot(None))
+        .where(_revenue_date >= current_month_start)
+        .where(Trip.status.in_(_active_statuses))
+        .distinct()
+        .subquery()
+    )
     monthly_return_revenue_stmt = (
         select(Waybill.agreed_rate, Waybill.currency)
-        .join(Trip, Waybill.id == Trip.return_waybill_id)
-        .where(Trip.return_waybill_id.isnot(None))
-        .where(Trip.created_at >= current_month_start)
-        .where(Trip.status.in_(_active_statuses))
+        .where(Waybill.id.in_(monthly_return_waybill_ids))
     )
     monthly_revenue_rows = list(session.exec(monthly_revenue_stmt).all()) + list(session.exec(monthly_return_revenue_stmt).all())
 

@@ -124,12 +124,15 @@ def get_dashboard_stats(
     thirty_days_ago = datetime.now(timezone.utc) - timedelta(days=30)
     
     # 1. Daily Revenue (from Waybills linked to active/completed trips)
-    revenue_stmt = (
+    # Bug fix: deduplicate waybills (truck swaps create multiple trips per waybill)
+    # and use revenue recognition date (dispatch_date > end_date > created_at)
+    _revenue_date = func.coalesce(Trip.dispatch_date, Trip.end_date, Trip.created_at)
+    waybill_daily_subq = (
         select(
-            func.date(Trip.created_at).label("date"),
-            func.sum(Waybill.agreed_rate).label("revenue")
+            Trip.waybill_id.label("wb_id"),
+            func.date(_revenue_date).label("date"),
         )
-        .join(Waybill, Waybill.id == Trip.waybill_id)
+        .where(Trip.waybill_id.isnot(None))
         .where(Trip.status.in_([
             TripStatus.wait_to_load.value,
             TripStatus.loading.value,
@@ -140,8 +143,17 @@ def get_dashboard_stats(
             TripStatus.waiting_for_pods.value,
             TripStatus.completed.value,
         ]))
-        .where(Trip.created_at >= thirty_days_ago)
-        .group_by(func.date(Trip.created_at))
+        .where(_revenue_date >= thirty_days_ago)
+        .distinct()
+        .subquery()
+    )
+    revenue_stmt = (
+        select(
+            waybill_daily_subq.c.date,
+            func.sum(Waybill.agreed_rate).label("revenue")
+        )
+        .join(Waybill, Waybill.id == waybill_daily_subq.c.wb_id)
+        .group_by(waybill_daily_subq.c.date)
     )
     revenue_rows = session.exec(revenue_stmt).all()
     
