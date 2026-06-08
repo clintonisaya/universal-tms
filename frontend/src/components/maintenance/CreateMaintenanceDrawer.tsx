@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import {
   Drawer,
   Form,
@@ -18,11 +19,9 @@ import {
   Col,
 } from "antd";
 import { SaveOutlined } from "@ant-design/icons";
-import { useRouter } from "next/navigation";
+import { EmptyAwareSelect } from "@/components/ui";
 import { amountInputProps } from "@/lib/utils";
-import { EmptyAwareSelect } from "@/components/ui/EmptyAwareSelect";
-import type { Truck, TrucksResponse } from "@/types/truck";
-import type { Trailer, TrailersResponse } from "@/types/trailer";
+import { useTrucks, useTrailers } from "@/hooks/useApi";
 import type { MaintenanceEvent, MaintenanceEventCreate } from "@/types/maintenance";
 import dayjs from "dayjs";
 
@@ -45,16 +44,22 @@ export function CreateMaintenanceDrawer({
   const [form] = Form.useForm();
   const router = useRouter();
   const [loading, setLoading] = useState(false);
-  const [trucks, setTrucks] = useState<Truck[]>([]);
-  const [trailers, setTrailers] = useState<Trailer[]>([]);
-  const [resourcesLoading, setResourcesLoading] = useState(false);
   const [assetType, setAssetType] = useState<"truck" | "trailer">("truck");
+
+  // Use TanStack Query hooks for trucks and trailers
+  const { data: trucksData, isLoading: trucksLoading } = useTrucks();
+  const { data: trailersData, isLoading: trailersLoading } = useTrailers();
+  const trucks = (trucksData?.data || []) as any[];
+  const trailers = (trailersData?.data || []) as any[];
+  const resourcesLoading = trucksLoading || trailersLoading;
+
+  // Watch payment method for conditional bank fields
+  const paymentMethod = Form.useWatch("payment_method", form);
 
   const isEditMode = !!initialValues;
 
   useEffect(() => {
     if (open) {
-      fetchResources();
       if (initialValues) {
         // Edit mode — pre-fill from existing record
         const type = initialValues.truck_id ? "truck" : "trailer";
@@ -78,35 +83,13 @@ export function CreateMaintenanceDrawer({
           update_trailer_status: false,
           asset_type: "truck",
           currency: "USD",
+          payment_method: "Cash",
         });
         setAssetType("truck");
       }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, initialValues]);
-
-  const fetchResources = async () => {
-    setResourcesLoading(true);
-    try {
-      const [trucksRes, trailersRes] = await Promise.all([
-        fetch("/api/v1/trucks?limit=1000", { credentials: "include" }),
-        fetch("/api/v1/trailers?limit=1000", { credentials: "include" }),
-      ]);
-
-      if (trucksRes.ok && trailersRes.ok) {
-        const trucksData: TrucksResponse = await trucksRes.json();
-        const trailersData: TrailersResponse = await trailersRes.json();
-        setTrucks(trucksData.data);
-        setTrailers(trailersData.data);
-      } else {
-        message.error("Failed to load resources");
-      }
-    } catch {
-      message.error("Network error loading resources");
-    } finally {
-      setResourcesLoading(false);
-    }
-  };
 
   const onFinish = async (values: any) => {
     setLoading(true);
@@ -144,6 +127,12 @@ export function CreateMaintenanceDrawer({
           description: values.description,
           cost: values.cost,
           currency: values.currency,
+          payment_method: values.payment_method,
+          bank_details: values.payment_method === "Transfer" ? {
+            bank_name: values.bank_name,
+            account_name: values.account_name,
+            account_no: values.account_no,
+          } : null,
           start_date: values.start_date.toISOString(),
           end_date: values.end_date ? values.end_date.toISOString() : null,
           update_truck_status: values.asset_type === "truck" ? values.update_status : false,
@@ -229,21 +218,22 @@ export function CreateMaintenanceDrawer({
                     disabled={isEditMode}
                     options={
                       assetType === "truck"
-                        ? trucks.map((t) => ({
-                            value: t.id,
-                            label: `${t.plate_number} - ${t.make} ${t.model} (${t.status})`,
+                        ? trucks.map((truck) => ({
+                            value: truck.id,
+                            label: `${truck.plate_number} - ${truck.make} ${truck.model} (${truck.status})`,
                           }))
-                        : trailers.map((t) => ({
-                            value: t.id,
-                            label: `${t.plate_number} - ${t.make} (${t.status})`,
+                        : trailers.map((trailer) => ({
+                            value: trailer.id,
+                            label: `${trailer.plate_number} - ${trailer.make} (${trailer.status})`,
                           }))
                     }
                     emptyMessage={`No ${assetType === "truck" ? "trucks" : "trailers"} available`}
-                    emptyDescription={`Register a ${assetType} to create a maintenance record`}
-                    createLabel={assetType === "truck" ? "Register Truck" : "Register Trailer"}
-                    onCreate={() =>
-                      router.push(assetType === "truck" ? "/fleet/trucks" : "/fleet/trailers")
-                    }
+                    emptyDescription={`Register a ${assetType} to schedule maintenance`}
+                    createLabel={`Register ${assetType === "truck" ? "Truck" : "Trailer"}`}
+                    onCreate={() => {
+                      onClose();
+                      router.push(assetType === "truck" ? "/fleet/trucks" : "/fleet/trailers");
+                    }}
                     loading={resourcesLoading}
                   />
                 </Form.Item>
@@ -261,7 +251,7 @@ export function CreateMaintenanceDrawer({
                 <Input placeholder="e.g. AutoXpress" />
               </Form.Item>
             </Col>
-            <Col span={8}>
+            <Col span={6}>
               <Form.Item
                 name="cost"
                 label="Cost"
@@ -277,7 +267,7 @@ export function CreateMaintenanceDrawer({
                 />
               </Form.Item>
             </Col>
-            <Col span={4}>
+            <Col span={3}>
               <Form.Item
                 name="currency"
                 label="Currency"
@@ -289,7 +279,51 @@ export function CreateMaintenanceDrawer({
                 </Select>
               </Form.Item>
             </Col>
+            <Col span={3}>
+              <Form.Item
+                name="payment_method"
+                label="Payment"
+                rules={[{ required: true }]}
+              >
+                <Select>
+                  <Select.Option value="Cash">Cash</Select.Option>
+                  <Select.Option value="Transfer">Transfer</Select.Option>
+                </Select>
+              </Form.Item>
+            </Col>
           </Row>
+
+          {paymentMethod === "Transfer" && (
+            <Row gutter={16}>
+              <Col span={8}>
+                <Form.Item
+                  name="bank_name"
+                  label="Bank Name"
+                  rules={[{ required: true, message: "Please enter bank name" }]}
+                >
+                  <Input placeholder="Enter Bank Name" />
+                </Form.Item>
+              </Col>
+              <Col span={8}>
+                <Form.Item
+                  name="account_name"
+                  label="Account Name"
+                  rules={[{ required: true, message: "Please enter account name" }]}
+                >
+                  <Input placeholder="Enter Account Name" />
+                </Form.Item>
+              </Col>
+              <Col span={8}>
+                <Form.Item
+                  name="account_no"
+                  label="Account No."
+                  rules={[{ required: true, message: "Please enter account number" }]}
+                >
+                  <Input placeholder="Enter Account Number" />
+                </Form.Item>
+              </Col>
+            </Row>
+          )}
 
           <Form.Item
             name="description"

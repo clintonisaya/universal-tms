@@ -2,11 +2,11 @@ import uuid
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Query
-from sqlmodel import func, select
 
 from app.api.deps import CurrentUser, SessionDep
 from app.core.db import commit_or_rollback
 from app.models import Country, CountryCreate, CountryPublic, CountriesPublic, CountryUpdate, Message
+from app.modules.master_data import DuplicateNameError, check_duplicate_name, filtered_list_query
 
 router = APIRouter(prefix="/countries", tags=["countries"])
 
@@ -17,11 +17,7 @@ def read_countries(
     """
     Retrieve countries.
     """
-    count_statement = select(func.count()).select_from(Country)
-    count = session.exec(count_statement).one()
-    statement = select(Country).offset(skip).limit(limit)
-    countries = session.exec(statement).all()
-    return CountriesPublic(data=countries, count=count)
+    return filtered_list_query(session, Country, skip=skip, limit=limit)
 
 @router.get("/{id}", response_model=CountryPublic)
 def read_country(session: SessionDep, current_user: CurrentUser, id: uuid.UUID) -> Any:
@@ -40,9 +36,10 @@ def create_country(
     """
     Create new country.
     """
-    country = session.exec(select(Country).where(Country.name == country_in.name)).first()
-    if country:
-        raise HTTPException(status_code=400, detail="Country with this name already exists")
+    try:
+        check_duplicate_name(session, Country, country_in.name)
+    except DuplicateNameError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     country = Country.model_validate(country_in)
     session.add(country)
     commit_or_rollback(session)
@@ -60,9 +57,10 @@ def update_country(
     if not country:
         raise HTTPException(status_code=404, detail="Country not found")
     if country_in.name:
-         existing_country = session.exec(select(Country).where(Country.name == country_in.name)).first()
-         if existing_country and existing_country.id != id:
-            raise HTTPException(status_code=400, detail="Country with this name already exists")
+        try:
+            check_duplicate_name(session, Country, country_in.name, exclude_id=id)
+        except DuplicateNameError as e:
+            raise HTTPException(status_code=400, detail=str(e))
     
     update_data = country_in.model_dump(exclude_unset=True)
     country.sqlmodel_update(update_data)

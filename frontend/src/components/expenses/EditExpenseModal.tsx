@@ -336,7 +336,17 @@ export function EditExpenseModal({
         const selectedType = officeExpenseTypes.find(t => t.id === value);
         if (selectedType) {
           (newData[index] as any).details = selectedType.name;
-          (newData[index] as any).category = "Office";
+          // Map office expense type category to ExpenseCategory enum
+          const officeCat = selectedType.category?.trim();
+          const OFFICE_CATEGORY_MAP: Record<string, string> = {
+            maintenance: "Maintenance",
+            office: "Office",
+            salary: "Office",
+            tax: "Office",
+            other: "Other",
+          };
+          (newData[index] as any).category =
+            OFFICE_CATEGORY_MAP[officeCat?.toLowerCase() || ""] || "Office";
         }
       }
     }

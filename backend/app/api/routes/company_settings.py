@@ -8,23 +8,16 @@ from typing import Any
 from fastapi import APIRouter, HTTPException
 from sqlmodel import select
 
-from app.api.deps import CurrentUser, SessionDep
+from app.api.deps import CurrentUser, SessionDep, assert_user_has_permission
 from app.core.db import commit_or_rollback
+from app.modules.permissions import Permission
 from app.models import (
     CompanySettings,
     CompanySettingsPublic,
     CompanySettingsUpdate,
-    UserRole,
 )
 
 router = APIRouter(prefix="/company-settings", tags=["company-settings"])
-
-
-def _has_permission(user, permission: str) -> bool:
-    """Check granular permission — admin/superuser bypasses all checks."""
-    if user.is_superuser or user.role == UserRole.admin:
-        return True
-    return permission in (user.permissions or [])
 
 
 @router.get("", response_model=CompanySettingsPublic)
@@ -47,8 +40,11 @@ def update_company_settings(
     settings_in: CompanySettingsUpdate,
 ) -> Any:
     """Update company settings (bank details). Admin/Finance only."""
-    if not _has_permission(current_user, "settings:company"):
-        raise HTTPException(status_code=403, detail="Only Admin or Finance can update company settings")
+    assert_user_has_permission(
+        current_user,
+        Permission.SETTINGS_COMPANY,
+        detail="Only Admin or Finance can update company settings",
+    )
 
     settings = session.exec(select(CompanySettings)).first()
     if not settings:

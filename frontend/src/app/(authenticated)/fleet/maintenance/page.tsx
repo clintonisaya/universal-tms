@@ -11,6 +11,7 @@ import {
   App,
   Space,
   Modal,
+  Tag,
 } from "antd";
 import {
   ReloadOutlined,
@@ -18,6 +19,7 @@ import {
   PlusOutlined,
   EditOutlined,
   DeleteOutlined,
+  LinkOutlined,
 } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
 import type { MaintenanceEvent } from "@/types/maintenance";
@@ -25,6 +27,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useMaintenance, useInvalidateQueries } from "@/hooks/useApi";
 import { CreateMaintenanceDrawer } from "@/components/maintenance/CreateMaintenanceDrawer";
+import { LinkExpenseDrawer } from "@/components/maintenance/LinkExpenseDrawer";
 import {
   getColumnSearchProps,
   getStandardRowSelection,
@@ -49,6 +52,7 @@ function MaintenancePageContent() {
   const totalCount = data?.count || 0;
 
   const [createDrawerOpen, setCreateDrawerOpen] = useState(false);
+  const [linkDrawerOpen, setLinkDrawerOpen] = useState(false);
   const [editingRecord, setEditingRecord] = useState<MaintenanceEvent | null>(null);
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
@@ -86,9 +90,45 @@ function MaintenancePageContent() {
       title: "Garage",
       dataIndex: "garage_name",
       key: "garage_name",
-      width: 180,
-      render: (text: string) => text,
+      width: 220,
+      render: (text: string, record) => {
+        const isLinked = record.expense?.expense_metadata?.item_name;
+        return (
+          <Space>
+            <span>{text}</span>
+            {isLinked && <Tag color="blue" style={{ fontSize: 11 }}>Linked</Tag>}
+          </Space>
+        );
+      },
       ...getColumnSearchProps("garage_name"),
+    },
+    {
+      title: "Reg.no",
+      key: "plate_number",
+      width: 140,
+      render: (_, record) => {
+        const plate = record.truck?.plate_number || record.trailer?.plate_number;
+        return plate || "-";
+      },
+    },
+    {
+      title: "Fleet",
+      key: "fleet",
+      width: 100,
+      filters: [
+        { text: "Truck", value: "Truck" },
+        { text: "Trailer", value: "Trailer" },
+      ],
+      onFilter: (value, record) => {
+        if (value === "Truck") return !!record.truck_id;
+        if (value === "Trailer") return !!record.trailer_id;
+        return false;
+      },
+      render: (_, record) => {
+        if (record.truck_id) return <Tag color="blue">Truck</Tag>;
+        if (record.trailer_id) return <Tag color="green">Trailer</Tag>;
+        return "-";
+      },
     },
     {
       title: "Description",
@@ -182,6 +222,11 @@ function MaintenancePageContent() {
             <Flex gap="small">
               <Button icon={<ReloadOutlined />} onClick={() => refetch()}>Refresh</Button>
               {canWrite && (
+              <Button icon={<LinkOutlined />} onClick={() => setLinkDrawerOpen(true)}>
+                Already Applied
+              </Button>
+            )}
+              {canWrite && (
               <Button type="primary" icon={<PlusOutlined />} onClick={() => setCreateDrawerOpen(true)}>
                 New Record
               </Button>
@@ -230,6 +275,14 @@ function MaintenancePageContent() {
           setEditingRecord(null);
         }}
         initialValues={editingRecord}
+      />
+
+      <LinkExpenseDrawer
+        open={linkDrawerOpen}
+        onClose={() => setLinkDrawerOpen(false)}
+        onSuccess={() => {
+          invalidateMaintenance();
+        }}
       />
     </div>
   );

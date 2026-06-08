@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Form, message } from "antd";
-import dayjs from "dayjs";
+import dayjs, { type Dayjs } from "dayjs";
 import type { TripUpdate, TripStatus, Trip } from "@/types/trip";
 import type { Country } from "@/types/location";
 import {
@@ -10,8 +10,60 @@ import {
   ALL_RETURN_STATUSES,
   CLOSED_STATUSES,
 } from "@/constants/tripStatuses";
-import { useAuth } from "@/contexts/AuthContext";
 import { usePermissions } from "@/hooks/usePermissions";
+
+const borderDateFields = [
+  "arrived_side_a_at",
+  "documents_submitted_side_a_at",
+  "documents_cleared_side_a_at",
+  "arrived_side_b_at",
+  "departed_border_at",
+] as const;
+
+type BorderDateField = (typeof borderDateFields)[number];
+type BorderDirection = "go" | "return";
+type BorderFormKey = `border_${BorderDateField}`;
+type TripDateField = Extract<
+  keyof TripUpdate,
+  | "dispatch_date"
+  | "arrival_loading_date"
+  | "loading_start_date"
+  | "loading_end_date"
+  | "arrival_offloading_date"
+  | "offloading_date"
+  | "offloading_return_date"
+  | "arrival_return_date"
+  | "dispatch_return_date"
+  | "arrival_loading_return_date"
+  | "arrival_destination_return_date"
+  | "loading_return_start_date"
+  | "loading_return_end_date"
+  | "return_empty_container_date"
+  | "pods_confirmed_date"
+>;
+
+type TripStatusFormValues = Partial<Record<TripDateField | BorderFormKey, Dayjs>> & {
+  status?: TripStatus;
+  city?: string;
+  country?: string;
+  breakdown_reason?: string;
+  remarks?: string | null;
+  return_remarks?: string | null;
+  is_delayed?: boolean;
+};
+
+interface BorderPostSummary {
+  id: string;
+}
+
+type TripBorderCrossingPayload = { direction: BorderDirection } & Partial<
+  Record<BorderDateField, string>
+>;
+
+type TripBorderCrossingSummary = {
+  border_post_id: string;
+  direction: BorderDirection;
+} & Partial<Record<BorderDateField, string | null>>;
 
 interface UseTripStatusUpdateProps {
   tripId: string;
@@ -21,8 +73,13 @@ interface UseTripStatusUpdateProps {
   initialValues?: Partial<{ status: string; current_location?: string | null; return_waybill_id?: string | null; is_delayed?: boolean }>;
 }
 
+interface TripStatusMetadata {
+  valid_next_statuses: Record<string, TripStatus[]>;
+  all_return_statuses: TripStatus[];
+  closed_statuses: TripStatus[];
+}
+
 export function useTripStatusUpdate({ tripId, open, onSuccess, onClose, initialValues }: UseTripStatusUpdateProps) {
-  const { user } = useAuth();
   const { hasPermission } = usePermissions();
   const canReopen = hasPermission("trips:reopen");
   const [form] = Form.useForm();
@@ -32,16 +89,20 @@ export function useTripStatusUpdate({ tripId, open, onSuccess, onClose, initialV
   const [selectedStatus, setSelectedStatus] = useState<TripStatus | null>(null);
   const [tripData, setTripData] = useState<Trip | null>(null);
   const [loadingTrip, setLoadingTrip] = useState(false);
-  const [nextBorder, setNextBorder] = useState<any | null>(null);
-  const [existingCrossing, setExistingCrossing] = useState<any | null>(null);
+  const [nextBorder, setNextBorder] = useState<BorderPostSummary | null>(null);
+  const [existingCrossing, setExistingCrossing] = useState<TripBorderCrossingSummary | null>(null);
   const [loadingBorder, setLoadingBorder] = useState(false);
+  const [statusMetadata, setStatusMetadata] = useState<TripStatusMetadata | null>(null);
   const dirtyFields = useRef<Set<string>>(new Set());
   const prevStatus = useRef<TripStatus | null>(null);
 
   const currentStatus = initialValues?.status as TripStatus | undefined;
   const hasReturnWaybill = !!initialValues?.return_waybill_id;
-  const isTripClosed = currentStatus && CLOSED_STATUSES.includes(currentStatus);
-  const isReopening = isTripClosed && selectedStatus && !CLOSED_STATUSES.includes(selectedStatus);
+  const closedStatuses = statusMetadata?.closed_statuses ?? CLOSED_STATUSES;
+  const allReturnStatuses = statusMetadata?.all_return_statuses ?? ALL_RETURN_STATUSES;
+  const validNextStatusMap = statusMetadata?.valid_next_statuses ?? VALID_NEXT_STATUSES;
+  const isTripClosed = currentStatus && closedStatuses.includes(currentStatus);
+  const isReopening = isTripClosed && selectedStatus && !closedStatuses.includes(selectedStatus);
 
   const validNextStatuses: TripStatus[] = (() => {
     if (isTripClosed && canReopen) {
@@ -50,9 +111,9 @@ export function useTripStatusUpdate({ tripId, open, onSuccess, onClose, initialV
         : ["Waiting for PODs", "Returning Empty", "Offloaded"];
       return reopenTargets;
     }
-    const all = (VALID_NEXT_STATUSES[currentStatus ?? ""] ?? []) as TripStatus[];
+    const all = validNextStatusMap[currentStatus ?? ""] ?? [];
     return all.filter((s) => {
-      if (!hasReturnWaybill && ALL_RETURN_STATUSES.includes(s)) return false;
+      if (!hasReturnWaybill && allReturnStatuses.includes(s)) return false;
       if (hasReturnWaybill && currentStatus === "Arrived at Yard" && s === "Returning Empty") return false;
       return true;
     });
@@ -75,24 +136,17 @@ export function useTripStatusUpdate({ tripId, open, onSuccess, onClose, initialV
         fetch(`/api/v1/trips/${tripId}/next-border?direction=${direction}`, { credentials: "include" }),
         fetch(`/api/v1/trips/${tripId}/border-crossings`, { credentials: "include" }),
       ]);
-      const nextData = nextRes.ok ? await nextRes.json() : null;
+      const nextData = nextRes.ok ? ((await nextRes.json()) as BorderPostSummary | null) : null;
       setNextBorder(nextData || null);
       if (nextData && crossingsRes.ok) {
-        const crossings: any[] = await crossingsRes.json();
+        const crossings = (await crossingsRes.json()) as TripBorderCrossingSummary[];
         const match = crossings.find(
           (c) => c.border_post_id === nextData.id && c.direction === direction
         );
         setExistingCrossing(match || null);
         if (match) {
-          const fields: any = {};
-          const dateFields = [
-            "arrived_side_a_at",
-            "documents_submitted_side_a_at",
-            "documents_cleared_side_a_at",
-            "arrived_side_b_at",
-            "departed_border_at",
-          ];
-          dateFields.forEach((f) => {
+          const fields: Record<string, Dayjs> = {};
+          borderDateFields.forEach((f) => {
             if (match[f]) fields[`border_${f}`] = dayjs(match[f]);
           });
           form.setFieldsValue(fields);
@@ -146,20 +200,24 @@ export function useTripStatusUpdate({ tripId, open, onSuccess, onClose, initialV
     }
   };
 
-  const handleSubmit = async (values: any) => {
+  const fetchStatusMetadata = async () => {
+    try {
+      const res = await fetch("/api/v1/trips/status-metadata", { credentials: "include" });
+      if (res.ok) {
+        setStatusMetadata(await res.json());
+      }
+    } catch {
+      setStatusMetadata(null);
+    }
+  };
+
+  const handleSubmit = async (values: TripStatusFormValues) => {
     setSubmitting(true);
     try {
       if (nextBorder && (selectedStatus === "At Border" || selectedStatus === "At Border (Return)")) {
         const direction = selectedStatus === "At Border" ? "go" : "return";
-        const dateFields = [
-          "arrived_side_a_at",
-          "documents_submitted_side_a_at",
-          "documents_cleared_side_a_at",
-          "arrived_side_b_at",
-          "departed_border_at",
-        ];
-        const crossingPayload: any = { direction };
-        dateFields.forEach((f) => {
+        const crossingPayload: TripBorderCrossingPayload = { direction };
+        borderDateFields.forEach((f) => {
           const val = values[`border_${f}`];
           if (val) crossingPayload[f] = val.format("YYYY-MM-DD");
         });
@@ -182,7 +240,7 @@ export function useTripStatusUpdate({ tripId, open, onSuccess, onClose, initialV
         current_location = country;
       }
 
-      let effectiveStatus: TripStatus = values.status;
+      let effectiveStatus: TripStatus = values.status ?? currentStatus ?? "Waiting";
       if (values.border_departed_border_at) {
         if (selectedStatus === "At Border") effectiveStatus = "In Transit";
         else if (selectedStatus === "At Border (Return)") effectiveStatus = "In Transit (Return)";
@@ -193,7 +251,7 @@ export function useTripStatusUpdate({ tripId, open, onSuccess, onClose, initialV
         current_location,
       };
 
-      const dateFieldMap: Record<string, string> = {
+      const dateFieldMap: Record<TripDateField, TripDateField> = {
         dispatch_date: "dispatch_date",
         arrival_loading_date: "arrival_loading_date",
         loading_start_date: "loading_start_date",
@@ -211,8 +269,9 @@ export function useTripStatusUpdate({ tripId, open, onSuccess, onClose, initialV
         pods_confirmed_date: "pods_confirmed_date",
       };
       for (const [formKey, payloadKey] of Object.entries(dateFieldMap)) {
-        if (values[formKey]) {
-          (payload as any)[payloadKey] = values[formKey].format("YYYY-MM-DD");
+        const value = values[formKey as TripDateField];
+        if (value) {
+          payload[payloadKey as TripDateField] = value.format("YYYY-MM-DD");
         }
       }
 
@@ -254,6 +313,7 @@ export function useTripStatusUpdate({ tripId, open, onSuccess, onClose, initialV
   // Open effect
   useEffect(() => {
     if (open) {
+      fetchStatusMetadata();
       fetchResources();
       fetchTripData();
       form.resetFields();
@@ -288,12 +348,12 @@ export function useTripStatusUpdate({ tripId, open, onSuccess, onClose, initialV
       }
       prevStatus.current = selectedStatus;
 
-      const fields: any = {};
-      const set = (key: string, value: any) => {
+      const fields: Record<string, Dayjs | string | boolean | null> = {};
+      const set = (key: string, value: Dayjs | string | boolean | null) => {
         if (!dirtyFields.current.has(key) && value) fields[key] = value;
       };
 
-      const datePreFillMap: Record<string, string[]> = {
+      const datePreFillMap: Record<string, TripDateField[]> = {
         "Dispatched": ["dispatch_date"],
         "Arrived at Loading Point": ["arrival_loading_date"],
         "Loading": ["loading_start_date", "loading_end_date"],
@@ -312,17 +372,17 @@ export function useTripStatusUpdate({ tripId, open, onSuccess, onClose, initialV
       for (const [status, keys] of Object.entries(datePreFillMap)) {
         if (selectedStatus === status) {
           for (const key of keys) {
-            const val = (tripData as any)[key];
+            const val = tripData[key];
             set(key, val ? dayjs(val) : null);
           }
         }
       }
-      set("return_empty_container_date", (tripData as any).return_empty_container_date ? dayjs((tripData as any).return_empty_container_date) : null);
-      set("pods_confirmed_date", (tripData as any).pods_confirmed_date ? dayjs((tripData as any).pods_confirmed_date) : null);
-      set("remarks", (tripData as any).remarks);
-      set("return_remarks", (tripData as any).return_remarks);
+      set("return_empty_container_date", tripData.return_empty_container_date ? dayjs(tripData.return_empty_container_date) : null);
+      set("pods_confirmed_date", tripData.pods_confirmed_date ? dayjs(tripData.pods_confirmed_date) : null);
+      set("remarks", tripData.remarks);
+      set("return_remarks", tripData.return_remarks);
       if (!dirtyFields.current.has("is_delayed")) {
-        fields.is_delayed = (tripData as any).is_delayed ?? false;
+        fields.is_delayed = tripData.is_delayed ?? false;
       }
 
       form.setFieldsValue(fields);
@@ -349,7 +409,7 @@ export function useTripStatusUpdate({ tripId, open, onSuccess, onClose, initialV
     specialStatuses,
     handleStatusChange,
     handleSubmit,
-    onValuesChange: useCallback((changed: any) => {
+    onValuesChange: useCallback((changed: Record<string, unknown>) => {
       Object.keys(changed).forEach((k) => dirtyFields.current.add(k));
     }, []),
   };

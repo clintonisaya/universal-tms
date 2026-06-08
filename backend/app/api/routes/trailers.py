@@ -104,10 +104,10 @@ def create_trailer(
     # Normalize for comparison
     normalized_plate = normalize_for_comparison(trailer_in.plate_number)
 
-    # Check for duplicate trailer - compare normalized versions (DB-filtered query)
-    normalized_trailer_col = func.upper(func.replace(Trailer.plate_number, ' ', ''))
+    # Check for duplicate - compare normalized versions (DB-filtered query)
+    normalized_col = func.upper(func.replace(Trailer.plate_number, ' ', ''))
     existing_trailer = session.exec(
-        select(Trailer).where(normalized_trailer_col == normalized_plate)
+        select(Trailer).where(normalized_col == normalized_plate)
     ).first()
     if existing_trailer:
         raise HTTPException(
@@ -115,10 +115,10 @@ def create_trailer(
             detail="Trailer with this plate already exists",
         )
 
-    # Cross-check: ensure no truck has the same plate number
-    normalized_truck_col = func.upper(func.replace(Truck.plate_number, ' ', ''))
+    # Cross-check: ensure no truck uses this plate
+    truck_col = func.upper(func.replace(Truck.plate_number, ' ', ''))
     existing_truck = session.exec(
-        select(Truck).where(normalized_truck_col == normalized_plate)
+        select(Truck).where(truck_col == normalized_plate)
     ).first()
     if existing_truck:
         raise HTTPException(
@@ -162,10 +162,10 @@ def update_trailer(
 
         # Only check duplicates if the plate is actually changing
         if normalized_new != normalized_current:
-            normalized_trailer_col = func.upper(func.replace(Trailer.plate_number, ' ', ''))
+            normalized_col = func.upper(func.replace(Trailer.plate_number, ' ', ''))
             existing_trailer = session.exec(
                 select(Trailer).where(
-                    normalized_trailer_col == normalized_new,
+                    normalized_col == normalized_new,
                     Trailer.id != trailer.id,
                 )
             ).first()
@@ -175,10 +175,10 @@ def update_trailer(
                     detail="Trailer with this plate already exists",
                 )
 
-            # Cross-check: ensure no truck has the same plate number
-            normalized_truck_col = func.upper(func.replace(Truck.plate_number, ' ', ''))
+            # Cross-check: ensure no truck uses this plate
+            truck_col = func.upper(func.replace(Truck.plate_number, ' ', ''))
             existing_truck = session.exec(
-                select(Truck).where(normalized_truck_col == normalized_new)
+                select(Truck).where(truck_col == normalized_new)
             ).first()
             if existing_truck:
                 raise HTTPException(

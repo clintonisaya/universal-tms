@@ -68,8 +68,15 @@ export default function ExpensesPage() {
   // Only fetch when user is authenticated
   const isAuthenticated = !!user;
 
+  // Pagination state (must be before useExpenses)
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
+
   // TanStack Query for expenses and trips data
-  const { data: expensesData, isLoading: loading, refetch } = useExpenses(undefined, isAuthenticated);
+  const { data: expensesData, isLoading: loading, refetch } = useExpenses(
+    { skip: (currentPage - 1) * pageSize, limit: pageSize },
+    isAuthenticated,
+  );
   const { data: tripsData, isLoading: tripsLoading } = useTrips({ limit: 100 }, isAuthenticated);
 
   // Filter to show only trip expenses (NOT office expenses)
@@ -81,18 +88,17 @@ export default function ExpensesPage() {
     );
   }, [expensesData]);
 
-  // Filter to active trips only for the dropdown
+  // Filter to active trips OR completed/cancelled trips with expense window open
   const trips = useMemo(() => {
     const allTrips = tripsData?.data || [];
     return allTrips.filter(
-      (t: Trip) => !["Completed", "Cancelled"].includes(t.status)
+      (t: Trip) =>
+        !["Completed", "Cancelled"].includes(t.status) || t.expense_window_open
     );
   }, [tripsData]);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(20);
   const [tableFilters, setTableFilters] = useState<Record<string, any>>({});
   const [tableKey, setTableKey] = useState(0);
 
@@ -220,7 +226,7 @@ export default function ExpensesPage() {
       render: (num: string | null, record: ExpenseRequestDetailed) => (
         <a
           onClick={() => handleViewDetail(record)}
-          style={{ fontWeight: 600, color: "var(--color-primary)", cursor: "pointer" }}
+          style={{ fontWeight: 600, color: "var(--color-gold)", cursor: "pointer" }}
         >
           {num || record.id?.slice(0, 8).toUpperCase()}
         </a>
@@ -370,7 +376,7 @@ export default function ExpensesPage() {
             pagination={{
               current: currentPage,
               pageSize,
-              total: expenses.length,
+              total: expensesData?.count ?? 0,
               showTotal: (total) => `Total ${total} expenses`,
               showSizeChanger: true,
               pageSizeOptions: ["10", "20", "50", "100"],
@@ -410,7 +416,11 @@ export default function ExpensesPage() {
           value={selectedTripId}
           onChange={setSelectedTripId}
           options={trips.map((trip) => ({
-            label: `${trip.trip_number} - ${trip.route_name} (${trip.status})`,
+            label: `${trip.trip_number} - ${trip.route_name} (${trip.status})${
+              ["Completed", "Cancelled"].includes(trip.status) && trip.expense_window_open
+                ? " [Expenses Open]"
+                : ""
+            }`,
             value: trip.id,
           }))}
           allowClear

@@ -1,7 +1,8 @@
 import type { TripStatus } from "@/types/trip";
 
 /**
- * Trip status transition map — mirrors backend VALID_TRANSITIONS in trips.py.
+ * Fallback trip status transition map. Runtime UI uses backend Transport Journey
+ * status metadata when available.
  *
  * Rules:
  *  - Each entry lists valid NEXT statuses (forward AND one step backward).
@@ -11,7 +12,7 @@ import type { TripStatus } from "@/types/trip";
  *  - Cancelled is reachable from any non-terminal status.
  *  - Terminal statuses (Completed, Cancelled) have empty arrays.
  */
-export const VALID_NEXT_STATUSES: Record<string, string[]> = {
+export const VALID_NEXT_STATUSES: Record<string, TripStatus[]> = {
   // --- Go Leg ---
   "Waiting": [
     "Dispatched",                          // forward
@@ -151,7 +152,7 @@ export const VALID_NEXT_STATUSES: Record<string, string[]> = {
 };
 
 // All return-leg status values — used to filter options when no return waybill is attached
-export const ALL_RETURN_STATUSES: string[] = [
+export const ALL_RETURN_STATUSES: TripStatus[] = [
   "Waiting (Return)", "Dispatched (Return)", "Arrived at Loading Point (Return)",
   "Loading (Return)", "Loaded (Return)", "In Transit (Return)", "At Border (Return)",
   "Arrived at Destination (Return)", "Offloading (Return)", "Offloaded (Return)",

@@ -8,14 +8,14 @@ from app import crud
 from app.api.deps import (
     CurrentUser,
     SessionDep,
-    get_current_active_superuser,
     get_current_admin_user,
-    get_current_manager_or_admin,
+    require_permission,
 )
 from app.core.config import settings
 from app.core.limiter import limiter
 from app.core.db import commit_or_rollback
 from app.core.security import get_password_hash, verify_password
+from app.modules.permissions import Permission, has_permission
 from app.models import (
     AdminPasswordReset,
     Item,
@@ -37,7 +37,14 @@ router = APIRouter(prefix="/users", tags=["users"])
 
 @router.get(
     "",
-    dependencies=[Depends(get_current_manager_or_admin)],
+    dependencies=[
+        Depends(
+            require_permission(
+                Permission.USERS_MANAGE,
+                detail="The user doesn't have enough privileges",
+            )
+        )
+    ],
     response_model=UsersPublic,
 )
 def read_users(
@@ -59,7 +66,14 @@ def read_users(
 
 @router.post(
     "",
-    dependencies=[Depends(get_current_manager_or_admin)],
+    dependencies=[
+        Depends(
+            require_permission(
+                Permission.USERS_MANAGE,
+                detail="The user doesn't have enough privileges",
+            )
+        )
+    ],
     response_model=UserPublic,
 )
 def create_user(
@@ -104,6 +118,11 @@ def register_user(request: Request, session: SessionDep, user_in: UserRegister) 
     """
     Create new user without the need to be logged in (self-registration).
     """
+    if not settings.USERS_OPEN_REGISTRATION:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Open user registration is disabled on this server",
+        )
     user = crud.get_user_by_username(session=session, username=user_in.username)
     if user:
         raise HTTPException(
@@ -185,7 +204,7 @@ def read_user_by_id(
     Get a specific user by id.
     """
     # Check permissions before revealing whether user exists
-    if not current_user.is_superuser and current_user.role != UserRole.admin and "users:manage" not in (current_user.permissions or []):
+    if not has_permission(current_user, Permission.USERS_MANAGE):
         if current_user.id != user_id:
             raise HTTPException(
                 status_code=403, detail="The user doesn't have enough privileges"
@@ -198,7 +217,14 @@ def read_user_by_id(
 
 @router.patch(
     "/{user_id}",
-    dependencies=[Depends(get_current_manager_or_admin)],
+    dependencies=[
+        Depends(
+            require_permission(
+                Permission.USERS_MANAGE,
+                detail="The user doesn't have enough privileges",
+            )
+        )
+    ],
     response_model=UserPublic,
 )
 def update_user(

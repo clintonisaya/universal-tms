@@ -251,8 +251,17 @@ export function AddExpenseModal({
           if (!item.details) {
             (newData[index] as any).details = selectedType.name;
           }
-          // Office expenses always map to "Office" category
-          (newData[index] as any).category = "Office";
+          // Map office expense type category to ExpenseCategory enum
+          const officeCat = selectedType.category?.trim();
+          const OFFICE_CATEGORY_MAP: Record<string, string> = {
+            maintenance: "Maintenance",
+            office: "Office",
+            salary: "Office",
+            tax: "Office",
+            other: "Other",
+          };
+          (newData[index] as any).category =
+            OFFICE_CATEGORY_MAP[officeCat?.toLowerCase() || ""] || "Office";
         }
       }
     }

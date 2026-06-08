@@ -2,11 +2,11 @@ import uuid
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Query
-from sqlmodel import func, select
 
 from app.api.deps import CurrentUser, SessionDep
 from app.core.db import commit_or_rollback
 from app.models import City, CityCreate, CityPublic, CitiesPublic, CityUpdate, Message, Country
+from app.modules.master_data import filtered_list_query
 
 router = APIRouter(prefix="/cities", tags=["cities"])
 
@@ -17,11 +17,7 @@ def read_cities(
     """
     Retrieve cities.
     """
-    count_statement = select(func.count()).select_from(City)
-    count = session.exec(count_statement).one()
-    statement = select(City).offset(skip).limit(limit)
-    cities = session.exec(statement).all()
-    return CitiesPublic(data=cities, count=count)
+    return filtered_list_query(session, City, skip=skip, limit=limit)
 
 @router.get("/{id}", response_model=CityPublic)
 def read_city(session: SessionDep, current_user: CurrentUser, id: uuid.UUID) -> Any:
