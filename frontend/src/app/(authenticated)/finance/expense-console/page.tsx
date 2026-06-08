@@ -46,7 +46,15 @@ const ALL_STATUSES: ExpenseStatus[] = [
 export default function ExpenseConsolePage() {
   const router = useRouter();
   const { hasAnyPermission, hasFullAccess } = usePermissions();
-  const { data, isLoading, refetch } = useExpenses();
+
+  // Pagination state (must be before useExpenses)
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
+
+  const { data, isLoading, refetch } = useExpenses({
+    skip: (currentPage - 1) * pageSize,
+    limit: pageSize,
+  });
   const { invalidateExpenses } = useInvalidateQueries();
 
   const [selectedExpense, setSelectedExpense] = useState<ExpenseRequestDetailed | null>(null);
@@ -59,10 +67,6 @@ export default function ExpenseConsolePage() {
   const [typeFilter, setTypeFilter] = useState<string | null>(null);
   const [dateRange, setDateRange] = useState<[dayjs.Dayjs | null, dayjs.Dayjs | null] | null>(null);
   const [searchText, setSearchText] = useState("");
-
-  // Pagination state
-  const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(20);
 
   // Permission gate
   useEffect(() => {
@@ -255,7 +259,7 @@ export default function ExpenseConsolePage() {
           pagination={{
             current: currentPage,
             pageSize,
-            total: filtered.length,
+            total: data?.count ?? 0,
             showTotal: (total) => `Total ${total} expenses`,
             showSizeChanger: true,
             pageSizeOptions: ["20", "50", "100"],

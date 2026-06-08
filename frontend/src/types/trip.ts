@@ -73,6 +73,7 @@ export interface Trip {
   arrival_destination_return_date: string | null;
   arrival_return_date: string | null;
   trip_duration_days: number | null;
+  return_empty_container_date: string | null;
   // Waybill enrichment fields (Story 4.6)
   waybill_rate: number | null;
   waybill_currency: string | null;
@@ -92,6 +93,8 @@ export interface Trip {
   // Audit trail (Story 6.13)
   created_by_id: string | null;
   updated_by_id: string | null;
+  // Expense window override for completed/cancelled trips
+  expense_window_open?: boolean;
 }
 
 export interface TripDetailed extends Trip {

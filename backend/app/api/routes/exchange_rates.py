@@ -9,8 +9,9 @@ from fastapi import APIRouter, HTTPException, Query
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import select, func, and_
 
-from app.api.deps import CurrentUser, SessionDep
+from app.api.deps import CurrentUser, SessionDep, assert_user_has_permission
 from app.core.db import commit_or_rollback
+from app.modules.permissions import Permission
 from app.models import (
     ExchangeRate,
     ExchangeRateCreate,
@@ -18,19 +19,9 @@ from app.models import (
     ExchangeRatesPublic,
     ExchangeRateUpdate,
     Message,
-    UserRole,
 )
 
 router = APIRouter(prefix="/finance/exchange-rates", tags=["finance"])
-
-
-def require_finance_role(user: Any) -> None:
-    """Only Finance and Admin can manage exchange rates."""
-    if user.role not in [UserRole.finance, UserRole.admin]:
-        raise HTTPException(
-            status_code=403,
-            detail="Only Finance or Admin roles can manage exchange rates",
-        )
 
 
 @router.get("", response_model=ExchangeRatesPublic)
@@ -97,7 +88,11 @@ def create_exchange_rate(
     rate_in: ExchangeRateCreate,
 ) -> Any:
     """Create a new exchange rate for a month/year. Only one per month/year allowed."""
-    require_finance_role(current_user)
+    assert_user_has_permission(
+        current_user,
+        Permission.SETTINGS_EXCHANGE_RATES,
+        detail="Not enough permissions to manage exchange rates",
+    )
 
     # Check uniqueness
     existing = session.exec(
@@ -138,7 +133,11 @@ def update_exchange_rate(
     rate_in: ExchangeRateUpdate,
 ) -> Any:
     """Update an existing exchange rate."""
-    require_finance_role(current_user)
+    assert_user_has_permission(
+        current_user,
+        Permission.SETTINGS_EXCHANGE_RATES,
+        detail="Not enough permissions to manage exchange rates",
+    )
 
     rate = session.get(ExchangeRate, id)
     if not rate:
@@ -158,7 +157,11 @@ def delete_exchange_rate(
     id: uuid.UUID,
 ) -> None:
     """Delete an exchange rate."""
-    require_finance_role(current_user)
+    assert_user_has_permission(
+        current_user,
+        Permission.SETTINGS_EXCHANGE_RATES,
+        detail="Not enough permissions to manage exchange rates",
+    )
 
     rate = session.get(ExchangeRate, id)
     if not rate:

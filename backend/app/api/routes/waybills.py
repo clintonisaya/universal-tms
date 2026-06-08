@@ -13,15 +13,15 @@ from sqlmodel import func, select
 
 logger = logging.getLogger(__name__)
 
-from app.api.deps import CurrentUser, SessionDep
+from app.api.deps import CurrentUser, SessionDep, assert_user_has_permission
 from app.core.db import commit_or_rollback
+from app.modules.permissions import Permission, has_permission
 from app.models import (
     BorderPost,
     Invoice,
     Message,
     Trip,
     TripStatus,
-    UserRole,
     Waybill,
     WaybillBorder,
     WaybillBorderPublic,
@@ -31,12 +31,6 @@ from app.models import (
     WaybillStatus,
     WaybillUpdate,
 )
-
-def _has_permission(user, permission: str) -> bool:
-    """Check granular permission — admin/superuser bypasses all checks."""
-    if user.is_superuser or user.role == UserRole.admin:
-        return True
-    return permission in (user.permissions or [])
 
 router = APIRouter(prefix="/waybills", tags=["waybills"])
 
@@ -162,8 +156,11 @@ def create_waybill(
 ) -> Any:
     """Create a new waybill."""
     # RBAC: Only admin, manager, and ops can create waybills
-    if not _has_permission(current_user, "waybills:create"):
-        raise HTTPException(status_code=403, detail="Not enough permissions to create waybills")
+    assert_user_has_permission(
+        current_user,
+        Permission.WAYBILLS_CREATE,
+        detail="Not enough permissions to create waybills",
+    )
 
     border_ids = waybill_in.border_ids
     waybill_number = generate_waybill_number(session)
@@ -202,8 +199,11 @@ def update_waybill(
 ) -> Any:
     """Update a waybill."""
     # RBAC: Only admin, manager, and ops can update waybills
-    if not _has_permission(current_user, "waybills:edit"):
-        raise HTTPException(status_code=403, detail="Not enough permissions to update waybills")
+    assert_user_has_permission(
+        current_user,
+        Permission.WAYBILLS_EDIT,
+        detail="Not enough permissions to update waybills",
+    )
 
     waybill = session.get(Waybill, id)
     if not waybill:
@@ -212,7 +212,10 @@ def update_waybill(
     # Edit lock: Completed/Invoiced waybills are locked — only users with unlock permission can edit
     locked_statuses = {WaybillStatus.completed, WaybillStatus.invoiced}
     current_wb_status = WaybillStatus(waybill.status) if isinstance(waybill.status, str) else waybill.status
-    if current_wb_status in locked_statuses and not _has_permission(current_user, "waybills:unlock"):
+    if current_wb_status in locked_statuses and not has_permission(
+        current_user,
+        Permission.WAYBILLS_UNLOCK,
+    ):
         raise HTTPException(
             status_code=403,
             detail="Waybill is locked for editing. Only Manager or Admin can edit completed waybills."
@@ -304,8 +307,11 @@ def delete_waybill(
 ) -> None:
     """Delete a waybill."""
     # RBAC: Only admin can delete waybills
-    if not _has_permission(current_user, "waybills:delete"):
-        raise HTTPException(status_code=403, detail="Only admin can delete waybills")
+    assert_user_has_permission(
+        current_user,
+        Permission.WAYBILLS_DELETE,
+        detail="Only admin can delete waybills",
+    )
 
     waybill = session.get(Waybill, id)
     if not waybill:

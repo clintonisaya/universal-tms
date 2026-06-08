@@ -7,6 +7,7 @@ import {
   Button,
   Card,
   Space,
+  Tag,
   Typography,
   Tooltip,
   Popconfirm,
@@ -20,14 +21,15 @@ import {
   DeleteOutlined,
   EyeOutlined,
   EditOutlined,
+  LockOutlined,
+  UnlockOutlined,
   MessageOutlined,
 } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
 import type { Trip, TripStatus } from "@/types/trip";
 import { useAuth } from "@/contexts/AuthContext";
+import { useTrips, useInvalidateQueries, useToggleTripExpenseWindow } from "@/hooks/useApi";
 import { usePermissions } from "@/hooks/usePermissions";
-import { useTrips, useInvalidateQueries } from "@/hooks/useApi";
-import { EmptyState } from "@/components/ui";
 import { CreateTripDrawer } from "@/components/trips/CreateTripDrawer";
 import { UpdateTripDrawer } from "@/components/trips/UpdateTripDrawer";
 import { TripDetailDrawer } from "@/components/trips/TripDetailDrawer";
@@ -39,6 +41,7 @@ import {
 } from "@/components/ui/tableUtils";
 import { TripStatusTag } from "@/components/ui/TripStatusTag";
 import { StatusBadge } from "@/components/ui/StatusBadge";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { RETURN_DIRECTION_STATUSES, STATUS_FILTERS } from "@/constants/tripStatuses";
 
 const { Title, Text } = Typography;
@@ -95,6 +98,8 @@ function TripsPageContent() {
   const [detailDrawerTripId, setDetailDrawerTripId] = useState<string | null>(null);
   const [updateDrawerTripId, setUpdateDrawerTripId] = useState<string | null>(null);
   const { hasPermission } = usePermissions();
+  const canManageExpenseWindow = hasPermission("trips:edit");
+  const toggleExpenseWindow = useToggleTripExpenseWindow();
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
@@ -141,6 +146,23 @@ function TripsPageContent() {
     } catch {
       message.error("Network error");
     }
+  };
+
+  const handleToggleExpenseWindow = (trip: Trip) => {
+    const newState = !trip.expense_window_open;
+    toggleExpenseWindow.mutate(
+      { tripId: trip.id, expenseWindowOpen: newState },
+      {
+        onSuccess: () => {
+          message.success(
+            `Expense window ${newState ? "opened" : "closed"} for ${trip.trip_number}`
+          );
+        },
+        onError: () => {
+          message.error("Failed to toggle expense window");
+        },
+      }
+    );
   };
 
   const columns: ColumnsType<Trip> = [
@@ -214,7 +236,14 @@ function TripsPageContent() {
       key: "status",
       width: 140,
       render: (status: TripStatus, record: Trip) => (
-        <TripStatusTag status={status} isDelayed={record.is_delayed} />
+        <div>
+          <TripStatusTag status={status} />
+          {record.expense_window_open && (
+            <Tag color="gold" style={{ marginTop: 4, fontSize: 11 }}>
+              <UnlockOutlined /> Expenses Open
+            </Tag>
+          )}
+        </div>
       ),
       ...getColumnFilterProps("status", STATUS_FILTERS),
       filteredValue: tableFilters.status || null,
@@ -301,7 +330,7 @@ function TripsPageContent() {
     {
       title: "Actions",
       key: "actions",
-      width: 80,
+      width: 120,
       fixed: "right",
       render: (_, record) => (
         <div className="row-actions">
@@ -320,6 +349,25 @@ function TripsPageContent() {
               onClick={() => setUpdateDrawerTripId(record.id)}
               aria-label={`Edit Trip ${record.trip_number}`}
             />
+            {canManageExpenseWindow && ["Completed", "Cancelled"].includes(record.status) && (
+              <Tooltip
+                title={
+                  record.expense_window_open
+                    ? "Close Expense Window"
+                    : "Open Expense Window"
+                }
+              >
+                <Button
+                  type="text"
+                  size="small"
+                  icon={record.expense_window_open ? <LockOutlined /> : <UnlockOutlined />}
+                  onClick={() => handleToggleExpenseWindow(record)}
+                  style={{
+                    color: record.expense_window_open ? "#cf1322" : "#52c41a",
+                  }}
+                />
+              </Tooltip>
+            )}
             <Popconfirm
               title="Delete trip"
               description="Are you sure you want to delete this trip?"

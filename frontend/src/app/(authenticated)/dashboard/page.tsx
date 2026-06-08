@@ -133,7 +133,10 @@ function DashboardContent() {
   const { data: statsData, isLoading: statsLoading } = useDashboardStats(isAuthenticated);
   const { data: tripsData, isLoading: tripsLoading } = useRecentTrips(5, isAuthenticated);
   const { data: todoData, isLoading: todoCountLoading } = useTodoCount(isAuthenticated);
-  const { data: pulseData, isLoading: financialLoading } = useFinancialPulse(isAuthenticated);
+
+  // Month selector for financial pulse (YYYY-MM format)
+  const [pulseMonth, setPulseMonth] = useState<string | null>(null);
+  const { data: pulseData, isLoading: financialLoading } = useFinancialPulse(isAuthenticated, pulseMonth);
 
   // Show loading while data is loading
   const loading = statsLoading;
@@ -399,6 +402,8 @@ function DashboardContent() {
               <IncomeVsExpenseChart
                 data={financialPulse?.monthly_stats || null}
                 loading={financialLoading}
+                selectedMonth={pulseMonth}
+                onMonthChange={setPulseMonth}
               />
             </Col>
 
@@ -407,6 +412,7 @@ function DashboardContent() {
               <ExpenseDistributionChart
                 data={financialPulse?.expense_breakdown || []}
                 loading={financialLoading}
+                monthLabel={financialPulse?.monthly_stats?.month}
               />
             </Col>
           </Row>

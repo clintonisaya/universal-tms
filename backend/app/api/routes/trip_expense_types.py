@@ -18,6 +18,7 @@ from app.models import (
     TripExpenseTypeUpdate,
     Message,
 )
+from app.modules.master_data import DuplicateNameError, check_duplicate_name, filtered_list_query
 
 router = APIRouter(prefix="/trip-expense-types", tags=["trip-expense-types"])
 
@@ -36,21 +37,13 @@ def read_trip_expense_types(
     - Filter by category if provided
     - Filter by is_active if active_only=True (default)
     """
-    query = select(TripExpenseType)
-
-    if active_only:
-        query = query.where(TripExpenseType.is_active == True)
-
-    if category:
-        query = query.where(TripExpenseType.category == category)
-
-    count_query = select(func.count()).select_from(query.subquery())
-    count = session.exec(count_query).one()
-
-    statement = query.order_by(TripExpenseType.category, TripExpenseType.name).offset(skip).limit(limit)
-    expense_types = session.exec(statement).all()
-
-    return TripExpenseTypesPublic(data=expense_types, count=count)
+    return filtered_list_query(
+        session, TripExpenseType,
+        skip=skip, limit=limit,
+        active_only=active_only,
+        category=category,
+        order_fields=("category", "name"),
+    )
 
 
 @router.get("/categories", response_model=list[str])
@@ -92,16 +85,10 @@ def create_trip_expense_type(
     Create new trip expense type.
     Prevents duplicates by checking name uniqueness (case-insensitive).
     """
-    existing = session.exec(
-        select(TripExpenseType).where(
-            func.lower(TripExpenseType.name) == expense_type_in.name.lower(),
-        )
-    ).first()
-    if existing:
-        raise HTTPException(
-            status_code=400,
-            detail="Trip expense type with this name already exists",
-        )
+    try:
+        check_duplicate_name(session, TripExpenseType, expense_type_in.name)
+    except DuplicateNameError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
     expense_type = TripExpenseType.model_validate(expense_type_in)
     session.add(expense_type)
@@ -126,16 +113,10 @@ def update_trip_expense_type(
     update_dict = expense_type_in.model_dump(exclude_unset=True)
 
     if "name" in update_dict:
-        existing = session.exec(
-            select(TripExpenseType).where(
-                func.lower(TripExpenseType.name) == update_dict["name"].lower(),
-            )
-        ).first()
-        if existing and existing.id != expense_type.id:
-            raise HTTPException(
-                status_code=400,
-                detail="Trip expense type with this name already exists",
-            )
+        try:
+            check_duplicate_name(session, TripExpenseType, update_dict["name"], exclude_id=id)
+        except DuplicateNameError as e:
+            raise HTTPException(status_code=400, detail=str(e))
 
     expense_type.sqlmodel_update(update_dict)
     session.add(expense_type)

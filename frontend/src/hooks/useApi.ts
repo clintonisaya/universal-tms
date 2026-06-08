@@ -239,10 +239,11 @@ export function useTodoCount(enabled = true) {
 }
 
 // Financial pulse for dashboard
-export function useFinancialPulse(enabled = true) {
+export function useFinancialPulse(enabled = true, month?: string | null) {
+  const params = month ? `?month=${month}` : "";
   return useQuery({
-    queryKey: queryKeys.financialPulse,
-    queryFn: () => apiFetch<any>("/api/v1/reports/financial-pulse"),
+    queryKey: [...queryKeys.financialPulse, month || "current"],
+    queryFn: () => apiFetch<any>(`/api/v1/reports/financial-pulse${params}`),
     enabled,
   });
 }
@@ -351,11 +352,29 @@ export function useNextBorder(tripId: string | null, direction: "go" | "return")
   });
 }
 
-// Company Settings
+// Company settings
 export function useCompanySettings() {
   return useQuery({
     queryKey: queryKeys.companySettings,
     queryFn: () => apiFetch<any>("/api/v1/company-settings"),
+  });
+}
+
+// Toggle expense window open/closed for a completed/cancelled trip
+export function useToggleTripExpenseWindow() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ tripId, expenseWindowOpen }: { tripId: string; expenseWindowOpen: boolean }) => {
+      return apiFetch<any>(`/api/v1/trips/${tripId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ expense_window_open: expenseWindowOpen }),
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.trips });
+    },
   });
 }
 

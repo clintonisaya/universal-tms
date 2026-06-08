@@ -1,6 +1,8 @@
 """
 Invoice Management — Invoice Generation & Payment Verification
 CRUD endpoints for invoice lifecycle: create from waybill, edit, issue, void.
+
+Thin HTTP adapter — business logic lives in app.modules.invoice_settlement.
 """
 import logging
 import uuid
@@ -8,71 +10,80 @@ from datetime import datetime, timezone
 from decimal import Decimal
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, Query, UploadFile, File
-from sqlalchemy import text
+from fastapi import APIRouter, File, HTTPException, Query, UploadFile
 from sqlalchemy.orm.attributes import flag_modified
 from sqlmodel import func, select
 
 logger = logging.getLogger(__name__)
 
-from app.api.deps import CurrentUser, SessionDep
+from app.api.deps import CurrentUser, SessionDep, assert_user_has_permission
 from app.core.db import commit_or_rollback
 from app.core.storage import storage
+from app.modules.documents import (
+    POP_ATTACHMENT_POLICY,
+    DocumentError,
+    build_pop_attachment_entry,
+    enrich_pop_attachment_urls,
+    generate_storage_key,
+    validate_attachment,
+)
 from app.models import (
     Client,
     CompanySettings,
     ExchangeRate,
     Invoice,
-    InvoiceCreate,
     InvoicePayment,
     InvoicePaymentCreate,
-    InvoicePaymentPublic,
     InvoicePaymentsPublic,
     InvoicePublic,
-    InvoiceStatus,
     InvoicesPublic,
+    InvoiceStatus,
     InvoiceUpdate,
-    Message,
     PaymentType,
+    Trailer,
     Trip,
     Truck,
-    Trailer,
-    UserRole,
     Waybill,
-    WaybillStatus,
 )
-
-# Legacy role sets removed — permission checks now use granular permissions
-# via _has_permission() matching frontend hasPermission() logic.
-
-# Permission strings (mirrors frontend usePermissions.ts)
-PERM_INVOICES_CREATE = "invoices:create"
-PERM_INVOICES_EDIT = "invoices:edit"
-PERM_INVOICES_ISSUE = "invoices:issue"
-PERM_INVOICES_VOID = "invoices:void"
-PERM_INVOICES_REISSUE = "invoices:reissue"
-PERM_INVOICES_PAYMENT = "invoices:payment"
-PERM_INVOICES_POP_MANAGE = "invoices:pop-manage"
-
-
-def _has_permission(user, permission: str) -> bool:
-    """Check granular permission — admin/superuser bypasses all checks."""
-    if user.is_superuser or user.role == UserRole.admin:
-        return True
-    return permission in (user.permissions or [])
+from app.modules.invoice_settlement import (
+    InvalidInvoiceStatusError,
+    InvoiceError,
+    PaymentAmountError,
+    ReissueBlockedError,
+    assert_draft,
+    assert_reissuable,
+    check_invoice_number_exists,
+    compute_totals,
+    generate_next_invoice_number,
+    get_display_number,
+    plan_issue,
+    plan_payment,
+    plan_void,
+)
+from app.modules.permissions import Permission
 
 router = APIRouter(prefix="/invoices", tags=["invoices"])
 
 
-def get_invoice_display_number(invoice: Invoice) -> str | None:
-    """Prefer the active number; fall back to the archived snapshot for voided records."""
-    return invoice.invoice_number or invoice.archived_invoice_number
+# ---------------------------------------------------------------------------
+# Error mapping
+# ---------------------------------------------------------------------------
 
+def _map_invoice_error(err: InvoiceError) -> HTTPException:
+    """Convert domain errors to HTTP exceptions."""
+    if isinstance(err, (InvalidInvoiceStatusError, ReissueBlockedError, PaymentAmountError)):
+        return HTTPException(status_code=422, detail=err.detail)
+    return HTTPException(status_code=400, detail=err.detail)
+
+
+# ---------------------------------------------------------------------------
+# Serialization helpers
+# ---------------------------------------------------------------------------
 
 def build_invoice_public(session: SessionDep, invoice: Invoice) -> InvoicePublic:
     """Serialize invoice with display number fallback and resolved references."""
     pub = InvoicePublic.model_validate(invoice)
-    pub.invoice_number = get_invoice_display_number(invoice)
+    pub.invoice_number = get_display_number(invoice)
 
     if invoice.waybill_id:
         pub.waybill_number = session.exec(
@@ -83,44 +94,6 @@ def build_invoice_public(session: SessionDep, invoice: Invoice) -> InvoicePublic
             select(Trip.trip_number).where(Trip.id == invoice.trip_id)
         ).first()
     return pub
-
-
-def generate_next_invoice_number(session: SessionDep) -> tuple[str, int]:
-    """Suggest the next sequential invoice number. User can override it."""
-    # Advisory lock — prevents concurrent requests generating the same number
-    session.execute(text("SELECT pg_advisory_xact_lock(2001)"))
-
-    statement = (
-        select(Invoice.invoice_seq)
-        .order_by(Invoice.invoice_seq.desc())
-        .limit(1)
-    )
-    last_seq = session.exec(statement).first()
-    seq = (last_seq or 0) + 1
-    return f"{seq:04d}", seq
-
-
-def check_invoice_number_exists(session: SessionDep, number: str, exclude_id: uuid.UUID | None = None) -> bool:
-    """Check if an invoice number already exists in the database."""
-    query = select(Invoice).where(Invoice.invoice_number == number)
-    if exclude_id:
-        query = query.where(Invoice.id != exclude_id)
-    return session.exec(query).first() is not None
-
-
-def compute_totals(invoice: Invoice) -> None:
-    """Recompute subtotal, vat, totals from line items."""
-    items = invoice.items or []
-    subtotal = sum(Decimal(str(item.get("qty", 1))) * Decimal(str(item.get("unit_price", 0))) for item in items)
-    vat_amount = subtotal * (invoice.vat_rate / Decimal("100"))
-    total_usd = subtotal + vat_amount
-    total_tzs = total_usd * invoice.exchange_rate
-
-    invoice.subtotal = subtotal
-    invoice.vat_amount = vat_amount
-    invoice.total_usd = total_usd
-    invoice.total_tzs = total_tzs
-    invoice.amount_outstanding = total_usd - invoice.amount_paid
 
 
 # ---------------------------------------------------------------------------
@@ -158,7 +131,7 @@ def read_invoices(
         wbs = list(session.exec(
             select(Waybill.id, Waybill.waybill_number).where(Waybill.id.in_(waybill_ids))
         ).all())
-        waybill_number_map = {wid: wnum for wid, wnum in wbs}
+        waybill_number_map = dict(wbs)
 
     trip_number_map: dict[uuid.UUID, str] = {}
     if trip_ids:
@@ -170,7 +143,7 @@ def read_invoices(
     public_invoices = []
     for inv in invoices:
         pub = InvoicePublic.model_validate(inv)
-        pub.invoice_number = get_invoice_display_number(inv)
+        pub.invoice_number = get_display_number(inv)
         pub.waybill_number = waybill_number_map.get(inv.waybill_id) if inv.waybill_id else None
         pub.trip_number = trip_number_map.get(inv.trip_id) if inv.trip_id else None
         public_invoices.append(pub)
@@ -204,7 +177,8 @@ def read_invoice(
 
 
 # ---------------------------------------------------------------------------
-# Create from Waybill (primary creation path)# ---------------------------------------------------------------------------
+# Create from Waybill (primary creation path)
+# ---------------------------------------------------------------------------
 
 @router.post("/from-waybill/{waybill_id}", response_model=InvoicePublic)
 def create_invoice_from_waybill(
@@ -214,10 +188,12 @@ def create_invoice_from_waybill(
     waybill_id: uuid.UUID,
 ) -> Any:
     """Auto-generate a draft invoice from waybill data."""
-    if not _has_permission(current_user, PERM_INVOICES_CREATE):
-        raise HTTPException(status_code=403, detail="Not enough permissions to create invoices")
+    assert_user_has_permission(
+        current_user,
+        Permission.INVOICES_CREATE,
+        detail="Not enough permissions to create invoices",
+    )
 
-    # Check waybill exists
     waybill = session.get(Waybill, waybill_id)
     if not waybill:
         raise HTTPException(status_code=404, detail="Waybill not found")
@@ -275,11 +251,6 @@ def create_invoice_from_waybill(
     # Auto-suggest next sequential number (user can change it later)
     invoice_number, invoice_seq = generate_next_invoice_number(session)
 
-    # Bank details are NOT snapshotted at draft creation — they will be fetched
-    # live from company_settings until the invoice is issued. Only then are they
-    # frozen into the invoice record so that post-issue settings changes don't
-    # retroactively alter issued invoices.
-
     # Build line item
     route = f"{waybill.origin} - {waybill.destination}"
     items = [
@@ -331,15 +302,20 @@ def update_invoice(
     invoice_in: InvoiceUpdate,
 ) -> Any:
     """Update a draft invoice. Rejects if invoice is not in draft status."""
-    if not _has_permission(current_user, PERM_INVOICES_EDIT):
-        raise HTTPException(status_code=403, detail="Not enough permissions to update invoices")
+    assert_user_has_permission(
+        current_user,
+        Permission.INVOICES_EDIT,
+        detail="Not enough permissions to update invoices",
+    )
 
     invoice = session.get(Invoice, id)
     if not invoice:
         raise HTTPException(status_code=404, detail="Invoice not found")
 
-    if invoice.status != InvoiceStatus.draft:
-        raise HTTPException(status_code=422, detail="Only draft invoices can be edited")
+    try:
+        assert_draft(invoice)
+    except InvalidInvoiceStatusError as exc:
+        raise _map_invoice_error(exc)
 
     update_dict = invoice_in.model_dump(exclude_unset=True)
 
@@ -371,62 +347,43 @@ def issue_invoice(
     id: uuid.UUID,
 ) -> Any:
     """Transition invoice from draft to issued. Writes rate back to waybill."""
-    if not _has_permission(current_user, PERM_INVOICES_ISSUE):
-        raise HTTPException(status_code=403, detail="Not enough permissions to issue invoices")
+    assert_user_has_permission(
+        current_user,
+        Permission.INVOICES_ISSUE,
+        detail="Not enough permissions to issue invoices",
+    )
 
     invoice = session.get(Invoice, id)
     if not invoice:
         raise HTTPException(status_code=404, detail="Invoice not found")
 
-    if invoice.status != InvoiceStatus.draft:
-        raise HTTPException(status_code=422, detail="Only draft invoices can be issued")
+    try:
+        plan = plan_issue(invoice=invoice, user_id=current_user.id)
+    except InvalidInvoiceStatusError as exc:
+        raise _map_invoice_error(exc)
 
-    # Validate: must have an invoice number
-    if not invoice.invoice_number or not invoice.invoice_number.strip():
-        raise HTTPException(status_code=422, detail="Enter an invoice number before issuing")
-
-    # Recompute totals before issuing
-    compute_totals(invoice)
-
-    # Validate: must have at least one item with a rate > 0
-    items = invoice.items or []
-    total_rate = sum(
-        Decimal(str(item.get("qty", 1))) * Decimal(str(item.get("unit_price", 0)))
-        for item in items
-    )
-    if total_rate <= 0:
-        raise HTTPException(status_code=422, detail="Cannot issue invoice with zero rate. Enter a unit price first.")
-
-    # Snapshot bank details at issue time (drafts fetch live from company_settings)
-    if not invoice.bank_details_tzs or not invoice.bank_details_tzs.get("bank"):
-        company = session.exec(select(CompanySettings)).first()
-        if company:
-            invoice.bank_details_tzs = {
-                "bank": company.bank_name_tzs,
-                "account": company.bank_account_tzs,
-                "name": company.bank_account_name,
-                "currency": company.bank_currency_tzs,
-            }
-            invoice.bank_details_usd = {
-                "bank": company.bank_name_usd,
-                "account": company.bank_account_usd,
-                "name": company.bank_account_name,
-                "currency": company.bank_currency_usd,
-            }
-
-    # Transition status
-    invoice.status = InvoiceStatus.issued
-    invoice.issued_by_id = current_user.id
-    invoice.issued_at = datetime.now(timezone.utc)
-    invoice.updated_by_id = current_user.id
-    invoice.updated_at = datetime.now(timezone.utc)
+    # Snapshot bank details from company settings at issue time
+    company = session.exec(select(CompanySettings)).first()
+    if company:
+        invoice.bank_details_tzs = {
+            "bank": company.bank_name_tzs,
+            "account": company.bank_account_tzs,
+            "name": company.bank_account_name,
+            "currency": company.bank_currency_tzs,
+        }
+        invoice.bank_details_usd = {
+            "bank": company.bank_name_usd,
+            "account": company.bank_account_usd,
+            "name": company.bank_account_name,
+            "currency": company.bank_currency_usd,
+        }
 
     # Rate write-back to waybill (design §4d)
     if invoice.waybill_id:
         waybill = session.get(Waybill, invoice.waybill_id)
         if waybill:
-            waybill.agreed_rate = total_rate
-            waybill.currency = invoice.currency
+            waybill.agreed_rate = plan.waybill_rate
+            waybill.currency = plan.waybill_currency
             waybill.updated_by_id = current_user.id
             session.add(waybill)
 
@@ -448,22 +405,20 @@ def void_invoice(
     id: uuid.UUID,
 ) -> Any:
     """Void an invoice (any status → voided)."""
-    if not _has_permission(current_user, PERM_INVOICES_VOID):
-        raise HTTPException(status_code=403, detail="Only Manager or Admin can void invoices")
+    assert_user_has_permission(
+        current_user,
+        Permission.INVOICES_VOID,
+        detail="Only Manager or Admin can void invoices",
+    )
 
     invoice = session.get(Invoice, id)
     if not invoice:
         raise HTTPException(status_code=404, detail="Invoice not found")
 
-    if invoice.status == InvoiceStatus.voided:
-        raise HTTPException(status_code=422, detail="Invoice is already voided")
-
-    if invoice.invoice_number and not invoice.archived_invoice_number:
-        invoice.archived_invoice_number = invoice.invoice_number
-    invoice.invoice_number = None
-    invoice.status = InvoiceStatus.voided
-    invoice.updated_by_id = current_user.id
-    invoice.updated_at = datetime.now(timezone.utc)
+    try:
+        plan_void(invoice=invoice, user_id=current_user.id)
+    except InvalidInvoiceStatusError as exc:
+        raise _map_invoice_error(exc)
 
     session.add(invoice)
     commit_or_rollback(session)
@@ -483,48 +438,40 @@ def reissue_invoice(
     id: uuid.UUID,
 ) -> Any:
     """Void the invoice and create a fresh draft from the same waybill."""
-    if not _has_permission(current_user, PERM_INVOICES_REISSUE):
-        raise HTTPException(status_code=403, detail="Only Manager or Admin can reissue invoices")
+    assert_user_has_permission(
+        current_user,
+        Permission.INVOICES_REISSUE,
+        detail="Only Manager or Admin can reissue invoices",
+    )
 
     invoice = session.get(Invoice, id)
     if not invoice:
         raise HTTPException(status_code=404, detail="Invoice not found")
 
-    if invoice.status == InvoiceStatus.draft:
-        raise HTTPException(status_code=422, detail="Cannot reissue a draft invoice — edit it instead")
-    if invoice.status == InvoiceStatus.fully_paid:
-        raise HTTPException(status_code=422, detail="Cannot reissue a fully paid invoice")
-
-    # Block if payments exist
+    # Count payments
     payment_count = session.exec(
         select(func.count()).select_from(InvoicePayment).where(InvoicePayment.invoice_id == id)
     ).one()
-    if payment_count > 0:
-        raise HTTPException(
-            status_code=422,
-            detail="Cannot reissue invoice with recorded payments. Void payments first.",
-        )
+
+    try:
+        assert_reissuable(invoice, payment_count)
+    except ReissueBlockedError as exc:
+        raise _map_invoice_error(exc)
 
     waybill_id = invoice.waybill_id
-    if not waybill_id:
-        raise HTTPException(status_code=422, detail="Invoice has no linked waybill")
-
     waybill = session.get(Waybill, waybill_id)
     if not waybill:
         raise HTTPException(status_code=404, detail="Linked waybill not found")
 
-    replacement_invoice_number = get_invoice_display_number(invoice)
+    replacement_invoice_number = get_display_number(invoice)
     if not replacement_invoice_number:
         raise HTTPException(status_code=422, detail="Invoice has no reusable invoice number")
 
     # --- 1. Void the existing invoice ---
-    if not invoice.archived_invoice_number:
-        invoice.archived_invoice_number = replacement_invoice_number
-    invoice.invoice_number = None
-    invoice.status = InvoiceStatus.voided
-    invoice.waybill_id = None  # Free the unique constraint
-    invoice.updated_by_id = current_user.id
-    invoice.updated_at = datetime.now(timezone.utc)
+    plan_void(invoice=invoice, user_id=current_user.id)
+
+    # Free the unique constraint (plan_void doesn't detach waybill)
+    invoice.waybill_id = None
     session.add(invoice)
 
     # --- 2. Revert the waybill ---
@@ -534,9 +481,6 @@ def reissue_invoice(
     session.add(waybill)
 
     # --- 3. Create a new draft invoice from the waybill ---
-    # Reuse the same logic as create_invoice_from_waybill
-
-    # Find linked trip (go or return leg)
     trip = session.exec(
         select(Trip).where(
             (Trip.waybill_id == waybill_id) | (Trip.return_waybill_id == waybill_id)
@@ -555,7 +499,6 @@ def reissue_invoice(
         if trailer:
             trailer_plate = trailer.plate_number
 
-    # Look up client TIN
     customer_tin = ""
     client_id = None
     client = session.exec(
@@ -565,7 +508,6 @@ def reissue_invoice(
         customer_tin = client.tin or ""
         client_id = client.id
 
-    # Get latest exchange rate
     exchange_rate = Decimal("0")
     now = datetime.now()
     latest_rate = session.exec(
@@ -575,10 +517,8 @@ def reissue_invoice(
     if latest_rate:
         exchange_rate = latest_rate.rate
 
-    # Keep the original visible number, but continue advancing the internal sequence.
     _, invoice_seq = generate_next_invoice_number(session)
 
-    # Build line item
     route = f"{waybill.origin} - {waybill.destination}"
     items = [
         {
@@ -618,7 +558,7 @@ def reissue_invoice(
 
 
 # ---------------------------------------------------------------------------
-# Payment Recording (Phase 2)
+# Payment Recording
 # ---------------------------------------------------------------------------
 
 @router.patch("/{id}/payment", response_model=InvoicePublic)
@@ -630,58 +570,30 @@ def record_payment(
     body: InvoicePaymentCreate,
 ) -> Any:
     """Record a payment against an issued or partially-paid invoice."""
-    if not _has_permission(current_user, PERM_INVOICES_PAYMENT):
-        raise HTTPException(status_code=403, detail="Only Finance or Admin can record invoice payments")
+    assert_user_has_permission(
+        current_user,
+        Permission.INVOICES_PAYMENT,
+        detail="Only Finance or Admin can record invoice payments",
+    )
 
     invoice = session.get(Invoice, id)
     if not invoice:
         raise HTTPException(status_code=404, detail="Invoice not found")
 
-    # Only allow payments on invoices that can receive them
-    if invoice.status == InvoiceStatus.draft:
-        raise HTTPException(status_code=422, detail="Cannot record payment on a draft invoice")
-    if invoice.status == InvoiceStatus.voided:
-        raise HTTPException(status_code=422, detail="Cannot record payment on a voided invoice")
-    if invoice.status == InvoiceStatus.fully_paid:
-        raise HTTPException(status_code=422, detail="Invoice is already fully paid")
-
-    # Validate amount doesn't exceed outstanding balance
-    outstanding_after = invoice.amount_outstanding - body.amount
-    if outstanding_after < 0:
-        raise HTTPException(
-            status_code=422,
-            detail=f"Payment amount ({body.amount}) exceeds outstanding balance ({invoice.amount_outstanding})"
+    try:
+        plan = plan_payment(
+            invoice=invoice,
+            amount=body.amount,
+            payment_type=body.payment_type.value if hasattr(body.payment_type, "value") else body.payment_type,
+            user_id=current_user.id,
         )
-
-    # Validate payment_type matches invoice state
-    if invoice.status == InvoiceStatus.issued and body.payment_type == PaymentType.balance:
-        raise HTTPException(status_code=422, detail="Cannot record balance payment when no advance has been recorded")
-    if invoice.status == InvoiceStatus.partially_paid and body.payment_type == PaymentType.advance:
-        raise HTTPException(status_code=422, detail="Advance payment already recorded, please record the balance")
-
-    # Auto-suggest payment_type if 'full' but amount != total
-    if body.payment_type == PaymentType.full and body.amount != invoice.total_usd:
-        # Override: if partial payment on issued invoice, treat as advance
-        if invoice.status == InvoiceStatus.issued and body.amount < invoice.total_usd:
-            body.payment_type = PaymentType.advance
-
-    # Apply payment
-    invoice.amount_paid += body.amount
-    invoice.amount_outstanding = outstanding_after
-
-    # Auto-transition status
-    if invoice.amount_outstanding <= 0:
-        invoice.status = InvoiceStatus.fully_paid
-    elif invoice.amount_paid > 0:
-        invoice.status = InvoiceStatus.partially_paid
-
-    invoice.updated_by_id = current_user.id
-    invoice.updated_at = datetime.now(timezone.utc)
+    except (InvalidInvoiceStatusError, PaymentAmountError) as exc:
+        raise _map_invoice_error(exc)
 
     # Create payment record
     payment = InvoicePayment(
         invoice_id=id,
-        payment_type=body.payment_type,
+        payment_type=PaymentType(plan.payment_type),
         amount=body.amount,
         currency=body.currency,
         payment_date=body.payment_date,
@@ -723,13 +635,8 @@ def list_payments(
 # POP Attachments — attach Proof of Payment files to payment records
 # ---------------------------------------------------------------------------
 
-POP_ALLOWED_TYPES = [
-    "application/pdf",
-    "image/jpeg",
-    "image/png",
-    "image/webp",
-]
-POP_MAX_SIZE = 5 * 1024 * 1024  # 5 MB
+# POP attachment policy defined in app.modules.documents.helpers
+# POP_ATTACHMENT_POLICY: allowed types and max size for proof-of-payment
 
 
 @router.post("/{invoice_id}/payments/{payment_id}/attachment")
@@ -742,8 +649,11 @@ async def upload_pop_attachment(
     file: UploadFile = File(...),
 ) -> Any:
     """Upload a proof-of-payment attachment for a specific payment record."""
-    if not _has_permission(current_user, PERM_INVOICES_POP_MANAGE):
-        raise HTTPException(status_code=403, detail="Only Finance or Admin can upload POP attachments")
+    assert_user_has_permission(
+        current_user,
+        Permission.INVOICES_POP_MANAGE,
+        detail="Only Finance or Admin can upload POP attachments",
+    )
 
     invoice = session.get(Invoice, invoice_id)
     if not invoice:
@@ -753,36 +663,24 @@ async def upload_pop_attachment(
     if not payment or payment.invoice_id != invoice_id:
         raise HTTPException(status_code=404, detail="Payment not found for this invoice")
 
-    # Validate file type
-    if file.content_type not in POP_ALLOWED_TYPES:
-        raise HTTPException(
-            status_code=400,
-            detail=f"File type '{file.content_type}' is not allowed. Accepted: PDF, JPEG, PNG, WebP",
-        )
-
-    # Validate file size
+    # Validate file type and size against POP policy
     content = await file.read()
-    if len(content) > POP_MAX_SIZE:
-        raise HTTPException(status_code=400, detail="File size exceeds 5 MB limit")
+    try:
+        validate_attachment(file.content_type, len(content), POP_ATTACHMENT_POLICY)
+    except DocumentError as e:
+        raise HTTPException(status_code=400, detail=e.detail)
 
-    # Generate storage key
-    unique_id = uuid.uuid4().hex[:8]
-    clean_filename = (file.filename or "pop").replace(" ", "_")
-    object_name = f"pop/{invoice_id}/{unique_id}_{clean_filename}"
-
+    # Generate storage key and upload
+    object_name = generate_storage_key("pop", invoice_id, file.filename)
     uploaded_key = storage.upload_file(content, object_name, file.content_type)
     if not uploaded_key:
         raise HTTPException(status_code=500, detail="Failed to upload file to storage")
 
-    # Append to payment's JSON attachments list
-    attachment_entry = {
-        "id": uuid.uuid4().hex[:12],
-        "key": uploaded_key,
-        "filename": file.filename or clean_filename,
-        "content_type": file.content_type,
-        "uploaded_by": str(current_user.id),
-        "uploaded_at": datetime.now(timezone.utc).isoformat(),
-    }
+    # Build rich attachment entry and append to payment
+    clean_filename = (file.filename or "pop").replace(" ", "_")
+    attachment_entry = build_pop_attachment_entry(
+        uploaded_key, clean_filename, file.content_type, current_user.id,
+    )
 
     current = list(payment.attachments) if payment.attachments else []
     current.append(attachment_entry)
@@ -816,10 +714,9 @@ def list_pop_attachments(
 
     result = []
     for payment in payments:
-        enriched_attachments = []
-        for att in (payment.attachments or []):
-            url = storage.get_presigned_url(att["key"], expiration=3600)
-            enriched_attachments.append({**att, "url": url})
+        enriched_attachments = enrich_pop_attachment_urls(
+            payment.attachments or [], storage,
+        )
 
         result.append({
             "payment_id": str(payment.id),
@@ -841,8 +738,11 @@ def delete_pop_attachment(
     attachment_id: str,
 ) -> None:
     """Delete a POP attachment by its ID."""
-    if not _has_permission(current_user, PERM_INVOICES_POP_MANAGE):
-        raise HTTPException(status_code=403, detail="Only Finance or Admin can delete POP attachments")
+    assert_user_has_permission(
+        current_user,
+        Permission.INVOICES_POP_MANAGE,
+        detail="Only Finance or Admin can delete POP attachments",
+    )
 
     invoice = session.get(Invoice, invoice_id)
     if not invoice:

@@ -1,60 +1,88 @@
+"""Reports API — thin HTTP adapters for Reporting Read Models.
+
+Query construction, pagination, and response serialization live here.
+All calculation and projection logic lives in app.modules.reporting.
+"""
+
 import logging
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from typing import Any
 
-logger = logging.getLogger(__name__)
-
 from fastapi import APIRouter, Query
-from sqlmodel import func, select
 from sqlalchemy import or_
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import aliased
+from sqlmodel import func, select
 
 from app.api.deps import CurrentUser, SessionDep
-from sqlalchemy.orm import aliased
-
-from collections import defaultdict
-
 from app.models import (
     BorderPost,
+    Driver,
+    ExchangeRate,
+    ExpenseRequest,
+    Trailer,
     Trip,
     TripBorderCrossing,
-    TripStatus,
+    Truck,
     Waybill,
     WaybillStatus,
-    Truck,
-    Driver,
-    Trailer,
-    ExpenseRequest,
-    ExpenseStatus,
-    ExpenseCategory,
-    ExchangeRate,
 )
+from app.modules.reporting import (
+    ACTIVE_TRIP_STATUSES,
+    APPROVED_EXPENSE_STATUSES,
+    aggregate_expense_breakdown,
+    aggregate_monthly_expenses,
+    aggregate_monthly_revenue,
+    aggregate_quarterly_expenses,
+    aggregate_quarterly_revenue,
+    build_monthly_stats,
+    build_profitability_summary,
+    build_quarterly_trend,
+    normalize_to_tzs,
+    project_profitability_row,
+    project_trip_row,
+    project_unlinked_waybill_row,
+)
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/reports", tags=["reports"])
 
 
-def _resolve_border_location(crossings: list[dict], trip_status: str) -> str | None:
-    """AC-1 (Story 6.14): Resolve border location from actual crossing records.
+# ---------------------------------------------------------------------------
+# Shared helpers (DB-coupled — stay in the route adapter)
+# ---------------------------------------------------------------------------
 
-    Only show a border location when the trip is at/near a border.
-    Prefer the first crossing with arrived_side_a_at recorded; fall back to
-    the first planned GO crossing; return None when not at a border at all.
-    """
-    at_border = trip_status in ("At Border", "At Border (Return)")
-    if not at_border:
-        return None
+def get_current_exchange_rate(session: SessionDep) -> Decimal:
+    """Get current month's exchange rate, fallback to most recent or default."""
+    now = datetime.now(timezone.utc)
 
-    go_crossings = [c for c in crossings if c.get("direction") == "go"]
-    # First: any crossing with arrival recorded (truck is physically there)
-    for c in go_crossings:
-        if c.get("arrived_side_a_at"):
-            return c.get("border_display_name") or "—"
-    # Second: first planned GO crossing (not yet arrived but trip is heading there)
-    if go_crossings:
-        return go_crossings[0].get("border_display_name") or "—"
-    return "—"
+    rate = session.exec(
+        select(ExchangeRate)
+        .where(ExchangeRate.month == now.month)
+        .where(ExchangeRate.year == now.year)
+    ).first()
+    if rate:
+        return rate.rate
 
+    rate = session.exec(
+        select(ExchangeRate)
+        .order_by(ExchangeRate.year.desc(), ExchangeRate.month.desc())
+        .limit(1)
+    ).first()
+    if rate:
+        return rate.rate
+
+    logger.warning(
+        "No exchange rate found for %s-%s. Using fallback rate of 2500.00",
+        now.year, now.month,
+    )
+    return Decimal("2500.00")
+
+
+# ---------------------------------------------------------------------------
+# Waybill Tracking Report
+# ---------------------------------------------------------------------------
 
 @router.get("/waybill-tracking")
 def get_waybill_tracking_report(
@@ -66,16 +94,10 @@ def get_waybill_tracking_report(
     status: str | None = Query(default=None, description="Filter by trip status"),
     export: bool = Query(default=False, description="If true, return all matching records (ignore skip/limit)"),
 ) -> Any:
-    """
-    Trip-centric tracking report — one row per trip combining go + return waybill data.
-    Unlinked (open, no trip) waybills are appended as separate rows.
-
-    Returns {"data": [...], "count": total} for server-side pagination.
-    """
+    """Trip-centric tracking report — one row per trip combining go + return waybill data."""
     GoWaybill = aliased(Waybill, name="go_waybill")
     ReturnWaybill = aliased(Waybill, name="return_waybill")
 
-    # Base query — trip-centric: one row per trip, left-join both waybills
     base_stmt = (
         select(Trip, GoWaybill, ReturnWaybill, Truck, Driver, Trailer)
         .outerjoin(GoWaybill, GoWaybill.id == Trip.waybill_id)
@@ -85,7 +107,6 @@ def get_waybill_tracking_report(
         .outerjoin(Trailer, Trailer.id == Trip.trailer_id)
     )
 
-    # AC-2: Server-side search filter — searches across key fields
     if search:
         search_term = f"%{search}%"
         base_stmt = base_stmt.where(
@@ -101,22 +122,19 @@ def get_waybill_tracking_report(
             )
         )
 
-    # AC-2: Server-side status filter
     if status:
         base_stmt = base_stmt.where(Trip.status == status)
 
-    # AC-1/AC-3: Get total count before pagination
     count_stmt = select(func.count()).select_from(base_stmt.subquery())
     total_count = session.execute(count_stmt).scalar() or 0
 
-    # Apply ordering + pagination (skip for export mode)
     trips_stmt = base_stmt.order_by(Trip.created_at.desc())
     if not export:
         trips_stmt = trips_stmt.offset(skip).limit(limit)
 
     trip_results = session.execute(trips_stmt).all()
 
-    # Collect linked waybill IDs to find unlinked ones
+    # Collect linked waybill IDs for unlinked detection
     linked_ids: list = []
     for row in trip_results:
         trip = row[0]
@@ -125,7 +143,7 @@ def get_waybill_tracking_report(
         if trip.return_waybill_id:
             linked_ids.append(trip.return_waybill_id)
 
-    # Open waybills not yet dispatched on any trip (only when no filters active)
+    # Open waybills not yet dispatched (only when no filters active)
     unlinked_waybills = []
     if not search and not status:
         unlinked_stmt = select(Waybill).where(Waybill.status == WaybillStatus.open)
@@ -133,37 +151,8 @@ def get_waybill_tracking_report(
             unlinked_stmt = unlinked_stmt.where(Waybill.id.notin_(linked_ids))
         unlinked_waybills = session.exec(unlinked_stmt).all()
 
-    def calc_durations(trip):
-        duration_days = 0
-        return_duration_days = 0
-        if not trip:
-            return duration_days, return_duration_days
-
-        # Prefer stored trip_duration_days (set at completion — authoritative, no +1 offset)
-        if trip.trip_duration_days is not None:
-            duration_days = max(1, trip.trip_duration_days)
-        else:
-            start_date = trip.dispatch_date or trip.start_date or trip.created_at
-            if start_date:
-                end_date = trip.arrival_return_date or trip.end_date or datetime.now(timezone.utc)
-                if start_date.tzinfo is None:
-                    start_date = start_date.replace(tzinfo=timezone.utc)
-                if end_date.tzinfo is None:
-                    end_date = end_date.replace(tzinfo=timezone.utc)
-                duration_days = max(1, (end_date - start_date).days + 1)
-
-        if trip.return_waybill_id and trip.dispatch_return_date:
-            ret_start = trip.dispatch_return_date
-            ret_end = trip.arrival_return_date or datetime.now(timezone.utc)
-            if ret_start.tzinfo is None:
-                ret_start = ret_start.replace(tzinfo=timezone.utc)
-            if ret_end.tzinfo is None:
-                ret_end = ret_end.replace(tzinfo=timezone.utc)
-            return_duration_days = max(1, (ret_end - ret_start).days + 1)
-
-        return duration_days, return_duration_days
-
-    # --- Bulk-fetch border crossings for all trips (avoid N+1) ---
+    # Bulk-fetch border crossings (avoid N+1)
+    from collections import defaultdict
     trip_ids = [str(row[0].id) for row in trip_results]
     crossings_by_trip: dict[str, list] = defaultdict(list)
     if trip_ids:
@@ -187,306 +176,97 @@ def get_waybill_tracking_report(
                 "departed_border_at": crossing.departed_border_at.isoformat() if crossing.departed_border_at else None,
             })
 
+    # Project rows using the reporting module
     report_data = []
-
-    # --- Trip rows ---
     for db_row in trip_results:
         trip, go_wb, return_wb, truck, driver, trailer = db_row
-        duration_days, return_duration_days = calc_durations(trip)
+        report_data.append(
+            project_trip_row(
+                trip, go_wb, return_wb, truck, driver, trailer,
+                crossings_by_trip.get(str(trip.id), []),
+            )
+        )
 
-        def _iso(dt):
-            return dt.isoformat() if dt else None
-
-        row = {
-            # Unique key for frontend table
-            "row_id": str(trip.id),
-            # Trip status
-            "trip_status": trip.status if trip else "Not Dispatched",
-            # IDs
-            "trip_id": str(trip.id),
-            "trip_number": trip.trip_number,
-            # Go waybill
-            "waybill_id": str(go_wb.id) if go_wb else None,
-            "waybill_number": go_wb.waybill_number if go_wb else None,
-            "waybill_status": go_wb.status if go_wb else None,
-            "client_name": go_wb.client_name if go_wb else None,
-            "cargo_type": go_wb.cargo_type if go_wb else None,
-            "cargo_weight": go_wb.weight_kg if go_wb else 0,
-            "cargo_description": go_wb.description if go_wb else "",
-            "origin": go_wb.origin if go_wb else "",
-            "destination": go_wb.destination if go_wb else "",
-            "risk_level": go_wb.risk_level if go_wb else "Low",
-            # Return waybill (if attached)
-            "return_waybill_id": str(trip.return_waybill_id) if trip.return_waybill_id else None,
-            "return_waybill_number": return_wb.waybill_number if return_wb else None,
-            "return_waybill_status": return_wb.status if return_wb else None,
-            "return_client_name": return_wb.client_name if return_wb else None,
-            "return_cargo_type": return_wb.cargo_type if return_wb else None,
-            "return_cargo_weight": return_wb.weight_kg if return_wb else None,
-            "return_origin": return_wb.origin if return_wb else None,
-            "return_destination": return_wb.destination if return_wb else None,
-            "return_cargo_description": return_wb.description if return_wb else None,
-            # Assets — extended
-            "truck_plate": truck.plate_number if truck else None,
-            "truck_make": truck.make if truck else None,
-            "truck_model": truck.model if truck else None,
-            "driver_name": driver.full_name if driver else None,
-            "driver_license": driver.license_number if driver else None,
-            "driver_passport": driver.passport_number if driver else None,
-            "driver_phone": driver.phone_number if driver else None,
-            "trailer_plate": trailer.plate_number if trailer else None,
-            "trailer_type": trailer.type if trailer else None,
-            # Location
-            "current_location": trip.current_location,
-            # AC-1 (Story 6.14): Derive border_location from actual crossing records.
-            # Prefer the first GO crossing that has arrived_side_a_at recorded;
-            # fall back to any GO crossing planned; then "—" if no crossings at all.
-            "border_location": _resolve_border_location(crossings_by_trip.get(str(trip.id), []), trip.status),
-            # Duration
-            "duration_days": duration_days,
-            "return_duration_days": return_duration_days,
-            # Meta
-            "start_date": trip.start_date.isoformat() if trip.start_date else None,
-            # Trip tracking dates
-            "dispatch_date": _iso(trip.dispatch_date),
-            "arrival_loading_date": _iso(trip.arrival_loading_date),
-            "loading_start_date": _iso(trip.loading_start_date),
-            "loading_end_date": _iso(trip.loading_end_date),
-            "arrival_offloading_date": _iso(trip.arrival_offloading_date),
-            "offloading_date": _iso(trip.offloading_date),
-            "dispatch_return_date": _iso(trip.dispatch_return_date),
-            "arrival_loading_return_date": _iso(trip.arrival_loading_return_date),
-            "loading_return_start_date": _iso(trip.loading_return_start_date),
-            "loading_return_end_date": _iso(trip.loading_return_end_date),
-            "offloading_return_date": _iso(trip.offloading_return_date),
-            "arrival_return_date": _iso(trip.arrival_return_date),
-            # Client report fields
-            "return_empty_container_date": _iso(trip.return_empty_container_date),
-            "remarks": trip.remarks,
-            "return_remarks": trip.return_remarks,
-            "is_delayed": trip.is_delayed,
-            # Border crossings (bulk-fetched, no N+1)
-            "border_crossings": crossings_by_trip.get(str(trip.id), []),
-        }
-        report_data.append(row)
-
-    # --- Unlinked waybill rows (no trip yet) ---
     for wb in unlinked_waybills:
-        report_data.append({
-            "row_id": str(wb.id),
-            "trip_status": "Not Dispatched",
-            "trip_id": None,
-            "trip_number": None,
-            "waybill_id": str(wb.id),
-            "waybill_number": wb.waybill_number,
-            "waybill_status": wb.status,
-            "client_name": wb.client_name,
-            "cargo_type": wb.cargo_type,
-            "cargo_weight": wb.weight_kg,
-            "cargo_description": wb.description,
-            "origin": wb.origin,
-            "destination": wb.destination,
-            "risk_level": wb.risk_level,
-            "return_waybill_id": None,
-            "return_waybill_number": None,
-            "return_waybill_status": None,
-            "return_client_name": None,
-            "return_cargo_type": None,
-            "return_cargo_weight": None,
-            "return_origin": None,
-            "return_destination": None,
-            "return_cargo_description": None,
-            "truck_plate": None,
-            "truck_make": None,
-            "truck_model": None,
-            "driver_name": None,
-            "driver_license": None,
-            "driver_passport": None,
-            "driver_phone": None,
-            "trailer_plate": None,
-            "trailer_type": None,
-            "current_location": None,
-            "border_location": None,
-            "duration_days": 0,
-            "return_duration_days": 0,
-            "start_date": None,
-            "dispatch_date": None,
-            "arrival_loading_date": None,
-            "loading_start_date": None,
-            "loading_end_date": None,
-            "arrival_offloading_date": None,
-            "offloading_date": None,
-            "dispatch_return_date": None,
-            "arrival_loading_return_date": None,
-            "loading_return_start_date": None,
-            "loading_return_end_date": None,
-            "offloading_return_date": None,
-            "arrival_return_date": None,
-            "return_empty_container_date": None,
-            "remarks": None,
-            "return_remarks": None,
-            "is_delayed": False,
-            "border_crossings": [],
-        })
+        report_data.append(project_unlinked_waybill_row(wb))
 
-    # Include unlinked count in total when no filters are active
     unlinked_count = len(unlinked_waybills) if not search and not status else 0
     return {"data": report_data, "count": total_count + unlinked_count}
 
 
-def get_current_exchange_rate(session: SessionDep) -> Decimal:
-    """Get current month's exchange rate, fallback to most recent or default."""
-    now = datetime.now(timezone.utc)
-
-    # Try current month
-    rate = session.exec(
-        select(ExchangeRate)
-        .where(ExchangeRate.month == now.month)
-        .where(ExchangeRate.year == now.year)
-    ).first()
-
-    if rate:
-        return rate.rate
-
-    # Try most recent rate
-    rate = session.exec(
-        select(ExchangeRate)
-        .order_by(ExchangeRate.year.desc(), ExchangeRate.month.desc())
-        .limit(1)
-    ).first()
-
-    if rate:
-        return rate.rate
-
-    # Default rate — no exchange rate configured in DB
-    logger.warning(
-        "No exchange rate found for %s-%s. Using fallback rate of 2500.00",
-        now.year, now.month,
-    )
-    return Decimal("2500.00")
-
-
-def normalize_to_tzs(amount: Decimal, currency: str, exchange_rate: Decimal | None, default_rate: Decimal) -> Decimal:
-    """Convert USD to TZS using stored exchange rate or default.
-
-    The stored exchange_rate must be > 1 to be valid (a real TZS/USD rate is
-    always > 1, e.g. 2500). Values of 0 or 1 are sentinel/unset values and
-    must fall back to default_rate to avoid silently under-converting amounts.
-    This mirrors the frontend resolveRate() guard: `if (ownRate && ownRate > 1)`.
-    """
-    if currency == "TZS":
-        return amount
-    # Only use the stored rate if it is a real rate (> 1 TZS per foreign unit)
-    rate = exchange_rate if (exchange_rate and exchange_rate > Decimal("1")) else default_rate
-    return amount * rate
-
+# ---------------------------------------------------------------------------
+# Financial Pulse
+# ---------------------------------------------------------------------------
 
 @router.get("/financial-pulse")
 def get_financial_pulse(
     session: SessionDep,
     current_user: CurrentUser,
+    month: str | None = Query(default=None, description="Month to view in YYYY-MM format (defaults to current month)"),
 ) -> dict[str, Any]:
-    """
-    Financial Pulse Dashboard Data - Story 2.22
+    """Financial Pulse Dashboard Data.
 
-    Returns:
-    - quarterly_trend: Monthly Net Profit for the last 3 months (quarterly view)
-    - monthly_stats: Income vs Expenses for current month
-    - expense_breakdown: Expenses by category (Approved + Paid)
-
-    All values normalized to TZS (Base Currency).
+    Returns quarterly_trend, monthly_stats, and expense_breakdown,
+    all normalised to TZS.
     """
     now = datetime.now(timezone.utc)
     current_year = now.year
     year_start = datetime(current_year, 1, 1, tzinfo=timezone.utc)
-    current_month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+
+    # Parse the month parameter or default to current month
+    if month:
+        try:
+            selected = datetime.strptime(month, "%Y-%m")
+            selected_month_start = selected.replace(day=1, hour=0, minute=0, second=0, microsecond=0, tzinfo=timezone.utc)
+            selected_month_label = selected.strftime("%B %Y")
+        except ValueError:
+            selected_month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+            selected_month_label = now.strftime("%B %Y")
+    else:
+        selected_month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        selected_month_label = now.strftime("%B %Y")
+
+    # Compute next month start for range queries
+    next_month_start = (selected_month_start + timedelta(days=32)).replace(day=1)
 
     default_rate = get_current_exchange_rate(session)
 
-    # Quarter definitions: Q1=Jan-Mar, Q2=Apr-Jun, Q3=Jul-Sep, Q4=Oct-Dec
-    quarters = [
-        {"label": "Q1", "months": [1, 2, 3]},
-        {"label": "Q2", "months": [4, 5, 6]},
-        {"label": "Q3", "months": [7, 8, 9]},
-        {"label": "Q4", "months": [10, 11, 12]},
-    ]
+    # Revenue date attribution
+    _rev_date = func.coalesce(Trip.dispatch_date, Trip.end_date, Trip.created_at)
 
-    # ============================================================
-    # 1. QUARTERLY PROFIT TREND (4 quarters of current year)
-    # ============================================================
-
-    # Active/completed trip statuses for revenue counting
-    _active_statuses = [
-        TripStatus.wait_to_load.value,
-        TripStatus.loading.value,
-        TripStatus.loaded.value,
-        TripStatus.in_transit.value,
-        TripStatus.at_border.value,
-        TripStatus.arrived_at_destination.value,
-        TripStatus.offloading.value,
-        TripStatus.offloaded.value,
-        TripStatus.returning_empty.value,
-        TripStatus.dispatch_return.value,
-        TripStatus.wait_to_load_return.value,
-        TripStatus.loading_return.value,
-        TripStatus.loaded_return.value,
-        TripStatus.in_transit_return.value,
-        TripStatus.at_border_return.value,
-        TripStatus.arrived_at_destination_return.value,
-        TripStatus.offloading_return.value,
-        TripStatus.offloaded_return.value,
-        TripStatus.returned.value,
-        TripStatus.waiting_for_pods.value,
-        TripStatus.completed.value,
-    ]
-
-    # Go waybill revenue (current year)
-    # AC-3: attribute revenue to dispatch_date (or end_date, then created_at as last resort)
-    _revenue_date = func.coalesce(Trip.dispatch_date, Trip.end_date, Trip.created_at)
-    # Deduplicate waybills: one waybill may have multiple trips (truck swaps)
-    waybill_revenue_subq = (
+    # --- Quarterly revenue (go waybills) ---
+    go_trip_subq = (
         select(
-            Trip.waybill_id.label("wb_id"),
-            func.max(func.date(_revenue_date)).label("date"),
+            Trip.waybill_id,
+            func.max(func.date(_rev_date)).label("date"),
         )
         .where(Trip.waybill_id.isnot(None))
-        .where(_revenue_date >= year_start)
-        .where(Trip.status.in_(_active_statuses))
+        .where(_rev_date >= year_start)
+        .where(Trip.status.in_(ACTIVE_TRIP_STATUSES))
         .group_by(Trip.waybill_id)
-        .subquery()
-    )
+    ).subquery()
     revenue_stmt = (
-        select(
-            waybill_revenue_subq.c.date,
-            Waybill.agreed_rate,
-            Waybill.currency,
-        )
-        .join(Waybill, Waybill.id == waybill_revenue_subq.c.wb_id)
+        select(go_trip_subq.c.date, Waybill.agreed_rate, Waybill.currency)
+        .join(go_trip_subq, Waybill.id == go_trip_subq.c.waybill_id)
     )
-    # Return waybill revenue (current year) — only trips that have return waybill attached
-    return_waybill_revenue_subq = (
+    # Return waybill revenue
+    return_trip_subq = (
         select(
-            Trip.return_waybill_id.label("wb_id"),
-            func.max(func.date(_revenue_date)).label("date"),
+            Trip.return_waybill_id,
+            func.max(func.date(_rev_date)).label("date"),
         )
         .where(Trip.return_waybill_id.isnot(None))
-        .where(_revenue_date >= year_start)
-        .where(Trip.status.in_(_active_statuses))
+        .where(_rev_date >= year_start)
+        .where(Trip.status.in_(ACTIVE_TRIP_STATUSES))
         .group_by(Trip.return_waybill_id)
-        .subquery()
-    )
+    ).subquery()
     return_revenue_stmt = (
-        select(
-            return_waybill_revenue_subq.c.date,
-            Waybill.agreed_rate,
-            Waybill.currency,
-        )
-        .join(Waybill, Waybill.id == return_waybill_revenue_subq.c.wb_id)
+        select(return_trip_subq.c.date, Waybill.agreed_rate, Waybill.currency)
+        .join(return_trip_subq, Waybill.id == return_trip_subq.c.return_waybill_id)
     )
     revenue_rows = list(session.exec(revenue_stmt).all()) + list(session.exec(return_revenue_stmt).all())
 
-    # Expenses (Approved: Pending Finance + Paid) for current year
-    approved_statuses = [ExpenseStatus.pending_finance.value, ExpenseStatus.paid.value]
+    # --- Approved expenses (current year) ---
     expense_stmt = (
         select(
             func.coalesce(func.date(ExpenseRequest.approved_at), func.date(ExpenseRequest.payment_date), func.date(ExpenseRequest.created_at)).label("date"),
@@ -494,159 +274,83 @@ def get_financial_pulse(
             ExpenseRequest.currency,
             ExpenseRequest.exchange_rate,
         )
-        .where(ExpenseRequest.status.in_(approved_statuses))
+        .where(ExpenseRequest.status.in_(APPROVED_EXPENSE_STATUSES))
         .where(
             func.coalesce(ExpenseRequest.approved_at, ExpenseRequest.payment_date, ExpenseRequest.created_at) >= year_start
         )
     )
     expense_rows = session.exec(expense_stmt).all()
 
-    # Helper to get quarter index (0-3) from month
-    def get_quarter(month: int) -> int:
-        return (month - 1) // 3
+    # --- Quarterly trend ---
+    quarter_revenue = aggregate_quarterly_revenue(revenue_rows, default_rate)
+    quarter_expense = aggregate_quarterly_expenses(expense_rows, default_rate)
+    quarterly_trend = build_quarterly_trend(quarter_revenue, quarter_expense, current_year)
 
-    # Aggregate by quarter
-    quarter_revenue = [Decimal("0")] * 4
-    for row in revenue_rows:
-        month = int(str(row.date)[5:7])
-        qi = get_quarter(month)
-        rate_tzs = normalize_to_tzs(Decimal(str(row.agreed_rate)), row.currency, None, default_rate)
-        quarter_revenue[qi] += rate_tzs
-
-    quarter_expense = [Decimal("0")] * 4
-    for row in expense_rows:
-        month = int(str(row.date)[5:7])
-        qi = get_quarter(month)
-        amt_tzs = normalize_to_tzs(row.amount, row.currency, row.exchange_rate, default_rate)
-        quarter_expense[qi] += amt_tzs
-
-    # Build quarterly trend (all 4 quarters)
-    quarterly_trend = []
-    for i, q in enumerate(quarters):
-        revenue = quarter_revenue[i]
-        expense = quarter_expense[i]
-        profit = revenue - expense
-        month_names = "-".join([datetime(current_year, m, 1).strftime("%b") for m in q["months"]])
-        quarterly_trend.append({
-            "quarter": q["label"],
-            "label": f"{q['label']} ({month_names})",
-            "profit": float(profit),
-            "revenue": float(revenue),
-            "expense": float(expense),
-        })
-
-    # ============================================================
-    # 2. MONTHLY STATS (Income vs Expenses for Current Month)
-    # ============================================================
-
-    # Monthly Revenue: go waybills
-    # Bug fix: use _revenue_date (same as quarterly) and deduplicate waybills
-    monthly_waybill_ids = (
-        select(Trip.waybill_id)
-        .where(Trip.waybill_id.isnot(None))
-        .where(_revenue_date >= current_month_start)
-        .where(Trip.status.in_(_active_statuses))
-        .distinct()
-        .subquery()
-    )
-    monthly_revenue_stmt = (
+    # --- Monthly stats ---
+    monthly_go_stmt = (
         select(Waybill.agreed_rate, Waybill.currency)
-        .where(Waybill.id.in_(monthly_waybill_ids))
-    )
-    # Monthly Revenue: return waybills
-    monthly_return_waybill_ids = (
-        select(Trip.return_waybill_id)
-        .where(Trip.return_waybill_id.isnot(None))
-        .where(_revenue_date >= current_month_start)
-        .where(Trip.status.in_(_active_statuses))
-        .distinct()
-        .subquery()
-    )
-    monthly_return_revenue_stmt = (
-        select(Waybill.agreed_rate, Waybill.currency)
-        .where(Waybill.id.in_(monthly_return_waybill_ids))
-    )
-    monthly_revenue_rows = list(session.exec(monthly_revenue_stmt).all()) + list(session.exec(monthly_return_revenue_stmt).all())
-
-    total_monthly_income = Decimal("0")
-    for row in monthly_revenue_rows:
-        total_monthly_income += normalize_to_tzs(Decimal(str(row.agreed_rate)), row.currency, None, default_rate)
-
-    # Monthly Expenses (Approved: Pending Finance + Paid)
-    monthly_expense_stmt = (
-        select(
-            ExpenseRequest.amount,
-            ExpenseRequest.currency,
-            ExpenseRequest.exchange_rate,
-        )
-        .where(ExpenseRequest.status.in_(approved_statuses))
         .where(
-            func.coalesce(ExpenseRequest.approved_at, ExpenseRequest.payment_date, ExpenseRequest.created_at) >= current_month_start
+            Waybill.id.in_(
+                select(Trip.waybill_id)
+                .where(Trip.waybill_id.isnot(None))
+                .where(_rev_date >= selected_month_start)
+                .where(_rev_date < next_month_start)
+                .where(Trip.status.in_(ACTIVE_TRIP_STATUSES))
+            )
+        )
+    )
+    monthly_return_stmt = (
+        select(Waybill.agreed_rate, Waybill.currency)
+        .where(
+            Waybill.id.in_(
+                select(Trip.return_waybill_id)
+                .where(Trip.return_waybill_id.isnot(None))
+                .where(_rev_date >= selected_month_start)
+                .where(_rev_date < next_month_start)
+                .where(Trip.status.in_(ACTIVE_TRIP_STATUSES))
+            )
+        )
+    )
+    monthly_revenue_rows = list(session.exec(monthly_go_stmt).all()) + list(session.exec(monthly_return_stmt).all())
+    total_monthly_income = aggregate_monthly_revenue(monthly_revenue_rows, default_rate)
+
+    monthly_expense_stmt = (
+        select(ExpenseRequest.amount, ExpenseRequest.currency, ExpenseRequest.exchange_rate)
+        .where(ExpenseRequest.status.in_(APPROVED_EXPENSE_STATUSES))
+        .where(
+            func.coalesce(ExpenseRequest.approved_at, ExpenseRequest.payment_date, ExpenseRequest.created_at) >= selected_month_start
+        )
+        .where(
+            func.coalesce(ExpenseRequest.approved_at, ExpenseRequest.payment_date, ExpenseRequest.created_at) < next_month_start
         )
     )
     monthly_expense_rows = session.exec(monthly_expense_stmt).all()
+    total_monthly_expense = aggregate_monthly_expenses(monthly_expense_rows, default_rate)
 
-    total_monthly_expense = Decimal("0")
-    for row in monthly_expense_rows:
-        total_monthly_expense += normalize_to_tzs(row.amount, row.currency, row.exchange_rate, default_rate)
+    monthly_stats = build_monthly_stats(
+        total_monthly_income, total_monthly_expense, selected_month_label,
+    )
 
-    monthly_stats = {
-        "income": float(total_monthly_income),
-        "expenses": float(total_monthly_expense),
-        "net_profit": float(total_monthly_income - total_monthly_expense),
-        "month": now.strftime("%B %Y"),
-    }
-
-    # ============================================================
-    # 3. EXPENSE BREAKDOWN BY CATEGORY (Approved: Pending Finance + Paid)
-    # ============================================================
-
+    # --- Expense breakdown by category ---
     expense_breakdown_stmt = (
-        select(
-            ExpenseRequest.category,
-            ExpenseRequest.amount,
-            ExpenseRequest.currency,
-            ExpenseRequest.exchange_rate,
-        )
-        .where(ExpenseRequest.status.in_(approved_statuses))
+        select(ExpenseRequest.category, ExpenseRequest.amount, ExpenseRequest.currency, ExpenseRequest.exchange_rate)
+        .where(ExpenseRequest.status.in_(APPROVED_EXPENSE_STATUSES))
         .where(
-            func.coalesce(ExpenseRequest.approved_at, ExpenseRequest.payment_date, ExpenseRequest.created_at) >= current_month_start
+            func.coalesce(ExpenseRequest.approved_at, ExpenseRequest.payment_date, ExpenseRequest.created_at) >= selected_month_start
+        )
+        .where(
+            func.coalesce(ExpenseRequest.approved_at, ExpenseRequest.payment_date, ExpenseRequest.created_at) < next_month_start
         )
     )
     breakdown_rows = session.exec(expense_breakdown_stmt).all()
+    expense_breakdown = aggregate_expense_breakdown(breakdown_rows, default_rate)
 
-    category_totals: dict[str, Decimal] = {}
-    for row in breakdown_rows:
-        cat = row.category.value if hasattr(row.category, "value") else str(row.category)
-        amt_tzs = normalize_to_tzs(row.amount, row.currency, row.exchange_rate, default_rate)
-        category_totals[cat] = category_totals.get(cat, Decimal("0")) + amt_tzs
-
-    expense_breakdown = [
-        {"category": cat, "amount": float(amt)}
-        for cat, amt in category_totals.items()
-    ]
-
-    # Ensure all categories appear even if 0
-    all_categories = ["Fuel", "Allowance", "Maintenance", "Office", "Border", "Other"]
-    existing_cats = {e["category"] for e in expense_breakdown}
-    for cat in all_categories:
-        if cat not in existing_cats:
-            expense_breakdown.append({"category": cat, "amount": 0.0})
-
-    # Sort by amount descending
-    expense_breakdown.sort(key=lambda x: x["amount"], reverse=True)
-
-    # Debug stats - count total records to help diagnose empty data issues
+    # Debug stats
     total_trips_with_waybills = session.exec(
-        select(func.count())
-        .select_from(Trip)
-        .join(Waybill, Waybill.id == Trip.waybill_id)
+        select(func.count()).select_from(Trip).join(Waybill, Waybill.id == Trip.waybill_id)
     ).one()
-
     total_approved_expenses = session.exec(
-        select(func.count())
-        .select_from(ExpenseRequest)
-        .where(ExpenseRequest.status.in_(approved_statuses))
+        select(func.count()).select_from(ExpenseRequest).where(ExpenseRequest.status.in_(APPROVED_EXPENSE_STATUSES))
     ).one()
 
     return {
@@ -663,6 +367,10 @@ def get_financial_pulse(
     }
 
 
+# ---------------------------------------------------------------------------
+# Trip Profitability
+# ---------------------------------------------------------------------------
+
 @router.get("/trip-profitability")
 def get_trip_profitability(
     session: SessionDep,
@@ -672,17 +380,10 @@ def get_trip_profitability(
     sort_by: str = Query(default="margin", description="Sort by: margin, profit, income, expenses"),
     sort_order: str = Query(default="asc", description="asc or desc"),
 ) -> dict[str, Any]:
-    """
-    Trip Profitability Report - Story 2.22
+    """Trip Profitability Report.
 
-    Returns trips with:
-    - Trip Number, Route Name, Client
-    - Income (Waybill Amount)
-    - Total Expenses (Sum of Approved + Paid Trip Expenses)
-    - Net Profit (Income - Expenses)
-    - Margin % ((Net Profit / Income) * 100)
-
-    All values normalized to TZS.
+    Returns trips with income, expenses, net profit, margin %, and
+    profit-per-day, all normalised to TZS.
     """
     default_rate = get_current_exchange_rate(session)
 
@@ -694,45 +395,32 @@ def get_trip_profitability(
     )
     trip_rows = session.exec(trips_stmt).all()
 
-    # Bulk-fetch return waybills for trips that have one
-    return_waybill_ids = [
-        trip.return_waybill_id for trip, _ in trip_rows if trip.return_waybill_id
-    ]
+    # Bulk-fetch return waybills
+    return_waybill_ids = [trip.return_waybill_id for trip, _ in trip_rows if trip.return_waybill_id]
     return_waybills: dict = {}
     if return_waybill_ids:
         rw_stmt = select(Waybill).where(Waybill.id.in_(return_waybill_ids))
         for rw in session.exec(rw_stmt).all():
             return_waybills[rw.id] = rw
 
-    # Only approved expenses count: Pending Finance (manager-approved) and Paid
-    approved_statuses = [ExpenseStatus.pending_finance.value, ExpenseStatus.paid.value]
+    # Approved expenses per trip
     expense_stmt = (
-        select(
-            ExpenseRequest.trip_id,
-            ExpenseRequest.amount,
-            ExpenseRequest.currency,
-            ExpenseRequest.exchange_rate,
-        )
-        .where(ExpenseRequest.status.in_(approved_statuses))
+        select(ExpenseRequest.trip_id, ExpenseRequest.amount, ExpenseRequest.currency, ExpenseRequest.exchange_rate)
+        .where(ExpenseRequest.status.in_(APPROVED_EXPENSE_STATUSES))
         .where(ExpenseRequest.trip_id.isnot(None))
     )
     expense_rows = session.exec(expense_stmt).all()
 
-    # Build expense totals per trip — USD amounts normalized to TZS
     trip_expenses: dict[str, Decimal] = {}
     for row in expense_rows:
         trip_id = str(row.trip_id)
         amt_tzs = normalize_to_tzs(row.amount, row.currency, row.exchange_rate, default_rate)
         trip_expenses[trip_id] = trip_expenses.get(trip_id, Decimal("0")) + amt_tzs
 
-    # Approved office expenses (no trip linked) — same filter
+    # Office expenses (no trip linked)
     office_expense_stmt = (
-        select(
-            ExpenseRequest.amount,
-            ExpenseRequest.currency,
-            ExpenseRequest.exchange_rate,
-        )
-        .where(ExpenseRequest.status.in_(approved_statuses))
+        select(ExpenseRequest.amount, ExpenseRequest.currency, ExpenseRequest.exchange_rate)
+        .where(ExpenseRequest.status.in_(APPROVED_EXPENSE_STATUSES))
         .where(ExpenseRequest.trip_id.is_(None))
     )
     office_expense_rows = session.exec(office_expense_stmt).all()
@@ -740,81 +428,18 @@ def get_trip_profitability(
     for row in office_expense_rows:
         total_office_expenses_tzs += normalize_to_tzs(row.amount, row.currency, row.exchange_rate, default_rate)
 
-    # Build profitability data
+    # Project rows using the reporting module
     profitability_data = []
     for trip, go_waybill in trip_rows:
         trip_id = str(trip.id)
-
-        # Income: go waybill + return waybill (if attached)
-        income = normalize_to_tzs(
-            Decimal(str(go_waybill.agreed_rate)),
-            go_waybill.currency,
-            None,
-            default_rate
-        )
-        return_waybill = return_waybills.get(trip.return_waybill_id) if trip.return_waybill_id else None
-        if return_waybill:
-            income += normalize_to_tzs(
-                Decimal(str(return_waybill.agreed_rate)),
-                return_waybill.currency,
-                None,
-                default_rate
+        return_wb = return_waybills.get(trip.return_waybill_id) if trip.return_waybill_id else None
+        profitability_data.append(
+            project_profitability_row(
+                trip, go_waybill, return_wb,
+                trip_expenses.get(trip_id, Decimal("0")),
+                default_rate,
             )
-        waybill = go_waybill  # keep reference for client name below
-
-        # Total approved expenses for this trip
-        expenses = trip_expenses.get(trip_id, Decimal("0"))
-
-        # Net Profit
-        net_profit = income - expenses
-
-        # Margin %
-        margin_pct = (float(net_profit) / float(income) * 100) if income > 0 else 0.0
-
-        # Trip Duration & Profit per Day
-        # Prefer stored trip_duration_days (authoritative value set at completion)
-        if trip.trip_duration_days is not None:
-            duration_days = max(1, trip.trip_duration_days)
-        else:
-            duration_days = 1
-            start_date = trip.dispatch_date or trip.start_date or trip.created_at
-            if start_date:
-                end_date = trip.arrival_return_date or trip.end_date or datetime.now(timezone.utc)
-                if start_date.tzinfo is None:
-                    start_date = start_date.replace(tzinfo=timezone.utc)
-                if end_date.tzinfo is None:
-                    end_date = end_date.replace(tzinfo=timezone.utc)
-                delta = end_date - start_date
-                duration_days = max(1, delta.days + 1)
-
-        profit_per_day = float(net_profit) / duration_days
-
-        # Return leg duration
-        return_duration_days = 0
-        if trip.return_waybill_id and trip.dispatch_return_date:
-            ret_start = trip.dispatch_return_date
-            ret_end = trip.arrival_return_date or datetime.now(timezone.utc)
-            if ret_start.tzinfo is None:
-                ret_start = ret_start.replace(tzinfo=timezone.utc)
-            if ret_end.tzinfo is None:
-                ret_end = ret_end.replace(tzinfo=timezone.utc)
-            return_duration_days = max(1, (ret_end - ret_start).days + 1)
-
-        profitability_data.append({
-            "trip_id": trip_id,
-            "trip_number": trip.trip_number,
-            "route_name": trip.route_name,
-            "client": waybill.client_name,
-            "status": trip.status.value if hasattr(trip.status, "value") else str(trip.status),
-            "income": float(income),
-            "expenses": float(expenses),
-            "net_profit": float(net_profit),
-            "margin_pct": round(margin_pct, 2),
-            "start_date": trip.start_date.isoformat() if trip.start_date else None,
-            "profit_per_day": round(profit_per_day, 2),
-            "duration_days": duration_days,
-            "return_duration_days": return_duration_days,
-        })
+        )
 
     # Sort
     sort_key_map = {
@@ -833,25 +458,6 @@ def get_trip_profitability(
     total = len(profitability_data)
     paginated = profitability_data[skip:skip + limit]
 
-    # Summary stats
-    total_income = sum(d["income"] for d in profitability_data)
-    total_expenses_sum = sum(d["expenses"] for d in profitability_data)
-    # AC-2 (Story 6.14): Office expenses are reported separately in the summary
-    # and must NOT also be subtracted from total_profit — that would double-count them.
-    # total_profit reflects trip-level P&L only; total_office_expenses is informational overhead.
-    total_profit = total_income - total_expenses_sum
-    avg_margin = (total_profit / total_income * 100) if total_income > 0 else 0.0
-    total_profit_per_day = sum(d["profit_per_day"] for d in profitability_data)
+    summary = build_profitability_summary(profitability_data, float(total_office_expenses_tzs))
 
-    return {
-        "data": paginated,
-        "total": total,
-        "summary": {
-            "total_income": total_income,
-            "total_expenses": total_expenses_sum,
-            "total_office_expenses": float(total_office_expenses_tzs),
-            "total_profit": total_profit,
-            "average_margin_pct": round(avg_margin, 2),
-            "total_profit_per_day": round(total_profit_per_day, 2),
-        },
-    }
+    return {"data": paginated, "total": total, "summary": summary}

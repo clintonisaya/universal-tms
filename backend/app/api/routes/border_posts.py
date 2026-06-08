@@ -6,10 +6,11 @@ import uuid
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Query
-from sqlmodel import func, select
+from sqlmodel import select
 
-from app.api.deps import CurrentUser, SessionDep
+from app.api.deps import CurrentUser, SessionDep, assert_user_has_permission
 from app.core.db import commit_or_rollback
+from app.modules.permissions import Permission
 from app.models import (
     BorderPost,
     BorderPostCreate,
@@ -17,14 +18,8 @@ from app.models import (
     BorderPostsPublic,
     BorderPostUpdate,
     Message,
-    UserRole,
 )
-
-def _has_permission(user, permission: str) -> bool:
-    """Check granular permission — admin/superuser bypasses all checks."""
-    if user.is_superuser or user.role == UserRole.admin:
-        return True
-    return permission in (user.permissions or [])
+from app.modules.master_data import DuplicateNameError, check_duplicate_name, filtered_list_query
 
 router = APIRouter(prefix="/border-posts", tags=["border-posts"])
 
@@ -38,17 +33,12 @@ def read_border_posts(
     active_only: bool = Query(default=False, description="Filter to active border posts only"),
 ) -> Any:
     """Retrieve all border posts."""
-    query = select(BorderPost)
-    if active_only:
-        query = query.where(BorderPost.is_active == True)
-
-    count_statement = select(func.count()).select_from(query.subquery())
-    count = session.exec(count_statement).one()
-
-    query = query.order_by(BorderPost.display_name).offset(skip).limit(limit)
-    border_posts = session.exec(query).all()
-
-    return BorderPostsPublic(data=border_posts, count=count)
+    return filtered_list_query(
+        session, BorderPost,
+        skip=skip, limit=limit,
+        active_only=active_only,
+        order_fields=("display_name",),
+    )
 
 
 @router.get("/{id}", response_model=BorderPostPublic)
@@ -72,15 +62,16 @@ def create_border_post(
     border_post_in: BorderPostCreate,
 ) -> Any:
     """Create a new border post. Requires admin or manager role."""
-    if not _has_permission(current_user, "settings:border-posts"):
-        raise HTTPException(status_code=403, detail="Only admin or manager can manage border posts")
+    assert_user_has_permission(
+        current_user,
+        Permission.SETTINGS_BORDER_POSTS,
+        detail="Only admin or manager can manage border posts",
+    )
 
-    # Check for duplicate display name
-    existing = session.exec(
-        select(BorderPost).where(BorderPost.display_name == border_post_in.display_name)
-    ).first()
-    if existing:
-        raise HTTPException(status_code=400, detail="Border post with this display name already exists")
+    try:
+        check_duplicate_name(session, BorderPost, border_post_in.display_name, name_field="display_name")
+    except DuplicateNameError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
     border_post = BorderPost.model_validate(border_post_in)
     session.add(border_post)
@@ -98,14 +89,24 @@ def update_border_post(
     border_post_in: BorderPostUpdate,
 ) -> Any:
     """Update a border post. Requires admin or manager role."""
-    if not _has_permission(current_user, "settings:border-posts"):
-        raise HTTPException(status_code=403, detail="Only admin or manager can manage border posts")
+    assert_user_has_permission(
+        current_user,
+        Permission.SETTINGS_BORDER_POSTS,
+        detail="Only admin or manager can manage border posts",
+    )
 
     border_post = session.get(BorderPost, id)
     if not border_post:
         raise HTTPException(status_code=404, detail="Border post not found")
 
     update_data = border_post_in.model_dump(exclude_unset=True)
+
+    if "display_name" in update_data:
+        try:
+            check_duplicate_name(session, BorderPost, update_data["display_name"], name_field="display_name", exclude_id=id)
+        except DuplicateNameError as e:
+            raise HTTPException(status_code=400, detail=str(e))
+
     border_post.sqlmodel_update(update_data)
     session.add(border_post)
     commit_or_rollback(session)
@@ -125,8 +126,11 @@ def delete_border_post(
     hard-deletes if no crossings have been recorded.
     Requires admin role.
     """
-    if not _has_permission(current_user, "settings:border-posts"):
-        raise HTTPException(status_code=403, detail="Only admin can delete border posts")
+    assert_user_has_permission(
+        current_user,
+        Permission.SETTINGS_BORDER_POSTS,
+        detail="Only admin can delete border posts",
+    )
 
     border_post = session.get(BorderPost, id)
     if not border_post:

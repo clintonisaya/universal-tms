@@ -490,6 +490,7 @@ class TripBase(SQLModel):
         description="Current trip status"
     )
     is_delayed: bool = Field(default=False, description="Whether the trip is currently delayed")
+    expense_window_open: bool = Field(default=False, description="Allow expense entry on completed/cancelled trips")
 
 
 # Properties to receive on creation
@@ -536,6 +537,8 @@ class TripUpdate(SQLModel):
     return_remarks: str | None = Field(default=None, description="Return-leg remarks for client report")
     pods_confirmed_date: datetime | None = Field(default=None, description="Date PODs were confirmed — auto-advances trip to Completed")
     is_delayed: bool | None = Field(default=None, description="Set or clear the delayed flag")
+    # Expense window override for completed/cancelled trips
+    expense_window_open: bool | None = Field(default=None, description="Toggle expense entry on closed trips")
 
 
 # Properties to receive for truck swap
@@ -1058,8 +1061,16 @@ class MaintenanceEventBase(SQLModel):
     end_date: datetime | None = Field(default=None, description="Date maintenance completed")
     currency: str = Field(default="USD", max_length=3, description="Currency code (TZS or USD)")
 
+class BankDetails(SQLModel):
+    """Bank details for transfer payments."""
+    bank_name: str = Field(min_length=1, max_length=255)
+    account_name: str = Field(min_length=1, max_length=255)
+    account_no: str = Field(min_length=1, max_length=100)
+
 class MaintenanceEventCreate(MaintenanceEventBase):
     cost: Decimal = Field(gt=0, max_digits=12, decimal_places=2, description="Total cost")
+    payment_method: str = Field(default="Cash", description="Payment method (Cash or Transfer)")
+    bank_details: BankDetails | None = Field(default=None, description="Bank details for Transfer payments")
     update_truck_status: bool = Field(default=False, description="Set truck status to Maintenance")
     update_trailer_status: bool = Field(default=False, description="Set trailer status to Maintenance")
 
@@ -1072,6 +1083,33 @@ class MaintenanceEventUpdate(SQLModel):
     end_date: datetime | None = Field(default=None)
     cost: Decimal | None = Field(default=None, gt=0, max_digits=12, decimal_places=2)
     currency: str | None = Field(default=None, max_length=3)
+
+class MaintenanceEventLinkExpense(SQLModel):
+    """Create a maintenance event linked to an existing office expense (Already Applied)."""
+    expense_id: uuid.UUID = Field(description="ID of the existing expense to link")
+    truck_id: uuid.UUID | None = Field(default=None, description="Truck receiving maintenance")
+    trailer_id: uuid.UUID | None = Field(default=None, description="Trailer receiving maintenance")
+    garage_name: str = Field(min_length=1, max_length=255, description="Garage/Service Provider name")
+    description: str = Field(min_length=1, max_length=500, description="Maintenance details")
+    start_date: datetime = Field(description="Date maintenance started")
+    end_date: datetime | None = Field(default=None, description="Date maintenance completed")
+    update_truck_status: bool = Field(default=False, description="Set truck status to Maintenance")
+    update_trailer_status: bool = Field(default=False, description="Set trailer status to Maintenance")
+
+class AvailableExpensePublic(SQLModel):
+    """Public model for expenses available for linking to maintenance."""
+    id: uuid.UUID
+    expense_number: str | None = None
+    amount: Decimal
+    currency: str
+    description: str
+    status: str
+    created_at: datetime | None = None
+    expense_metadata: dict | None = None
+
+class AvailableExpensesPublic(SQLModel):
+    data: list[AvailableExpensePublic]
+    count: int
 
 class MaintenanceEvent(MaintenanceEventBase, table=True):
     __tablename__ = "maintenance_event"
@@ -1098,6 +1136,8 @@ class MaintenanceEventPublic(MaintenanceEventBase):
     created_at: datetime | None = None
     updated_at: datetime | None = None
     expense: ExpenseRequestPublic | None = None
+    truck: TruckPublic | None = None
+    trailer: TrailerPublic | None = None
 
 class MaintenanceEventsPublic(SQLModel):
     data: list[MaintenanceEventPublic]

@@ -57,8 +57,15 @@ export default function OfficeExpensesPage() {
   const { user } = useAuth();
   const { invalidateExpenses } = useInvalidateQueries();
 
+  // Pagination state (must be before useExpenses)
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
+
   // TanStack Query for expenses data
-  const { data: expensesData, isLoading: loading, refetch } = useExpenses();
+  const { data: expensesData, isLoading: loading, refetch } = useExpenses({
+    skip: (currentPage - 1) * pageSize,
+    limit: pageSize,
+  });
 
   // Filter to show only office expenses (expense_number starts with "EX")
   // Matches both old format (EXP-2026-0001) and new format (EX-2026-0001)
@@ -69,12 +76,8 @@ export default function OfficeExpensesPage() {
     );
   }, [expensesData]);
 
-  const totalCount = expenses.length;
-
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(20);
 
   // Payment Modal State
 
@@ -156,7 +159,7 @@ export default function OfficeExpensesPage() {
       render: (num: string | null, record: ExpenseRequestDetailed) => (
         <a
           onClick={() => handleViewDetail(record)}
-          style={{ fontWeight: 600, color: "var(--color-primary)", cursor: "pointer" }}
+          style={{ fontWeight: 600, color: "var(--color-gold)", cursor: "pointer" }}
         >
           {num || record.id?.slice(0, 8).toUpperCase()}
         </a>
@@ -283,7 +286,7 @@ export default function OfficeExpensesPage() {
             pagination={{
               current: currentPage,
               pageSize,
-              total: totalCount,
+              total: expensesData?.count ?? 0,
               showTotal: (total) => `Total ${total} expenses`,
               showSizeChanger: true,
               pageSizeOptions: ["10", "20", "50", "100"],

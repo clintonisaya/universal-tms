@@ -6,7 +6,6 @@ import uuid
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Query
-from sqlmodel import func, select
 
 from app.api.deps import CurrentUser, SessionDep
 from app.core.db import commit_or_rollback
@@ -18,6 +17,7 @@ from app.models import (
     CargoTypeUpdate,
     Message,
 )
+from app.modules.master_data import DuplicateNameError, check_duplicate_name, filtered_list_query
 
 router = APIRouter(prefix="/cargo-types", tags=["cargo-types"])
 
@@ -30,13 +30,9 @@ def read_cargo_types(
     limit: int = Query(default=100, ge=1, le=500),
 ) -> Any:
     """Retrieve all cargo types."""
-    count_statement = select(func.count()).select_from(CargoType)
-    count = session.exec(count_statement).one()
-    statement = (
-        select(CargoType).order_by(CargoType.name).offset(skip).limit(limit)
+    return filtered_list_query(
+        session, CargoType, skip=skip, limit=limit,
     )
-    cargo_types = session.exec(statement).all()
-    return CargoTypesPublic(data=cargo_types, count=count)
 
 
 @router.get("/{id}", response_model=CargoTypePublic)
@@ -63,16 +59,10 @@ def create_cargo_type(
     Create new cargo type.
     Prevents duplicates by checking name uniqueness (case-insensitive).
     """
-    existing = session.exec(
-        select(CargoType).where(
-            func.lower(CargoType.name) == cargo_type_in.name.lower(),
-        )
-    ).first()
-    if existing:
-        raise HTTPException(
-            status_code=400,
-            detail="Cargo type with this name already exists",
-        )
+    try:
+        check_duplicate_name(session, CargoType, cargo_type_in.name)
+    except DuplicateNameError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
     cargo_type = CargoType.model_validate(cargo_type_in)
     session.add(cargo_type)
@@ -97,16 +87,10 @@ def update_cargo_type(
     update_dict = cargo_type_in.model_dump(exclude_unset=True)
 
     if "name" in update_dict:
-        existing = session.exec(
-            select(CargoType).where(
-                func.lower(CargoType.name) == update_dict["name"].lower(),
-            )
-        ).first()
-        if existing and existing.id != cargo_type.id:
-            raise HTTPException(
-                status_code=400,
-                detail="Cargo type with this name already exists",
-            )
+        try:
+            check_duplicate_name(session, CargoType, update_dict["name"], exclude_id=id)
+        except DuplicateNameError as e:
+            raise HTTPException(status_code=400, detail=str(e))
 
     cargo_type.sqlmodel_update(update_dict)
     session.add(cargo_type)

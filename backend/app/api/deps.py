@@ -1,4 +1,4 @@
-from collections.abc import Generator
+from collections.abc import Callable, Generator
 from typing import Annotated
 
 import jwt
@@ -12,6 +12,7 @@ from app.core import security
 from app.core.config import settings
 from app.core.db import engine
 from app.models import TokenPayload, User, UserRole
+from app.modules.permissions import has_full_access, has_permission
 
 reusable_oauth2 = OAuth2PasswordBearer(
     tokenUrl=f"{settings.API_V1_STR}/login/access-token",
@@ -79,22 +80,42 @@ def get_current_active_superuser(current_user: CurrentUser) -> User:
 
 def get_current_admin_user(current_user: CurrentUser) -> User:
     """Validate user has admin role OR is superuser."""
-    if current_user.is_superuser:
+    if has_full_access(current_user):
         return current_user
-    if current_user.role != UserRole.admin:
-        raise HTTPException(
-            status_code=403, detail="The user doesn't have enough privileges"
-        )
-    return current_user
+    raise HTTPException(
+        status_code=403, detail="The user doesn't have enough privileges"
+    )
 
 
 def get_current_manager_or_admin(current_user: CurrentUser) -> User:
     """Validate user has admin OR manager role."""
-    if current_user.is_superuser:
+    if has_full_access(current_user):
         return current_user
     if current_user.role not in [UserRole.admin, UserRole.manager]:
         raise HTTPException(
             status_code=403, detail="The user doesn't have enough privileges"
         )
     return current_user
+
+
+def assert_user_has_permission(
+    current_user: User,
+    permission: str,
+    *,
+    detail: str = "Not enough permissions",
+) -> None:
+    if not has_permission(current_user, permission):
+        raise HTTPException(status_code=403, detail=detail)
+
+
+def require_permission(
+    permission: str,
+    *,
+    detail: str = "Not enough permissions",
+) -> Callable[[User], User]:
+    def dependency(current_user: CurrentUser) -> User:
+        assert_user_has_permission(current_user, permission, detail=detail)
+        return current_user
+
+    return dependency
 
