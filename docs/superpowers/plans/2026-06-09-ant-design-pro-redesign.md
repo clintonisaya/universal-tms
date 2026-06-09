@@ -34,7 +34,7 @@
 | Task 14: Migrate Settings Pages to ProTable | ✅ Done | (prior) | All 10 settings pages already use ProTable/ProForm |
 | Task 15: Migrate Dashboard to ProCard | ✅ Done | — | Dashboard + 6 components already use ProCard/ProTable |
 | Task 16: Remove ThemeContext & ThemeToggle | ✅ Done | `9e3cdd2` | |
-| Task 17: Remove NotificationCenter & themeConfig | ⬜ Todo | — | |
+| Task 17: Remove NotificationCenter & themeConfig | ✅ Done | `b4d8779` | |
 | Task 18: Final Verification | ⬜ Todo | — | |
 
 **Additional work completed (not in original plan):**
@@ -1897,19 +1897,19 @@ git commit -m "refactor: remove ThemeContext and ThemeToggle (replaced by Settin
 - Delete: `frontend/src/components/layout/NotificationCenter.tsx`
 - Delete: `frontend/src/theme/themeConfig.ts`
 
-- [ ] **Step 1: Remove NotificationCenter.tsx**
+- [x] **Step 1: Remove NotificationCenter.tsx**
 
 ```bash
 rm frontend/src/components/layout/NotificationCenter.tsx
 ```
 
-- [ ] **Step 2: Remove themeConfig.ts**
+- [x] **Step 2: Remove themeConfig.ts**
 
 ```bash
 rm frontend/src/theme/themeConfig.ts
 ```
 
-- [ ] **Step 3: Update any remaining imports**
+- [x] **Step 3: Update any remaining imports**
 
 Search for imports and remove them:
 
@@ -1919,7 +1919,7 @@ grep -r "NotificationCenter\|themeConfig\|getThemeConfig" frontend/src/ --includ
 
 Update any files that still import these.
 
-- [ ] **Step 4: Verify build compiles**
+- [x] **Step 4: Verify build compiles**
 
 ```bash
 cd /home/clinton/dev/universal-tms/frontend
@@ -1928,7 +1928,7 @@ npm run build
 
 Expected: Build succeeds.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add -A
