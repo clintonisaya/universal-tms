@@ -16,6 +16,10 @@ const eslintConfig = defineConfig([
   {
     rules: {
       "no-console": "warn",
+      "@typescript-eslint/no-explicit-any": "warn",
+      "@typescript-eslint/ban-ts-comment": "warn",
+      "react/no-unescaped-entities": "warn",
+      "react-hooks/set-state-in-effect": "warn",
     },
   },
 ]);

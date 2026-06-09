@@ -1,6 +1,7 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { screen, waitFor } from "@testing-library/react";
 import OfficeExpenseTypesPage from "../page";
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { renderWithProviders } from "@/test-utils";
 
 // Mocks
 vi.mock("next/navigation", () => ({
@@ -14,36 +15,14 @@ vi.mock("@/contexts/AuthContext", () => ({
   }),
 }));
 
-// Mock ResizeObserver
-global.ResizeObserver = class ResizeObserver {
-  observe() {}
-  unobserve() {}
-  disconnect() {}
-};
-
-// Mock matchMedia
-Object.defineProperty(window, "matchMedia", {
-  writable: true,
-  value: vi.fn().mockImplementation((query) => ({
-    matches: false,
-    media: query,
-    onchange: null,
-    addListener: vi.fn(),
-    removeListener: vi.fn(),
-    addEventListener: vi.fn(),
-    removeEventListener: vi.fn(),
-    dispatchEvent: vi.fn(),
-  })),
-});
-
 describe("OfficeExpenseTypesPage", () => {
   beforeEach(() => {
     global.fetch = vi.fn().mockResolvedValue({
       ok: true,
       json: async () => ({
         data: [
-          { id: "1", name: "Rent", description: "Office Rent", is_active: true },
-          { id: "2", name: "Internet", description: null, is_active: false },
+          { id: "1", name: "Rent", category: "Office", description: "Office Rent", is_active: true },
+          { id: "2", name: "Internet", category: "Office", description: null, is_active: false },
         ],
         count: 2,
       }),
@@ -51,7 +30,7 @@ describe("OfficeExpenseTypesPage", () => {
   });
 
   it("renders the table with expense types", async () => {
-    render(<OfficeExpenseTypesPage />);
+    renderWithProviders(<OfficeExpenseTypesPage />);
 
     await waitFor(() => {
       expect(screen.getByText("Office Expense Types")).toBeInTheDocument();

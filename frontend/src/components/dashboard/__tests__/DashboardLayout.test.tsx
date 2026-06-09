@@ -1,47 +1,75 @@
-import { render, screen } from '@testing-library/react'
-import { DashboardLayout } from '../DashboardLayout'
-import { describe, it, expect, vi } from 'vitest'
+import { screen } from "@testing-library/react";
+import type { ReactNode } from "react";
+import { describe, expect, it, vi } from "vitest";
+import AuthenticatedLayout from "@/app/(authenticated)/layout";
+import { renderWithProviders } from "@/test-utils";
 
-// Mock next/navigation
-vi.mock('next/navigation', () => ({
+vi.mock("next/navigation", () => ({
   useRouter: () => ({
     push: vi.fn(),
+    replace: vi.fn(),
   }),
-  usePathname: () => '/dashboard',
-}))
+  usePathname: () => "/dashboard",
+}));
 
-// Mock AuthContext
-vi.mock('@/contexts/AuthContext', () => ({
+vi.mock("@/contexts/AuthContext", () => ({
   useAuth: () => ({
-    user: { username: 'testuser', role: 'admin' },
+    user: { username: "testuser", role: "admin", is_superuser: true },
+    loading: false,
     logout: vi.fn(),
   }),
-}))
+}));
 
-// Mock window.matchMedia (Ant Design requirement)
-Object.defineProperty(window, 'matchMedia', {
-  writable: true,
-  value: vi.fn().mockImplementation(query => ({
-    matches: false,
-    media: query,
-    onchange: null,
-    addListener: vi.fn(), // deprecated
-    removeListener: vi.fn(), // deprecated
-    addEventListener: vi.fn(),
-    removeEventListener: vi.fn(),
-    dispatchEvent: vi.fn(),
-  })),
-})
+vi.mock("@/contexts/TabContext", () => ({
+  useTabs: () => ({
+    tabs: [],
+    activeKey: "/dashboard",
+    openTab: vi.fn(),
+    closeTab: vi.fn(),
+    switchTab: vi.fn(),
+  }),
+}));
 
-describe('DashboardLayout', () => {
-  it('renders children correctly', () => {
-    render(<DashboardLayout><div>Test Content</div></DashboardLayout>)
-    expect(screen.getByText('Test Content')).toBeDefined()
-  })
+vi.mock("@/lib/socket", () => ({
+  SocketProvider: ({ children }: { children: ReactNode }) => children,
+}));
 
-  it('renders sidebar menu items', () => {
-    render(<DashboardLayout><div>Test Content</div></DashboardLayout>)
-    expect(screen.getByText('Fleet')).toBeDefined()
-    expect(screen.getByText('Operations')).toBeDefined()
-  })
-})
+vi.mock("@/components/auth/SessionExpiredModal", () => ({
+  SessionExpiredModal: () => null,
+}));
+
+vi.mock("@/components/RightContent/AvatarDropdown", () => ({
+  AvatarDropdown: () => <button>Admin</button>,
+}));
+
+vi.mock("@/components/SettingDrawer", () => ({
+  SettingDrawer: () => null,
+  loadSettings: () => ({}),
+}));
+
+vi.mock("@/components/dashboard/ToDoWidget", () => ({
+  ToDoWidget: () => <button>Tasks</button>,
+}));
+
+describe("AuthenticatedLayout", () => {
+  it("renders children correctly", () => {
+    renderWithProviders(
+      <AuthenticatedLayout>
+        <div>Test Content</div>
+      </AuthenticatedLayout>,
+    );
+
+    expect(screen.getByText("Test Content")).toBeDefined();
+  });
+
+  it("renders sidebar menu items", () => {
+    renderWithProviders(
+      <AuthenticatedLayout>
+        <div>Test Content</div>
+      </AuthenticatedLayout>,
+    );
+
+    expect(screen.getByText("Fleet")).toBeDefined();
+    expect(screen.getByText("Operations")).toBeDefined();
+  });
+});

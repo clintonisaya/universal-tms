@@ -1,7 +1,7 @@
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { screen, fireEvent, waitFor } from "@testing-library/react";
 import { AddExpenseModal } from "../AddExpenseModal";
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import React from "react";
+import { renderWithProviders } from "@/test-utils";
 
 // Mock dependencies
 vi.mock("@/contexts/AuthContext", () => ({
@@ -10,28 +10,6 @@ vi.mock("@/contexts/AuthContext", () => ({
     loading: false,
   }),
 }));
-
-// Mock window.matchMedia
-Object.defineProperty(window, "matchMedia", {
-  writable: true,
-  value: vi.fn().mockImplementation((query) => ({
-    matches: false,
-    media: query,
-    onchange: null,
-    addListener: vi.fn(),
-    removeListener: vi.fn(),
-    addEventListener: vi.fn(),
-    removeEventListener: vi.fn(),
-    dispatchEvent: vi.fn(),
-  })),
-});
-
-// Mock ResizeObserver
-global.ResizeObserver = class ResizeObserver {
-  observe() {}
-  unobserve() {}
-  disconnect() {}
-};
 
 // Mock fetch
 global.fetch = vi.fn();
@@ -49,7 +27,7 @@ describe("AddExpenseModal", () => {
   });
 
   it("renders the expanded modal with tabs", async () => {
-    render(
+    renderWithProviders(
       <AddExpenseModal
         open={true}
         onClose={mockOnClose}
@@ -68,7 +46,7 @@ describe("AddExpenseModal", () => {
   });
 
   it("renders the basic information header fields", async () => {
-    render(
+    renderWithProviders(
       <AddExpenseModal
         open={true}
         onClose={mockOnClose}
@@ -86,7 +64,7 @@ describe("AddExpenseModal", () => {
   });
 
   it("adds and removes expense items", async () => {
-    render(
+    renderWithProviders(
       <AddExpenseModal
         open={true}
         onClose={mockOnClose}
@@ -105,16 +83,16 @@ describe("AddExpenseModal", () => {
 
     await waitFor(() => {
       // Should have one more row (based on delete buttons)
-      const deleteButtons = screen.getAllByLabelText("Delete Item");
+      const deleteButtons = screen.getAllByLabelText("Delete Expense Item");
       expect(deleteButtons.length).toBe(2);
     });
 
     // Delete a row
-    const deleteButtons = screen.getAllByLabelText("Delete Item");
+    const deleteButtons = screen.getAllByLabelText("Delete Expense Item");
     fireEvent.click(deleteButtons[0]);
 
     await waitFor(() => {
-       const deleteButtonsAfter = screen.getAllByLabelText("Delete Item");
+       const deleteButtonsAfter = screen.getAllByLabelText("Delete Expense Item");
        expect(deleteButtonsAfter.length).toBe(1);
     });
   });

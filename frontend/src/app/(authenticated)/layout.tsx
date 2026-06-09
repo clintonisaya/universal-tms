@@ -2,8 +2,13 @@
 
 import { useState, useEffect } from "react";
 import type { Settings as LayoutSettings } from "@ant-design/pro-components";
-import { ProLayout } from "@ant-design/pro-components";
+import {
+  ProConfigProvider,
+  ProLayout,
+  enUSIntl,
+} from "@ant-design/pro-components";
 import { ConfigProvider, App } from "antd";
+import enUS from "antd/locale/en_US";
 import { useRouter, usePathname } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePermissions } from "@/hooks/application/usePermissions";
@@ -171,124 +176,126 @@ export default function AuthenticatedLayout({
   }
 
   return (
-    <ConfigProvider theme={themeConfig}>
-      <App>
-        <SocketProvider>
-          <ProLayout
-            title={defaultSettings.title}
-            logo={defaultSettings.logo}
-            layout={settings.layout || defaultSettings.layout}
-            navTheme={isDark ? "realDark" : "light"}
-            contentWidth={settings.contentWidth || defaultSettings.contentWidth}
-            fixedHeader={settings.fixedHeader ?? defaultSettings.fixedHeader}
-            fixSiderbar={settings.fixSiderbar ?? defaultSettings.fixSiderbar}
-            colorPrimary={settings.colorPrimary || defaultSettings.colorPrimary}
-            colorWeak={settings.colorWeak ?? defaultSettings.colorWeak}
-            route={{ routes: filteredRoutes }}
-            location={{ pathname }}
-            token={defaultSettings.token}
-            menuItemRender={(item, dom) => (
-              <div
-                onClick={() => {
-                  if (item.path) {
-                    openTab(item.path);
-                  }
-                }}
-              >
-                {dom}
-              </div>
-            )}
-            actionsRender={() => [
-              <ToDoWidget
-                key="todo"
-                count={todoCount}
-                loading={false}
-                onClick={() => router.push("/dashboard/tasks")}
-              />,
-              <AvatarDropdown
-                key="avatar"
-                onThemeSettingsClick={() => setSettingDrawerOpen(true)}
-              />,
-            ]}
-          >
-            {/* Tab bar */}
-            {tabs.length > 1 && (
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 0,
-                  height: 40,
-                  overflowX: "auto",
-                  borderBottom: "1px solid var(--ant-color-border)",
-                  marginBottom: 16,
-                  scrollbarWidth: "none",
-                }}
-              >
-                {tabs.map((tab) => {
-                  const isActive = tab.key === activeKey;
-                  return (
-                    <div
-                      key={tab.key}
-                      onClick={() => switchTab(tab.key)}
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 6,
-                        padding: "0 16px",
-                        height: "100%",
-                        cursor: "pointer",
-                        fontSize: 14,
-                        fontWeight: isActive ? 700 : 400,
-                        color: isActive
-                          ? "var(--ant-color-text)"
-                          : "var(--ant-color-text-secondary)",
-                        borderBottom: isActive
-                          ? "2px solid var(--ant-color-primary)"
-                          : "2px solid transparent",
-                        whiteSpace: "nowrap",
-                      }}
-                    >
-                      {tab.label}
-                      {tab.closable && (
-                        <span
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            closeTab(tab.key);
-                          }}
-                          style={{
-                            fontSize: 10,
-                            opacity: isActive ? 1 : 0,
-                            transition: "opacity 0.15s",
-                          }}
-                        >
-                          ×
-                        </span>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
+    <ConfigProvider theme={themeConfig} locale={enUS}>
+      <ProConfigProvider intl={enUSIntl}>
+        <App>
+          <SocketProvider>
+            <ProLayout
+              title={defaultSettings.title}
+              logo={defaultSettings.logo}
+              layout={settings.layout || defaultSettings.layout}
+              navTheme={isDark ? "realDark" : "light"}
+              contentWidth={settings.contentWidth || defaultSettings.contentWidth}
+              fixedHeader={settings.fixedHeader ?? defaultSettings.fixedHeader}
+              fixSiderbar={settings.fixSiderbar ?? defaultSettings.fixSiderbar}
+              colorPrimary={settings.colorPrimary || defaultSettings.colorPrimary}
+              colorWeak={settings.colorWeak ?? defaultSettings.colorWeak}
+              route={{ routes: filteredRoutes }}
+              location={{ pathname }}
+              token={defaultSettings.token}
+              menuItemRender={(item, dom) => (
+                <div
+                  onClick={() => {
+                    if (item.path) {
+                      openTab(item.path);
+                    }
+                  }}
+                >
+                  {dom}
+                </div>
+              )}
+              actionsRender={() => [
+                <ToDoWidget
+                  key="todo"
+                  count={todoCount}
+                  loading={false}
+                  onClick={() => router.push("/dashboard/tasks")}
+                />,
+                <AvatarDropdown
+                  key="avatar"
+                  onThemeSettingsClick={() => setSettingDrawerOpen(true)}
+                />,
+              ]}
+            >
+              {/* Tab bar */}
+              {tabs.length > 1 && (
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 0,
+                    height: 40,
+                    overflowX: "auto",
+                    borderBottom: "1px solid var(--ant-color-border)",
+                    marginBottom: 16,
+                    scrollbarWidth: "none",
+                  }}
+                >
+                  {tabs.map((tab) => {
+                    const isActive = tab.key === activeKey;
+                    return (
+                      <div
+                        key={tab.key}
+                        onClick={() => switchTab(tab.key)}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 6,
+                          padding: "0 16px",
+                          height: "100%",
+                          cursor: "pointer",
+                          fontSize: 14,
+                          fontWeight: isActive ? 700 : 400,
+                          color: isActive
+                            ? "var(--ant-color-text)"
+                            : "var(--ant-color-text-secondary)",
+                          borderBottom: isActive
+                            ? "2px solid var(--ant-color-primary)"
+                            : "2px solid transparent",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        {tab.label}
+                        {tab.closable && (
+                          <span
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              closeTab(tab.key);
+                            }}
+                            style={{
+                              fontSize: 10,
+                              opacity: isActive ? 1 : 0,
+                              transition: "opacity 0.15s",
+                            }}
+                          >
+                            ×
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
 
-            {/* Page content */}
-            {children}
+              {/* Page content */}
+              {children}
 
-            {/* SettingDrawer — reference: ant-design-pro/src/app.tsx childrenRender */}
-            <SettingDrawer
-              settings={settings}
-              onSettingsChange={setSettings}
-              collapse={settingDrawerOpen}
-              onCollapseChange={setSettingDrawerOpen}
+              {/* SettingDrawer — reference: ant-design-pro/src/app.tsx childrenRender */}
+              <SettingDrawer
+                settings={settings}
+                onSettingsChange={setSettings}
+                collapse={settingDrawerOpen}
+                onCollapseChange={setSettingDrawerOpen}
+              />
+            </ProLayout>
+
+            <SessionExpiredModal
+              open={showLoginModal}
+              onSuccess={handleLoginSuccess}
             />
-          </ProLayout>
-
-          <SessionExpiredModal
-            open={showLoginModal}
-            onSuccess={handleLoginSuccess}
-          />
-        </SocketProvider>
-      </App>
+          </SocketProvider>
+        </App>
+      </ProConfigProvider>
     </ConfigProvider>
   );
 }
