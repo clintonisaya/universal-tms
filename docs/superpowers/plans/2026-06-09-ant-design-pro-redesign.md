@@ -18,11 +18,11 @@
 
 | Task | Status | Commit | Notes |
 |------|--------|--------|-------|
-| Task 1: Install Dependencies | ✅ Done | `cbbe6db` | antd 6, @ant-design/pro-components, @ant-design/charts, @tanstack/react-query, clsx, tailwind-merge |
+| Task 1: Install Dependencies | ✅ Done | `cbbe6db` | antd 6, @ant-design/pro-components, @ant-design/charts, @tanstack/react-query, clsx, tailwind-merge, antd-style (added later in Task 5) |
 | Task 2: Create Routes Configuration | ✅ Done | `9e0978a` | Using `src/constants/navigation.ts` (SECTION_MAP + resolveSection) |
 | Task 3: Create Default Settings | ✅ Done | `b4b90bc` | Using `src/styles/theme.ts` (getThemeConfig) |
 | Task 4: Create Ant Design Theme | ✅ Done | `b4b90bc` | Purple (#8B5CF6) primary, tokens in theme.ts |
-| Task 5: Create HeaderDropdown | ⬜ Todo | — | |
+| Task 5: Create HeaderDropdown | ✅ Done | `1030b81` | Installed antd-style, created HeaderDropdown component |
 | Task 6: Create AvatarDropdown | ⬜ Todo | — | User menu in AppLayout.tsx covers this partially |
 | Task 7: Create SettingDrawer | ⬜ Todo | — | |
 | Task 8: Rewrite Layout with ProLayout | ✅ Done | `29534a6` | `src/components/layout/AppLayout.tsx` |
@@ -428,7 +428,7 @@ git commit -m "feat: add antd.ts theme config with token system (default light)"
 
 **Reference:** `/home/clinton/.opensrc/repos/github.com/ant-design/ant-design-pro/master/src/components/HeaderDropdown/index.tsx`
 
-- [ ] **Step 1: Create HeaderDropdown component**
+- [x] **Step 1: Create HeaderDropdown component**
 
 ```typescript
 // frontend/src/components/HeaderDropdown/index.tsx
@@ -487,7 +487,7 @@ const HeaderDropdown: React.FC<HeaderDropdownProps> = ({
 export default HeaderDropdown;
 ```
 
-- [ ] **Step 2: Commit**
+- [x] **Step 2: Commit**
 
 ```bash
 git add frontend/src/components/HeaderDropdown/index.tsx
