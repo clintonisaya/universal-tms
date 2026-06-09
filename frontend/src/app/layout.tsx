@@ -3,7 +3,6 @@ import { AntdRegistry } from "@/providers/AntdRegistry";
 import { Geist, Geist_Mono, DM_Sans } from "next/font/google";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { QueryProvider } from "@/providers/QueryProvider";
-import { ThemeProvider } from "@/contexts/ThemeContext";
 import { TabProvider } from "@/contexts/TabContext";
 import "react-resizable/css/styles.css";
 import "./globals.css";
@@ -35,17 +34,15 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" data-theme="dark" suppressHydrationWarning>
+    <html lang="en" data-theme="light" suppressHydrationWarning>
       <body
         className={`${geistSans.variable} ${geistMono.variable} ${dmSans.variable} antialiased`}
       >
         <AntdRegistry>
           <QueryProvider>
-            <ThemeProvider>
-              <TabProvider>
-                <AuthProvider>{children}</AuthProvider>
-              </TabProvider>
-            </ThemeProvider>
+            <TabProvider>
+              <AuthProvider>{children}</AuthProvider>
+            </TabProvider>
           </QueryProvider>
         </AntdRegistry>
       </body>
