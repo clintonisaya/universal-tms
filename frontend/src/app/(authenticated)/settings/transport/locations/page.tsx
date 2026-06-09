@@ -1,178 +1,73 @@
 "use client";
 
-import { useState, useMemo } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useMemo, useRef } from "react";
 import {
-  Table,
-  Button,
-  Card,
-  Space,
-  Modal,
-  Form,
-  Input,
-  message,
-  Typography,
-  Popconfirm,
-  InputNumber,
-  Flex,
-} from "antd";
+  ProTable,
+  ModalForm,
+  ProFormText,
+  ProFormDigit,
+  type ProColumns,
+  type ActionType,
+} from "@ant-design/pro-components";
+import { Button, App, Popconfirm, Space } from "antd";
 import {
   PlusOutlined,
   ReloadOutlined,
-  ArrowLeftOutlined,
   EditOutlined,
   DeleteOutlined,
 } from "@ant-design/icons";
-import type { ColumnsType } from "antd/es/table";
 import type {
   Country,
   CountryCreate,
   City,
   CityCreate,
 } from "@/types/location";
-import { useAuth } from "@/contexts/AuthContext";
 import { useCountries, useCities, useInvalidateQueries } from "@/hooks/application/useApi";
-import {
-  getColumnSearchProps,
-  getStandardRowSelection,
-  useResizableColumns,
-} from "@/components/ui/tableUtils";
-
-const { Title } = Typography;
 
 export default function LocationsPage() {
-  const router = useRouter();
-  const { user } = useAuth();
-  
-  // TanStack Query for locations data
-  const { data: countriesData, isLoading: countriesLoading, refetch: refetchCountries } = useCountries();
-  const { data: citiesData, isLoading: citiesLoading, refetch: refetchCities } = useCities();
+  const { message } = App.useApp();
   const { invalidateCountries, invalidateCities } = useInvalidateQueries();
+  const actionRef = useRef<ActionType>(null);
 
-  const loading = countriesLoading || citiesLoading;
+  // TanStack Query for tree data
+  const { data: countriesData, refetch: refetchCountries } = useCountries();
+  const { data: citiesData, refetch: refetchCities } = useCities();
 
-  // Construct Tree Data
-  const data = useMemo(() => {
+  // Construct tree data
+  const treeData = useMemo(() => {
     const countries = (countriesData?.data || []) as Country[];
     const cities = (citiesData?.data || []) as City[];
 
-    const countryMap = new Map<string, Country>();
-    
-    // Deep copy to avoid mutating cache
+    const countryMap = new Map<string, Country & { key: string; children: any[] }>();
     countries.forEach((c) => {
       countryMap.set(c.id, { ...c, key: c.id, children: [] });
     });
 
     cities.forEach((city) => {
       const country = countryMap.get(city.country_id);
-      if (country && country.children) {
+      if (country) {
         country.children.push({ ...city, key: city.id });
       }
     });
 
-    // Sort
     const sortedCountries = Array.from(countryMap.values()).sort(
       (a, b) => a.sorting - b.sorting || a.name.localeCompare(b.name)
     );
-    
     sortedCountries.forEach((c) => {
-      if (c.children) {
-        c.children.sort(
-          (a, b) => a.sorting - b.sorting || a.name.localeCompare(b.name)
-        );
-      }
+      c.children.sort(
+        (a, b) => a.sorting - b.sorting || a.name.localeCompare(b.name)
+      );
     });
 
     return sortedCountries;
   }, [countriesData, citiesData]);
 
-  // Modals
-  const [isCountryModalOpen, setIsCountryModalOpen] = useState(false);
-  const [isCityModalOpen, setIsCityModalOpen] = useState(false);
-  
-  // State for Create/Edit
-  const [editingItem, setEditingItem] = useState<Country | City | null>(null);
-  const [selectedCountryId, setSelectedCountryId] = useState<string | null>(null);
-  const [selectedCountryName, setSelectedCountryName] = useState<string>("");
-
-  const [submitting, setSubmitting] = useState(false);
-  const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
-
-  const [countryForm] = Form.useForm();
-  const [cityForm] = Form.useForm();
-
-  // Country Handlers
-  const handleCountrySubmit = async (values: CountryCreate) => {
-    setSubmitting(true);
-    try {
-      const url = editingItem
-        ? `/api/v1/countries/${editingItem.id}`
-        : "/api/v1/countries";
-      const method = editingItem ? "PATCH" : "POST";
-
-      const response = await fetch(url, {
-        method,
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify(values),
-      });
-
-      if (response.ok) {
-        message.success(`Country ${editingItem ? "updated" : "added"} successfully`);
-        setIsCountryModalOpen(false);
-        countryForm.resetFields();
-        setEditingItem(null);
-        invalidateCountries();
-      } else {
-        const error = await response.json();
-        message.error(error.detail || "Failed");
-      }
-    } catch {
-      message.error("Network error");
-    } finally {
-      setSubmitting(false);
-    }
+  const handleRefresh = () => {
+    refetchCountries();
+    refetchCities();
   };
 
-  // City Handlers
-  const handleCitySubmit = async (values: CityCreate) => {
-    setSubmitting(true);
-    try {
-      const url = editingItem
-        ? `/api/v1/cities/${editingItem.id}`
-        : "/api/v1/cities";
-      const method = editingItem ? "PATCH" : "POST";
-
-      const payload = { ...values };
-      if (!editingItem && selectedCountryId) {
-        payload.country_id = selectedCountryId;
-      }
-
-      const response = await fetch(url, {
-        method,
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify(payload),
-      });
-
-      if (response.ok) {
-        message.success(`City ${editingItem ? "updated" : "added"} successfully`);
-        setIsCityModalOpen(false);
-        cityForm.resetFields();
-        setEditingItem(null);
-        invalidateCities();
-      } else {
-        const error = await response.json();
-        message.error(error.detail || "Failed");
-      }
-    } catch {
-      message.error("Network error");
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const handleDelete = async (record: Country | City) => {
+  const handleDelete = async (record: any) => {
     const isCity = "country_id" in record;
     const url = isCity
       ? `/api/v1/cities/${record.id}`
@@ -185,8 +80,7 @@ export default function LocationsPage() {
       });
       if (response.ok) {
         message.success("Deleted successfully");
-        if (isCity) invalidateCities();
-        else invalidateCountries();
+        handleRefresh();
       } else {
         const error = await response.json();
         message.error(error.detail || "Failed to delete");
@@ -196,28 +90,25 @@ export default function LocationsPage() {
     }
   };
 
-  const handleRefresh = () => {
-    refetchCountries();
-    refetchCities();
-  };
-
-  const columns: ColumnsType<any> = [
+  const columns: ProColumns<any>[] = [
     {
       title: "Name",
       dataIndex: "name",
       key: "name",
-      render: (text: string) => (
-        <div style={{ fontWeight: 600 }}>{text}</div>
+      render: (_, record) => (
+        <div style={{ fontWeight: "country_id" in record ? 500 : 700 }}>
+          {record.name}
+        </div>
       ),
-      ...getColumnSearchProps("name"),
+      fieldProps: { placeholder: "Search name" },
     },
     {
       title: "Code",
       dataIndex: "code",
       key: "code",
       width: 100,
-      render: (text) => text || "-",
-      ...getColumnSearchProps("code"),
+      render: (_, record) => ("code" in record ? record.code || "-" : "-"),
+      search: false,
     },
     {
       title: "Order",
@@ -225,212 +116,209 @@ export default function LocationsPage() {
       key: "sorting",
       width: 80,
       align: "center",
+      search: false,
     },
     {
       title: "Actions",
       key: "actions",
-      width: 180,
-      fixed: "right",
+      width: 200,
+      valueType: "option",
       render: (_, record) => {
         const isCountry = !("country_id" in record);
         return (
-          <div className="row-actions">
-            <Space size="small">
-              {isCountry && (
-                <Button
-                  size="small"
-                  icon={<PlusOutlined />}
-                  onClick={() => {
-                    setEditingItem(null);
-                    setSelectedCountryId(record.id);
-                    setSelectedCountryName(record.name);
-                    cityForm.resetFields();
-                    setIsCityModalOpen(true);
-                  }}
-                >
-                  City
-                </Button>
-              )}
-              <Button
-                type="text"
-                size="small"
-                icon={<EditOutlined />}
-                aria-label="Edit Location"
-                onClick={() => {
-                  setEditingItem(record);
-                  if (isCountry) {
-                    countryForm.setFieldsValue(record);
-                    setIsCountryModalOpen(true);
-                  } else {
-                    cityForm.setFieldsValue(record);
-                    setIsCityModalOpen(true);
+          <Space size="small">
+            {isCountry && (
+              <ModalForm<CityCreate>
+                title={`Add City to ${record.name}`}
+                trigger={
+                  <Button size="small" icon={<PlusOutlined />}>
+                    City
+                  </Button>
+                }
+                onFinish={async (values) => {
+                  try {
+                    const response = await fetch("/api/v1/cities", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      credentials: "include",
+                      body: JSON.stringify({
+                        ...values,
+                        country_id: record.id,
+                      }),
+                    });
+                    if (response.ok) {
+                      message.success("City added successfully");
+                      handleRefresh();
+                      return true;
+                    }
+                    const error = await response.json();
+                    message.error(error.detail || "Failed to create city");
+                    return false;
+                  } catch {
+                    message.error("Network error");
+                    return false;
                   }
                 }}
-              />
-              <Popconfirm
-                title={`Delete ${record.name}?`}
-                onConfirm={() => handleDelete(record)}
-                okText="Yes"
-                cancelText="No"
-                okButtonProps={{ danger: true }}
+                initialValues={{ sorting: 10 }}
               >
-                <Button type="text" danger size="small" icon={<DeleteOutlined />} aria-label="Delete Location" />
-              </Popconfirm>
-            </Space>
-          </div>
+                <ProFormText
+                  name="name"
+                  label="City Name"
+                  rules={[{ required: true, message: "Required" }]}
+                  placeholder="e.g. Lusaka"
+                />
+                <ProFormDigit
+                  name="sorting"
+                  label="Sorting Order"
+                  min={0}
+                  fieldProps={{ precision: 0 }}
+                />
+              </ModalForm>
+            )}
+            <ModalForm
+              title={isCountry ? "Edit Country" : "Edit City"}
+              trigger={
+                <Button type="text" size="small" icon={<EditOutlined />} />
+              }
+              onFinish={async (values) => {
+                const url = isCountry
+                  ? `/api/v1/countries/${record.id}`
+                  : `/api/v1/cities/${record.id}`;
+                try {
+                  const response = await fetch(url, {
+                    method: "PATCH",
+                    headers: { "Content-Type": "application/json" },
+                    credentials: "include",
+                    body: JSON.stringify(values),
+                  });
+                  if (response.ok) {
+                    message.success(
+                      `${isCountry ? "Country" : "City"} updated successfully`
+                    );
+                    handleRefresh();
+                    return true;
+                  }
+                  const error = await response.json();
+                  message.error(error.detail || "Failed");
+                  return false;
+                } catch {
+                  message.error("Network error");
+                  return false;
+                }
+              }}
+              initialValues={record}
+            >
+              <ProFormText
+                name="name"
+                label={isCountry ? "Country Name" : "City Name"}
+                rules={[{ required: true, message: "Required" }]}
+              />
+              {isCountry && (
+                <ProFormText
+                  name="code"
+                  label="ISO Code"
+                  placeholder="e.g. ZM"
+                  fieldProps={{ maxLength: 2 }}
+                />
+              )}
+              <ProFormDigit
+                name="sorting"
+                label="Sorting Order"
+                min={0}
+                fieldProps={{ precision: 0 }}
+              />
+            </ModalForm>
+            <Popconfirm
+              title={`Delete ${record.name}?`}
+              onConfirm={() => handleDelete(record)}
+              okText="Yes"
+              cancelText="No"
+              okButtonProps={{ danger: true }}
+            >
+              <Button
+                type="text"
+                danger
+                size="small"
+                icon={<DeleteOutlined />}
+              />
+            </Popconfirm>
+          </Space>
         );
       },
     },
   ];
 
-  // Make columns resizable
-  const { resizableColumns, components } = useResizableColumns(columns);
-
   return (
-    <div>
-      <Card>
-        <Flex vertical gap="middle" style={{ width: "100%" }}>
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-            }}
-          >
-            <Space>
-              <Button
-                icon={<ArrowLeftOutlined />}
-                onClick={() => router.push("/dashboard")}
-              >
-                Back
-              </Button>
-              <Title level={2} style={{ margin: 0 }}>
-                Locations (Country &amp; City)
-              </Title>
-            </Space>
-            <Space>
-              <Button icon={<ReloadOutlined />} onClick={handleRefresh}>
-                Refresh
-              </Button>
-              <Button
-                type="primary"
-                icon={<PlusOutlined />}
-                onClick={() => {
-                  setEditingItem(null);
-                  countryForm.resetFields();
-                  setIsCountryModalOpen(true);
-                }}
-              >
-                Add Country
-              </Button>
-            </Space>
-          </div>
-
-          <Table
-            columns={resizableColumns}
-            components={components}
-            dataSource={data}
-            rowKey="id"
-            loading={loading}
-            sticky={{ offsetHeader: 64 }}
-            scroll={{ x: "max-content" }}
-            pagination={false}
-            rowSelection={getStandardRowSelection(
-              1,
-              data.length || 1000,
-              selectedRowKeys,
-              setSelectedRowKeys
-            )}
-          />
-        </Flex>
-      </Card>
-
-      {/* Country Modal */}
-      <Modal
-        title={editingItem ? "Edit Country" : "Add Country"}
-        open={isCountryModalOpen}
-        width={660}
-        onCancel={() => {
-          setIsCountryModalOpen(false);
-          setEditingItem(null);
-          countryForm.resetFields();
-        }}
-        footer={null}
-        forceRender
-      >
-        <Form
-          form={countryForm}
-          layout="vertical"
-          onFinish={handleCountrySubmit}
+    <ProTable
+      headerTitle="Locations (Country & City)"
+      actionRef={actionRef}
+      columns={columns}
+      rowKey="key"
+      dataSource={treeData}
+      search={false}
+      pagination={false}
+      expandable={{
+        defaultExpandAllRows: false,
+      }}
+      toolBarRender={() => [
+        <Button
+          key="refresh"
+          icon={<ReloadOutlined />}
+          onClick={handleRefresh}
+        >
+          Refresh
+        </Button>,
+        <ModalForm<CountryCreate>
+          key="create"
+          title="Add Country"
+          trigger={
+            <Button type="primary" icon={<PlusOutlined />}>
+              Add Country
+            </Button>
+          }
+          onFinish={async (values) => {
+            try {
+              const response = await fetch("/api/v1/countries", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                credentials: "include",
+                body: JSON.stringify(values),
+              });
+              if (response.ok) {
+                message.success("Country added successfully");
+                handleRefresh();
+                return true;
+              }
+              const error = await response.json();
+              message.error(error.detail || "Failed to create country");
+              return false;
+            } catch {
+              message.error("Network error");
+              return false;
+            }
+          }}
           initialValues={{ sorting: 10 }}
         >
-          <Form.Item
+          <ProFormText
             name="name"
             label="Country Name"
             rules={[{ required: true, message: "Required" }]}
-          >
-            <Input placeholder="e.g. Zambia" />
-          </Form.Item>
-          <Form.Item name="code" label="ISO Code">
-            <Input placeholder="e.g. ZM" maxLength={2} />
-          </Form.Item>
-          <Form.Item name="sorting" label="Sorting Order">
-            <InputNumber min={0} style={{ width: "100%" }} />
-          </Form.Item>
-          <Form.Item style={{ textAlign: "right", marginBottom: 0 }}>
-            <Space>
-              <Button onClick={() => setIsCountryModalOpen(false)}>Cancel</Button>
-              <Button type="primary" htmlType="submit" loading={submitting}>
-                {editingItem ? "Save" : "Create"}
-              </Button>
-            </Space>
-          </Form.Item>
-        </Form>
-      </Modal>
-
-      {/* City Modal */}
-      <Modal
-        title={
-          editingItem
-            ? "Edit City"
-            : `Add City to ${selectedCountryName}`
-        }
-        open={isCityModalOpen}
-        width={600}
-        onCancel={() => {
-          setIsCityModalOpen(false);
-          setEditingItem(null);
-          cityForm.resetFields();
-        }}
-        footer={null}
-        forceRender
-      >
-        <Form
-          form={cityForm}
-          layout="vertical"
-          onFinish={handleCitySubmit}
-          initialValues={{ sorting: 10 }}
-        >
-          <Form.Item
-            name="name"
-            label="City Name"
-            rules={[{ required: true, message: "Required" }]}
-          >
-            <Input placeholder="e.g. Lusaka" />
-          </Form.Item>
-          <Form.Item name="sorting" label="Sorting Order">
-            <InputNumber min={0} style={{ width: "100%" }} />
-          </Form.Item>
-          <Form.Item style={{ textAlign: "right", marginBottom: 0 }}>
-            <Space>
-              <Button onClick={() => setIsCityModalOpen(false)}>Cancel</Button>
-              <Button type="primary" htmlType="submit" loading={submitting}>
-                {editingItem ? "Save" : "Create"}
-              </Button>
-            </Space>
-          </Form.Item>
-        </Form>
-      </Modal>
-    </div>
+            placeholder="e.g. Zambia"
+          />
+          <ProFormText
+            name="code"
+            label="ISO Code"
+            placeholder="e.g. ZM"
+            fieldProps={{ maxLength: 2 }}
+          />
+          <ProFormDigit
+            name="sorting"
+            label="Sorting Order"
+            min={0}
+            fieldProps={{ precision: 0 }}
+          />
+        </ModalForm>,
+      ]}
+    />
   );
 }

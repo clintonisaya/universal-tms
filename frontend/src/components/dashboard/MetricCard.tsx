@@ -1,6 +1,7 @@
 "use client";
 
 import { ArrowUpOutlined, ArrowDownOutlined } from "@ant-design/icons";
+import { ProCard } from "@ant-design/pro-components";
 
 interface MetricCardProps {
   title: string;
@@ -32,24 +33,15 @@ export function MetricCard({
   const accentColor = accent ?? "var(--color-primary)";
 
   return (
-    <div
+    <ProCard
+      hoverable={!!onClick}
       onClick={onClick}
-      role={onClick ? "button" : undefined}
-      tabIndex={onClick ? 0 : undefined}
-      onKeyDown={onClick ? (e) => (e.key === "Enter" || e.key === " ") && onClick() : undefined}
+      loading={loading}
       style={{
-        background: "var(--color-card)",
-        border: "1px solid var(--color-border)",
-        borderRadius: 14,
-        padding: "var(--space-xl)",
-        flex: 1,
-        minWidth: 180,
         position: "relative",
         overflow: "hidden",
-        boxShadow: "var(--color-card-shadow)",
         cursor: onClick ? "pointer" : "default",
-        opacity: loading ? 0.5 : 1,
-        transition: "opacity 0.2s",
+        border: "1px solid var(--ant-color-border-secondary, #f0f0f0)",
       }}
     >
       {/* 2px accent gradient bar */}
@@ -87,7 +79,6 @@ export function MetricCard({
               fontSize: 28,
               fontWeight: 700,
               color: "var(--color-text-primary)",
-
               letterSpacing: "-0.02em",
               display: "flex",
               alignItems: "baseline",
@@ -148,6 +139,6 @@ export function MetricCard({
           </div>
         )}
       </div>
-    </div>
+    </ProCard>
   );
 }

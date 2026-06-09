@@ -46,7 +46,7 @@ function TrackingPageContent() {
   const { user } = useAuth();
   const { invalidateTracking } = useInvalidateQueries();
   const { handleExport, handleClientExport } = useTrackingExport();
-  const actionRef = useRef<ActionType>();
+  const actionRef = useRef<ActionType>(null);
 
   const isAuthenticated = !!user;
 

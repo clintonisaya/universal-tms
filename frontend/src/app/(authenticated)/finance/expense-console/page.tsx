@@ -1,38 +1,22 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import {
-  Table,
-  Button,
-  Card,
-  Space,
-  Select,
-  DatePicker,
-  Input,
-  Typography,
-  message,
-} from "antd";
+import { ProTable } from "@ant-design/pro-components";
+import type { ProColumns, ActionType } from "@ant-design/pro-components";
+import { Button, App, Space } from "antd";
 import {
   ReloadOutlined,
-  ArrowLeftOutlined,
   StopOutlined,
   PaperClipOutlined,
-  SearchOutlined,
 } from "@ant-design/icons";
-import type { ColumnsType } from "antd/es/table";
-import { getStandardRowSelection } from "@/components/ui/tableUtils";
 import type { ExpenseRequestDetailed, ExpenseStatus } from "@/types/expense";
-import { useExpenses, useInvalidateQueries } from "@/hooks/application/useApi";
 import { usePermissions } from "@/hooks/application/usePermissions";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { ExpenseStatusBadge } from "@/components/expenses/ExpenseStatusBadge";
 import { VoidExpenseModal } from "@/components/expenses/VoidExpenseModal";
 import { AmendAttachmentModal } from "@/components/expenses/AmendAttachmentModal";
 import dayjs from "dayjs";
-
-const { Title } = Typography;
-const { RangePicker } = DatePicker;
 
 const ALL_STATUSES: ExpenseStatus[] = [
   "Pending Manager",
@@ -43,132 +27,145 @@ const ALL_STATUSES: ExpenseStatus[] = [
   "Voided",
 ];
 
+const STATUS_ENUM = Object.fromEntries(
+  ALL_STATUSES.map((s) => [s, { text: s }])
+);
+
+function getExpenseType(expenseNumber: string | null): string {
+  if (!expenseNumber) return "Trip";
+  return expenseNumber.startsWith("EX") ? "Office" : "Trip";
+}
+
 export default function ExpenseConsolePage() {
   const router = useRouter();
+  const { message } = App.useApp();
   const { hasAnyPermission, hasFullAccess } = usePermissions();
+  const actionRef = useRef<ActionType>(null);
 
-  // Pagination state (must be before useExpenses)
-  const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(20);
-
-  const { data, isLoading, refetch } = useExpenses({
-    skip: (currentPage - 1) * pageSize,
-    limit: pageSize,
-  });
-  const { invalidateExpenses } = useInvalidateQueries();
-
-  const [selectedExpense, setSelectedExpense] = useState<ExpenseRequestDetailed | null>(null);
+  const [selectedExpense, setSelectedExpense] =
+    useState<ExpenseRequestDetailed | null>(null);
   const [voidModalOpen, setVoidModalOpen] = useState(false);
   const [attachmentModalOpen, setAttachmentModalOpen] = useState(false);
-  const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
-
-  // Filter state
-  const [statusFilter, setStatusFilter] = useState<ExpenseStatus[]>([]);
-  const [typeFilter, setTypeFilter] = useState<string | null>(null);
-  const [dateRange, setDateRange] = useState<[dayjs.Dayjs | null, dayjs.Dayjs | null] | null>(null);
-  const [searchText, setSearchText] = useState("");
-
-  // Permission gate
-  useEffect(() => {
-    if (!hasAnyPermission("expenses:audit-console") && !hasFullAccess) {
-      message.error("Access denied");
-      router.push("/dashboard");
-    }
-  }, [hasAnyPermission, hasFullAccess, router]);
-
-  const expenses: ExpenseRequestDetailed[] = (data?.data ?? []) as ExpenseRequestDetailed[];
-
-  const getExpenseType = (expenseNumber: string | null): string => {
-    if (!expenseNumber) return "Trip";
-    return expenseNumber.startsWith("EX") ? "Office" : "Trip";
-  };
-
-  const filtered = useMemo(() => {
-    const search = searchText.trim().toLowerCase();
-    return expenses.filter((exp) => {
-      if (statusFilter.length > 0 && !statusFilter.includes(exp.status)) return false;
-      if (typeFilter && getExpenseType(exp.expense_number) !== typeFilter) return false;
-      if (dateRange && dateRange[0] && dateRange[1]) {
-        const created = exp.created_at ? dayjs(exp.created_at) : null;
-        if (!created || created.isBefore(dateRange[0], "day") || created.isAfter(dateRange[1], "day")) return false;
-      }
-      if (search && !(exp.expense_number ?? "").toLowerCase().includes(search)) return false;
-      return true;
-    });
-  }, [expenses, statusFilter, typeFilter, dateRange, searchText]);
 
   const canVoid = hasAnyPermission("expenses:void");
   const canAmendAttachment = hasAnyPermission("expenses:amend-attachment");
 
-  const columns: ColumnsType<ExpenseRequestDetailed> = [
+  const columns: ProColumns<ExpenseRequestDetailed>[] = [
     {
       title: "Expense #",
       dataIndex: "expense_number",
       key: "expense_number",
-      render: (val: string | null) => val ?? "—",
       width: 200,
+      render: (_, record) => record.expense_number ?? "—",
+      fieldProps: { placeholder: "Search expense number" },
     },
     {
       title: "Type",
       key: "type",
-      width: 80,
+      dataIndex: "type" as any,
+      width: 100,
+      valueType: "select",
+      valueEnum: {
+        Trip: { text: "Trip" },
+        Office: { text: "Office" },
+      },
+      search: {
+        transform: (value) => ({ type: value }),
+      },
       render: (_, record) => {
         const t = getExpenseType(record.expense_number);
-        return <StatusBadge status={t} colorKey={t === "Office" ? "blue" : "cyan"} />;
+        return (
+          <StatusBadge status={t} colorKey={t === "Office" ? "blue" : "cyan"} />
+        );
       },
+      hideInTable: false,
     },
     {
       title: "Category",
       dataIndex: "category",
       key: "category",
       width: 110,
+      valueType: "select",
+      valueEnum: {
+        Fuel: { text: "Fuel" },
+        Allowance: { text: "Allowance" },
+        Maintenance: { text: "Maintenance" },
+        Office: { text: "Office" },
+        Border: { text: "Border" },
+        Other: { text: "Other" },
+      },
     },
     {
       title: "Amount",
       key: "amount",
-      width: 120,
+      dataIndex: "amount",
+      width: 130,
+      search: false,
+      sorter: true,
       render: (_, record) =>
         `${record.currency ?? "USD"} ${record.amount.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
     },
     {
       title: "Status",
+      dataIndex: "status",
       key: "status",
-      width: 275,
+      width: 180,
+      valueType: "select",
+      fieldProps: {
+        mode: "multiple",
+        placeholder: "Filter by status",
+      },
+      valueEnum: STATUS_ENUM,
       render: (_, record) => <ExpenseStatusBadge status={record.status} />,
     },
     {
       title: "Submitted By",
       key: "submitted_by",
-      width: 140,
-      render: (_, record) => record.created_by?.full_name ?? record.created_by?.username ?? "—",
+      dataIndex: ["created_by", "full_name"],
+      width: 150,
+      search: false,
+      render: (_, record) =>
+        record.created_by?.full_name ?? record.created_by?.username ?? "—",
     },
     {
       title: "Date",
-      key: "date",
-      width: 110,
+      dataIndex: "created_at",
+      key: "created_at",
+      width: 130,
+      valueType: "dateRange",
+      search: {
+        transform: (value) => ({ startDate: value[0], endDate: value[1] }),
+      },
+      sorter: true,
       render: (_, record) =>
-        record.created_at ? dayjs(record.created_at).format("DD MMM YYYY") : "—",
+        record.created_at
+          ? dayjs(record.created_at).format("DD MMM YYYY")
+          : "—",
     },
     {
       title: "Actions",
       key: "actions",
-      fixed: "right",
-      width: canVoid && canAmendAttachment ? 200 : canVoid || canAmendAttachment ? 120 : 0,
+      width: 200,
+      valueType: "option",
+      search: false,
       render: (_, record) => (
-        <Space>
-          {canVoid && record.status !== "Voided" && record.status !== "Rejected" && record.status !== "Pending Manager" && (
-            <Button
-              size="small"
-              danger
-              icon={<StopOutlined />}
-              onClick={() => {
-                setSelectedExpense(record);
-                setVoidModalOpen(true);
-              }}
-            >
-              Void
-            </Button>
-          )}
+        <Space size="small">
+          {canVoid &&
+            record.status !== "Voided" &&
+            record.status !== "Rejected" &&
+            record.status !== "Pending Manager" && (
+              <Button
+                size="small"
+                danger
+                icon={<StopOutlined />}
+                onClick={() => {
+                  setSelectedExpense(record);
+                  setVoidModalOpen(true);
+                }}
+              >
+                Void
+              </Button>
+            )}
           {canAmendAttachment && (
             <Button
               size="small"
@@ -187,90 +184,120 @@ export default function ExpenseConsolePage() {
   ];
 
   return (
-    <div>
-      <Space style={{ marginBottom: 16 }}>
-        <Button icon={<ArrowLeftOutlined />} onClick={() => router.push("/dashboard")}>
-          Back
-        </Button>
-        <Title level={4} style={{ margin: 0 }}>
-          Expense Console
-        </Title>
-      </Space>
+    <>
+      <ProTable<ExpenseRequestDetailed>
+        headerTitle="Expense Console"
+        actionRef={actionRef}
+        columns={columns}
+        rowKey="id"
+        request={async (params, sort) => {
+          // Build server-side params
+          const skip = ((params.current ?? 1) - 1) * (params.pageSize ?? 20);
+          const limit = params.pageSize ?? 20;
 
-      <Card style={{ marginBottom: 16 }}>
-        <Space wrap>
-          <Input
-            placeholder="Search expense number"
-            prefix={<SearchOutlined />}
-            style={{ width: 200 }}
-            value={searchText}
-            onChange={(e) => setSearchText(e.target.value)}
-            allowClear
-          />
-          <Select
-            mode="multiple"
-            placeholder="Filter by status"
-            style={{ minWidth: 220 }}
-            options={ALL_STATUSES.map((s) => ({ label: s, value: s }))}
-            value={statusFilter}
-            onChange={setStatusFilter}
-            allowClear
-          />
-          <Select
-            placeholder="Filter by type"
-            style={{ width: 140 }}
-            options={[
-              { label: "Trip", value: "Trip" },
-              { label: "Office", value: "Office" },
-            ]}
-            value={typeFilter}
-            onChange={(v) => setTypeFilter(v ?? null)}
-            allowClear
-          />
-          <RangePicker
-            value={dateRange as any}
-            onChange={(vals) => setDateRange(vals as any)}
-          />
+          const searchParams = new URLSearchParams();
+          searchParams.set("skip", String(skip));
+          searchParams.set("limit", String(limit));
+
+          // Status filter (can be array for multi-select)
+          if (params.status) {
+            const statusVal = Array.isArray(params.status)
+              ? params.status[0]
+              : params.status;
+            if (statusVal) searchParams.set("status", String(statusVal));
+          }
+          // Category filter
+          if (params.category) {
+            searchParams.set("category", String(params.category));
+          }
+
+          try {
+            const response = await fetch(
+              `/api/v1/expenses/?${searchParams.toString()}`,
+              { credentials: "include" }
+            );
+            if (!response.ok) {
+              if (response.status === 401) router.push("/login");
+              return { data: [], total: 0, success: false };
+            }
+            const result = await response.json();
+            let data: ExpenseRequestDetailed[] = (result.data ??
+              []) as ExpenseRequestDetailed[];
+
+            // Client-side filters
+            // Type filter
+            if (params.type) {
+              data = data.filter(
+                (exp) => getExpenseType(exp.expense_number) === params.type
+              );
+            }
+            // Date range filter
+            if (params.startDate && params.endDate) {
+              const start = dayjs(params.startDate as string).startOf("day");
+              const end = dayjs(params.endDate as string).endOf("day");
+              data = data.filter((exp) => {
+                if (!exp.created_at) return false;
+                const created = dayjs(exp.created_at);
+                return (
+                  created.isAfter(start) ||
+                  created.isSame(start, "day") ||
+                  created.isBefore(end) ||
+                  created.isSame(end, "day")
+                );
+              });
+            }
+            // Expense number search
+            if (params.expense_number) {
+              const search = String(params.expense_number).toLowerCase();
+              data = data.filter((exp) =>
+                (exp.expense_number ?? "").toLowerCase().includes(search)
+              );
+            }
+
+            // Client-side sort
+            if (sort && sort.amount) {
+              data.sort((a, b) =>
+                sort.amount === "ascend"
+                  ? a.amount - b.amount
+                  : b.amount - a.amount
+              );
+            }
+            if (sort && sort.created_at) {
+              data.sort((a, b) => {
+                const aDate = a.created_at ?? "";
+                const bDate = b.created_at ?? "";
+                return sort.created_at === "ascend"
+                  ? aDate.localeCompare(bDate)
+                  : bDate.localeCompare(aDate);
+              });
+            }
+
+            return {
+              data,
+              total: result.count ?? data.length,
+              success: true,
+            };
+          } catch {
+            message.error("Network error");
+            return { data: [], total: 0, success: false };
+          }
+        }}
+        search={{ labelWidth: "auto", defaultCollapsed: false }}
+        pagination={{
+          defaultPageSize: 20,
+          showSizeChanger: true,
+          pageSizeOptions: ["20", "50", "100"],
+        }}
+        toolBarRender={() => [
           <Button
+            key="refresh"
             icon={<ReloadOutlined />}
-            onClick={() => {
-              invalidateExpenses();
-              refetch();
-            }}
+            onClick={() => actionRef.current?.reload()}
           >
             Refresh
-          </Button>
-        </Space>
-      </Card>
-
-      <Card>
-        <Table<ExpenseRequestDetailed>
-          dataSource={filtered}
-          columns={columns}
-          rowKey="id"
-          rowSelection={getStandardRowSelection(
-            currentPage,
-            pageSize,
-            selectedRowKeys,
-            setSelectedRowKeys
-          )}
-          loading={isLoading}
-          scroll={{ x: 1000 }}
-          pagination={{
-            current: currentPage,
-            pageSize,
-            total: data?.count ?? 0,
-            showTotal: (total) => `Total ${total} expenses`,
-            showSizeChanger: true,
-            pageSizeOptions: ["20", "50", "100"],
-            onChange: (page, size) => {
-              setCurrentPage(page);
-              setPageSize(size);
-            },
-          }}
-          size="small"
-        />
-      </Card>
+          </Button>,
+        ]}
+      />
 
       <VoidExpenseModal
         expense={selectedExpense}
@@ -278,7 +305,7 @@ export default function ExpenseConsolePage() {
         onClose={() => setVoidModalOpen(false)}
         onSuccess={() => {
           setVoidModalOpen(false);
-          invalidateExpenses();
+          actionRef.current?.reload();
         }}
       />
 
@@ -287,6 +314,6 @@ export default function ExpenseConsolePage() {
         open={attachmentModalOpen}
         onClose={() => setAttachmentModalOpen(false)}
       />
-    </div>
+    </>
   );
 }

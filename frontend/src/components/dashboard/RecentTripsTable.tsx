@@ -1,15 +1,16 @@
 "use client";
 
-import { Table, Typography, Tooltip, Button, Space } from "antd";
+import { Tooltip, Button, Space, Typography } from "antd";
 import { EyeOutlined } from "@ant-design/icons";
+import { ProTable } from "@ant-design/pro-components";
 import { useRouter } from "next/navigation";
-import type { ColumnsType } from "antd/es/table";
+import type { ProColumns } from "@ant-design/pro-components";
 import type { Trip, TripStatus } from "@/types/trip";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePermissions } from "@/hooks/application/usePermissions";
 import { TripStatusTag } from "@/components/ui/TripStatusTag";
 
-const { Title, Text } = Typography;
+const { Text } = Typography;
 
 
 const RETURN_STATUSES = new Set([
@@ -60,11 +61,12 @@ export function RecentTripsTable({ data, loading }: RecentTripsTableProps) {
   const { hasPermission } = usePermissions();
   const showFinancialData = hasPermission("trips:view-financials");
 
-  const columns: ColumnsType<Trip> = [
+  const columns: ProColumns<Trip>[] = [
     {
       title: "No.",
       key: "index",
       width: 45,
+      search: false,
       render: (_: unknown, __: Trip, index: number) => index + 1,
     },
     {
@@ -72,7 +74,8 @@ export function RecentTripsTable({ data, loading }: RecentTripsTableProps) {
       dataIndex: "trip_number",
       key: "trip_number",
       width: 140,
-      render: (text: string, record: Trip) => (
+      search: false,
+      render: (text: any, record: Trip) => (
         <Button
           type="link"
           size="small"
@@ -89,7 +92,8 @@ export function RecentTripsTable({ data, loading }: RecentTripsTableProps) {
       key: "route_name",
       width: 250,
       ellipsis: true,
-      render: (text: string, record: Trip) => {
+      search: false,
+      render: (text: any, record: Trip) => {
         const isReturn = RETURN_STATUSES.has(record.status);
         const display = isReturn && record.return_route_name ? record.return_route_name : text;
         return <Text>{display}</Text>;
@@ -101,7 +105,8 @@ export function RecentTripsTable({ data, loading }: RecentTripsTableProps) {
       key: "current_location",
       width: 160,
       ellipsis: true,
-      render: (text: string | null) =>
+      search: false,
+      render: (text: any) =>
         text ? <Text>{text}</Text> : <Text type="secondary">-</Text>,
     },
     {
@@ -109,14 +114,16 @@ export function RecentTripsTable({ data, loading }: RecentTripsTableProps) {
       dataIndex: "status",
       key: "status",
       width: 120,
-      render: (status: TripStatus, record: Trip) => <TripStatusTag status={status} isDelayed={record.is_delayed} />,
+      search: false,
+      render: (status: any, record: Trip) => <TripStatusTag status={status} isDelayed={record.is_delayed} />,
     },
         {
       title: "Last Updated",
       dataIndex: "location_update_time",
       key: "location_update_time",
       width: 100,
-      render: (date: string | null) => (
+      search: false,
+      render: (date: any) => (
         <Tooltip title={date ? new Date(date).toLocaleString() : undefined}>
           <Text type="secondary">
             {formatRelativeTime(date)}
@@ -131,6 +138,7 @@ export function RecentTripsTable({ data, loading }: RecentTripsTableProps) {
             dataIndex: "waybill_rate",
             key: "rate",
             width: 120,
+            search: false,
             render: (_: unknown, record: Trip) => {
               const isReturn = RETURN_STATUSES.has(record.status);
               const rate = isReturn
@@ -145,7 +153,7 @@ export function RecentTripsTable({ data, loading }: RecentTripsTableProps) {
                 <Text type="secondary">-</Text>
               );
             },
-          } as ColumnsType<Trip>[number],
+          } as ProColumns<Trip>,
         ]
       : []),
 
@@ -154,6 +162,7 @@ export function RecentTripsTable({ data, loading }: RecentTripsTableProps) {
       key: "days",
       width: 110,
       align: "center" as const,
+      search: false,
       render: (_: unknown, record: Trip) => {
         const now = Date.now();
         // Mirror tracking report: arrival_return_date → end_date → now
@@ -201,7 +210,8 @@ export function RecentTripsTable({ data, loading }: RecentTripsTableProps) {
       dataIndex: "waybill_risk_level",
       key: "risk",
       width: 70,
-      render: (risk: string | null) => {
+      search: false,
+      render: (risk: any) => {
         if (!risk) return <Text type="secondary">-</Text>;
         const color = getRiskCssColor(risk);
         return (
@@ -218,6 +228,7 @@ export function RecentTripsTable({ data, loading }: RecentTripsTableProps) {
       title: "",
       key: "actions",
       width: 50,
+      search: false,
       render: (_: unknown, record: Trip) => (
         <div className="row-actions">
           <Space size="small">
@@ -234,19 +245,17 @@ export function RecentTripsTable({ data, loading }: RecentTripsTableProps) {
   ];
 
   return (
-    <div style={{ marginTop: 32 }}>
-      <Title level={4} style={{ marginBottom: 16 }}>
-        Recent Trips
-      </Title>
-      <Table<Trip>
-        columns={columns}
-        dataSource={data}
-        rowKey="id"
-        loading={loading}
-        pagination={false}
-        size="small"
-        scroll={{ x: "max-content" }}
-      />
-    </div>
+    <ProTable<Trip>
+      headerTitle="Recent Trips"
+      columns={columns}
+      dataSource={data}
+      rowKey="id"
+      loading={loading}
+      pagination={false}
+      search={false}
+      size="small"
+      scroll={{ x: "max-content" }}
+      style={{ marginTop: 32 }}
+    />
   );
 }

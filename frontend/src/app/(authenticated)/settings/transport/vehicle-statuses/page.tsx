@@ -1,130 +1,27 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRef } from "react";
 import {
-  Table,
-  Button,
-  Card,
-  Space,
-  Modal,
-  Form,
-  Input,
-  Switch,
-  message,
-  Typography,
-  Popconfirm,
-} from "antd";
-import StatusBadge from "@/components/ui/StatusBadge";
+  ProTable,
+  ModalForm,
+  ProFormText,
+  ProFormTextArea,
+  ProFormSwitch,
+  type ProColumns,
+  type ActionType,
+} from "@ant-design/pro-components";
+import { Button, App, Popconfirm, Space, Tag } from "antd";
 import {
   PlusOutlined,
   ReloadOutlined,
-  ArrowLeftOutlined,
   EditOutlined,
   DeleteOutlined,
 } from "@ant-design/icons";
-import type { ColumnsType } from "antd/es/table";
-import type {
-  VehicleStatus,
-  VehicleStatusCreate,
-  VehicleStatusUpdate,
-} from "@/types/vehicle-status";
-import { useAuth } from "@/contexts/AuthContext";
-import { useVehicleStatuses, useInvalidateQueries } from "@/hooks/application/useApi";
-import {
-  getColumnSearchProps,
-  getColumnFilterProps,
-  getStandardRowSelection,
-  useResizableColumns,
-} from "@/components/ui/tableUtils";
-
-const { Title } = Typography;
-const { TextArea } = Input;
-
-const STATUS_FILTERS = [
-  { text: "Active", value: true },
-  { text: "Inactive", value: false },
-];
+import type { VehicleStatus, VehicleStatusCreate } from "@/types/vehicle-status";
 
 export default function VehicleStatusesPage() {
-  const router = useRouter();
-  const { user } = useAuth();
-  
-  // TanStack Query for vehicle statuses
-  const { data, isLoading: loading, refetch } = useVehicleStatuses();
-  const { invalidateVehicleStatuses } = useInvalidateQueries();
-
-  const statuses = (data?.data || []) as VehicleStatus[];
-  const totalCount = data?.count || 0;
-
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [editingStatus, setEditingStatus] = useState<VehicleStatus | null>(
-    null
-  );
-  const [submitting, setSubmitting] = useState(false);
-  const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(20);
-
-  const [createForm] = Form.useForm<VehicleStatusCreate>();
-  const [editForm] = Form.useForm<VehicleStatusUpdate>();
-
-  const handleCreate = async (values: VehicleStatusCreate) => {
-    setSubmitting(true);
-    try {
-      const payload = { ...values, is_active: values.is_active ?? true };
-      const response = await fetch("/api/v1/vehicle-statuses", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify(payload),
-      });
-      if (response.ok) {
-        message.success("Vehicle status added successfully");
-        setIsCreateModalOpen(false);
-        createForm.resetFields();
-        invalidateVehicleStatuses();
-      } else {
-        const error = await response.json();
-        message.error(error.detail || "Failed to create vehicle status");
-      }
-    } catch {
-      message.error("Network error");
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const handleEdit = async (values: VehicleStatusUpdate) => {
-    if (!editingStatus) return;
-    setSubmitting(true);
-    try {
-      const response = await fetch(
-        `/api/v1/vehicle-statuses/${editingStatus.id}`,
-        {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify(values),
-        }
-      );
-      if (response.ok) {
-        message.success("Vehicle status updated successfully");
-        setIsEditModalOpen(false);
-        setEditingStatus(null);
-        editForm.resetFields();
-        invalidateVehicleStatuses();
-      } else {
-        const error = await response.json();
-        message.error(error.detail || "Failed to update vehicle status");
-      }
-    } catch {
-      message.error("Network error");
-    } finally {
-      setSubmitting(false);
-    }
-  };
+  const { message } = App.useApp();
+  const actionRef = useRef<ActionType>(null);
 
   const handleDelete = async (status: VehicleStatus) => {
     try {
@@ -134,7 +31,7 @@ export default function VehicleStatusesPage() {
       });
       if (response.ok) {
         message.success("Vehicle status deleted successfully");
-        invalidateVehicleStatuses();
+        actionRef.current?.reload();
       } else {
         const error = await response.json();
         message.error(error.detail || "Failed to delete vehicle status");
@@ -144,278 +41,206 @@ export default function VehicleStatusesPage() {
     }
   };
 
-  const openEditModal = (status: VehicleStatus) => {
-    setEditingStatus(status);
-    editForm.setFieldsValue({
-      name: status.name,
-      description: status.description || undefined,
-      is_active: status.is_active,
-    });
-    setIsEditModalOpen(true);
-  };
-
-  const columns: ColumnsType<VehicleStatus> = [
+  const columns: ProColumns<VehicleStatus>[] = [
     {
       title: "Name",
       dataIndex: "name",
       key: "name",
-      width: 200,
-      sorter: (a, b) => a.name.localeCompare(b.name),
-      render: (text: string) => (
-        <div style={{ fontWeight: 600 }}>{text}</div>
+      sorter: true,
+      render: (_, record) => (
+        <div style={{ fontWeight: 600 }}>{record.name}</div>
       ),
-      ...getColumnSearchProps("name"),
+      fieldProps: { placeholder: "Search name" },
     },
     {
       title: "Description",
       dataIndex: "description",
       key: "description",
       ellipsis: true,
-      render: (desc: string | null) => desc || "-",
-      ...getColumnSearchProps("description"),
+      render: (_, record) => record.description || "-",
+      search: false,
     },
     {
       title: "Status",
       dataIndex: "is_active",
       key: "is_active",
       width: 100,
-      render: (active: boolean) => (
-        <StatusBadge status={active ? "Active" : "Inactive"} colorKey={active ? "green" : "red"} />
+      valueType: "select",
+      valueEnum: {
+        true: { text: "Active", status: "Success" },
+        false: { text: "Inactive", status: "Default" },
+      },
+      render: (_, record) => (
+        <Tag color={record.is_active ? "green" : "default"}>
+          {record.is_active ? "Active" : "Inactive"}
+        </Tag>
       ),
-      ...getColumnFilterProps("is_active", STATUS_FILTERS),
     },
     {
       title: "Actions",
       key: "actions",
-      width: 100,
-      fixed: "right",
+      width: 130,
+      valueType: "option",
       render: (_, record) => (
-        <div className="row-actions">
-          <Space size="small">
-            <Button
-              type="text"
-              size="small"
-              icon={<EditOutlined />}
-              onClick={() => openEditModal(record)}
-              aria-label="Edit Vehicle Status"
+        <Space size="small">
+          <ModalForm<VehicleStatus>
+            title="Edit Vehicle Status"
+            trigger={
+              <Button type="text" size="small" icon={<EditOutlined />} />
+            }
+            onFinish={async (values) => {
+              try {
+                const response = await fetch(
+                  `/api/v1/vehicle-statuses/${record.id}`,
+                  {
+                    method: "PATCH",
+                    headers: { "Content-Type": "application/json" },
+                    credentials: "include",
+                    body: JSON.stringify(values),
+                  }
+                );
+                if (response.ok) {
+                  message.success("Vehicle status updated successfully");
+                  actionRef.current?.reload();
+                  return true;
+                }
+                const error = await response.json();
+                message.error(error.detail || "Failed to update vehicle status");
+                return false;
+              } catch {
+                message.error("Network error");
+                return false;
+              }
+            }}
+            initialValues={{
+              name: record.name,
+              description: record.description || undefined,
+              is_active: record.is_active,
+            }}
+          >
+            <ProFormText
+              name="name"
+              label="Name"
+              rules={[
+                { required: true, message: "Please enter a status name" },
+                { max: 255, message: "Name too long" },
+              ]}
+              placeholder="e.g., Waiting Offloading"
             />
-            <Popconfirm
-              title="Delete vehicle status"
-              description={`Delete "${record.name}"?`}
-              onConfirm={() => handleDelete(record)}
-              okText="Yes"
-              cancelText="No"
-              okButtonProps={{ danger: true }}
-            >
-              <Button type="text" danger size="small" icon={<DeleteOutlined />} aria-label="Delete Vehicle Status" />
-            </Popconfirm>
-          </Space>
-        </div>
+            <ProFormTextArea
+              name="description"
+              label="Description"
+              rules={[{ max: 500, message: "Description too long" }]}
+              placeholder="e.g., Vehicle waiting at destination to be offloaded"
+              fieldProps={{ rows: 3 }}
+            />
+            <ProFormSwitch
+              name="is_active"
+              label="Active"
+              initialValue={true}
+            />
+          </ModalForm>
+          <Popconfirm
+            title="Delete vehicle status"
+            description={`Delete "${record.name}"?`}
+            onConfirm={() => handleDelete(record)}
+            okText="Yes"
+            cancelText="No"
+            okButtonProps={{ danger: true }}
+          >
+            <Button type="text" danger size="small" icon={<DeleteOutlined />} />
+          </Popconfirm>
+        </Space>
       ),
     },
   ];
 
-  // Make columns resizable
-  const { resizableColumns, components } = useResizableColumns(columns);
-
   return (
-    <div>
-      <Card>
-        <Space orientation="vertical" size="middle" style={{ width: "100%" }}>
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-            }}
-          >
-            <Space>
-              <Button
-                icon={<ArrowLeftOutlined />}
-                onClick={() => router.push("/dashboard")}
-              >
-                Back
-              </Button>
-              <Title level={2} style={{ margin: 0 }}>
-                Vehicle Statuses
-              </Title>
-            </Space>
-            <Space>
-              <Button icon={<ReloadOutlined />} onClick={() => refetch()}>
-                Refresh
-              </Button>
-              <Button
-                type="primary"
-                icon={<PlusOutlined />}
-                onClick={() => setIsCreateModalOpen(true)}
-              >
-                Add Vehicle Status
-              </Button>
-            </Space>
-          </div>
-
-          <Table<VehicleStatus>
-            columns={resizableColumns}
-            components={components}
-            dataSource={statuses}
-            rowKey="id"
-            loading={loading}
-            sticky={{ offsetHeader: 64 }}
-            scroll={{ x: "max-content" }}
-            rowSelection={getStandardRowSelection(
-              currentPage,
-              pageSize,
-              selectedRowKeys,
-              setSelectedRowKeys
-            )}
-            pagination={{
-              current: currentPage,
-              pageSize,
-              total: totalCount,
-              showTotal: (total) => `Total ${total} vehicle statuses`,
-              showSizeChanger: true,
-              pageSizeOptions: ["10", "20", "50", "100"],
-              onChange: (page, size) => {
-                setCurrentPage(page);
-                setPageSize(size);
-              },
-            }}
-          />
-        </Space>
-      </Card>
-
-      {/* Create Modal */}
-      <Modal
-        title="Add Vehicle Status"
-        open={isCreateModalOpen}
-        width={600}
-        onCancel={() => {
-          setIsCreateModalOpen(false);
-          createForm.resetFields();
-        }}
-        footer={null}
-        destroyOnHidden
-      >
-        <Form<VehicleStatusCreate>
-          form={createForm}
-          layout="vertical"
-          onFinish={handleCreate}
+    <ProTable<VehicleStatus>
+      headerTitle="Vehicle Statuses"
+      actionRef={actionRef}
+      columns={columns}
+      rowKey="id"
+      request={async () => {
+        const response = await fetch("/api/v1/vehicle-statuses", {
+          credentials: "include",
+        });
+        const data = await response.json();
+        return {
+          data: data.data || [],
+          total: data.count || 0,
+          success: true,
+        };
+      }}
+      search={{ labelWidth: "auto" }}
+      pagination={{
+        defaultPageSize: 20,
+        showSizeChanger: true,
+        pageSizeOptions: ["10", "20", "50", "100"],
+      }}
+      toolBarRender={() => [
+        <Button
+          key="refresh"
+          icon={<ReloadOutlined />}
+          onClick={() => actionRef.current?.reload()}
+        >
+          Refresh
+        </Button>,
+        <ModalForm<VehicleStatusCreate>
+          key="create"
+          title="Add Vehicle Status"
+          trigger={
+            <Button type="primary" icon={<PlusOutlined />}>
+              Add Vehicle Status
+            </Button>
+          }
+          onFinish={async (values) => {
+            try {
+              const payload = { ...values, is_active: values.is_active ?? true };
+              const response = await fetch("/api/v1/vehicle-statuses", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                credentials: "include",
+                body: JSON.stringify(payload),
+              });
+              if (response.ok) {
+                message.success("Vehicle status added successfully");
+                actionRef.current?.reload();
+                return true;
+              }
+              const error = await response.json();
+              message.error(error.detail || "Failed to create vehicle status");
+              return false;
+            } catch {
+              message.error("Network error");
+              return false;
+            }
+          }}
           initialValues={{ is_active: true }}
         >
-          <Form.Item
+          <ProFormText
             name="name"
             label="Name"
             rules={[
               { required: true, message: "Please enter a status name" },
               { max: 255, message: "Name too long" },
             ]}
-          >
-            <Input placeholder="e.g., Waiting Offloading" />
-          </Form.Item>
-
-          <Form.Item
+            placeholder="e.g., Waiting Offloading"
+          />
+          <ProFormTextArea
             name="description"
             label="Description"
             rules={[{ max: 500, message: "Description too long" }]}
-          >
-            <TextArea
-              placeholder="e.g., Vehicle waiting at destination to be offloaded"
-              rows={3}
-            />
-          </Form.Item>
-
-          <Form.Item
+            placeholder="e.g., Vehicle waiting at destination to be offloaded"
+            fieldProps={{ rows: 3 }}
+          />
+          <ProFormSwitch
             name="is_active"
             label="Active"
-            valuePropName="checked"
-          >
-            <Switch />
-          </Form.Item>
-
-          <Form.Item style={{ marginBottom: 0, textAlign: "right" }}>
-            <Space>
-              <Button
-                onClick={() => {
-                  setIsCreateModalOpen(false);
-                  createForm.resetFields();
-                }}
-              >
-                Cancel
-              </Button>
-              <Button type="primary" htmlType="submit" loading={submitting}>
-                Add Vehicle Status
-              </Button>
-            </Space>
-          </Form.Item>
-        </Form>
-      </Modal>
-
-      {/* Edit Modal */}
-      <Modal
-        title="Edit Vehicle Status"
-        open={isEditModalOpen}
-        width={600}
-        onCancel={() => {
-          setIsEditModalOpen(false);
-          setEditingStatus(null);
-          editForm.resetFields();
-        }}
-        footer={null}
-        destroyOnHidden
-      >
-        <Form<VehicleStatusUpdate>
-          form={editForm}
-          layout="vertical"
-          onFinish={handleEdit}
-        >
-          <Form.Item
-            name="name"
-            label="Name"
-            rules={[
-              { required: true, message: "Please enter a status name" },
-              { max: 255, message: "Name too long" },
-            ]}
-          >
-            <Input placeholder="e.g., Waiting Offloading" />
-          </Form.Item>
-
-          <Form.Item
-            name="description"
-            label="Description"
-            rules={[{ max: 500, message: "Description too long" }]}
-          >
-            <TextArea
-              placeholder="e.g., Vehicle waiting at destination to be offloaded"
-              rows={3}
-            />
-          </Form.Item>
-
-          <Form.Item
-            name="is_active"
-            label="Active"
-            valuePropName="checked"
-          >
-            <Switch />
-          </Form.Item>
-
-          <Form.Item style={{ marginBottom: 0, textAlign: "right" }}>
-            <Space>
-              <Button
-                onClick={() => {
-                  setIsEditModalOpen(false);
-                  setEditingStatus(null);
-                  editForm.resetFields();
-                }}
-              >
-                Cancel
-              </Button>
-              <Button type="primary" htmlType="submit" loading={submitting}>
-                Save Changes
-              </Button>
-            </Space>
-          </Form.Item>
-        </Form>
-      </Modal>
-    </div>
+            initialValue={true}
+          />
+        </ModalForm>,
+      ]}
+    />
   );
 }

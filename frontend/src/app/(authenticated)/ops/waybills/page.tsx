@@ -40,7 +40,7 @@ export default function WaybillsPage() {
   const { message } = App.useApp();
   const { user } = useAuth();
   const { hasPermission } = usePermissions();
-  const actionRef = useRef<ActionType>();
+  const actionRef = useRef<ActionType>(null);
 
   const [createDrawerOpen, setCreateDrawerOpen] = useState(false);
   const [editDrawerOpen, setEditDrawerOpen] = useState(false);

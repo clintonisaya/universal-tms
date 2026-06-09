@@ -1,121 +1,26 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRef } from "react";
 import {
-  Table,
-  Button,
-  Card,
-  Space,
-  Modal,
-  Form,
-  Input,
-  message,
-  Typography,
-  Popconfirm,
-} from "antd";
+  ProTable,
+  ModalForm,
+  ProFormText,
+  ProFormTextArea,
+  type ProColumns,
+  type ActionType,
+} from "@ant-design/pro-components";
+import { Button, App, Popconfirm, Space } from "antd";
 import {
   PlusOutlined,
   ReloadOutlined,
-  ArrowLeftOutlined,
   EditOutlined,
   DeleteOutlined,
 } from "@ant-design/icons";
-import type { ColumnsType } from "antd/es/table";
-import type {
-  CargoType,
-  CargoTypeCreate,
-  CargoTypeUpdate,
-} from "@/types/cargo-type";
-import { useAuth } from "@/contexts/AuthContext";
-import { useCargoTypes, useInvalidateQueries } from "@/hooks/application/useApi";
-import {
-  getColumnSearchProps,
-  getStandardRowSelection,
-  useResizableColumns,
-} from "@/components/ui/tableUtils";
-
-const { Title } = Typography;
-const { TextArea } = Input;
+import type { CargoType, CargoTypeCreate } from "@/types/cargo-type";
 
 export default function CargoTypesPage() {
-  const router = useRouter();
-  const { user } = useAuth();
-  
-  // TanStack Query
-  const { data, isLoading: loading, refetch } = useCargoTypes();
-  const { invalidateCargoTypes } = useInvalidateQueries();
-
-  const cargoTypes = (data?.data || []) as CargoType[];
-  const totalCount = data?.count || 0;
-
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [editingCargoType, setEditingCargoType] = useState<CargoType | null>(
-    null
-  );
-  const [submitting, setSubmitting] = useState(false);
-  const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(20);
-
-  const [createForm] = Form.useForm<CargoTypeCreate>();
-  const [editForm] = Form.useForm<CargoTypeUpdate>();
-
-  const handleCreate = async (values: CargoTypeCreate) => {
-    setSubmitting(true);
-    try {
-      const response = await fetch("/api/v1/cargo-types", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify(values),
-      });
-      if (response.ok) {
-        message.success("Cargo type added successfully");
-        setIsCreateModalOpen(false);
-        createForm.resetFields();
-        invalidateCargoTypes();
-      } else {
-        const error = await response.json();
-        message.error(error.detail || "Failed to create cargo type");
-      }
-    } catch {
-      message.error("Network error");
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const handleEdit = async (values: CargoTypeUpdate) => {
-    if (!editingCargoType) return;
-    setSubmitting(true);
-    try {
-      const response = await fetch(
-        `/api/v1/cargo-types/${editingCargoType.id}`,
-        {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify(values),
-        }
-      );
-      if (response.ok) {
-        message.success("Cargo type updated successfully");
-        setIsEditModalOpen(false);
-        setEditingCargoType(null);
-        editForm.resetFields();
-        invalidateCargoTypes();
-      } else {
-        const error = await response.json();
-        message.error(error.detail || "Failed to update cargo type");
-      }
-    } catch {
-      message.error("Network error");
-    } finally {
-      setSubmitting(false);
-    }
-  };
+  const { message } = App.useApp();
+  const actionRef = useRef<ActionType>(null);
 
   const handleDelete = async (cargoType: CargoType) => {
     try {
@@ -125,7 +30,7 @@ export default function CargoTypesPage() {
       });
       if (response.ok) {
         message.success("Cargo type deleted successfully");
-        invalidateCargoTypes();
+        actionRef.current?.reload();
       } else {
         const error = await response.json();
         message.error(error.detail || "Failed to delete cargo type");
@@ -135,250 +40,177 @@ export default function CargoTypesPage() {
     }
   };
 
-  const openEditModal = (cargoType: CargoType) => {
-    setEditingCargoType(cargoType);
-    editForm.setFieldsValue({
-      name: cargoType.name,
-      description: cargoType.description || undefined,
-    });
-    setIsEditModalOpen(true);
-  };
-
-  const columns: ColumnsType<CargoType> = [
+  const columns: ProColumns<CargoType>[] = [
     {
       title: "Name",
       dataIndex: "name",
       key: "name",
-      width: 200,
-      sorter: (a, b) => a.name.localeCompare(b.name),
-      render: (text: string) => (
-        <div style={{ fontWeight: 600 }}>{text}</div>
+      sorter: true,
+      render: (_, record) => (
+        <div style={{ fontWeight: 600 }}>{record.name}</div>
       ),
-      ...getColumnSearchProps("name"),
+      fieldProps: { placeholder: "Search name" },
     },
     {
       title: "Description",
       dataIndex: "description",
       key: "description",
       ellipsis: true,
-      render: (desc: string | null) => desc || "-",
-      ...getColumnSearchProps("description"),
+      render: (_, record) => record.description || "-",
+      search: false,
     },
     {
       title: "Actions",
       key: "actions",
-      width: 100,
-      fixed: "right",
+      width: 130,
+      valueType: "option",
       render: (_, record) => (
-        <div className="row-actions">
-          <Space size="small">
-            <Button
-              type="text"
-              size="small"
-              icon={<EditOutlined />}
-              onClick={() => openEditModal(record)}
-              aria-label="Edit Cargo Type"
+        <Space size="small">
+          <ModalForm<CargoType>
+            title="Edit Cargo Type"
+            trigger={
+              <Button type="text" size="small" icon={<EditOutlined />} />
+            }
+            onFinish={async (values) => {
+              try {
+                const response = await fetch(
+                  `/api/v1/cargo-types/${record.id}`,
+                  {
+                    method: "PATCH",
+                    headers: { "Content-Type": "application/json" },
+                    credentials: "include",
+                    body: JSON.stringify(values),
+                  }
+                );
+                if (response.ok) {
+                  message.success("Cargo type updated successfully");
+                  actionRef.current?.reload();
+                  return true;
+                }
+                const error = await response.json();
+                message.error(error.detail || "Failed to update cargo type");
+                return false;
+              } catch {
+                message.error("Network error");
+                return false;
+              }
+            }}
+            initialValues={{
+              name: record.name,
+              description: record.description || undefined,
+            }}
+          >
+            <ProFormText
+              name="name"
+              label="Name"
+              rules={[
+                { required: true, message: "Please enter a cargo type name" },
+                { max: 255, message: "Name too long" },
+              ]}
+              placeholder="e.g., 20' Container"
             />
-            <Popconfirm
-              title="Delete cargo type"
-              description={`Delete "${record.name}"?`}
-              onConfirm={() => handleDelete(record)}
-              okText="Yes"
-              cancelText="No"
-              okButtonProps={{ danger: true }}
-            >
-              <Button type="text" danger size="small" icon={<DeleteOutlined />} aria-label="Delete Cargo Type" />
-            </Popconfirm>
-          </Space>
-        </div>
+            <ProFormTextArea
+              name="description"
+              label="Description"
+              rules={[{ max: 500, message: "Description too long" }]}
+              placeholder="e.g., Standard 20-foot shipping container"
+              fieldProps={{ rows: 3 }}
+            />
+          </ModalForm>
+          <Popconfirm
+            title="Delete cargo type"
+            description={`Delete "${record.name}"?`}
+            onConfirm={() => handleDelete(record)}
+            okText="Yes"
+            cancelText="No"
+            okButtonProps={{ danger: true }}
+          >
+            <Button type="text" danger size="small" icon={<DeleteOutlined />} />
+          </Popconfirm>
+        </Space>
       ),
     },
   ];
 
-  // Make columns resizable
-  const { resizableColumns, components } = useResizableColumns(columns);
-
   return (
-    <div>
-      <Card>
-        <Space orientation="vertical" size="middle" style={{ width: "100%" }}>
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-            }}
-          >
-            <Space>
-              <Button
-                icon={<ArrowLeftOutlined />}
-                onClick={() => router.push("/dashboard")}
-              >
-                Back
-              </Button>
-              <Title level={2} style={{ margin: 0 }}>
-                Cargo Types
-              </Title>
-            </Space>
-            <Space>
-              <Button icon={<ReloadOutlined />} onClick={() => refetch()}>
-                Refresh
-              </Button>
-              <Button
-                type="primary"
-                icon={<PlusOutlined />}
-                onClick={() => setIsCreateModalOpen(true)}
-              >
-                Add Cargo Type
-              </Button>
-            </Space>
-          </div>
-
-          <Table<CargoType>
-            columns={resizableColumns}
-            components={components}
-            dataSource={cargoTypes}
-            rowKey="id"
-            loading={loading}
-            sticky={{ offsetHeader: 64 }}
-            scroll={{ x: "max-content" }}
-            rowSelection={getStandardRowSelection(
-              currentPage,
-              pageSize,
-              selectedRowKeys,
-              setSelectedRowKeys
-            )}
-            pagination={{
-              current: currentPage,
-              pageSize,
-              total: totalCount,
-              showTotal: (total) => `Total ${total} cargo types`,
-              showSizeChanger: true,
-              pageSizeOptions: ["10", "20", "50", "100"],
-              onChange: (page, size) => {
-                setCurrentPage(page);
-                setPageSize(size);
-              },
-            }}
+    <ProTable<CargoType>
+      headerTitle="Cargo Types"
+      actionRef={actionRef}
+      columns={columns}
+      rowKey="id"
+      request={async () => {
+        const response = await fetch("/api/v1/cargo-types", {
+          credentials: "include",
+        });
+        const data = await response.json();
+        return {
+          data: data.data || [],
+          total: data.count || 0,
+          success: true,
+        };
+      }}
+      search={{ labelWidth: "auto" }}
+      pagination={{
+        defaultPageSize: 20,
+        showSizeChanger: true,
+        pageSizeOptions: ["10", "20", "50", "100"],
+      }}
+      toolBarRender={() => [
+        <Button
+          key="refresh"
+          icon={<ReloadOutlined />}
+          onClick={() => actionRef.current?.reload()}
+        >
+          Refresh
+        </Button>,
+        <ModalForm<CargoTypeCreate>
+          key="create"
+          title="Add Cargo Type"
+          trigger={
+            <Button type="primary" icon={<PlusOutlined />}>
+              Add Cargo Type
+            </Button>
+          }
+          onFinish={async (values) => {
+            try {
+              const response = await fetch("/api/v1/cargo-types", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                credentials: "include",
+                body: JSON.stringify(values),
+              });
+              if (response.ok) {
+                message.success("Cargo type added successfully");
+                actionRef.current?.reload();
+                return true;
+              }
+              const error = await response.json();
+              message.error(error.detail || "Failed to create cargo type");
+              return false;
+            } catch {
+              message.error("Network error");
+              return false;
+            }
+          }}
+        >
+          <ProFormText
+            name="name"
+            label="Name"
+            rules={[
+              { required: true, message: "Please enter a cargo type name" },
+              { max: 255, message: "Name too long" },
+            ]}
+            placeholder="e.g., 20' Container"
           />
-        </Space>
-      </Card>
-
-      {/* Create Modal */}
-      <Modal
-        title="Add Cargo Type"
-        open={isCreateModalOpen}
-        width={600}
-        onCancel={() => {
-          setIsCreateModalOpen(false);
-          createForm.resetFields();
-        }}
-        footer={null}
-        destroyOnHidden
-      >
-        <Form<CargoTypeCreate>
-          form={createForm}
-          layout="vertical"
-          onFinish={handleCreate}
-        >
-          <Form.Item
-            name="name"
-            label="Name"
-            rules={[
-              { required: true, message: "Please enter a cargo type name" },
-              { max: 255, message: "Name too long" },
-            ]}
-          >
-            <Input placeholder="e.g., 20' Container" />
-          </Form.Item>
-
-          <Form.Item
+          <ProFormTextArea
             name="description"
             label="Description"
             rules={[{ max: 500, message: "Description too long" }]}
-          >
-            <TextArea
-              placeholder="e.g., Standard 20-foot shipping container"
-              rows={3}
-            />
-          </Form.Item>
-
-          <Form.Item style={{ marginBottom: 0, textAlign: "right" }}>
-            <Space>
-              <Button
-                onClick={() => {
-                  setIsCreateModalOpen(false);
-                  createForm.resetFields();
-                }}
-              >
-                Cancel
-              </Button>
-              <Button type="primary" htmlType="submit" loading={submitting}>
-                Add Cargo Type
-              </Button>
-            </Space>
-          </Form.Item>
-        </Form>
-      </Modal>
-
-      {/* Edit Modal */}
-      <Modal
-        title="Edit Cargo Type"
-        open={isEditModalOpen}
-        width={600}
-        onCancel={() => {
-          setIsEditModalOpen(false);
-          setEditingCargoType(null);
-          editForm.resetFields();
-        }}
-        footer={null}
-        destroyOnHidden
-      >
-        <Form<CargoTypeUpdate>
-          form={editForm}
-          layout="vertical"
-          onFinish={handleEdit}
-        >
-          <Form.Item
-            name="name"
-            label="Name"
-            rules={[
-              { required: true, message: "Please enter a cargo type name" },
-              { max: 255, message: "Name too long" },
-            ]}
-          >
-            <Input placeholder="e.g., 20' Container" />
-          </Form.Item>
-
-          <Form.Item
-            name="description"
-            label="Description"
-            rules={[{ max: 500, message: "Description too long" }]}
-          >
-            <TextArea
-              placeholder="e.g., Standard 20-foot shipping container"
-              rows={3}
-            />
-          </Form.Item>
-
-          <Form.Item style={{ marginBottom: 0, textAlign: "right" }}>
-            <Space>
-              <Button
-                onClick={() => {
-                  setIsEditModalOpen(false);
-                  setEditingCargoType(null);
-                  editForm.resetFields();
-                }}
-              >
-                Cancel
-              </Button>
-              <Button type="primary" htmlType="submit" loading={submitting}>
-                Save Changes
-              </Button>
-            </Space>
-          </Form.Item>
-        </Form>
-      </Modal>
-    </div>
+            placeholder="e.g., Standard 20-foot shipping container"
+            fieldProps={{ rows: 3 }}
+          />
+        </ModalForm>,
+      ]}
+    />
   );
 }

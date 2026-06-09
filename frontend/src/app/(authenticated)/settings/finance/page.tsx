@@ -1,118 +1,40 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRef } from "react";
 import {
-  Table,
-  Button,
-  Card,
-  Space,
-  message,
-  Typography,
-  Modal,
-  Form,
-  InputNumber,
-  Select,
-} from "antd";
+  ProTable,
+  ModalForm,
+  ProFormText,
+  ProFormSelect,
+  ProFormDigit,
+  type ProColumns,
+  type ActionType,
+} from "@ant-design/pro-components";
+import { Button, App, Space } from "antd";
 import {
   PlusOutlined,
   ReloadOutlined,
-  ArrowLeftOutlined,
   EditOutlined,
   DeleteOutlined,
 } from "@ant-design/icons";
 import { amountInputProps } from "@/lib/utils";
-import type { ColumnsType } from "antd/es/table";
 import type { ExchangeRate, ExchangeRateCreate } from "@/types/finance";
-import { useAuth } from "@/contexts/AuthContext";
 import { usePermissions } from "@/hooks/application/usePermissions";
-import { useExchangeRates, useInvalidateQueries } from "@/hooks/application/useApi";
-import { getStandardRowSelection, useResizableColumns } from "@/components/ui/tableUtils";
-
-const { Title } = Typography;
 
 const MONTHS = [
   "January", "February", "March", "April", "May", "June",
   "July", "August", "September", "October", "November", "December",
 ];
 
+const MONTH_OPTIONS = MONTHS.map((name, idx) => ({
+  label: name,
+  value: idx + 1,
+}));
+
 export default function ExchangeRateSettingsPage() {
-  const router = useRouter();
-  const { user } = useAuth();
+  const { message } = App.useApp();
   const { hasPermission } = usePermissions();
-  
-  // TanStack Query
-  const { data, isLoading: loading, refetch } = useExchangeRates();
-  const { invalidateExchangeRates } = useInvalidateQueries();
-
-  const rates = (data?.data || []) as ExchangeRate[];
-
-  const [modalOpen, setModalOpen] = useState(false);
-  const [editingRate, setEditingRate] = useState<ExchangeRate | null>(null);
-  const [submitting, setSubmitting] = useState(false);
-  const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(20);
-
-  const [form] = Form.useForm<ExchangeRateCreate>();
-
-  const openCreate = () => {
-    setEditingRate(null);
-    const now = new Date();
-    form.resetFields();
-    form.setFieldsValue({ month: now.getMonth() + 1, year: now.getFullYear() });
-    setModalOpen(true);
-  };
-
-  const openEdit = (rate: ExchangeRate) => {
-    setEditingRate(rate);
-    form.setFieldsValue({ month: rate.month, year: rate.year, rate: rate.rate });
-    setModalOpen(true);
-  };
-
-  const handleSubmit = async (values: ExchangeRateCreate) => {
-    setSubmitting(true);
-    try {
-      if (editingRate) {
-        const response = await fetch(
-          `/api/v1/finance/exchange-rates/${editingRate.id}`,
-          {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            credentials: "include",
-            body: JSON.stringify({ rate: values.rate }),
-          }
-        );
-        if (response.ok) {
-          message.success("Rate updated");
-          setModalOpen(false);
-          invalidateExchangeRates();
-        } else {
-          const error = await response.json();
-          message.error(error.detail || "Update failed");
-        }
-      } else {
-        const response = await fetch("/api/v1/finance/exchange-rates", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify(values),
-        });
-        if (response.ok) {
-          message.success("Rate created");
-          setModalOpen(false);
-          invalidateExchangeRates();
-        } else {
-          const error = await response.json();
-          message.error(error.detail || "Creation failed");
-        }
-      }
-    } catch {
-      message.error("Network error");
-    } finally {
-      setSubmitting(false);
-    }
-  };
+  const actionRef = useRef<ActionType>(null);
 
   const handleDelete = async (rate: ExchangeRate) => {
     try {
@@ -122,7 +44,7 @@ export default function ExchangeRateSettingsPage() {
       );
       if (response.ok) {
         message.success("Rate deleted");
-        invalidateExchangeRates();
+        actionRef.current?.reload();
       } else {
         message.error("Delete failed");
       }
@@ -131,7 +53,7 @@ export default function ExchangeRateSettingsPage() {
     }
   };
 
-  const columns: ColumnsType<ExchangeRate> = [
+  const columns: ProColumns<ExchangeRate>[] = [
     {
       title: "Month",
       key: "month",
@@ -139,6 +61,7 @@ export default function ExchangeRateSettingsPage() {
       render: (_, record) => (
         <div style={{ fontWeight: 600 }}>{MONTHS[record.month - 1]}</div>
       ),
+      search: false,
     },
     {
       title: "Year",
@@ -147,183 +70,205 @@ export default function ExchangeRateSettingsPage() {
       width: 100,
       sorter: (a, b) => a.year * 100 + a.month - (b.year * 100 + b.month),
       defaultSortOrder: "descend",
+      search: false,
     },
     {
       title: "Rate (1 USD = X TZS)",
       dataIndex: "rate",
       key: "rate",
       align: "right",
-      render: (rate: number) => (
+      render: (_, record) => (
         <div style={{ fontWeight: 600 }}>
-          {new Intl.NumberFormat("en-TZ", { minimumFractionDigits: 2 }).format(rate)}
+          {new Intl.NumberFormat("en-TZ", {
+            minimumFractionDigits: 2,
+          }).format(record.rate)}
         </div>
       ),
+      search: false,
     },
     {
       title: "Actions",
       key: "actions",
-      width: 100,
-      fixed: "right",
+      width: 130,
+      valueType: "option",
       render: (_, record) => (
-        <div className="row-actions">
-          <Space size="small">
-            <Button
-              type="text"
-              size="small"
-              icon={<EditOutlined />}
-              onClick={() => openEdit(record)}
-              aria-label="Edit Exchange Rate"
+        <Space size="small">
+          <ModalForm<ExchangeRateCreate>
+            title="Edit Exchange Rate"
+            trigger={
+              <Button type="text" size="small" icon={<EditOutlined />} />
+            }
+            onFinish={async (values) => {
+              try {
+                const response = await fetch(
+                  `/api/v1/finance/exchange-rates/${record.id}`,
+                  {
+                    method: "PUT",
+                    headers: { "Content-Type": "application/json" },
+                    credentials: "include",
+                    body: JSON.stringify({ rate: values.rate }),
+                  }
+                );
+                if (response.ok) {
+                  message.success("Rate updated");
+                  actionRef.current?.reload();
+                  return true;
+                }
+                const error = await response.json();
+                message.error(error.detail || "Update failed");
+                return false;
+              } catch {
+                message.error("Network error");
+                return false;
+              }
+            }}
+            initialValues={{
+              month: record.month,
+              year: record.year,
+              rate: record.rate,
+            }}
+          >
+            <ProFormSelect
+              name="month"
+              label="Month"
+              options={MONTH_OPTIONS}
+              disabled
             />
-            <Button
-              type="text"
-              danger
-              size="small"
-              icon={<DeleteOutlined />}
-              onClick={() => handleDelete(record)}
-              aria-label="Delete Exchange Rate"
+            <ProFormDigit
+              name="year"
+              label="Year"
+              min={2020}
+              max={2100}
+              disabled
+              fieldProps={{ precision: 0 }}
             />
-          </Space>
-        </div>
+            <ProFormDigit
+              name="rate"
+              label="Rate (1 USD = X TZS)"
+              rules={[
+                { required: true, message: "Please enter the rate" },
+              ]}
+              min={1}
+              fieldProps={{
+                precision: 2,
+                ...amountInputProps,
+              }}
+              placeholder="e.g. 2600.00"
+            />
+          </ModalForm>
+          <Button
+            type="text"
+            danger
+            size="small"
+            icon={<DeleteOutlined />}
+            onClick={() => handleDelete(record)}
+          />
+        </Space>
       ),
     },
   ];
 
-  // Make columns resizable
-  const { resizableColumns, components } = useResizableColumns(columns);
-
   return (
-    <div style={{ padding: "var(--space-xl)", minHeight: "100vh", background: "var(--color-bg)" }}>
-      <Card>
-        <Space orientation="vertical" size="middle" style={{ width: "100%" }}>
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-            }}
-          >
-            <Space>
-              <Button
-                icon={<ArrowLeftOutlined />}
-                onClick={() => router.push("/dashboard")}
-              >
-                Back
-              </Button>
-              <Title level={2} style={{ margin: 0 }}>
-                Exchange Rates (USD → TZS)
-              </Title>
-            </Space>
-            <Space>
-              <Button icon={<ReloadOutlined />} onClick={() => refetch()}>
-                Refresh
-              </Button>
-              {hasPermission("settings:exchange-rates") && (
-                <Button
-                  type="primary"
-                  icon={<PlusOutlined />}
-                  onClick={openCreate}
-                >
-                  Set Rate
-                </Button>
-              )}
-            </Space>
-          </div>
-          <Table<ExchangeRate>
-            columns={resizableColumns}
-            components={components}
-            dataSource={rates}
-            rowKey="id"
-            loading={loading}
-            sticky={{ offsetHeader: 64 }}
-            scroll={{ x: "max-content" }}
-            rowSelection={getStandardRowSelection(
-              currentPage,
-              pageSize,
-              selectedRowKeys,
-              setSelectedRowKeys
-            )}
-            pagination={{
-              current: currentPage,
-              pageSize,
-              total: rates.length, // Client-side pagination
-              showTotal: (total) => `Total ${total} rates`,
-              showSizeChanger: true,
-              pageSizeOptions: ["10", "20", "50", "100"],
-              onChange: (page, size) => {
-                setCurrentPage(page);
-                setPageSize(size);
-              },
-            }}
-          />
-        </Space>
-      </Card>
-
-      <Modal
-        title={editingRate ? "Edit Exchange Rate" : "Set Exchange Rate"}
-        open={modalOpen}
-        width={600}
-        onCancel={() => setModalOpen(false)}
-        footer={null}
-        destroyOnHidden
-      >
-        <Form
-          form={form}
-          layout="vertical"
-          onFinish={handleSubmit}
+    <ProTable<ExchangeRate>
+      headerTitle="Exchange Rates (USD → TZS)"
+      actionRef={actionRef}
+      columns={columns}
+      rowKey="id"
+      request={async () => {
+        const response = await fetch("/api/v1/finance/exchange-rates", {
+          credentials: "include",
+        });
+        const data = await response.json();
+        return {
+          data: data.data || [],
+          total: data.count || 0,
+          success: true,
+        };
+      }}
+      search={false}
+      pagination={{
+        defaultPageSize: 20,
+        showSizeChanger: true,
+        pageSizeOptions: ["10", "20", "50", "100"],
+      }}
+      toolBarRender={() => [
+        <Button
+          key="refresh"
+          icon={<ReloadOutlined />}
+          onClick={() => actionRef.current?.reload()}
         >
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-            <Form.Item
-              name="month"
-              label="Month"
-              rules={[{ required: true }]}
-            >
-              <Select disabled={!!editingRate}>
-                {MONTHS.map((name, idx) => (
-                  <Select.Option key={idx + 1} value={idx + 1}>
-                    {name}
-                  </Select.Option>
-                ))}
-              </Select>
-            </Form.Item>
-            <Form.Item
-              name="year"
-              label="Year"
-              rules={[{ required: true }]}
-            >
-              <InputNumber
-                style={{ width: "100%" }}
-                min={2020}
-                max={2100}
-                disabled={!!editingRate}
-              />
-            </Form.Item>
-          </div>
-          <Form.Item
-            name="rate"
-            label="Rate (1 USD = X TZS)"
-            rules={[
-              { required: true, message: "Please enter the rate" },
-              { type: "number", min: 1, message: "Rate must be > 0" },
-            ]}
-          >
-            <InputNumber
-              style={{ width: "100%" }}
-              min={1}
-              precision={2}
-              placeholder="e.g. 2600.00"
-              {...amountInputProps}
-            />
-          </Form.Item>
-          <Form.Item style={{ textAlign: "right", marginBottom: 0 }}>
-            <Space>
-              <Button onClick={() => setModalOpen(false)}>Cancel</Button>
-              <Button type="primary" htmlType="submit" loading={submitting}>
-                {editingRate ? "Update" : "Create"}
-              </Button>
-            </Space>
-          </Form.Item>
-        </Form>
-      </Modal>
-    </div>
+          Refresh
+        </Button>,
+        ...(hasPermission("settings:exchange-rates")
+          ? [
+              <ModalForm<ExchangeRateCreate>
+                key="create"
+                title="Set Exchange Rate"
+                trigger={
+                  <Button type="primary" icon={<PlusOutlined />}>
+                    Set Rate
+                  </Button>
+                }
+                onFinish={async (values) => {
+                  try {
+                    const response = await fetch(
+                      "/api/v1/finance/exchange-rates",
+                      {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        credentials: "include",
+                        body: JSON.stringify(values),
+                      }
+                    );
+                    if (response.ok) {
+                      message.success("Rate created");
+                      actionRef.current?.reload();
+                      return true;
+                    }
+                    const error = await response.json();
+                    message.error(error.detail || "Creation failed");
+                    return false;
+                  } catch {
+                    message.error("Network error");
+                    return false;
+                  }
+                }}
+                initialValues={{
+                  month: new Date().getMonth() + 1,
+                  year: new Date().getFullYear(),
+                }}
+              >
+                <ProFormSelect
+                  name="month"
+                  label="Month"
+                  options={MONTH_OPTIONS}
+                  rules={[{ required: true }]}
+                />
+                <ProFormDigit
+                  name="year"
+                  label="Year"
+                  min={2020}
+                  max={2100}
+                  rules={[{ required: true }]}
+                  fieldProps={{ precision: 0 }}
+                />
+                <ProFormDigit
+                  name="rate"
+                  label="Rate (1 USD = X TZS)"
+                  rules={[
+                    { required: true, message: "Please enter the rate" },
+                  ]}
+                  min={1}
+                  fieldProps={{
+                    precision: 2,
+                    ...amountInputProps,
+                  }}
+                  placeholder="e.g. 2600.00"
+                />
+              </ModalForm>,
+            ]
+          : []),
+      ]}
+    />
   );
 }

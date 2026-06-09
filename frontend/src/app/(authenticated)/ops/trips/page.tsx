@@ -68,7 +68,7 @@ function TripsPageContent() {
   const { token } = theme.useToken();
   const { user } = useAuth();
   const { invalidateTrips } = useInvalidateQueries();
-  const actionRef = useRef<ActionType>();
+  const actionRef = useRef<ActionType>(null);
 
   const [createDrawerOpen, setCreateDrawerOpen] = useState(false);
   const [detailDrawerTripId, setDetailDrawerTripId] = useState<string | null>(null);

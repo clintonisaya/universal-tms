@@ -50,7 +50,7 @@ export default function ExpensesPage() {
   const { message } = App.useApp();
   const { user } = useAuth();
   const { invalidateExpenses } = useInvalidateQueries();
-  const actionRef = useRef<ActionType>();
+  const actionRef = useRef<ActionType>(null);
 
   const isAuthenticated = !!user;
 
@@ -256,7 +256,6 @@ export default function ExpensesPage() {
   return (
     <>
       <ProTable<ExpenseRequestDetailed>
-        headerTitle="Trip Expenses"
         actionRef={actionRef}
         columns={columns}
         rowKey="id"

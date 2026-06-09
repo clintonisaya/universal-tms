@@ -1,7 +1,5 @@
 "use client";
 
-import { useThemeMode } from "@/contexts/ThemeContext";
-
 const DARK = {
   blue:   "#3F83F8",
   green:  "#059669",
@@ -36,8 +34,9 @@ interface StatusBadgeProps {
 }
 
 export function StatusBadge({ status, colorKey = "gray", ariaLabel }: StatusBadgeProps) {
-  const { mode } = useThemeMode();
-  const colors = mode === "dark" ? DARK : LIGHT;
+  // Detect dark mode from document attribute (set by layout)
+  const isDark = typeof document !== "undefined" && document.documentElement.getAttribute("data-theme") === "dark";
+  const colors = isDark ? DARK : LIGHT;
   // P1: fall back to gray if colorKey is somehow not in the palette at runtime
   const color = colors[colorKey] ?? colors.gray;
 

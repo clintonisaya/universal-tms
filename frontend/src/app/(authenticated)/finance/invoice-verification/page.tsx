@@ -1,38 +1,25 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { ProTable } from "@ant-design/pro-components";
+import type { ProColumns, ActionType } from "@ant-design/pro-components";
+import { Button, Space, Segmented, Tooltip } from "antd";
 import {
-  Table,
-  Button,
-  Card,
-  Flex,
-  Typography,
-  Segmented,
-  Tooltip,
-} from "antd";
-import {
-  ArrowLeftOutlined,
   ReloadOutlined,
   EyeOutlined,
   DollarOutlined,
   PaperClipOutlined,
 } from "@ant-design/icons";
-import { Space } from "antd";
-import type { ColumnsType } from "antd/es/table";
 import { useAuth } from "@/contexts/AuthContext";
-import { useInvoices } from "@/hooks/application/useApi";
 import { fmtCurrency } from "@/lib/utils";
 import {
-  getColumnSearchProps,
-  getStandardRowSelection,
-  useResizableColumns,
-} from "@/components/ui/tableUtils";
-import { getInvoiceDisplayNumber, type Invoice, type InvoiceStatus } from "@/types/invoice";
+  getInvoiceDisplayNumber,
+  type Invoice,
+  type InvoiceStatus,
+} from "@/types/invoice";
 import { RecordPaymentModal } from "@/components/invoices/RecordPaymentModal";
 import { PopAttachmentsDrawer } from "@/components/invoices/PopAttachmentsDrawer";
-
-const { Title } = Typography;
 
 const STATUS_TABS = [
   { label: "Issued", value: "issued" },
@@ -53,76 +40,77 @@ export default function InvoiceVerificationPage() {
   const router = useRouter();
   const { user } = useAuth();
   const isAuthenticated = !!user;
+  const actionRef = useRef<ActionType>(null);
 
   const [statusFilter, setStatusFilter] = useState<string>("issued");
 
   // Record payment modal state
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
-  const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
   const [popDrawerOpen, setPopDrawerOpen] = useState(false);
 
-  const apiStatus = statusFilter === "all" ? undefined : statusFilter;
-  const { data, isLoading, refetch } = useInvoices(
-    { status: apiStatus },
-    isAuthenticated
-  );
-  const invoices: Invoice[] = data?.data || [];
-  const displayInvoices: Invoice[] = invoices.map((invoice) => ({
-    ...invoice,
-    invoice_number: getInvoiceDisplayNumber(invoice),
-  }));
-  const totalCount = data?.count || 0;
-
-  const columns: ColumnsType<Invoice> = [
+  const columns: ProColumns<Invoice>[] = [
     {
       title: "Invoice #",
       dataIndex: "invoice_number",
       key: "invoice_number",
-      width: 100,
-      render: (text: string, record: Invoice) => (
+      width: 120,
+      fieldProps: { placeholder: "Search invoice number" },
+      render: (_, record) => (
         <Button
           type="link"
           onClick={() => router.push(`/ops/invoices/${record.id}`)}
-          style={{ padding: 0, height: "auto", fontWeight: 600, color: "var(--color-primary)" }}
+          style={{
+            padding: 0,
+            height: "auto",
+            fontWeight: 600,
+            color: "var(--ant-color-primary)",
+          }}
         >
-          {text}
+          {getInvoiceDisplayNumber(record)}
         </Button>
       ),
-      ...getColumnSearchProps<Invoice>("invoice_number"),
     },
     {
       title: "Waybill #",
       dataIndex: "waybill_number",
       key: "waybill_number",
       width: 150,
-      render: (text: string | null | undefined) => text || "—",
+      search: false,
+      render: (_, record) => record.waybill_number || "—",
     },
     {
       title: "Trip #",
       dataIndex: "trip_number",
       key: "trip_number",
       width: 150,
-      render: (text: string | null | undefined) => text || "—",
+      search: false,
+      render: (_, record) => record.trip_number || "—",
     },
     {
       title: "Date",
       dataIndex: "date",
       key: "date",
       width: 120,
-      render: (d: string) => {
-        if (!d) return "—";
-        const dt = new Date(d + "T00:00:00");
-        return dt.toLocaleDateString("en-GB", { year: "numeric", month: "short", day: "2-digit" });
+      valueType: "date",
+      search: false,
+      sorter: true,
+      render: (_, record) => {
+        if (!record.date) return "—";
+        const dt = new Date(record.date + "T00:00:00");
+        return dt.toLocaleDateString("en-GB", {
+          year: "numeric",
+          month: "short",
+          day: "2-digit",
+        });
       },
-      sorter: (a, b) => (a.date || "").localeCompare(b.date || ""),
     },
     {
       title: "Client",
       dataIndex: "customer_name",
       key: "customer_name",
       width: 200,
-      ...getColumnSearchProps<Invoice>("customer_name"),
+      fieldProps: { placeholder: "Search client name" },
     },
     {
       title: "Amount (USD)",
@@ -130,12 +118,13 @@ export default function InvoiceVerificationPage() {
       key: "total_usd",
       width: 140,
       align: "right",
-      render: (_: number, record: Invoice) => (
+      search: false,
+      sorter: true,
+      render: (_, record) => (
         <span style={{ fontWeight: 700, fontFamily: "'Fira Code', monospace" }}>
           {fmtCurrency(record.total_usd, record.currency)}
         </span>
       ),
-      sorter: (a, b) => Number(a.total_usd) - Number(b.total_usd),
     },
     {
       title: "Received (USD)",
@@ -143,9 +132,15 @@ export default function InvoiceVerificationPage() {
       key: "amount_paid",
       width: 130,
       align: "right",
-      render: (v: number) => (
-        <span style={{ fontFamily: "'Fira Code', monospace", color: "#52c41a" }}>
-          {fmtCurrency(v, "USD")}
+      search: false,
+      render: (_, record) => (
+        <span
+          style={{
+            fontFamily: "'Fira Code', monospace",
+            color: "#52c41a",
+          }}
+        >
+          {fmtCurrency(record.amount_paid, "USD")}
         </span>
       ),
     },
@@ -155,9 +150,15 @@ export default function InvoiceVerificationPage() {
       key: "amount_outstanding",
       width: 130,
       align: "right",
-      render: (v: number) => (
-        <span style={{ fontFamily: "'Fira Code', monospace", color: Number(v) > 0 ? "#fa8c16" : undefined }}>
-          {fmtCurrency(v, "USD")}
+      search: false,
+      render: (_, record) => (
+        <span
+          style={{
+            fontFamily: "'Fira Code', monospace",
+            color: Number(record.amount_outstanding) > 0 ? "#fa8c16" : undefined,
+          }}
+        >
+          {fmtCurrency(record.amount_outstanding, "USD")}
         </span>
       ),
     },
@@ -166,8 +167,9 @@ export default function InvoiceVerificationPage() {
       dataIndex: "status",
       key: "status",
       width: 125,
-      render: (status: InvoiceStatus) => {
-        const badge = STATUS_BADGE[status] || STATUS_BADGE.draft;
+      search: false,
+      render: (_, record) => {
+        const badge = STATUS_BADGE[record.status] || STATUS_BADGE.draft;
         return (
           <span
             style={{
@@ -189,8 +191,9 @@ export default function InvoiceVerificationPage() {
       title: "Actions",
       key: "actions",
       width: 260,
-      fixed: "right",
-      render: (_: unknown, record: Invoice) => {
+      valueType: "option",
+      search: false,
+      render: (_, record) => {
         const canPay =
           record.status === "issued" || record.status === "partially_paid";
         return (
@@ -235,67 +238,103 @@ export default function InvoiceVerificationPage() {
     },
   ];
 
-  const { resizableColumns, components } = useResizableColumns(columns);
-
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        background: "var(--color-bg)",
-        padding: "var(--space-xl)",
-      }}
-    >
-      <Card>
-        <Flex vertical gap="middle" style={{ width: "100%" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <Flex gap="small">
-              <Button icon={<ArrowLeftOutlined />} onClick={() => router.push("/dashboard")}>
-                Back
-              </Button>
-              <Title level={2} style={{ margin: 0 }}>
-                Invoice Verification
-              </Title>
-            </Flex>
-            <Button icon={<ReloadOutlined />} onClick={() => refetch()}>
-              Refresh
-            </Button>
-          </div>
+    <>
+      <ProTable<Invoice>
+        headerTitle="Invoice Verification"
+        actionRef={actionRef}
+        columns={columns}
+        rowKey="id"
+        request={async (params, sort) => {
+          if (!isAuthenticated) {
+            return { data: [], total: 0, success: false };
+          }
 
+          const apiStatus = statusFilter === "all" ? undefined : statusFilter;
+          const searchParams = new URLSearchParams();
+          if (apiStatus) searchParams.set("status", apiStatus);
+
+          try {
+            const response = await fetch(
+              `/api/v1/invoices/?${searchParams.toString()}`,
+              { credentials: "include" }
+            );
+            if (!response.ok) {
+              return { data: [], total: 0, success: false };
+            }
+            const result = await response.json();
+            let data: Invoice[] = (result.data ?? []) as Invoice[];
+
+            // Client-side search filters
+            if (params.invoice_number) {
+              const search = String(params.invoice_number).toLowerCase();
+              data = data.filter((inv) =>
+                getInvoiceDisplayNumber(inv).toLowerCase().includes(search)
+              );
+            }
+            if (params.customer_name) {
+              const search = String(params.customer_name).toLowerCase();
+              data = data.filter((inv) =>
+                (inv.customer_name ?? "").toLowerCase().includes(search)
+              );
+            }
+
+            // Client-side sort
+            if (sort && sort.date) {
+              data.sort((a, b) => {
+                const aDate = a.date ?? "";
+                const bDate = b.date ?? "";
+                return sort.date === "ascend"
+                  ? aDate.localeCompare(bDate)
+                  : bDate.localeCompare(aDate);
+              });
+            }
+            if (sort && sort.total_usd) {
+              data.sort((a, b) =>
+                sort.total_usd === "ascend"
+                  ? Number(a.total_usd) - Number(b.total_usd)
+                  : Number(b.total_usd) - Number(a.total_usd)
+              );
+            }
+
+            return {
+              data,
+              total: result.count ?? data.length,
+              success: true,
+            };
+          } catch {
+            return { data: [], total: 0, success: false };
+          }
+        }}
+        search={false}
+        pagination={{
+          defaultPageSize: 20,
+          showSizeChanger: true,
+          showTotal: (total) => `${total} invoices`,
+        }}
+        scroll={{ x: 1400 }}
+        toolBarRender={() => [
           <Segmented
-            options={STATUS_TABS.map((t) => ({ label: t.label, value: t.value }))}
+            key="status"
+            options={STATUS_TABS.map((t) => ({
+              label: t.label,
+              value: t.value,
+            }))}
             value={statusFilter}
-            onChange={(v) => setStatusFilter(v as string)}
-          />
-
-          <Table<Invoice>
-            rowKey="id"
-            columns={resizableColumns}
-            components={components}
-            dataSource={displayInvoices}
-            rowSelection={getStandardRowSelection(
-              1,
-              20,
-              selectedRowKeys,
-              setSelectedRowKeys
-            )}
-            loading={isLoading}
-            pagination={{
-              total: totalCount,
-              showSizeChanger: true,
-              showTotal: (total) => `${total} invoices`,
+            onChange={(v) => {
+              setStatusFilter(v as string);
+              actionRef.current?.reload();
             }}
-            scroll={{ x: 1400 }}
-            size="small"
-            locale={{
-              emptyText: (
-                <div style={{ padding: 40, textAlign: "center", color: "#999" }}>
-                  No invoices found for this filter.
-                </div>
-              ),
-            }}
-          />
-        </Flex>
-      </Card>
+          />,
+          <Button
+            key="refresh"
+            icon={<ReloadOutlined />}
+            onClick={() => actionRef.current?.reload()}
+          >
+            Refresh
+          </Button>,
+        ]}
+      />
 
       <RecordPaymentModal
         open={paymentModalOpen}
@@ -304,7 +343,7 @@ export default function InvoiceVerificationPage() {
           setSelectedInvoice(null);
         }}
         onSuccess={() => {
-          refetch();
+          actionRef.current?.reload();
         }}
         invoice={selectedInvoice}
       />
@@ -317,6 +356,6 @@ export default function InvoiceVerificationPage() {
           setSelectedInvoice(null);
         }}
       />
-    </div>
+    </>
   );
 }
