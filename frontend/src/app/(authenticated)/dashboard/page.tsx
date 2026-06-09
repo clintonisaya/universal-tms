@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
-import { Row, Col, Empty, Typography, App, notification } from "antd";
+import { useEffect, useState } from "react";
+import { Empty, Typography, App, notification } from "antd";
+import { ProCard } from "@ant-design/pro-components";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { useSocket } from "@/lib/socket";
@@ -21,12 +22,11 @@ import { IncomeVsExpenseChart } from "@/components/dashboard/IncomeVsExpenseChar
 import { ExpenseDistributionChart } from "@/components/dashboard/ExpenseDistributionChart";
 import { UtilizationChart } from "@/components/dashboard/UtilizationChart";
 import { RecentTripsTable } from "@/components/dashboard/RecentTripsTable";
-import { ToDoWidget } from "@/components/dashboard/ToDoWidget";
 import { QuickActionsWidget } from "@/components/dashboard/QuickActionsWidget";
 import type { TaskType } from "@/types/notification";
 import { TASK_TYPE_ICONS, TOAST_DURATION_SECONDS } from "@/types/notification";
 
-const { Title, Text } = Typography;
+const { Text } = Typography;
 
 interface DashboardStats {
   total_trucks: number;
@@ -150,7 +150,7 @@ function DashboardContent() {
   // AC-4: Freshness indicator — resets when stats data changes
   const secondsAgo = useLastUpdated(statsData);
 
-  // Listen for notification-click events from the NotificationCenter in the header
+  // Listen for notification-click events to navigate to tasks
   useEffect(() => {
     const handler = (e: Event) => {
       const taskId = (e as CustomEvent<string>).detail;
@@ -258,8 +258,6 @@ function DashboardContent() {
 
   return (
     <div>
-      <div style={{ marginBottom: 24 }} />
-
       <QuickActionsWidget />
 
       {/* KPI Cards Row */}
@@ -270,10 +268,10 @@ function DashboardContent() {
           </Text>
         )}
       </div>
-      <Row gutter={[16, 16]}>
+      <ProCard gutter={16} wrap style={{ marginBottom: 16 }}>
         {/* AC-4: Ops/Dispatcher priority — Trucks In Transit appears first */}
         {(role === 'ops' || role === 'dispatcher') && (
-          <Col xs={24} sm={12} lg={6} xl={4}>
+          <ProCard colSpan={6} style={{ minWidth: 180 }}>
             <MetricCard
               title="Trucks In Transit"
               value={stats?.trucks_in_transit ?? 0}
@@ -284,12 +282,12 @@ function DashboardContent() {
               loading={loading}
               onClick={() => router.push("/ops/trips")}
             />
-          </Col>
+          </ProCard>
         )}
 
         {/* Pending Approvals: admin, manager, finance — first for manager/finance roles */}
         {canSee(role, ["finance"]) && (
-          <Col xs={24} sm={12} lg={6} xl={4}>
+          <ProCard colSpan={6} style={{ minWidth: 180 }}>
             <MetricCard
               title="Pending Approvals"
               value={
@@ -308,12 +306,12 @@ function DashboardContent() {
               loading={loading}
               onClick={() => router.push("/dashboard/tasks")}
             />
-          </Col>
+          </ProCard>
         )}
 
         {/* Total Trucks: admin, manager, ops */}
         {canSee(role, ["ops"]) && (
-          <Col xs={24} sm={12} lg={6} xl={4}>
+          <ProCard colSpan={6} style={{ minWidth: 180 }}>
             <MetricCard
               title="Total Trucks"
               value={stats?.total_trucks ?? 0}
@@ -321,12 +319,12 @@ function DashboardContent() {
               loading={loading}
               onClick={() => router.push("/fleet/trucks")}
             />
-          </Col>
+          </ProCard>
         )}
 
-        {/* Completed Trips: admin, manager, ops, dispatcher */}
+        {/* Completed Trips: admin, manager, ops, finance */}
         {canSee(role, ["ops", "finance"]) && (
-          <Col xs={24} sm={12} lg={6} xl={4}>
+          <ProCard colSpan={6} style={{ minWidth: 180 }}>
             <MetricCard
               title="Completed Trips"
               value={stats?.completed_trips ?? 0}
@@ -334,12 +332,12 @@ function DashboardContent() {
               loading={loading}
               onClick={() => router.push("/ops/trips")}
             />
-          </Col>
+          </ProCard>
         )}
 
         {/* Trucks In Transit: admin, manager only — ops/dispatcher already see it first above */}
         {canSee(role, ["ops"]) && role !== 'ops' && role !== 'dispatcher' && (
-          <Col xs={24} sm={12} lg={6} xl={4}>
+          <ProCard colSpan={6} style={{ minWidth: 180 }}>
             <MetricCard
               title="Trucks In Transit"
               value={stats?.trucks_in_transit ?? 0}
@@ -350,12 +348,12 @@ function DashboardContent() {
               loading={loading}
               onClick={() => router.push("/ops/trips")}
             />
-          </Col>
+          </ProCard>
         )}
 
         {/* Idle Drivers: admin, manager, ops */}
         {canSee(role, ["ops"]) && (
-          <Col xs={24} sm={12} lg={6} xl={4}>
+          <ProCard colSpan={6} style={{ minWidth: 180 }}>
             <MetricCard
               title="Active Drivers"
               value={stats?.active_drivers ?? 0}
@@ -363,12 +361,12 @@ function DashboardContent() {
               loading={loading}
               onClick={() => router.push("/fleet/drivers")}
             />
-          </Col>
+          </ProCard>
         )}
 
         {/* Idle Trucks: admin, manager, ops */}
         {canSee(role, ["ops"]) && (
-          <Col xs={24} sm={12} lg={6} xl={4}>
+          <ProCard colSpan={6} style={{ minWidth: 180 }}>
             <MetricCard
               title="Idle Trucks"
               value={stats?.trucks_idle ?? 0}
@@ -378,45 +376,46 @@ function DashboardContent() {
               loading={loading}
               onClick={() => router.push("/fleet/trucks")}
             />
-          </Col>
+          </ProCard>
         )}
-      </Row>
+      </ProCard>
 
       {/* Financial Pulse Section: admin, manager, finance */}
       {canSee(role, ["finance"]) && (
-        <>
-          <Title level={4} style={{ marginTop: 32, marginBottom: 16 }}>
-            Financial Pulse
-          </Title>
-          <Row gutter={[16, 16]}>
-            {/* Quarterly Profit Trend Chart */}
-            <Col xs={24} lg={12}>
-              <ProfitTrendChart
-                data={financialPulse?.quarterly_trend || []}
-                loading={financialLoading}
-              />
-            </Col>
+        <ProCard
+          title="Financial Pulse"
+          headerBordered
+          gutter={16}
+          wrap
+          style={{ marginTop: 16, marginBottom: 16 }}
+        >
+          {/* Quarterly Profit Trend Chart */}
+          <ProCard colSpan={12}>
+            <ProfitTrendChart
+              data={financialPulse?.quarterly_trend || []}
+              loading={financialLoading}
+            />
+          </ProCard>
 
-            {/* Monthly Income vs Expense */}
-            <Col xs={24} lg={6}>
-              <IncomeVsExpenseChart
-                data={financialPulse?.monthly_stats || null}
-                loading={financialLoading}
-                selectedMonth={pulseMonth}
-                onMonthChange={setPulseMonth}
-              />
-            </Col>
+          {/* Monthly Income vs Expense */}
+          <ProCard colSpan={6}>
+            <IncomeVsExpenseChart
+              data={financialPulse?.monthly_stats || null}
+              loading={financialLoading}
+              selectedMonth={pulseMonth}
+              onMonthChange={setPulseMonth}
+            />
+          </ProCard>
 
-            {/* Expense Distribution Donut */}
-            <Col xs={24} lg={6}>
-              <ExpenseDistributionChart
-                data={financialPulse?.expense_breakdown || []}
-                loading={financialLoading}
-                monthLabel={financialPulse?.monthly_stats?.month}
-              />
-            </Col>
-          </Row>
-        </>
+          {/* Expense Distribution Donut */}
+          <ProCard colSpan={6}>
+            <ExpenseDistributionChart
+              data={financialPulse?.expense_breakdown || []}
+              loading={financialLoading}
+              monthLabel={financialPulse?.monthly_stats?.month}
+            />
+          </ProCard>
+        </ProCard>
       )}
 
       {/* Recent Trips Table: visible to all roles */}
