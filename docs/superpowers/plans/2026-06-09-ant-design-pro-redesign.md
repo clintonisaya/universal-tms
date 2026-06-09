@@ -19,9 +19,9 @@
 | Task | Status | Commit | Notes |
 |------|--------|--------|-------|
 | Task 1: Install Dependencies | ✅ Done | `cbbe6db` | antd 6, @ant-design/pro-components, @ant-design/charts, @tanstack/react-query, clsx, tailwind-merge, antd-style (added later in Task 5) |
-| Task 2: Create Routes Configuration | ✅ Done | `9e0978a` | Using `src/constants/navigation.ts` (SECTION_MAP + resolveSection) |
-| Task 3: Create Default Settings | ✅ Done | `b4b90bc` | Using `src/styles/theme.ts` (getThemeConfig) |
-| Task 4: Create Ant Design Theme | ✅ Done | `b4b90bc` | Purple (#8B5CF6) primary, tokens in theme.ts |
+| Task 2: Create Routes Configuration | ✅ Done | `c7bf0de` | Created `src/config/routes.ts` with MenuDataItem[] format (per plan spec) |
+| Task 3: Create Default Settings | ✅ Done | `cfcdc91` | Created `src/config/defaultSettings.ts` per plan spec |
+| Task 4: Create Ant Design Theme | ✅ Done | `15b4ce8` | `src/theme/antd.ts` — `#1677ff` primary, `getAntdThemeConfig` |
 | Task 5: Create HeaderDropdown | ✅ Done | `1030b81` | Installed antd-style, created HeaderDropdown component |
 | Task 6: Create AvatarDropdown | ⬜ Todo | — | User menu in AppLayout.tsx covers this partially |
 | Task 7: Create SettingDrawer | ⬜ Todo | — | |
