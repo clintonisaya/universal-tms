@@ -1,91 +1,43 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import {
-  Table,
-  Button,
-  Card,
-  Space,
-  Modal,
-  Form,
-  Input,
-  Select,
-  message,
-  Typography,
-  Popconfirm,
-  DatePicker,
-  Tooltip,
-  theme,
-} from "antd";
+import { useRef, useState } from "react";
 import dayjs from "dayjs";
+import {
+  ProTable,
+  ModalForm,
+  ProFormText,
+  ProFormSelect,
+  ProFormDatePicker,
+} from "@ant-design/pro-components";
+import type { ProColumns, ActionType } from "@ant-design/pro-components";
+import { Button, App, Popconfirm, Space, Tag, Tooltip, Typography } from "antd";
 import {
   PlusOutlined,
   ReloadOutlined,
-  ArrowLeftOutlined,
   EditOutlined,
   DeleteOutlined,
   WarningOutlined,
   ClockCircleOutlined,
 } from "@ant-design/icons";
-import type { ColumnsType } from "antd/es/table";
-import type {
-  Driver,
-  DriverCreate,
-  DriverUpdate,
-  DriverStatus,
-  DriversResponse,
-  DriverFormValues,
-} from "@/types/driver";
+import type { Driver, DriverCreate, DriverStatus } from "@/types/driver";
 import { useAuth } from "@/contexts/AuthContext";
-import { useDrivers, useInvalidateQueries } from "@/hooks/application/useApi";
-import {
-  getColumnSearchProps,
-  getColumnFilterProps,
-  getStandardRowSelection,
-  useResizableColumns,
-} from "@/components/ui/tableUtils";
-import { EmptyState } from "@/components/ui";
-import { StatusBadge } from "@/components/ui/StatusBadge";
-import type { ColorKey } from "@/components/ui/StatusBadge";
 
-const { Title, Text } = Typography;
+const { Text } = Typography;
 
 const EXPIRY_WARNING_DAYS = 30;
 
-const STATUS_COLORS: Record<DriverStatus, ColorKey> = {
+const STATUS_COLORS: Record<DriverStatus, string> = {
   Active: "green",
   Assigned: "cyan",
   "On Trip": "blue",
-  Inactive: "gray",
+  Inactive: "default",
 };
 
-const STATUS_FILTERS = [
-  { text: "Active", value: "Active" },
-  { text: "On Trip", value: "On Trip" },
-  { text: "Inactive", value: "Inactive" },
-];
-
 export default function DriversPage() {
-  const router = useRouter();
+  const { message } = App.useApp();
   const { user } = useAuth();
-  const { data, isLoading, refetch } = useDrivers();
-  const { invalidateDrivers } = useInvalidateQueries();
-
-  const drivers = (data?.data || []) as Driver[];
-  const totalCount = data?.count || 0;
-
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const actionRef = useRef<ActionType>(null);
   const [editingDriver, setEditingDriver] = useState<Driver | null>(null);
-  const [submitting, setSubmitting] = useState(false);
-  const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(20);
-
-  const [createForm] = Form.useForm<DriverFormValues>();
-  const [editForm] = Form.useForm<DriverFormValues>();
-  const { token } = theme.useToken();
 
   const renderExpiryDate = (date: string | null) => {
     if (!date) return <Text type="secondary">—</Text>;
@@ -94,85 +46,99 @@ export default function DriversPage() {
     if (days < 0) {
       return (
         <Tooltip title="Expired — renew immediately.">
-          <Text type="danger"><WarningOutlined /> {formatted}</Text>
+          <Text type="danger">
+            <WarningOutlined /> {formatted}
+          </Text>
         </Tooltip>
       );
     }
     if (days <= EXPIRY_WARNING_DAYS) {
       return (
         <Tooltip title={`Expires in ${days} days.`}>
-          <Text style={{ color: token.colorWarning }}><ClockCircleOutlined /> {formatted}</Text>
+          <Text style={{ color: "#D97706" }}>
+            <ClockCircleOutlined /> {formatted}
+          </Text>
         </Tooltip>
       );
     }
     return <Text>{formatted}</Text>;
   };
 
-  const pastDateValidator = {
-    validator: (_: unknown, value: dayjs.Dayjs | null) => {
-      if (value && dayjs(value).isBefore(dayjs(), "day")) {
-        return Promise.reject("This date is in the past. Are you sure?");
-      }
-      return Promise.resolve();
-    },
-    warningOnly: true,
-  };
+  const handleCreate = async (values: Record<string, any>) => {
+    const payload: DriverCreate = {
+      full_name: values.full_name,
+      license_number: values.license_number,
+      license_expiry_date: values.license_expiry_date
+        ? dayjs(values.license_expiry_date).toISOString()
+        : null,
+      passport_number: values.passport_number || null,
+      passport_expiry_date: values.passport_expiry_date
+        ? dayjs(values.passport_expiry_date).toISOString()
+        : null,
+      phone_number: values.phone_number,
+      status: values.status,
+    };
 
-  const handleCreate = async (values: DriverCreate) => {
-    setSubmitting(true);
     try {
       const response = await fetch("/api/v1/drivers", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify(values),
+        body: JSON.stringify(payload),
       });
 
       if (response.ok) {
         message.success("Driver registered successfully");
-        setIsCreateModalOpen(false);
-        createForm.resetFields();
-        invalidateDrivers();
+        actionRef.current?.reload();
+        return true;
       } else {
         const error = await response.json();
         message.error(error.detail || "Failed to create driver");
+        return false;
       }
     } catch {
       message.error("Network error");
-    } finally {
-      setSubmitting(false);
+      return false;
     }
   };
 
-  const handleEdit = async (values: DriverUpdate) => {
-    if (!editingDriver) return;
-    setSubmitting(true);
+  const handleEdit = async (values: Record<string, any>) => {
+    if (!editingDriver) return false;
+    const payload: Partial<DriverCreate> = {
+      full_name: values.full_name,
+      license_number: values.license_number,
+      license_expiry_date: values.license_expiry_date
+        ? dayjs(values.license_expiry_date).toISOString()
+        : null,
+      passport_number: values.passport_number || null,
+      passport_expiry_date: values.passport_expiry_date
+        ? dayjs(values.passport_expiry_date).toISOString()
+        : null,
+      phone_number: values.phone_number,
+      status: values.status,
+    };
+
     try {
       const response = await fetch(`/api/v1/drivers/${editingDriver.id}`, {
         method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify(values),
+        body: JSON.stringify(payload),
       });
 
       if (response.ok) {
         message.success("Driver updated successfully");
-        setIsEditModalOpen(false);
         setEditingDriver(null);
-        editForm.resetFields();
-        invalidateDrivers();
+        actionRef.current?.reload();
+        return true;
       } else {
         const error = await response.json();
         message.error(error.detail || "Failed to update driver");
+        return false;
       }
     } catch {
       message.error("Network error");
-    } finally {
-      setSubmitting(false);
+      return false;
     }
   };
 
@@ -185,7 +151,7 @@ export default function DriversPage() {
 
       if (response.ok) {
         message.success("Driver deleted successfully");
-        invalidateDrivers();
+        actionRef.current?.reload();
       } else {
         const error = await response.json();
         message.error(error.detail || "Failed to delete driver");
@@ -195,407 +161,281 @@ export default function DriversPage() {
     }
   };
 
-  const openEditModal = (driver: Driver) => {
-    setEditingDriver(driver);
-    editForm.setFieldsValue({
-      full_name: driver.full_name,
-      license_number: driver.license_number,
-      license_expiry_date: driver.license_expiry_date
-        ? dayjs(driver.license_expiry_date)
-        : null,
-      passport_number: driver.passport_number,
-      passport_expiry_date: driver.passport_expiry_date
-        ? dayjs(driver.passport_expiry_date)
-        : null,
-      phone_number: driver.phone_number,
-      status: driver.status,
-    });
-    setIsEditModalOpen(true);
-  };
-
-  const columns: ColumnsType<Driver> = [
+  const columns: ProColumns<Driver>[] = [
     {
       title: "Full Name",
       dataIndex: "full_name",
       key: "full_name",
       width: 180,
-      sorter: (a, b) => a.full_name.localeCompare(b.full_name),
-      render: (text: string) => text,
-      ...getColumnSearchProps("full_name"),
+      sorter: true,
+      fieldProps: { placeholder: "Search name" },
     },
     {
       title: "Phone",
       dataIndex: "phone_number",
       key: "phone_number",
       width: 140,
-      render: (text: string) => text || "-",
-      ...getColumnSearchProps("phone_number"),
+      fieldProps: { placeholder: "Search phone" },
     },
     {
       title: "License #",
       dataIndex: "license_number",
       key: "license_number",
       width: 140,
-      render: (text: string) => text || "-",
-      ...getColumnSearchProps("license_number"),
+      fieldProps: { placeholder: "Search license" },
     },
     {
       title: "License Expiry",
       dataIndex: "license_expiry_date",
       key: "license_expiry_date",
-      width: 120,
-      render: (date: string | null) => renderExpiryDate(date),
-      sorter: (a, b) => (a.license_expiry_date || "").localeCompare(b.license_expiry_date || ""),
+      width: 140,
+      valueType: "date",
+      sorter: true,
+      render: (_, record) => renderExpiryDate(record.license_expiry_date),
+      search: false,
     },
     {
       title: "Passport #",
       dataIndex: "passport_number",
       key: "passport_number",
       width: 140,
-      render: (text: string) => text || "-",
-      ...getColumnSearchProps("passport_number"),
+      fieldProps: { placeholder: "Search passport" },
+      render: (_, record) => record.passport_number || "-",
     },
     {
       title: "Passport Expiry",
       dataIndex: "passport_expiry_date",
       key: "passport_expiry_date",
-      width: 120,
-      render: (date: string | null) => renderExpiryDate(date),
-      sorter: (a, b) => (a.passport_expiry_date || "").localeCompare(b.passport_expiry_date || ""),
+      width: 140,
+      valueType: "date",
+      sorter: true,
+      render: (_, record) => renderExpiryDate(record.passport_expiry_date),
+      search: false,
     },
     {
       title: "Status",
       dataIndex: "status",
       key: "status",
       width: 100,
-      render: (status: DriverStatus) => (
-        <StatusBadge status={status} colorKey={STATUS_COLORS[status]} />
+      valueType: "select",
+      valueEnum: {
+        Active: { text: "Active" },
+        Assigned: { text: "Assigned" },
+        "On Trip": { text: "On Trip" },
+        Inactive: { text: "Inactive" },
+      },
+      render: (_, record) => (
+        <Tag color={STATUS_COLORS[record.status]}>{record.status}</Tag>
       ),
-      ...getColumnFilterProps("status", STATUS_FILTERS),
     },
     {
       title: "Actions",
       key: "actions",
       width: 100,
-      fixed: "right",
+      valueType: "option",
       render: (_, record) => (
-        <div className="row-actions">
-          <Space size="small">
-            <Button
-              type="text"
-              size="small"
-              icon={<EditOutlined />}
-              onClick={() => openEditModal(record)}
-              aria-label={`Edit Driver ${record.full_name}`}
-            />
-            <Popconfirm
-              title="Delete driver"
-              description={`Are you sure you want to delete ${record.full_name}?`}
-              onConfirm={() => handleDelete(record)}
-              okText="Yes"
-              cancelText="No"
-              okButtonProps={{ danger: true }}
-            >
-              <Button type="text" danger icon={<DeleteOutlined />} size="small" aria-label={`Delete Driver ${record.full_name}`} />
-            </Popconfirm>
-          </Space>
-        </div>
+        <Space size="small">
+          <Button
+            type="text"
+            size="small"
+            icon={<EditOutlined />}
+            onClick={() => setEditingDriver(record)}
+          />
+          <Popconfirm
+            title="Delete driver"
+            description={`Are you sure you want to delete ${record.full_name}?`}
+            onConfirm={() => handleDelete(record)}
+            okText="Yes"
+            cancelText="No"
+            okButtonProps={{ danger: true }}
+          >
+            <Button type="text" danger icon={<DeleteOutlined />} size="small" />
+          </Popconfirm>
+        </Space>
       ),
     },
   ];
 
-  // Make columns resizable
-  const { resizableColumns, components } = useResizableColumns(columns);
+  const getEditInitialValues = () => {
+    if (!editingDriver) return undefined;
+    return {
+      full_name: editingDriver.full_name,
+      license_number: editingDriver.license_number,
+      license_expiry_date: editingDriver.license_expiry_date
+        ? dayjs(editingDriver.license_expiry_date)
+        : null,
+      passport_number: editingDriver.passport_number,
+      passport_expiry_date: editingDriver.passport_expiry_date
+        ? dayjs(editingDriver.passport_expiry_date)
+        : null,
+      phone_number: editingDriver.phone_number,
+      status: editingDriver.status,
+    };
+  };
 
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        background: "var(--color-bg)",
-        padding: "var(--space-xl)",
-      }}
-    >
-      <Card>
-        <Space orientation="vertical" size="middle" style={{ width: "100%" }}>
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-            }}
+    <>
+      <ProTable<Driver>
+        headerTitle="Driver Registry"
+        actionRef={actionRef}
+        columns={columns}
+        rowKey="id"
+        request={async () => {
+          const response = await fetch("/api/v1/drivers", {
+            credentials: "include",
+          });
+          const data = await response.json();
+          return {
+            data: data.data || [],
+            total: data.count || 0,
+            success: true,
+          };
+        }}
+        search={{ labelWidth: "auto" }}
+        pagination={{
+          defaultPageSize: 20,
+          showSizeChanger: true,
+          pageSizeOptions: ["10", "20", "50", "100"],
+        }}
+        toolBarRender={() => [
+          <Button
+            key="refresh"
+            icon={<ReloadOutlined />}
+            onClick={() => actionRef.current?.reload()}
           >
-            <Space>
-              <Button
-                icon={<ArrowLeftOutlined />}
-                onClick={() => router.push("/dashboard")}
-              >
-                Back
-              </Button>
-              <Title level={2} style={{ margin: 0 }}>
-                Driver Registry
-              </Title>
-            </Space>
-            <Space>
-              <Button icon={<ReloadOutlined />} onClick={() => refetch()}>
-                Refresh
-              </Button>
-              <Button
-                type="primary"
-                icon={<PlusOutlined />}
-                onClick={() => setIsCreateModalOpen(true)}
-              >
+            Refresh
+          </Button>,
+          <ModalForm
+            key="create"
+            title="Register New Driver"
+            trigger={
+              <Button type="primary" icon={<PlusOutlined />}>
                 New Driver
               </Button>
-            </Space>
-          </div>
-
-          <Table<Driver>
-            columns={resizableColumns}
-            components={components}
-            dataSource={drivers}
-            rowKey="id"
-            loading={isLoading}
-            sticky={{ offsetHeader: 64 }}
-            scroll={{ x: "max-content" }}
-            locale={{ emptyText: <EmptyState message="No drivers registered yet." action={{ label: "Add First Driver", onClick: () => setIsCreateModalOpen(true) }} /> }}
-            rowSelection={getStandardRowSelection(
-              currentPage,
-              pageSize,
-              selectedRowKeys,
-              setSelectedRowKeys
-            )}
-            pagination={{
-              current: currentPage,
-              pageSize,
-              total: totalCount,
-              showTotal: (total) => `Total ${total} drivers`,
-              showSizeChanger: true,
-              pageSizeOptions: ["10", "20", "50", "100"],
-              onChange: (page, size) => {
-                setCurrentPage(page);
-                setPageSize(size);
-              },
-            }}
-          />
-        </Space>
-      </Card>
-
-      {/* Create Modal */}
-      <Modal
-        title="Register New Driver"
-        open={isCreateModalOpen}
-        width={720}
-        onCancel={() => {
-          setIsCreateModalOpen(false);
-          createForm.resetFields();
-        }}
-        footer={null}
-        destroyOnHidden
-      >
-        <Form<DriverFormValues>
-          form={createForm}
-          layout="vertical"
-          onFinish={(values) => {
-            const payload: DriverCreate = {
-              full_name: values.full_name,
-              license_number: values.license_number,
-              license_expiry_date: values.license_expiry_date
-                ? values.license_expiry_date.toISOString()
-                : null,
-              passport_number: values.passport_number,
-              passport_expiry_date: values.passport_expiry_date
-                ? values.passport_expiry_date.toISOString()
-                : null,
-              phone_number: values.phone_number,
-              status: values.status,
-            };
-            handleCreate(payload);
-          }}
-          initialValues={{ status: "Active" }}
-        >
-          <Form.Item
-            name="full_name"
-            label="Full Name"
-            rules={[
-              { required: true, message: "Please enter full name" },
-              { max: 255, message: "Name too long" },
-            ]}
+            }
+            onFinish={handleCreate}
+            initialValues={{ status: "Active" }}
           >
-            <Input placeholder="e.g., John Doe" />
-          </Form.Item>
-
-          <Form.Item
-            name="license_number"
-            label="License Number"
-            rules={[
-              { required: true, message: "Please enter license number" },
-              { max: 50, message: "License number too long" },
-            ]}
-          >
-            <Input placeholder="e.g., DL-998877" />
-          </Form.Item>
-
-          <Form.Item name="license_expiry_date" label="License Expiry Date" rules={[pastDateValidator]}>
-            <DatePicker style={{ width: "100%" }} />
-          </Form.Item>
-
-          <Form.Item
-            name="passport_number"
-            label="Passport Number"
-            rules={[{ max: 50, message: "Passport number too long" }]}
-          >
-            <Input placeholder="e.g., AB1234567" />
-          </Form.Item>
-
-          <Form.Item name="passport_expiry_date" label="Passport Expiry Date" rules={[pastDateValidator]}>
-            <DatePicker style={{ width: "100%" }} />
-          </Form.Item>
-
-          <Form.Item
-            name="phone_number"
-            label="Phone Number"
-            rules={[
-              { required: true, message: "Please enter phone number" },
-              { max: 50, message: "Phone number too long" },
-            ]}
-          >
-            <Input placeholder="e.g., +254700000000" />
-          </Form.Item>
-
-          <Form.Item name="status" label="Status">
-            <Select>
-              <Select.Option value="Active">Active</Select.Option>
-              <Select.Option value="On Trip">On Trip</Select.Option>
-              <Select.Option value="Inactive">Inactive</Select.Option>
-            </Select>
-          </Form.Item>
-
-          <Form.Item style={{ marginBottom: 0, textAlign: "right" }}>
-            <Space>
-              <Button
-                onClick={() => {
-                  setIsCreateModalOpen(false);
-                  createForm.resetFields();
-                }}
-              >
-                Cancel
-              </Button>
-              <Button type="primary" htmlType="submit" loading={submitting}>
-                Register Driver
-              </Button>
-            </Space>
-          </Form.Item>
-        </Form>
-      </Modal>
+            <ProFormText
+              name="full_name"
+              label="Full Name"
+              rules={[
+                { required: true, message: "Please enter full name" },
+                { max: 255, message: "Name too long" },
+              ]}
+              placeholder="e.g., John Doe"
+            />
+            <ProFormText
+              name="license_number"
+              label="License Number"
+              rules={[
+                { required: true, message: "Please enter license number" },
+                { max: 50, message: "License number too long" },
+              ]}
+              placeholder="e.g., DL-998877"
+            />
+            <ProFormDatePicker
+              name="license_expiry_date"
+              label="License Expiry Date"
+              width="100%"
+            />
+            <ProFormText
+              name="passport_number"
+              label="Passport Number"
+              rules={[{ max: 50, message: "Passport number too long" }]}
+              placeholder="e.g., AB1234567"
+            />
+            <ProFormDatePicker
+              name="passport_expiry_date"
+              label="Passport Expiry Date"
+              width="100%"
+            />
+            <ProFormText
+              name="phone_number"
+              label="Phone Number"
+              rules={[
+                { required: true, message: "Please enter phone number" },
+                { max: 50, message: "Phone number too long" },
+              ]}
+              placeholder="e.g., +254700000000"
+            />
+            <ProFormSelect
+              name="status"
+              label="Status"
+              options={[
+                { label: "Active", value: "Active" },
+                { label: "On Trip", value: "On Trip" },
+                { label: "Inactive", value: "Inactive" },
+              ]}
+            />
+          </ModalForm>,
+        ]}
+      />
 
       {/* Edit Modal */}
-      <Modal
+      <ModalForm
         title="Edit Driver"
-        open={isEditModalOpen}
-        width={720}
-        onCancel={() => {
-          setIsEditModalOpen(false);
-          setEditingDriver(null);
-          editForm.resetFields();
+        open={!!editingDriver}
+        onOpenChange={(open) => {
+          if (!open) setEditingDriver(null);
         }}
-        footer={null}
-        destroyOnHidden
+        onFinish={handleEdit}
+        initialValues={getEditInitialValues()}
+        modalProps={{ destroyOnHidden: true }}
       >
-        <Form<DriverFormValues>
-          form={editForm}
-          layout="vertical"
-          onFinish={(values) => {
-            const payload: DriverUpdate = {
-              full_name: values.full_name,
-              license_number: values.license_number,
-              license_expiry_date: values.license_expiry_date
-                ? values.license_expiry_date.toISOString()
-                : null,
-              passport_number: values.passport_number,
-              passport_expiry_date: values.passport_expiry_date
-                ? values.passport_expiry_date.toISOString()
-                : null,
-              phone_number: values.phone_number,
-              status: values.status,
-            };
-            handleEdit(payload);
-          }}
-        >
-          <Form.Item
-            name="full_name"
-            label="Full Name"
-            rules={[
-              { required: true, message: "Please enter full name" },
-              { max: 255, message: "Name too long" },
-            ]}
-          >
-            <Input placeholder="e.g., John Doe" />
-          </Form.Item>
-
-          <Form.Item
-            name="license_number"
-            label="License Number"
-            rules={[
-              { required: true, message: "Please enter license number" },
-              { max: 50, message: "License number too long" },
-            ]}
-          >
-            <Input placeholder="e.g., DL-998877" />
-          </Form.Item>
-
-          <Form.Item name="license_expiry_date" label="License Expiry Date" rules={[pastDateValidator]}>
-            <DatePicker style={{ width: "100%" }} />
-          </Form.Item>
-
-          <Form.Item
-            name="passport_number"
-            label="Passport Number"
-            rules={[{ max: 50, message: "Passport number too long" }]}
-          >
-            <Input placeholder="e.g., AB1234567" />
-          </Form.Item>
-
-          <Form.Item name="passport_expiry_date" label="Passport Expiry Date" rules={[pastDateValidator]}>
-            <DatePicker style={{ width: "100%" }} />
-          </Form.Item>
-
-          <Form.Item
-            name="phone_number"
-            label="Phone Number"
-            rules={[
-              { required: true, message: "Please enter phone number" },
-              { max: 50, message: "Phone number too long" },
-            ]}
-          >
-            <Input placeholder="e.g., +254700000000" />
-          </Form.Item>
-
-          <Form.Item name="status" label="Status">
-            <Select>
-              <Select.Option value="Active">Active</Select.Option>
-              <Select.Option value="On Trip">On Trip</Select.Option>
-              <Select.Option value="Inactive">Inactive</Select.Option>
-            </Select>
-          </Form.Item>
-
-          <Form.Item style={{ marginBottom: 0, textAlign: "right" }}>
-            <Space>
-              <Button
-                onClick={() => {
-                  setIsEditModalOpen(false);
-                  setEditingDriver(null);
-                  editForm.resetFields();
-                }}
-              >
-                Cancel
-              </Button>
-              <Button type="primary" htmlType="submit" loading={submitting}>
-                Save Changes
-              </Button>
-            </Space>
-          </Form.Item>
-        </Form>
-      </Modal>
-    </div>
+        <ProFormText
+          name="full_name"
+          label="Full Name"
+          rules={[
+            { required: true, message: "Please enter full name" },
+            { max: 255, message: "Name too long" },
+          ]}
+          placeholder="e.g., John Doe"
+        />
+        <ProFormText
+          name="license_number"
+          label="License Number"
+          rules={[
+            { required: true, message: "Please enter license number" },
+            { max: 50, message: "License number too long" },
+          ]}
+          placeholder="e.g., DL-998877"
+        />
+        <ProFormDatePicker
+          name="license_expiry_date"
+          label="License Expiry Date"
+          width="100%"
+        />
+        <ProFormText
+          name="passport_number"
+          label="Passport Number"
+          rules={[{ max: 50, message: "Passport number too long" }]}
+          placeholder="e.g., AB1234567"
+        />
+        <ProFormDatePicker
+          name="passport_expiry_date"
+          label="Passport Expiry Date"
+          width="100%"
+        />
+        <ProFormText
+          name="phone_number"
+          label="Phone Number"
+          rules={[
+            { required: true, message: "Please enter phone number" },
+            { max: 50, message: "Phone number too long" },
+          ]}
+          placeholder="e.g., +254700000000"
+        />
+        <ProFormSelect
+          name="status"
+          label="Status"
+          options={[
+            { label: "Active", value: "Active" },
+            { label: "On Trip", value: "On Trip" },
+            { label: "Inactive", value: "Inactive" },
+          ]}
+        />
+      </ModalForm>
+    </>
   );
 }

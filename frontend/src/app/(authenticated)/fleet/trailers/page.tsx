@@ -1,137 +1,85 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRef, useState } from "react";
 import {
-  Table,
-  Button,
-  Card,
-  Space,
-  Modal,
-  Form,
-  Input,
-  Select,
-  App,
-  Typography,
-  Popconfirm,
-} from "antd";
-import { PlusOutlined, ReloadOutlined, ArrowLeftOutlined, EditOutlined, DeleteOutlined } from "@ant-design/icons";
-import type { ColumnsType } from "antd/es/table";
-import type { Trailer, TrailerCreate, TrailerUpdate, TrailerType, TrailersResponse } from "@/types/trailer";
+  ProTable,
+  ModalForm,
+  ProFormText,
+  ProFormSelect,
+} from "@ant-design/pro-components";
+import type { ProColumns, ActionType } from "@ant-design/pro-components";
+import { Button, App, Popconfirm, Space, Tag } from "antd";
+import {
+  PlusOutlined,
+  ReloadOutlined,
+  EditOutlined,
+  DeleteOutlined,
+} from "@ant-design/icons";
+import type { Trailer, TrailerCreate, TrailerType } from "@/types/trailer";
 import { useAuth } from "@/contexts/AuthContext";
-import { useTrailers, useInvalidateQueries } from "@/hooks/application/useApi";
-import {
-  getColumnSearchProps,
-  getColumnFilterProps,
-  getStandardRowSelection,
-  useResizableColumns,
-} from "@/components/ui/tableUtils";
 import { VehicleStatusTag } from "@/components/ui/VehicleStatusTag";
-import { EmptyState } from "@/components/ui";
-import { StatusBadge } from "@/components/ui/StatusBadge";
-import type { ColorKey } from "@/components/ui/StatusBadge";
 
-const { Title } = Typography;
-
-
-const STATUS_FILTERS = [
-  { text: "Idle", value: "Idle" },
-  { text: "In Transit", value: "In Transit" },
-  { text: "Maintenance", value: "Maintenance" },
-];
-
-const TYPE_COLORS: Record<TrailerType, ColorKey> = {
+const TYPE_COLORS: Record<TrailerType, string> = {
   Flatbed: "cyan",
   Skeleton: "blue",
   Box: "orange",
   Tanker: "red",
-  Lowbed: "gray",
+  Lowbed: "default",
 };
 
-const TYPE_FILTERS = [
-  { text: "Flatbed", value: "Flatbed" },
-  { text: "Skeleton", value: "Skeleton" },
-  { text: "Box", value: "Box" },
-  { text: "Tanker", value: "Tanker" },
-  { text: "Lowbed", value: "Lowbed" },
-];
-
 export default function TrailersPage() {
-  const router = useRouter();
   const { message } = App.useApp();
   const { user } = useAuth();
-  const { data, isLoading, refetch } = useTrailers();
-  const { invalidateTrailers } = useInvalidateQueries();
-
-  const trailers = (data?.data || []) as Trailer[];
-  const totalCount = data?.count || 0;
-
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const actionRef = useRef<ActionType>(null);
   const [editingTrailer, setEditingTrailer] = useState<Trailer | null>(null);
-  const [submitting, setSubmitting] = useState(false);
-  const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(20);
-
-  const [createForm] = Form.useForm<TrailerCreate>();
-  const [editForm] = Form.useForm<TrailerUpdate>();
 
   const handleCreate = async (values: TrailerCreate) => {
-    setSubmitting(true);
     try {
       const response = await fetch("/api/v1/trailers", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify(values),
       });
 
       if (response.ok) {
         message.success("Trailer registered successfully");
-        setIsCreateModalOpen(false);
-        createForm.resetFields();
-        invalidateTrailers();
+        actionRef.current?.reload();
+        return true;
       } else {
         const error = await response.json();
         message.error(error.detail || "Failed to create trailer");
+        return false;
       }
     } catch {
       message.error("Network error");
-    } finally {
-      setSubmitting(false);
+      return false;
     }
   };
 
-  const handleEdit = async (values: TrailerUpdate) => {
-    if (!editingTrailer) return;
-    setSubmitting(true);
+  const handleEdit = async (values: TrailerCreate) => {
+    if (!editingTrailer) return false;
     try {
       const response = await fetch(`/api/v1/trailers/${editingTrailer.id}`, {
         method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify(values),
       });
 
       if (response.ok) {
         message.success("Trailer updated successfully");
-        setIsEditModalOpen(false);
         setEditingTrailer(null);
-        editForm.resetFields();
-        invalidateTrailers();
+        actionRef.current?.reload();
+        return true;
       } else {
         const error = await response.json();
         message.error(error.detail || "Failed to update trailer");
+        return false;
       }
     } catch {
       message.error("Network error");
-    } finally {
-      setSubmitting(false);
+      return false;
     }
   };
 
@@ -144,7 +92,7 @@ export default function TrailersPage() {
 
       if (response.ok) {
         message.success("Trailer deleted successfully");
-        invalidateTrailers();
+        actionRef.current?.reload();
       } else {
         const error = await response.json();
         message.error(error.detail || "Failed to delete trailer");
@@ -154,320 +102,227 @@ export default function TrailersPage() {
     }
   };
 
-  const openEditModal = (trailer: Trailer) => {
-    setEditingTrailer(trailer);
-    editForm.setFieldsValue({
-      plate_number: trailer.plate_number,
-      type: trailer.type,
-      make: trailer.make,
-      status: trailer.status,
-    });
-    setIsEditModalOpen(true);
-  };
-
-  const columns: ColumnsType<Trailer> = [
+  const columns: ProColumns<Trailer>[] = [
     {
       title: "Plate Number",
       dataIndex: "plate_number",
       key: "plate_number",
       width: 160,
-      sorter: (a, b) => a.plate_number.localeCompare(b.plate_number),
-      render: (text: string) => text,
-      ...getColumnSearchProps("plate_number"),
+      sorter: true,
+      fieldProps: { placeholder: "Search plate number" },
     },
     {
       title: "Make",
       dataIndex: "make",
       key: "make",
       width: 140,
-      render: (text: string) => text || "-",
-      ...getColumnSearchProps("make"),
+      sorter: true,
+      fieldProps: { placeholder: "Search make" },
     },
     {
       title: "Type",
       dataIndex: "type",
       key: "type",
       width: 100,
-      render: (type: TrailerType) => (
-        <StatusBadge status={type} colorKey={TYPE_COLORS[type]} />
+      valueType: "select",
+      valueEnum: {
+        Flatbed: { text: "Flatbed" },
+        Skeleton: { text: "Skeleton" },
+        Box: { text: "Box" },
+        Tanker: { text: "Tanker" },
+        Lowbed: { text: "Lowbed" },
+      },
+      render: (_, record) => (
+        <Tag color={TYPE_COLORS[record.type]}>{record.type}</Tag>
       ),
-      ...getColumnFilterProps("type", TYPE_FILTERS),
     },
     {
       title: "Status",
       dataIndex: "status",
       key: "status",
       width: 100,
-      render: (status: string) => <VehicleStatusTag status={status} />,
-      ...getColumnFilterProps("status", STATUS_FILTERS),
+      valueType: "select",
+      valueEnum: {
+        Idle: { text: "Idle", status: "Default" },
+        "In Transit": { text: "In Transit", status: "Processing" },
+        Maintenance: { text: "Maintenance", status: "Warning" },
+      },
+      render: (_, record) => <VehicleStatusTag status={record.status} />,
     },
     {
       title: "Actions",
       key: "actions",
       width: 100,
-      fixed: "right",
+      valueType: "option",
       render: (_, record) => (
-        <div className="row-actions">
-          <Space size="small">
-            <Button
-              type="text"
-              size="small"
-              icon={<EditOutlined />}
-              onClick={() => openEditModal(record)}
-              aria-label={`Edit Trailer ${record.plate_number}`}
-            />
-            <Popconfirm
-              title="Delete trailer"
-              description={`Are you sure you want to delete ${record.plate_number}?`}
-              onConfirm={() => handleDelete(record)}
-              okText="Yes"
-              cancelText="No"
-              okButtonProps={{ danger: true }}
-            >
-              <Button type="text" danger icon={<DeleteOutlined />} size="small" aria-label={`Delete Trailer ${record.plate_number}`} />
-            </Popconfirm>
-          </Space>
-        </div>
+        <Space size="small">
+          <Button
+            type="text"
+            size="small"
+            icon={<EditOutlined />}
+            onClick={() => setEditingTrailer(record)}
+          />
+          <Popconfirm
+            title="Delete trailer"
+            description={`Are you sure you want to delete ${record.plate_number}?`}
+            onConfirm={() => handleDelete(record)}
+            okText="Yes"
+            cancelText="No"
+            okButtonProps={{ danger: true }}
+          >
+            <Button type="text" danger icon={<DeleteOutlined />} size="small" />
+          </Popconfirm>
+        </Space>
       ),
     },
   ];
 
-  // Make columns resizable
-  const { resizableColumns, components } = useResizableColumns(columns);
-
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        background: "var(--color-bg)",
-        padding: "var(--space-xl)",
-      }}
-    >
-      <Card>
-        <Space orientation="vertical" size="middle" style={{ width: "100%" }}>
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-            }}
+    <>
+      <ProTable<Trailer>
+        headerTitle="Trailer Registry"
+        actionRef={actionRef}
+        columns={columns}
+        rowKey="id"
+        request={async () => {
+          const response = await fetch("/api/v1/trailers", {
+            credentials: "include",
+          });
+          const data = await response.json();
+          return {
+            data: data.data || [],
+            total: data.count || 0,
+            success: true,
+          };
+        }}
+        search={{ labelWidth: "auto" }}
+        pagination={{
+          defaultPageSize: 20,
+          showSizeChanger: true,
+          pageSizeOptions: ["10", "20", "50", "100"],
+        }}
+        toolBarRender={() => [
+          <Button
+            key="refresh"
+            icon={<ReloadOutlined />}
+            onClick={() => actionRef.current?.reload()}
           >
-            <Space>
-              <Button
-                icon={<ArrowLeftOutlined />}
-                onClick={() => router.push("/dashboard")}
-              >
-                Back
-              </Button>
-              <Title level={2} style={{ margin: 0 }}>
-                Trailer Registry
-              </Title>
-            </Space>
-            <Space>
-              <Button icon={<ReloadOutlined />} onClick={() => refetch()}>
-                Refresh
-              </Button>
-              <Button
-                type="primary"
-                icon={<PlusOutlined />}
-                onClick={() => setIsCreateModalOpen(true)}
-              >
+            Refresh
+          </Button>,
+          <ModalForm<TrailerCreate>
+            key="create"
+            title="Register New Trailer"
+            trigger={
+              <Button type="primary" icon={<PlusOutlined />}>
                 New Trailer
               </Button>
-            </Space>
-          </div>
-
-          <Table<Trailer>
-            columns={resizableColumns}
-            components={components}
-            dataSource={trailers}
-            rowKey="id"
-            loading={isLoading}
-            sticky={{ offsetHeader: 64 }}
-            scroll={{ x: "max-content" }}
-            locale={{ emptyText: <EmptyState message="No trailers registered yet." /> }}
-            rowSelection={getStandardRowSelection(
-              currentPage,
-              pageSize,
-              selectedRowKeys,
-              setSelectedRowKeys
-            )}
-            pagination={{
-              current: currentPage,
-              pageSize,
-              total: totalCount,
-              showTotal: (total) => `Total ${total} trailers`,
-              showSizeChanger: true,
-              pageSizeOptions: ["10", "20", "50", "100"],
-              onChange: (page, size) => {
-                setCurrentPage(page);
-                setPageSize(size);
-              },
-            }}
-          />
-        </Space>
-      </Card>
-
-      {/* Create Modal */}
-      <Modal
-        title="Register New Trailer"
-        open={isCreateModalOpen}
-        width={660}
-        onCancel={() => {
-          setIsCreateModalOpen(false);
-          createForm.resetFields();
-        }}
-        footer={null}
-        destroyOnHidden
-      >
-        <Form<TrailerCreate>
-          form={createForm}
-          layout="vertical"
-          onFinish={handleCreate}
-          initialValues={{ status: "Idle", type: "Flatbed" }}
-        >
-          <Form.Item
-            name="plate_number"
-            label="Plate Number"
-            rules={[
-              { required: true, message: "Please enter plate number" },
-              { max: 20, message: "Plate number too long" },
-            ]}
+            }
+            onFinish={handleCreate}
+            initialValues={{ status: "Idle", type: "Flatbed" }}
           >
-            <Input placeholder="e.g., T998 EMQ" />
-          </Form.Item>
-
-          <Form.Item
-            name="type"
-            label="Type"
-            rules={[{ required: true, message: "Please select trailer type" }]}
-          >
-            <Select>
-              <Select.Option value="Flatbed">Flatbed</Select.Option>
-              <Select.Option value="Skeleton">Skeleton</Select.Option>
-              <Select.Option value="Box">Box</Select.Option>
-              <Select.Option value="Tanker">Tanker</Select.Option>
-              <Select.Option value="Lowbed">Lowbed</Select.Option>
-            </Select>
-          </Form.Item>
-
-          <Form.Item
-            name="make"
-            label="Make"
-            rules={[
-              { required: true, message: "Please enter make" },
-              { max: 100, message: "Make name too long" },
-            ]}
-          >
-            <Input placeholder="e.g., CIMC" />
-          </Form.Item>
-
-          <Form.Item name="status" label="Status">
-            <Select>
-              <Select.Option value="Idle">Idle</Select.Option>
-              <Select.Option value="In Transit">In Transit</Select.Option>
-              <Select.Option value="Maintenance">Maintenance</Select.Option>
-            </Select>
-          </Form.Item>
-
-          <Form.Item style={{ marginBottom: 0, textAlign: "right" }}>
-            <Space>
-              <Button
-                onClick={() => {
-                  setIsCreateModalOpen(false);
-                  createForm.resetFields();
-                }}
-              >
-                Cancel
-              </Button>
-              <Button type="primary" htmlType="submit" loading={submitting}>
-                Register Trailer
-              </Button>
-            </Space>
-          </Form.Item>
-        </Form>
-      </Modal>
+            <ProFormText
+              name="plate_number"
+              label="Plate Number"
+              rules={[
+                { required: true, message: "Please enter plate number" },
+                { max: 20, message: "Plate number too long" },
+              ]}
+              placeholder="e.g., T998 EMQ"
+            />
+            <ProFormSelect
+              name="type"
+              label="Type"
+              rules={[{ required: true, message: "Please select trailer type" }]}
+              options={[
+                { label: "Flatbed", value: "Flatbed" },
+                { label: "Skeleton", value: "Skeleton" },
+                { label: "Box", value: "Box" },
+                { label: "Tanker", value: "Tanker" },
+                { label: "Lowbed", value: "Lowbed" },
+              ]}
+            />
+            <ProFormText
+              name="make"
+              label="Make"
+              rules={[
+                { required: true, message: "Please enter make" },
+                { max: 100, message: "Make name too long" },
+              ]}
+              placeholder="e.g., CIMC"
+            />
+            <ProFormSelect
+              name="status"
+              label="Status"
+              options={[
+                { label: "Idle", value: "Idle" },
+                { label: "In Transit", value: "In Transit" },
+                { label: "Maintenance", value: "Maintenance" },
+              ]}
+            />
+          </ModalForm>,
+        ]}
+      />
 
       {/* Edit Modal */}
-      <Modal
+      <ModalForm<TrailerCreate>
         title="Edit Trailer"
-        open={isEditModalOpen}
-        width={660}
-        onCancel={() => {
-          setIsEditModalOpen(false);
-          setEditingTrailer(null);
-          editForm.resetFields();
+        open={!!editingTrailer}
+        onOpenChange={(open) => {
+          if (!open) setEditingTrailer(null);
         }}
-        footer={null}
-        destroyOnHidden
+        onFinish={handleEdit}
+        initialValues={
+          editingTrailer
+            ? {
+                plate_number: editingTrailer.plate_number,
+                type: editingTrailer.type,
+                make: editingTrailer.make,
+                status: editingTrailer.status,
+              }
+            : undefined
+        }
+        modalProps={{ destroyOnHidden: true }}
       >
-        <Form<TrailerUpdate>
-          form={editForm}
-          layout="vertical"
-          onFinish={handleEdit}
-        >
-          <Form.Item
-            name="plate_number"
-            label="Plate Number"
-            rules={[
-              { required: true, message: "Please enter plate number" },
-              { max: 20, message: "Plate number too long" },
-            ]}
-          >
-            <Input placeholder="e.g., ZD 4040" />
-          </Form.Item>
-
-          <Form.Item
-            name="type"
-            label="Type"
-            rules={[{ required: true, message: "Please select trailer type" }]}
-          >
-            <Select>
-              <Select.Option value="Flatbed">Flatbed</Select.Option>
-              <Select.Option value="Skeleton">Skeleton</Select.Option>
-              <Select.Option value="Box">Box</Select.Option>
-              <Select.Option value="Tanker">Tanker</Select.Option>
-              <Select.Option value="Lowbed">Lowbed</Select.Option>
-            </Select>
-          </Form.Item>
-
-          <Form.Item
-            name="make"
-            label="Make"
-            rules={[
-              { required: true, message: "Please enter make" },
-              { max: 100, message: "Make name too long" },
-            ]}
-          >
-            <Input placeholder="e.g., Hambure" />
-          </Form.Item>
-
-          <Form.Item name="status" label="Status">
-            <Select>
-              <Select.Option value="Idle">Idle</Select.Option>
-              <Select.Option value="In Transit">In Transit</Select.Option>
-              <Select.Option value="Maintenance">Maintenance</Select.Option>
-            </Select>
-          </Form.Item>
-
-          <Form.Item style={{ marginBottom: 0, textAlign: "right" }}>
-            <Space>
-              <Button
-                onClick={() => {
-                  setIsEditModalOpen(false);
-                  setEditingTrailer(null);
-                  editForm.resetFields();
-                }}
-              >
-                Cancel
-              </Button>
-              <Button type="primary" htmlType="submit" loading={submitting}>
-                Save Changes
-              </Button>
-            </Space>
-          </Form.Item>
-        </Form>
-      </Modal>
-    </div>
+        <ProFormText
+          name="plate_number"
+          label="Plate Number"
+          rules={[
+            { required: true, message: "Please enter plate number" },
+            { max: 20, message: "Plate number too long" },
+          ]}
+          placeholder="e.g., ZD 4040"
+        />
+        <ProFormSelect
+          name="type"
+          label="Type"
+          rules={[{ required: true, message: "Please select trailer type" }]}
+          options={[
+            { label: "Flatbed", value: "Flatbed" },
+            { label: "Skeleton", value: "Skeleton" },
+            { label: "Box", value: "Box" },
+            { label: "Tanker", value: "Tanker" },
+            { label: "Lowbed", value: "Lowbed" },
+          ]}
+        />
+        <ProFormText
+          name="make"
+          label="Make"
+          rules={[
+            { required: true, message: "Please enter make" },
+            { max: 100, message: "Make name too long" },
+          ]}
+          placeholder="e.g., Hambure"
+        />
+        <ProFormSelect
+          name="status"
+          label="Status"
+          options={[
+            { label: "Idle", value: "Idle" },
+            { label: "In Transit", value: "In Transit" },
+            { label: "Maintenance", value: "Maintenance" },
+          ]}
+        />
+      </ModalForm>
+    </>
   );
 }

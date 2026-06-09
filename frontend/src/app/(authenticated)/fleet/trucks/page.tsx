@@ -1,119 +1,80 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
-  Table,
-  Button,
-  Card,
-  Space,
-  Modal,
-  Form,
-  Input,
-  Select,
-  App,
-  Typography,
-  Popconfirm,
-} from "antd";
-import { PlusOutlined, ReloadOutlined, ArrowLeftOutlined, EditOutlined, DeleteOutlined, EyeOutlined } from "@ant-design/icons";
-import type { ColumnsType } from "antd/es/table";
-import type { Truck, TruckCreate, TruckUpdate } from "@/types/truck";
-import { useAuth } from "@/contexts/AuthContext";
-import { useTrucks, useInvalidateQueries } from "@/hooks/application/useApi";
+  ProTable,
+  ModalForm,
+  ProFormText,
+  ProFormSelect,
+} from "@ant-design/pro-components";
+import type { ProColumns, ActionType } from "@ant-design/pro-components";
+import { Button, App, Popconfirm, Space } from "antd";
 import {
-  getColumnSearchProps,
-  getColumnFilterProps,
-  getStandardRowSelection,
-  useResizableColumns,
-} from "@/components/ui/tableUtils";
+  PlusOutlined,
+  ReloadOutlined,
+  EyeOutlined,
+  EditOutlined,
+  DeleteOutlined,
+} from "@ant-design/icons";
+import type { Truck, TruckCreate } from "@/types/truck";
+import { useAuth } from "@/contexts/AuthContext";
 import { VehicleStatusTag } from "@/components/ui/VehicleStatusTag";
-import { EmptyState } from "@/components/ui";
-
-const { Title } = Typography;
-
-
-const STATUS_FILTERS = [
-  { text: "Idle", value: "Idle" },
-  { text: "In Transit", value: "In Transit" },
-  { text: "Maintenance", value: "Maintenance" },
-];
 
 export default function TrucksPage() {
   const { message } = App.useApp();
   const router = useRouter();
   const { user } = useAuth();
-  const { data, isLoading, refetch } = useTrucks();
-  const { invalidateTrucks } = useInvalidateQueries();
-
-  const trucks = (data?.data || []) as Truck[];
-  const totalCount = data?.count || 0;
-
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const actionRef = useRef<ActionType>(null);
   const [editingTruck, setEditingTruck] = useState<Truck | null>(null);
-  const [submitting, setSubmitting] = useState(false);
-  const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(20);
-
-  const [createForm] = Form.useForm<TruckCreate>();
-  const [editForm] = Form.useForm<TruckUpdate>();
 
   const handleCreate = async (values: TruckCreate) => {
-    setSubmitting(true);
     try {
       const response = await fetch("/api/v1/trucks", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify(values),
       });
 
       if (response.ok) {
         message.success("Truck registered successfully");
-        createForm.resetFields();
-        setIsCreateModalOpen(false);
-        invalidateTrucks();
+        actionRef.current?.reload();
+        return true;
       } else {
         const error = await response.json();
         message.error(error.detail || "Failed to create truck");
+        return false;
       }
     } catch {
       message.error("Network error");
-    } finally {
-      setSubmitting(false);
+      return false;
     }
   };
 
-  const handleEdit = async (values: TruckUpdate) => {
-    if (!editingTruck) return;
-    setSubmitting(true);
+  const handleEdit = async (values: TruckCreate) => {
+    if (!editingTruck) return false;
     try {
       const response = await fetch(`/api/v1/trucks/${editingTruck.id}`, {
         method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify(values),
       });
 
       if (response.ok) {
         message.success("Truck updated successfully");
-        editForm.resetFields();
-        setIsEditModalOpen(false);
         setEditingTruck(null);
-        invalidateTrucks();
+        actionRef.current?.reload();
+        return true;
       } else {
         const error = await response.json();
         message.error(error.detail || "Failed to update truck");
+        return false;
       }
     } catch {
       message.error("Network error");
-    } finally {
-      setSubmitting(false);
+      return false;
     }
   };
 
@@ -126,7 +87,7 @@ export default function TrucksPage() {
 
       if (response.ok) {
         message.success("Truck deleted successfully");
-        invalidateTrucks();
+        actionRef.current?.reload();
       } else {
         const error = await response.json();
         message.error(error.detail || "Failed to delete truck");
@@ -136,320 +97,218 @@ export default function TrucksPage() {
     }
   };
 
-  const openEditModal = (truck: Truck) => {
-    setEditingTruck(truck);
-    editForm.setFieldsValue({
-      plate_number: truck.plate_number,
-      make: truck.make,
-      model: truck.model,
-      status: truck.status,
-    });
-    setIsEditModalOpen(true);
-  };
-
-  const columns: ColumnsType<Truck> = [
+  const columns: ProColumns<Truck>[] = [
     {
       title: "Plate Number",
       dataIndex: "plate_number",
       key: "plate_number",
       width: 150,
-      sorter: (a, b) => a.plate_number.localeCompare(b.plate_number),
-      render: (text: string) => text,
-      ...getColumnSearchProps("plate_number"),
+      sorter: true,
+      fieldProps: { placeholder: "Search plate number" },
     },
     {
       title: "Make",
       dataIndex: "make",
       key: "make",
       width: 140,
-      render: (text: string) => text || "-",
-      ...getColumnSearchProps("make"),
+      sorter: true,
+      fieldProps: { placeholder: "Search make" },
     },
     {
       title: "Model",
       dataIndex: "model",
       key: "model",
       width: 140,
-      render: (text: string) => text || "-",
-      ...getColumnSearchProps("model"),
+      sorter: true,
+      fieldProps: { placeholder: "Search model" },
     },
     {
       title: "Status",
       dataIndex: "status",
       key: "status",
       width: 120,
-      render: (status: string) => <VehicleStatusTag status={status} />,
-      ...getColumnFilterProps("status", STATUS_FILTERS),
+      valueType: "select",
+      valueEnum: {
+        Idle: { text: "Idle", status: "Default" },
+        "In Transit": { text: "In Transit", status: "Processing" },
+        Maintenance: { text: "Maintenance", status: "Warning" },
+      },
+      render: (_, record) => <VehicleStatusTag status={record.status} />,
     },
     {
       title: "Actions",
       key: "actions",
       width: 130,
-      fixed: "right",
+      valueType: "option",
       render: (_, record) => (
-        <div className="row-actions">
-          <Space size="small">
-            <Button
-              type="text"
-              size="small"
-              icon={<EyeOutlined />}
-              title="View Details"
-              aria-label={`View Truck ${record.plate_number}`}
-              onClick={() => router.push(`/fleet/trucks/${record.id}`)}
-            />
-            <Button
-              type="text"
-              size="small"
-              icon={<EditOutlined />}
-              onClick={() => openEditModal(record)}
-              aria-label={`Edit Truck ${record.plate_number}`}
-            />
-            <Popconfirm
-              title="Delete truck"
-              description={`Are you sure you want to delete ${record.plate_number}?`}
-              onConfirm={() => handleDelete(record)}
-              okText="Yes"
-              cancelText="No"
-              okButtonProps={{ danger: true }}
-            >
-              <Button type="text" danger icon={<DeleteOutlined />} size="small" aria-label={`Delete Truck ${record.plate_number}`} />
-            </Popconfirm>
-          </Space>
-        </div>
+        <Space size="small">
+          <Button
+            type="text"
+            size="small"
+            icon={<EyeOutlined />}
+            onClick={() => router.push(`/fleet/trucks/${record.id}`)}
+          />
+          <Button
+            type="text"
+            size="small"
+            icon={<EditOutlined />}
+            onClick={() => setEditingTruck(record)}
+          />
+          <Popconfirm
+            title="Delete truck"
+            description={`Are you sure you want to delete ${record.plate_number}?`}
+            onConfirm={() => handleDelete(record)}
+            okText="Yes"
+            cancelText="No"
+            okButtonProps={{ danger: true }}
+          >
+            <Button type="text" danger icon={<DeleteOutlined />} size="small" />
+          </Popconfirm>
+        </Space>
       ),
     },
   ];
 
-  // Make columns resizable
-  const { resizableColumns, components } = useResizableColumns(columns);
-
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        background: "var(--color-bg)",
-        padding: "var(--space-xl)",
-      }}
-    >
-      <Card>
-        <Space orientation="vertical" size="middle" style={{ width: "100%" }}>
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-            }}
+    <>
+      <ProTable<Truck>
+        headerTitle="Truck Registry"
+        actionRef={actionRef}
+        columns={columns}
+        rowKey="id"
+        request={async () => {
+          const response = await fetch("/api/v1/trucks", {
+            credentials: "include",
+          });
+          const data = await response.json();
+          return {
+            data: data.data || [],
+            total: data.count || 0,
+            success: true,
+          };
+        }}
+        search={{ labelWidth: "auto" }}
+        pagination={{
+          defaultPageSize: 20,
+          showSizeChanger: true,
+          pageSizeOptions: ["10", "20", "50", "100"],
+        }}
+        toolBarRender={() => [
+          <Button
+            key="refresh"
+            icon={<ReloadOutlined />}
+            onClick={() => actionRef.current?.reload()}
           >
-            <Space>
-              <Button
-                icon={<ArrowLeftOutlined />}
-                onClick={() => router.push("/dashboard")}
-              >
-                Back
-              </Button>
-              <Title level={2} style={{ margin: 0 }}>
-                Truck Registry
-              </Title>
-            </Space>
-            <Space>
-              <Button icon={<ReloadOutlined />} onClick={() => refetch()}>
-                Refresh
-              </Button>
-              <Button
-                type="primary"
-                icon={<PlusOutlined />}
-                onClick={() => setIsCreateModalOpen(true)}
-              >
+            Refresh
+          </Button>,
+          <ModalForm<TruckCreate>
+            key="create"
+            title="Register New Truck"
+            trigger={
+              <Button type="primary" icon={<PlusOutlined />}>
                 New Truck
               </Button>
-            </Space>
-          </div>
-
-          <Table<Truck>
-            columns={resizableColumns}
-            components={components}
-            dataSource={trucks}
-            rowKey="id"
-            loading={isLoading}
-            sticky={{ offsetHeader: 64 }}
-            scroll={{ x: "max-content" }}
-            locale={{ emptyText: <EmptyState message="No trucks registered yet." action={{ label: "Register First Truck", onClick: () => setIsCreateModalOpen(true) }} /> }}
-            rowSelection={getStandardRowSelection(
-              currentPage,
-              pageSize,
-              selectedRowKeys,
-              setSelectedRowKeys
-            )}
-            pagination={{
-              current: currentPage,
-              pageSize,
-              total: totalCount,
-              showTotal: (total) => `Total ${total} trucks`,
-              showSizeChanger: true,
-              pageSizeOptions: ["10", "20", "50", "100"],
-              onChange: (page, size) => {
-                setCurrentPage(page);
-                setPageSize(size);
-              },
-            }}
-          />
-        </Space>
-      </Card>
-
-      {/* Create Modal */}
-      <Modal
-        title="Register New Truck"
-        open={isCreateModalOpen}
-        width={660}
-        onCancel={() => {
-          createForm.resetFields();
-          setIsCreateModalOpen(false);
-        }}
-        footer={null}
-        destroyOnHidden
-      >
-        <Form<TruckCreate>
-          form={createForm}
-          layout="vertical"
-          onFinish={handleCreate}
-          initialValues={{ status: "Idle" }}
-        >
-          <Form.Item
-            name="plate_number"
-            label="Plate Number"
-            rules={[
-              { required: true, message: "Please enter plate number" },
-              { max: 20, message: "Plate number too long" },
-            ]}
+            }
+            onFinish={handleCreate}
+            initialValues={{ status: "Idle" }}
           >
-            <Input placeholder="e.g., T998 EMQ" />
-          </Form.Item>
-
-          <Form.Item
-            name="make"
-            label="Make"
-            rules={[
-              { required: true, message: "Please enter make" },
-              { max: 100, message: "Make name too long" },
-            ]}
-          >
-            <Input placeholder="e.g., XCMG " />
-          </Form.Item>
-
-          <Form.Item
-            name="model"
-            label="Model"
-            rules={[
-              { required: true, message: "Please enter model" },
-              { max: 100, message: "Model name too long" },
-            ]}
-          >
-            <Input placeholder="e.g., HANVAN G7" />
-          </Form.Item>
-
-          <Form.Item name="status" label="Status">
-            <Select>
-              <Select.Option value="Idle">Idle</Select.Option>
-              <Select.Option value="In Transit">In Transit</Select.Option>
-              <Select.Option value="Maintenance">Maintenance</Select.Option>
-            </Select>
-          </Form.Item>
-
-          <Form.Item style={{ marginBottom: 0, textAlign: "right" }}>
-            <Space>
-              <Button
-                onClick={() => {
-                  createForm.resetFields();
-                  setIsCreateModalOpen(false);
-                }}
-              >
-                Cancel
-              </Button>
-              <Button type="primary" htmlType="submit" loading={submitting}>
-                Register Truck
-              </Button>
-            </Space>
-          </Form.Item>
-        </Form>
-      </Modal>
+            <ProFormText
+              name="plate_number"
+              label="Plate Number"
+              rules={[
+                { required: true, message: "Please enter plate number" },
+                { max: 20, message: "Plate number too long" },
+              ]}
+              placeholder="e.g., T998 EMQ"
+            />
+            <ProFormText
+              name="make"
+              label="Make"
+              rules={[
+                { required: true, message: "Please enter make" },
+                { max: 100, message: "Make name too long" },
+              ]}
+              placeholder="e.g., XCMG"
+            />
+            <ProFormText
+              name="model"
+              label="Model"
+              rules={[
+                { required: true, message: "Please enter model" },
+                { max: 100, message: "Model name too long" },
+              ]}
+              placeholder="e.g., HANVAN G7"
+            />
+            <ProFormSelect
+              name="status"
+              label="Status"
+              options={[
+                { label: "Idle", value: "Idle" },
+                { label: "In Transit", value: "In Transit" },
+                { label: "Maintenance", value: "Maintenance" },
+              ]}
+            />
+          </ModalForm>,
+        ]}
+      />
 
       {/* Edit Modal */}
-      <Modal
+      <ModalForm<TruckCreate>
         title="Edit Truck"
-        open={isEditModalOpen}
-        width={660}
-        onCancel={() => {
-          editForm.resetFields();
-          setIsEditModalOpen(false);
-          setEditingTruck(null);
+        open={!!editingTruck}
+        onOpenChange={(open) => {
+          if (!open) setEditingTruck(null);
         }}
-        footer={null}
-        destroyOnHidden
+        onFinish={handleEdit}
+        initialValues={
+          editingTruck
+            ? {
+                plate_number: editingTruck.plate_number,
+                make: editingTruck.make,
+                model: editingTruck.model,
+                status: editingTruck.status,
+              }
+            : undefined
+        }
+        modalProps={{ destroyOnHidden: true }}
       >
-        <Form<TruckUpdate>
-          form={editForm}
-          layout="vertical"
-          onFinish={handleEdit}
-        >
-          <Form.Item
-            name="plate_number"
-            label="Plate Number"
-            rules={[
-              { required: true, message: "Please enter plate number" },
-              { max: 20, message: "Plate number too long" },
-            ]}
-          >
-            <Input placeholder="e.g., KCB 123A" />
-          </Form.Item>
-
-          <Form.Item
-            name="make"
-            label="Make"
-            rules={[
-              { required: true, message: "Please enter make" },
-              { max: 100, message: "Make name too long" },
-            ]}
-          >
-            <Input placeholder="e.g., Mercedes" />
-          </Form.Item>
-
-          <Form.Item
-            name="model"
-            label="Model"
-            rules={[
-              { required: true, message: "Please enter model" },
-              { max: 100, message: "Model name too long" },
-            ]}
-          >
-            <Input placeholder="e.g., Actros" />
-          </Form.Item>
-
-          <Form.Item name="status" label="Status">
-            <Select>
-              <Select.Option value="Idle">Idle</Select.Option>
-              <Select.Option value="In Transit">In Transit</Select.Option>
-              <Select.Option value="Maintenance">Maintenance</Select.Option>
-            </Select>
-          </Form.Item>
-
-          <Form.Item style={{ marginBottom: 0, textAlign: "right" }}>
-            <Space>
-              <Button
-                onClick={() => {
-                  editForm.resetFields();
-                  setIsEditModalOpen(false);
-                  setEditingTruck(null);
-                }}
-              >
-                Cancel
-              </Button>
-              <Button type="primary" htmlType="submit" loading={submitting}>
-                Save Changes
-              </Button>
-            </Space>
-          </Form.Item>
-        </Form>
-      </Modal>
-    </div>
+        <ProFormText
+          name="plate_number"
+          label="Plate Number"
+          rules={[
+            { required: true, message: "Please enter plate number" },
+            { max: 20, message: "Plate number too long" },
+          ]}
+          placeholder="e.g., KCB 123A"
+        />
+        <ProFormText
+          name="make"
+          label="Make"
+          rules={[
+            { required: true, message: "Please enter make" },
+            { max: 100, message: "Make name too long" },
+          ]}
+          placeholder="e.g., Mercedes"
+        />
+        <ProFormText
+          name="model"
+          label="Model"
+          rules={[
+            { required: true, message: "Please enter model" },
+            { max: 100, message: "Model name too long" },
+          ]}
+          placeholder="e.g., Actros"
+        />
+        <ProFormSelect
+          name="status"
+          label="Status"
+          options={[
+            { label: "Idle", value: "Idle" },
+            { label: "In Transit", value: "In Transit" },
+            { label: "Maintenance", value: "Maintenance" },
+          ]}
+        />
+      </ModalForm>
+    </>
   );
 }
