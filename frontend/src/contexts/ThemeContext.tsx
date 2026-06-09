@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useState, useEffect, useMemo, ReactNode } from "react";
 import { ConfigProvider, App } from "antd";
-import { getThemeConfig } from "@/theme/themeConfig";
+import { getThemeConfig } from "@/styles/theme";
 
 type ThemeMode = "dark" | "light";
 
