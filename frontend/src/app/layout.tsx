@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
-import { AntdRegistry } from "@ant-design/nextjs-registry";
+import { AntdRegistry } from "@/providers/AntdRegistry";
 import { Geist, Geist_Mono, DM_Sans } from "next/font/google";
 import { AuthProvider } from "@/contexts/AuthContext";
-import { QueryProvider } from "@/lib/queryClient";
+import { QueryProvider } from "@/providers/QueryProvider";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { TabProvider } from "@/contexts/TabContext";
 import "react-resizable/css/styles.css";
