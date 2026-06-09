@@ -2,9 +2,11 @@
 
 import { useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { message, Spin } from "antd";
+import { App, Spin } from "antd";
 import { useAuth } from "@/contexts/AuthContext";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
+import { Input, PasswordInput } from "@/components/forms";
+import { cn } from "@/lib/utils";
 
 function LoginForm() {
   const router = useRouter();
@@ -14,9 +16,7 @@ function LoginForm() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [usernameFocused, setUsernameFocused] = useState(false);
-  const [passwordFocused, setPasswordFocused] = useState(false);
-  const [messageApi, contextHolder] = message.useMessage();
+  const { message } = App.useApp();
 
   // P6: validate callbackUrl is relative to prevent open redirect
   const raw = searchParams.get("callbackUrl") || "/dashboard";
@@ -33,7 +33,7 @@ function LoginForm() {
     try {
       const success = await login(username, password);
       if (success) {
-        messageApi.success("Login successful!");
+        message.success("Login successful!");
         router.push(callbackUrl);
       } else {
         setErrorMsg("Invalid username or password. Please try again.");
@@ -46,180 +46,98 @@ function LoginForm() {
   };
 
   return (
-    <>
-      {contextHolder}
+    <div
+      className={cn(
+        "w-full h-screen flex items-center justify-center",
+        "bg-[var(--color-login-bg)] relative overflow-hidden",
+        "transition-background duration-400"
+      )}
+    >
+      {/* Theme toggle — top-right */}
+      <div className="absolute top-6 right-7">
+        <ThemeToggle />
+      </div>
 
+      {/* Login card */}
       <div
-        style={{
-          width: "100%",
-          height: "100vh",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          background: "var(--color-login-bg)",
-
-          position: "relative",
-          overflow: "hidden",
-          transition: "background 0.4s",
-        }}
+        className={cn(
+          "w-[380px] backdrop-blur-[40px]",
+          "bg-[var(--color-login-card)]",
+          "border border-[var(--color-border)]",
+          "rounded-[20px] py-12 px-10",
+          "shadow-[var(--color-shadow)]",
+          "transition-all duration-400"
+        )}
       >
-        {/* Theme toggle — top-right */}
-        <div style={{ position: "absolute", top: 24, right: 28 }}>
-          <ThemeToggle />
+        {/* Brand */}
+        <div className="text-center mb-10">
+          <div className="text-[var(--font-sm)] text-[var(--color-text-muted)] mt-1.5">
+            Fleet Management System
+          </div>
         </div>
 
-        {/* Login card */}
-        <div
-          style={{
-            width: 380,
-            background: "var(--color-login-card)",
-            backdropFilter: "blur(40px)",
-            border: "1px solid var(--color-border)",
-            borderRadius: 20,
-            padding: "48px 40px",
-            boxShadow: "var(--color-shadow)",
-            transition: "all 0.4s",
-          }}
-        >
-          {/* Brand */}
-          <div style={{ textAlign: "center", marginBottom: 40 }}>
-            <div
-              style={{
-                fontSize: "var(--font-sm)",
-                color: "var(--color-text-muted)",
-                marginTop: 6,
-              }}
-            >
-              Fleet Management System
-            </div>
+        {/* Form */}
+        <form onSubmit={onSubmit}>
+          {/* Username */}
+          <div className="mb-5">
+            <label className="block text-[11px] font-semibold text-[var(--color-text-muted)] tracking-[0.08em] uppercase mb-2">
+              Username
+            </label>
+            <Input
+              value={username}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setUsername(e.target.value)}
+              autoComplete="username"
+              required
+              placeholder="Enter your username"
+            />
           </div>
 
-          {/* Form */}
-          <form onSubmit={onSubmit}>
-            {/* Username */}
-            <div style={{ marginBottom: 20 }}>
-              <label
-                style={{
-                  display: "block",
-                  fontSize: 11,
-                  fontWeight: 600,
-                  color: "var(--color-text-muted)",
-                  letterSpacing: "0.08em",
-                  textTransform: "uppercase",
-                  marginBottom: 8,
-                }}
-              >
-                Username
-              </label>
-              <input
-                type="text"
-                value={username}
-                onChange={e => setUsername(e.target.value)}
-                onFocus={() => setUsernameFocused(true)}
-                onBlur={() => setUsernameFocused(false)}
-                autoComplete="username"
-                required
-                style={{
-                  width: "100%",
-                  padding: "12px 16px",
-                  background: usernameFocused ? "var(--color-input-focus-bg)" : "var(--color-surface)",
-                  border: `1px solid ${usernameFocused ? "var(--color-primary)" : "var(--color-border)"}`,
-                  borderRadius: 10,
-                  color: "var(--color-text-primary)",
-                  fontSize: 14,
-                  outline: "none",
-                  // P8: visible focus ring for keyboard accessibility
-                  boxShadow: usernameFocused ? "0 0 0 2px var(--color-primary)" : "none",
-                  transition: "all 0.2s",
-                  boxSizing: "border-box",
-                }}
-              />
-            </div>
+          {/* Password */}
+          <div className="mb-8">
+            <label className="block text-[11px] font-semibold text-[var(--color-text-muted)] tracking-[0.08em] uppercase mb-2">
+              Password
+            </label>
+            <PasswordInput
+              value={password}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
+              autoComplete="current-password"
+              required
+              placeholder="Enter your password"
+            />
+          </div>
 
-            {/* Password */}
-            <div style={{ marginBottom: 32 }}>
-              <label
-                style={{
-                  display: "block",
-                  fontSize: 11,
-                  fontWeight: 600,
-                  color: "var(--color-text-muted)",
-                  letterSpacing: "0.08em",
-                  textTransform: "uppercase",
-                  marginBottom: 8,
-                }}
-              >
-                Password
-              </label>
-              <input
-                type="password"
-                value={password}
-                onChange={e => setPassword(e.target.value)}
-                onFocus={() => setPasswordFocused(true)}
-                onBlur={() => setPasswordFocused(false)}
-                autoComplete="current-password"
-                required
-                style={{
-                  width: "100%",
-                  padding: "12px 16px",
-                  background: passwordFocused ? "var(--color-input-focus-bg)" : "var(--color-surface)",
-                  border: `1px solid ${passwordFocused ? "var(--color-primary)" : "var(--color-border)"}`,
-                  borderRadius: 10,
-                  color: "var(--color-text-primary)",
-                  fontSize: 14,
-                  outline: "none",
-                  // P8: visible focus ring for keyboard accessibility
-                  boxShadow: passwordFocused ? "0 0 0 2px var(--color-primary)" : "none",
-                  transition: "all 0.2s",
-                  boxSizing: "border-box",
-                }}
-              />
-            </div>
-
-            {/* Error message — P4: use CSS vars for theme-aware error colors */}
-            {errorMsg && (
-              <div
-                style={{
-                  marginBottom: 20,
-                  padding: "10px 14px",
-                  background: "color-mix(in srgb, var(--color-red) 10%, transparent)",
-                  border: "1px solid color-mix(in srgb, var(--color-red) 30%, transparent)",
-                  borderRadius: 8,
-                  color: "var(--color-red)",
-                  fontSize: "var(--font-sm)",
-                }}
-              >
-                {errorMsg}
-              </div>
-            )}
-
-            {/* Submit */}
-            <button
-              type="submit"
-              disabled={loading}
-              style={{
-                width: "100%",
-                padding: "14px",
-                background: "var(--color-primary)",
-                border: "none",
-                borderRadius: 10,
-                color: "var(--color-primary-text)",
-                fontSize: "var(--font-sm)",
-                fontWeight: 700,
-                letterSpacing: "0.08em",
-                textTransform: "uppercase",
-                cursor: loading ? "not-allowed" : "pointer",
-                boxShadow: "0 4px 20px var(--color-primary-glow)",
-                opacity: loading ? 0.7 : 1,
-                transition: "all 0.2s",
-              }}
+          {/* Error message */}
+          {errorMsg && (
+            <div
+              className={cn(
+                "mb-5 px-3.5 py-2.5 rounded-lg",
+                "bg-[color-mix(in_srgb,var(--color-red)_10%,transparent)]",
+                "border border-[color-mix(in_srgb,var(--color-red)_30%,transparent)]",
+                "text-[var(--color-red)] text-[var(--font-sm)]"
+              )}
             >
-              {loading ? "Signing in…" : "Access System"}
-            </button>
-          </form>
-        </div>
+              {errorMsg}
+            </div>
+          )}
+
+          {/* Submit */}
+          <button
+            type="submit"
+            disabled={loading}
+            className={cn(
+              "w-full py-3.5 bg-[var(--color-primary)] border-none rounded-[10px]",
+              "text-[var(--color-primary-text)] text-[var(--font-sm)] font-bold",
+              "tracking-[0.08em] uppercase",
+              "shadow-[0_4px_20px_var(--color-primary-glow)]",
+              "transition-all duration-200",
+              loading ? "cursor-not-allowed opacity-70" : "cursor-pointer hover:opacity-92"
+            )}
+          >
+            {loading ? "Signing in…" : "Access System"}
+          </button>
+        </form>
       </div>
-    </>
+    </div>
   );
 }
 
@@ -227,15 +145,7 @@ export default function LoginPage() {
   return (
     <Suspense
       fallback={
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "center",
-            alignItems: "center",
-            height: "100vh",
-            background: "var(--color-bg)",
-          }}
-        >
+        <div className="flex justify-center items-center h-screen bg-[var(--color-bg)]">
           <Spin size="large" />
         </div>
       }
