@@ -4,7 +4,7 @@ import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Spin, Typography } from "antd";
 import { useAuth } from "@/contexts/AuthContext";
-import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
+import { AppLayout } from "@/components/layout/AppLayout";
 import { SocketProvider } from "@/lib/socket";
 import { SessionExpiredModal } from "@/components/auth/SessionExpiredModal";
 
@@ -140,7 +140,7 @@ export function ProtectedLayout({ children }: ProtectedLayoutProps) {
   // User is authenticated - render normally
   return (
     <SocketProvider>
-      <DashboardLayout>{children}</DashboardLayout>
+      <AppLayout>{children}</AppLayout>
       <SessionExpiredModal
         open={showLoginModal}
         onSuccess={handleLoginSuccess}
