@@ -30,7 +30,7 @@
 | Task 10: Clean Up globals.css | ✅ Done | `712c693` | |
 | Task 11: Migrate Fleet Pages to ProTable | ✅ Done | `6e032ca` | Trucks, Trailers, Drivers pages → ProTable + ModalForm |
 | Task 12: Migrate Ops Pages to ProTable | ✅ Done | (this) | Trips, Waybills, Expenses, Tracking → ProTable |
-| Task 13: Migrate Finance Pages to ProTable | ⬜ Todo | — | |
+| Task 13: Migrate Finance Pages to ProTable | ✅ Done | `b0f58b2` | + build fixes (useRef, render types, StatusBadge, MetricCard) |
 | Task 14: Migrate Settings Pages to ProTable | ✅ Done | (prior) | All 10 settings pages already use ProTable/ProForm |
 | Task 15: Migrate Dashboard to ProCard | ✅ Done | — | Dashboard + 6 components already use ProCard/ProTable |
 | Task 16: Remove ThemeContext & ThemeToggle | ✅ Done | `9e3cdd2` | |
