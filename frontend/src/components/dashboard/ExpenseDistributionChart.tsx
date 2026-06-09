@@ -18,6 +18,7 @@ interface ExpenseBreakdown {
 interface ExpenseDistributionChartProps {
   data: ExpenseBreakdown[];
   loading?: boolean;
+  monthLabel?: string;
 }
 
 const CATEGORY_COLORS: Record<string, string> = {
@@ -29,7 +30,7 @@ const CATEGORY_COLORS: Record<string, string> = {
   Other:       "var(--color-text-secondary)",
 };
 
-export function ExpenseDistributionChart({ data, loading }: ExpenseDistributionChartProps) {
+export function ExpenseDistributionChart({ data, loading, monthLabel: _monthLabel }: ExpenseDistributionChartProps) {
   const chartData = data.filter((d) => d.amount > 0);
   const totalExpenses = chartData.reduce((sum, d) => sum + d.amount, 0);
 

@@ -22,9 +22,11 @@ interface MonthlyStats {
 interface IncomeVsExpenseChartProps {
   data: MonthlyStats | null;
   loading?: boolean;
+  selectedMonth?: string | null;
+  onMonthChange?: (month: string | null) => void;
 }
 
-export function IncomeVsExpenseChart({ data, loading }: IncomeVsExpenseChartProps) {
+export function IncomeVsExpenseChart({ data, loading, selectedMonth, onMonthChange }: IncomeVsExpenseChartProps) {
   const chartData = data
     ? [
         { name: "Income", value: data.income, fill: "var(--color-green)" },
@@ -50,7 +52,44 @@ export function IncomeVsExpenseChart({ data, loading }: IncomeVsExpenseChartProp
       title={
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <span>Monthly Pulse</span>
-          {data && <span style={{ fontSize: "var(--font-sm)", color: "var(--color-text-muted)" }}>{data.month}</span>}
+          {onMonthChange ? (
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <span
+                style={{ cursor: "pointer", fontSize: 16, color: "var(--color-text-muted)", userSelect: "none", padding: "0 4px" }}
+                onClick={() => {
+                  if (!selectedMonth) {
+                    const d = new Date(); d.setMonth(d.getMonth() - 1);
+                    onMonthChange(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`);
+                  } else {
+                    const [y, m] = selectedMonth.split("-").map(Number);
+                    const d = new Date(y, m - 2, 1);
+                    onMonthChange(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`);
+                  }
+                }}
+              >
+                ‹
+              </span>
+              <span style={{ fontSize: "var(--font-sm)", color: "var(--color-text-muted)", minWidth: 80, textAlign: "center" }}>
+                {data?.month || "—"}
+              </span>
+              <span
+                style={{ cursor: "pointer", fontSize: 16, color: "var(--color-text-muted)", userSelect: "none", padding: "0 4px" }}
+                onClick={() => {
+                  if (!selectedMonth) return; // already current month
+                  const [y, m] = selectedMonth.split("-").map(Number);
+                  const d = new Date(y, m, 1);
+                  const now = new Date();
+                  const next = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+                  const current = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+                  onMonthChange(next === current ? null : next);
+                }}
+              >
+                ›
+              </span>
+            </div>
+          ) : (
+            data && <span style={{ fontSize: "var(--font-sm)", color: "var(--color-text-muted)" }}>{data.month}</span>
+          )}
         </div>
       }
       style={{ height: "100%" }}
