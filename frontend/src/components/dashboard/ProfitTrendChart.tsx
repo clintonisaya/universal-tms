@@ -1,6 +1,6 @@
 "use client";
 
-import { Card } from "antd";
+import { ProCard } from "@ant-design/pro-components";
 import {
   BarChart,
   Bar,
@@ -37,7 +37,7 @@ export function ProfitTrendChart({ data, loading }: ProfitTrendChartProps) {
   };
 
   return (
-    <Card loading={loading} title={`Quarterly Profit Trend — ${new Date().getFullYear()}`} style={{ height: "100%" }}>
+    <ProCard title={`Quarterly Profit Trend — ${new Date().getFullYear()}`} loading={loading} headerBordered style={{ height: "100%" }}>
       <ResponsiveContainer width="100%" height={300}>
         <BarChart
           data={data}
@@ -91,6 +91,6 @@ export function ProfitTrendChart({ data, loading }: ProfitTrendChartProps) {
           <Bar dataKey="profit" fill="var(--color-primary)" radius={[4, 4, 0, 0]} />
         </BarChart>
       </ResponsiveContainer>
-    </Card>
+    </ProCard>
   );
 }

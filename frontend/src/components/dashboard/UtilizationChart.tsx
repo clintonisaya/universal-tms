@@ -1,6 +1,6 @@
 "use client";
 
-import { Card } from "antd";
+import { ProCard } from "@ant-design/pro-components";
 import {
   BarChart,
   Bar,
@@ -27,7 +27,7 @@ interface UtilizationChartProps {
 
 export function UtilizationChart({ data, loading }: UtilizationChartProps) {
   return (
-    <Card loading={loading} title="Vehicle Utilization" style={{ height: "100%" }}>
+    <ProCard title="Vehicle Utilization" loading={loading} headerBordered style={{ height: "100%" }}>
       <ResponsiveContainer width="100%" height={300}>
         <BarChart
           data={data}
@@ -61,6 +61,6 @@ export function UtilizationChart({ data, loading }: UtilizationChartProps) {
           <Bar dataKey="Maintenance" stackId="a" fill="var(--color-red)" />
         </BarChart>
       </ResponsiveContainer>
-    </Card>
+    </ProCard>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { Card } from "antd";
+import { ProCard } from "@ant-design/pro-components";
 import {
   PieChart,
   Pie,
@@ -68,7 +68,7 @@ export function ExpenseDistributionChart({ data, loading, monthLabel: _monthLabe
   };
 
   return (
-    <Card loading={loading} title="Expense Distribution" style={{ height: "100%" }}>
+    <ProCard title="Expense Distribution" loading={loading} headerBordered style={{ height: "100%" }}>
       {chartData.length === 0 ? (
         <div style={{ textAlign: "center", padding: 40, color: "var(--color-text-muted)" }}>
           No paid expenses this month
@@ -137,6 +137,6 @@ export function ExpenseDistributionChart({ data, loading, monthLabel: _monthLabe
           </div>
         </>
       )}
-    </Card>
+    </ProCard>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { Card } from "antd";
+import { ProCard } from "@ant-design/pro-components";
 import {
   BarChart,
   Bar,
@@ -47,8 +47,9 @@ export function IncomeVsExpenseChart({ data, loading, selectedMonth, onMonthChan
   };
 
   return (
-    <Card
+    <ProCard
       loading={loading}
+      headerBordered
       title={
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <span>Monthly Pulse</span>
@@ -94,6 +95,7 @@ export function IncomeVsExpenseChart({ data, loading, selectedMonth, onMonthChan
       }
       style={{ height: "100%" }}
     >
+
       {!hasData && !loading ? (
         <div style={{ textAlign: "center", padding: 40, color: "var(--color-text-muted)" }}>
           <div style={{ fontSize: 14, marginBottom: 8 }}>No financial data this month</div>
@@ -158,6 +160,6 @@ export function IncomeVsExpenseChart({ data, loading, selectedMonth, onMonthChan
           </span>
         </div>
       )}
-    </Card>
+    </ProCard>
   );
 }
