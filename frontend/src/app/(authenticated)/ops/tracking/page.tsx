@@ -1,24 +1,27 @@
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
+import { useRef, useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
-  Table,
+  ProTable,
+  ProColumns,
+} from "@ant-design/pro-components";
+import type { ActionType } from "@ant-design/pro-components";
+import {
   Button,
-  Card,
   Flex,
   Space,
   Input,
-  message,
-  Typography,
+  Tooltip,
+  Card,
   Form,
   Row,
   Col,
-  Tooltip,
+  App,
+  Typography,
 } from "antd";
 import {
   ReloadOutlined,
-  ArrowLeftOutlined,
   DownloadOutlined,
   SearchOutlined,
   CarOutlined,
@@ -27,23 +30,23 @@ import {
   EnvironmentOutlined,
   SwapOutlined,
 } from "@ant-design/icons";
-import type { ColumnsType } from "antd/es/table";
 import { useAuth } from "@/contexts/AuthContext";
-import { useTracking, useInvalidateQueries } from "@/hooks/application/useApi";
+import { useInvalidateQueries, apiFetch } from "@/hooks/application/useApi";
 import { useTrackingExport, STATUS_COLORS, RISK_COLORS, RETURN_STATUSES, type TrackingRow } from "@/hooks/application/useTrackingExport";
 import { UpdateTripStatusModal } from "@/components/trips/UpdateTripStatusModal";
 import { TripStatusTag } from "@/components/ui/TripStatusTag";
 import { StatusBadge } from "@/components/ui/StatusBadge";
-import { getStandardRowSelection } from "@/components/ui/tableUtils";
 
-const { Title, Text } = Typography;
+const { Text } = Typography;
 
 function TrackingPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { message } = App.useApp();
   const { user } = useAuth();
   const { invalidateTracking } = useInvalidateQueries();
   const { handleExport, handleClientExport } = useTrackingExport();
+  const actionRef = useRef<ActionType>();
 
   const isAuthenticated = !!user;
 
@@ -66,21 +69,14 @@ function TrackingPageContent() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Server-side paginated query
-  const { data: apiResponse, isLoading: loading, refetch } = useTracking(
-    { skip: (currentPage - 1) * pageSize, limit: pageSize, search: serverSearch || undefined },
-    isAuthenticated,
-  );
-  const trackingData = apiResponse?.data || [];
-  const totalCount = apiResponse?.count || 0;
-
   // Status Update Modal State
   const [selectedTripId, setSelectedTripId] = useState<string | null>(null);
   const [isStatusModalOpen, setIsStatusModalOpen] = useState(false);
   const [initialStatusValues, setInitialStatusValues] = useState<any>(null);
 
-  // Standard Table States
+  // Row selection state
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
+  const [trackingData, setTrackingData] = useState<TrackingRow[]>([]);
 
   const handleSearch = (values: any) => {
     const terms = Object.values(values).filter(Boolean) as string[];
@@ -89,6 +85,7 @@ function TrackingPageContent() {
     const params = new URLSearchParams();
     Object.entries(values).forEach(([k, v]) => { if (v) params.set(k, v as string); });
     router.replace(`?${params.toString()}`, { scroll: false });
+    actionRef.current?.reload();
   };
 
   const handleReset = () => {
@@ -96,9 +93,9 @@ function TrackingPageContent() {
     setServerSearch("");
     setCurrentPage(1);
     router.replace("?", { scroll: false });
+    actionRef.current?.reload();
   };
 
-  // Only "Invoiced" locks the record
   const isWaybillFinalised = (record: TrackingRow): boolean => {
     const goLocked = record.waybill_status === "Invoiced";
     const retLocked = !record.return_waybill_id || record.return_waybill_status === "Invoiced";
@@ -119,7 +116,6 @@ function TrackingPageContent() {
     setIsStatusModalOpen(true);
   };
 
-  // Truncated text with tooltip
   const truncatedCell = (text: string | null, maxWidth = 150) => (
     <Tooltip title={text}>
       <div style={{ maxWidth, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
@@ -131,9 +127,13 @@ function TrackingPageContent() {
   const fmtDateCol = (d: string | null) =>
     d ? new Date(d).toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric" }) : "—";
 
-  const columns: ColumnsType<TrackingRow> = [
+  const columns: ProColumns<TrackingRow>[] = [
     {
-      title: "Tracking No.", key: "ids", width: 180, align: "left",
+      title: "Tracking No.",
+      key: "ids",
+      width: 180,
+      align: "left",
+      search: false,
       render: (_, r) => (
         <Flex vertical gap={2}>
           {r.waybill_number && (
@@ -155,7 +155,10 @@ function TrackingPageContent() {
       ),
     },
     {
-      title: "Status", key: "status", width: 170,
+      title: "Status",
+      key: "status",
+      width: 170,
+      search: false,
       render: (_, r) => (
         <Flex vertical gap={2} align="start">
           {r.waybill_status && <StatusBadge status={`Go: ${r.waybill_status}`} colorKey={STATUS_COLORS[r.waybill_status]} />}
@@ -165,7 +168,10 @@ function TrackingPageContent() {
       ),
     },
     {
-      title: "Client / Cargo", key: "entity", width: 210,
+      title: "Client / Cargo",
+      key: "entity",
+      width: 210,
+      search: false,
       render: (_, r) => (
         <Flex vertical gap={0}>
           {truncatedCell(r.client_name, 190)}
@@ -186,7 +192,10 @@ function TrackingPageContent() {
       ),
     },
     {
-      title: "Route / Location", key: "route", width: 250,
+      title: "Route / Location",
+      key: "route",
+      width: 250,
+      search: false,
       render: (_, r) => {
         const isReturn = RETURN_STATUSES.has(r.trip_status);
         const from = isReturn && r.return_origin ? r.return_origin : r.origin;
@@ -218,7 +227,11 @@ function TrackingPageContent() {
       },
     },
     {
-      title: "Days", key: "days", width: 90, align: "center",
+      title: "Days",
+      key: "days",
+      width: 90,
+      align: "center",
+      search: false,
       render: (_, r) => (
         <Flex vertical gap={2} align="center">
           <Tooltip title="Overall trip duration">
@@ -233,7 +246,10 @@ function TrackingPageContent() {
       ),
     },
     {
-      title: "Assets", key: "assets", width: 180,
+      title: "Assets",
+      key: "assets",
+      width: 180,
+      search: false,
       render: (_, r) => (
         <Flex vertical gap={0}>
           <Text><CarOutlined /> {r.truck_plate || "-"}</Text>
@@ -242,23 +258,38 @@ function TrackingPageContent() {
         </Flex>
       ),
     },
-    { title: "Risk", key: "risk", width: 80, render: (_, r) => <StatusBadge status={r.risk_level} colorKey={RISK_COLORS[r.risk_level]} /> },
-    { title: "Arrival Offloading", key: "arrival_offloading_date", width: 130, render: (_, r) => <Text type="secondary">{fmtDateCol(r.arrival_offloading_date)}</Text> },
-    { title: "Ret Empty Container", key: "return_empty_container_date", width: 140, render: (_, r) => <Text type="secondary">{fmtDateCol(r.return_empty_container_date)}</Text> },
+    {
+      title: "Risk",
+      key: "risk",
+      width: 80,
+      search: false,
+      render: (_, r) => <StatusBadge status={r.risk_level} colorKey={RISK_COLORS[r.risk_level]} />,
+    },
+    {
+      title: "Arrival Offloading",
+      key: "arrival_offloading_date",
+      width: 130,
+      search: false,
+      render: (_, r) => <Text type="secondary">{fmtDateCol(r.arrival_offloading_date)}</Text>,
+    },
+    {
+      title: "Ret Empty Container",
+      key: "return_empty_container_date",
+      width: 140,
+      search: false,
+      render: (_, r) => <Text type="secondary">{fmtDateCol(r.return_empty_container_date)}</Text>,
+    },
   ];
 
   return (
-    <div>
+    <>
       <Card styles={{ body: { padding: "12px 24px" } }}>
         <Flex vertical gap="middle" style={{ width: "100%" }}>
           {/* Header */}
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <Typography.Title level={3} style={{ margin: 0 }}>Tracking</Typography.Title>
             <Space>
-              <Button icon={<ArrowLeftOutlined />} onClick={() => router.push("/dashboard")}>Back</Button>
-              <Title level={3} style={{ margin: 0 }}>Tracking</Title>
-            </Space>
-            <Space>
-              <Button icon={<ReloadOutlined />} onClick={() => refetch()}>Refresh</Button>
+              <Button icon={<ReloadOutlined />} onClick={() => actionRef.current?.reload()}>Refresh</Button>
               <Button type="primary" icon={<DownloadOutlined />} onClick={() => handleExport(serverSearch)}>Export Excel</Button>
               <Button icon={<DownloadOutlined />} onClick={() => {
                 const keySet = new Set(selectedRowKeys.map(String));
@@ -310,21 +341,43 @@ function TrackingPageContent() {
           </Card>
 
           {/* Tracking Table */}
-          <Table<TrackingRow>
+          <ProTable<TrackingRow>
+            actionRef={actionRef}
             columns={columns}
-            dataSource={trackingData}
             rowKey="row_id"
-            loading={loading}
-            scroll={{ x: 1300 }}
-            sticky={{ offsetHeader: 64 }}
-            size="small"
-            rowSelection={getStandardRowSelection(currentPage, pageSize, selectedRowKeys, setSelectedRowKeys)}
-            pagination={{
-              current: currentPage, pageSize, total: totalCount,
-              showTotal: (total) => `Total ${total} loads`,
-              showSizeChanger: true, pageSizeOptions: ["50", "100", "200"],
-              onChange: (page, size) => { setCurrentPage(page); setPageSize(size); },
+            search={false}
+            request={async (params) => {
+              const { current, pageSize: size } = params;
+              const pg = current || 1;
+              const ps = size || 50;
+              setCurrentPage(pg);
+              setPageSize(ps);
+              const skip = (pg - 1) * ps;
+              const data = await apiFetch<{ data: TrackingRow[]; count: number }>(
+                `/api/v1/reports/waybill-tracking?skip=${skip}&limit=${ps}${serverSearch ? `&search=${encodeURIComponent(serverSearch)}` : ""}`
+              );
+              setTrackingData(data.data || []);
+              return {
+                data: data.data || [],
+                total: data.count || 0,
+                success: true,
+              };
             }}
+            params={{ search: serverSearch }}
+            scroll={{ x: 1300 }}
+            size="small"
+            pagination={{
+              current: currentPage,
+              pageSize: pageSize,
+              showTotal: (total) => `Total ${total} loads`,
+              showSizeChanger: true,
+              pageSizeOptions: ["50", "100", "200"],
+            }}
+            rowSelection={{
+              selectedRowKeys,
+              onChange: (keys) => setSelectedRowKeys(keys),
+            }}
+            toolBarRender={false}
           />
         </Flex>
       </Card>
@@ -334,19 +387,23 @@ function TrackingPageContent() {
         <UpdateTripStatusModal
           open={isStatusModalOpen}
           onClose={() => { setIsStatusModalOpen(false); setSelectedTripId(null); }}
-          onSuccess={() => invalidateTracking()}
+          onSuccess={() => {
+            actionRef.current?.reload();
+          }}
           tripId={selectedTripId}
           initialValues={initialStatusValues}
         />
       )}
-    </div>
+    </>
   );
 }
 
 export default function TrackingPage() {
   return (
-    <Suspense>
-      <TrackingPageContent />
-    </Suspense>
+    <App>
+      <Suspense>
+        <TrackingPageContent />
+      </Suspense>
+    </App>
   );
 }

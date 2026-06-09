@@ -29,11 +29,11 @@
 | Task 9: Replace Login Page | ✅ Done | `3d2dbb6` | ProForm + Tailwind + App.useApp() |
 | Task 10: Clean Up globals.css | ✅ Done | `712c693` | |
 | Task 11: Migrate Fleet Pages to ProTable | ✅ Done | `6e032ca` | Trucks, Trailers, Drivers pages → ProTable + ModalForm |
-| Task 12: Migrate Ops Pages to ProTable | ⬜ Todo | — | |
+| Task 12: Migrate Ops Pages to ProTable | ✅ Done | (this) | Trips, Waybills, Expenses, Tracking → ProTable |
 | Task 13: Migrate Finance Pages to ProTable | ⬜ Todo | — | |
-| Task 14: Migrate Settings Pages to ProTable | ⬜ Todo | — | |
-| Task 15: Migrate Dashboard to ProCard | ⬜ Todo | — | |
-| Task 16: Remove ThemeContext & ThemeToggle | ⬜ Todo | — | |
+| Task 14: Migrate Settings Pages to ProTable | ✅ Done | (prior) | All 10 settings pages already use ProTable/ProForm |
+| Task 15: Migrate Dashboard to ProCard | ✅ Done | — | Dashboard + 6 components already use ProCard/ProTable |
+| Task 16: Remove ThemeContext & ThemeToggle | ✅ Done | `9e3cdd2` | |
 | Task 17: Remove NotificationCenter & themeConfig | ⬜ Todo | — | |
 | Task 18: Final Verification | ⬜ Todo | — | |
 
@@ -1811,23 +1811,23 @@ git commit -m "feat: migrate settings pages to ProTable"
 - Modify: `frontend/src/components/dashboard/RecentTripsTable.tsx`
 - Modify: `frontend/src/components/dashboard/QuickActionsWidget.tsx`
 
-- [ ] **Step 1: Migrate MetricCard to use ProCard**
+- [x] **Step 1: Migrate MetricCard to use ProCard**
 
 Update MetricCard component to use ProCard instead of custom Card.
 
-- [ ] **Step 2: Migrate chart containers to ProCard**
+- [x] **Step 2: Migrate chart containers to ProCard**
 
 Update chart wrapper components to use ProCard with built-in loading skeleton.
 
-- [ ] **Step 3: Migrate RecentTripsTable to ProTable**
+- [x] **Step 3: Migrate RecentTripsTable to ProTable**
 
 Update RecentTripsTable to use ProTable.
 
-- [ ] **Step 4: Update Dashboard page layout**
+- [x] **Step 4: Update Dashboard page layout**
 
 Update dashboard page to use ProCard grid layout.
 
-- [ ] **Step 5: Verify build compiles**
+- [x] **Step 5: Verify build compiles**
 
 ```bash
 cd /home/clinton/dev/universal-tms/frontend
@@ -1836,7 +1836,7 @@ npm run build
 
 Expected: Build succeeds.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add frontend/src/app/(authenticated)/dashboard/ frontend/src/components/dashboard/
@@ -1851,19 +1851,19 @@ git commit -m "feat: migrate dashboard to ProCard and ProTable"
 - Delete: `frontend/src/contexts/ThemeContext.tsx`
 - Delete: `frontend/src/components/ui/ThemeToggle.tsx`
 
-- [ ] **Step 1: Remove ThemeContext.tsx**
+- [x] **Step 1: Remove ThemeContext.tsx**
 
 ```bash
 rm frontend/src/contexts/ThemeContext.tsx
 ```
 
-- [ ] **Step 2: Remove ThemeToggle.tsx**
+- [x] **Step 2: Remove ThemeToggle.tsx**
 
 ```bash
 rm frontend/src/components/ui/ThemeToggle.tsx
 ```
 
-- [ ] **Step 3: Update any remaining imports**
+- [x] **Step 3: Update any remaining imports**
 
 Search for imports of ThemeContext and ThemeToggle and remove them:
 
@@ -1873,7 +1873,7 @@ grep -r "ThemeContext\|ThemeToggle\|useThemeMode" frontend/src/ --include="*.tsx
 
 Update any files that still import these.
 
-- [ ] **Step 4: Verify build compiles**
+- [x] **Step 4: Verify build compiles**
 
 ```bash
 cd /home/clinton/dev/universal-tms/frontend
@@ -1882,7 +1882,7 @@ npm run build
 
 Expected: Build succeeds.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add -A

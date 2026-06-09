@@ -1,50 +1,33 @@
 "use client";
 
-import { useState, Suspense } from "react";
+import { useRef, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
-  Table,
-  Button,
-  Card,
-  Space,
-  Tag,
-  Typography,
-  Tooltip,
-  Popconfirm,
-  App,
-  theme,
-} from "antd";
+  ProTable,
+  ProColumns,
+} from "@ant-design/pro-components";
+import type { ActionType } from "@ant-design/pro-components";
+import { Button, App, Popconfirm, Space, Tag, Tooltip, theme } from "antd";
 import {
   PlusOutlined,
   ReloadOutlined,
-  ArrowLeftOutlined,
-  DeleteOutlined,
   EyeOutlined,
   EditOutlined,
+  DeleteOutlined,
   LockOutlined,
   UnlockOutlined,
   MessageOutlined,
 } from "@ant-design/icons";
-import type { ColumnsType } from "antd/es/table";
 import type { Trip, TripStatus } from "@/types/trip";
 import { useAuth } from "@/contexts/AuthContext";
-import { useTrips, useInvalidateQueries, useToggleTripExpenseWindow } from "@/hooks/application/useApi";
+import { useInvalidateQueries, useToggleTripExpenseWindow, apiFetch } from "@/hooks/application/useApi";
 import { usePermissions } from "@/hooks/application/usePermissions";
 import { CreateTripDrawer } from "@/components/trips/CreateTripDrawer";
 import { UpdateTripDrawer } from "@/components/trips/UpdateTripDrawer";
 import { TripDetailDrawer } from "@/components/trips/TripDetailDrawer";
-import {
-  getColumnSearchProps,
-  getColumnFilterProps,
-  getStandardRowSelection,
-  useResizableColumns,
-} from "@/components/ui/tableUtils";
 import { TripStatusTag } from "@/components/ui/TripStatusTag";
 import { StatusBadge } from "@/components/ui/StatusBadge";
-import { EmptyState } from "@/components/ui/EmptyState";
-import { RETURN_DIRECTION_STATUSES, STATUS_FILTERS } from "@/constants/tripStatuses";
-
-const { Title, Text } = Typography;
+import { RETURN_DIRECTION_STATUSES } from "@/constants/tripStatuses";
 
 function getRiskCssColor(risk: string | null | undefined): string {
   switch (risk) {
@@ -78,11 +61,6 @@ function formatRelativeTime(dateStr: string | null | undefined): string {
 
 const RETURN_STATUSES = new Set(RETURN_DIRECTION_STATUSES);
 
-const DIRECTION_FILTERS = [
-  { text: "Go", value: "go" },
-  { text: "Return", value: "return" },
-];
-
 function TripsPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -90,9 +68,7 @@ function TripsPageContent() {
   const { token } = theme.useToken();
   const { user } = useAuth();
   const { invalidateTrips } = useInvalidateQueries();
-
-  // Only fetch when user is authenticated
-  const isAuthenticated = !!user;
+  const actionRef = useRef<ActionType>();
 
   const [createDrawerOpen, setCreateDrawerOpen] = useState(false);
   const [detailDrawerTripId, setDetailDrawerTripId] = useState<string | null>(null);
@@ -100,34 +76,8 @@ function TripsPageContent() {
   const { hasPermission } = usePermissions();
   const canManageExpenseWindow = hasPermission("trips:edit");
   const toggleExpenseWindow = useToggleTripExpenseWindow();
-  const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(20);
-  // Initialise from URL so filters survive reload / share (AC-1, Story 6.17)
-  const urlStatus = searchParams.get("status");
-  const [tableFilters, setTableFilters] = useState<Record<string, any>>(
-    urlStatus ? { status: [urlStatus] } : {}
-  );
-  const [tableKey, setTableKey] = useState(0);
-
-  // TanStack Query for trips data — server-side pagination
-  const { data, isLoading: loading, refetch } = useTrips(
-    { skip: (currentPage - 1) * pageSize, limit: pageSize },
-    isAuthenticated
-  );
-  const trips = data?.data || [];
-  const totalCount = data?.count || 0;
 
   const showFinancialData = hasPermission("trips:view-financials");
-
-  const hasActiveFilters = Object.values(tableFilters).some(
-    (v) => v != null && (Array.isArray(v) ? v.length > 0 : true)
-  );
-  const clearAllFilters = () => {
-    setTableFilters({});
-    setTableKey((k) => k + 1);
-    router.replace("?", { scroll: false });
-  };
 
   const handleDelete = async (trip: Trip) => {
     try {
@@ -138,7 +88,7 @@ function TripsPageContent() {
 
       if (response.ok) {
         message.success("Trip deleted successfully");
-        invalidateTrips();
+        actionRef.current?.reload();
       } else {
         const error = await response.json();
         message.error(error.detail || "Failed to delete trip");
@@ -157,6 +107,7 @@ function TripsPageContent() {
           message.success(
             `Expense window ${newState ? "opened" : "closed"} for ${trip.trip_number}`
           );
+          actionRef.current?.reload();
         },
         onError: () => {
           message.error("Failed to toggle expense window");
@@ -165,23 +116,23 @@ function TripsPageContent() {
     );
   };
 
-  const columns: ColumnsType<Trip> = [
+  const columns: ProColumns<Trip>[] = [
     {
       title: "Trip Number",
       dataIndex: "trip_number",
       key: "trip_number",
       width: 120,
-      sorter: (a, b) => (a.trip_number || "").localeCompare(b.trip_number || ""),
-      render: (text: string, record: Trip) => (
+      sorter: true,
+      fieldProps: { placeholder: "Search trip number" },
+      render: (_, record) => (
         <Button
           type="link"
           onClick={() => setDetailDrawerTripId(record.id)}
           style={{ padding: 0, height: "auto", fontWeight: 600 }}
         >
-          {text}
+          {record.trip_number}
         </Button>
       ),
-      ...getColumnSearchProps<Trip>("trip_number"),
     },
     {
       title: "Route",
@@ -189,55 +140,82 @@ function TripsPageContent() {
       key: "route_name",
       width: 220,
       ellipsis: true,
-      sorter: (a, b) => a.route_name.localeCompare(b.route_name),
-      render: (text: string, record: Trip) => {
+      sorter: true,
+      fieldProps: { placeholder: "Search route" },
+      render: (_, record) => {
         const isReturn = RETURN_STATUSES.has(record.status);
-        const display = isReturn && record.return_route_name ? record.return_route_name : text;
+        const display = isReturn && record.return_route_name ? record.return_route_name : record.route_name;
         return <div style={{ fontWeight: 500, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{display}</div>;
       },
-      ...getColumnSearchProps<Trip>("route_name"),
     },
     {
       title: "Direction",
       dataIndex: "return_waybill_id",
       key: "direction",
-      width: 60,
-      render: (returnWaybillId: string | null) => (
+      width: 80,
+      search: false,
+      render: (_, record) => (
         <StatusBadge
-          status={returnWaybillId ? "Return" : "Go"}
-          colorKey={returnWaybillId ? "blue" : "gray"}
+          status={record.return_waybill_id ? "Return" : "Go"}
+          colorKey={record.return_waybill_id ? "blue" : "gray"}
         />
       ),
-      filters: DIRECTION_FILTERS,
-      onFilter: (value, record) => {
-        if (value === "return") return !!record.return_waybill_id;
-        return !record.return_waybill_id;
-      },
     },
     {
       title: "Start Date",
       dataIndex: "start_date",
       key: "start_date",
-      width: 100,
-      render: (date: string | null) => date ? new Date(date).toLocaleDateString() : "-",
-      sorter: (a, b) => (a.start_date || "").localeCompare(b.start_date || ""),
+      width: 110,
+      valueType: "date",
+      sorter: true,
+      search: false,
+      render: (_, record) => record.start_date ? new Date(record.start_date).toLocaleDateString() : "-",
     },
     {
       title: "End Date",
       dataIndex: "end_date",
       key: "end_date",
-      width: 100,
-      render: (date: string | null) => date ? new Date(date).toLocaleDateString() : "-",
-      sorter: (a, b) => (a.end_date || "").localeCompare(b.end_date || ""),
+      width: 110,
+      valueType: "date",
+      sorter: true,
+      search: false,
+      render: (_, record) => record.end_date ? new Date(record.end_date).toLocaleDateString() : "-",
     },
     {
       title: "Status",
       dataIndex: "status",
       key: "status",
       width: 140,
-      render: (status: TripStatus, record: Trip) => (
+      valueType: "select",
+      valueEnum: {
+        "Waiting": { text: "Waiting" },
+        "Dispatched": { text: "Dispatched" },
+        "Arrived at Loading Point": { text: "Arrived at Loading Point" },
+        "Loading": { text: "Loading" },
+        "Loaded": { text: "Loaded" },
+        "In Transit": { text: "In Transit" },
+        "At Border": { text: "At Border" },
+        "Arrived at Destination": { text: "Arrived at Destination" },
+        "Offloading": { text: "Offloading" },
+        "Offloaded": { text: "Offloaded" },
+        "Returning Empty": { text: "Returning Empty" },
+        "Dispatched (Return)": { text: "Dispatched (Return)" },
+        "Arrived at Loading Point (Return)": { text: "Arrived at Loading Point (Return)" },
+        "Loading (Return)": { text: "Loading (Return)" },
+        "Loaded (Return)": { text: "Loaded (Return)" },
+        "In Transit (Return)": { text: "In Transit (Return)" },
+        "At Border (Return)": { text: "At Border (Return)" },
+        "Arrived at Destination (Return)": { text: "Arrived at Destination (Return)" },
+        "Offloading (Return)": { text: "Offloading (Return)" },
+        "Offloaded (Return)": { text: "Offloaded (Return)" },
+        "Arrived at Yard": { text: "Arrived at Yard" },
+        "Waiting for PODs": { text: "Waiting for PODs" },
+        "Completed": { text: "Completed" },
+        "Cancelled": { text: "Cancelled" },
+      },
+      render: (_, record) => (
         <div>
-          <TripStatusTag status={status} />
+          <TripStatusTag status={record.status} />
           {record.expense_window_open && (
             <Tag color="gold" style={{ marginTop: 4, fontSize: 11 }}>
               <UnlockOutlined /> Expenses Open
@@ -245,14 +223,14 @@ function TripsPageContent() {
           )}
         </div>
       ),
-      ...getColumnFilterProps("status", STATUS_FILTERS),
-      filteredValue: tableFilters.status || null,
     },
     {
       title: "",
+      dataIndex: "remarks",
       key: "remarks",
       width: 32,
-      render: (_: unknown, record: Trip) =>
+      search: false,
+      render: (_, record) =>
         record.remarks ? (
           <Tooltip
             title={
@@ -269,45 +247,47 @@ function TripsPageContent() {
       title: "Last Updated",
       dataIndex: "location_update_time",
       key: "location_update_time",
-      width: 100,
-      render: (date: string | null) => (
-        <Tooltip title={date ? new Date(date).toLocaleString() : undefined}>
-          <Text type="secondary">
-            {formatRelativeTime(date)}
-          </Text>
+      width: 110,
+      search: false,
+      sorter: true,
+      render: (_, record) => (
+        <Tooltip title={record.location_update_time ? new Date(record.location_update_time).toLocaleString() : undefined}>
+          <span style={{ color: token.colorTextSecondary }}>
+            {formatRelativeTime(record.location_update_time)}
+          </span>
         </Tooltip>
       ),
-      sorter: (a, b) =>
-        (a.location_update_time || "").localeCompare(b.location_update_time || ""),
     },
     ...(showFinancialData
       ? [
-        {
-          title: "Rate",
-          dataIndex: "waybill_rate",
-          key: "rate",
-          width: 120,
-          render: (_: unknown, record: Trip) => {
-            const isReturn = RETURN_STATUSES.has(record.status);
-            const rate = isReturn ? record.return_waybill_rate : record.waybill_rate;
-            const currency = isReturn ? record.return_waybill_currency : record.waybill_currency;
-            return rate != null ? (
-              <Text>{formatCurrency(rate, currency)}</Text>
-            ) : (
-              <Text type="secondary">-</Text>
-            );
-          },
-        } as ColumnsType<Trip>[number],
-      ]
+          {
+            title: "Rate",
+            dataIndex: "waybill_rate",
+            key: "rate",
+            width: 120,
+            search: false,
+            render: (_: unknown, record: Trip) => {
+              const isReturn = RETURN_STATUSES.has(record.status);
+              const rate = isReturn ? record.return_waybill_rate : record.waybill_rate;
+              const currency = isReturn ? record.return_waybill_currency : record.waybill_currency;
+              return rate != null ? (
+                <span>{formatCurrency(rate, currency)}</span>
+              ) : (
+                <span style={{ color: token.colorTextSecondary }}>-</span>
+              );
+            },
+          } as ProColumns<Trip>,
+        ]
       : []),
-
     {
       title: "Risk",
       dataIndex: "waybill_risk_level",
       key: "risk",
-      width: 70,
-      render: (risk: string | null) => {
-        if (!risk) return <Text type="secondary">-</Text>;
+      width: 80,
+      search: false,
+      render: (_, record) => {
+        const risk = record.waybill_risk_level;
+        if (!risk) return <span style={{ color: token.colorTextSecondary }}>-</span>;
         const color = getRiskCssColor(risk);
         return (
           <span style={{
@@ -330,176 +310,123 @@ function TripsPageContent() {
     {
       title: "Actions",
       key: "actions",
-      width: 120,
+      width: 130,
+      valueType: "option",
       fixed: "right",
+      search: false,
       render: (_, record) => (
-        <div className="row-actions">
-          <Space size="small">
-            <Button
-              type="text"
-              size="small"
-              icon={<EyeOutlined />}
-              onClick={() => setDetailDrawerTripId(record.id)}
-              aria-label={`View Trip ${record.trip_number}`}
-            />
-            <Button
-              type="text"
-              size="small"
-              icon={<EditOutlined />}
-              onClick={() => setUpdateDrawerTripId(record.id)}
-              aria-label={`Edit Trip ${record.trip_number}`}
-            />
-            {canManageExpenseWindow && ["Completed", "Cancelled"].includes(record.status) && (
-              <Tooltip
-                title={
-                  record.expense_window_open
-                    ? "Close Expense Window"
-                    : "Open Expense Window"
-                }
-              >
-                <Button
-                  type="text"
-                  size="small"
-                  icon={record.expense_window_open ? <LockOutlined /> : <UnlockOutlined />}
-                  onClick={() => handleToggleExpenseWindow(record)}
-                  style={{
-                    color: record.expense_window_open ? "#cf1322" : "#52c41a",
-                  }}
-                />
-              </Tooltip>
-            )}
-            <Popconfirm
-              title="Delete trip"
-              description="Are you sure you want to delete this trip?"
-              onConfirm={() => handleDelete(record)}
-              okText="Yes"
-              cancelText="No"
-              okButtonProps={{ danger: true }}
+        <Space size="small">
+          <Button
+            type="text"
+            size="small"
+            icon={<EyeOutlined />}
+            onClick={() => setDetailDrawerTripId(record.id)}
+            aria-label={`View Trip ${record.trip_number}`}
+          />
+          <Button
+            type="text"
+            size="small"
+            icon={<EditOutlined />}
+            onClick={() => setUpdateDrawerTripId(record.id)}
+            aria-label={`Edit Trip ${record.trip_number}`}
+          />
+          {canManageExpenseWindow && ["Completed", "Cancelled"].includes(record.status) && (
+            <Tooltip
+              title={
+                record.expense_window_open
+                  ? "Close Expense Window"
+                  : "Open Expense Window"
+              }
             >
-              <Button type="text" danger size="small" icon={<DeleteOutlined />} aria-label={`Delete Trip ${record.trip_number}`} />
-            </Popconfirm>
-          </Space>
-        </div>
+              <Button
+                type="text"
+                size="small"
+                icon={record.expense_window_open ? <LockOutlined /> : <UnlockOutlined />}
+                onClick={() => handleToggleExpenseWindow(record)}
+                style={{
+                  color: record.expense_window_open ? "#cf1322" : "#52c41a",
+                }}
+              />
+            </Tooltip>
+          )}
+          <Popconfirm
+            title="Delete trip"
+            description="Are you sure you want to delete this trip?"
+            onConfirm={() => handleDelete(record)}
+            okText="Yes"
+            cancelText="No"
+            okButtonProps={{ danger: true }}
+          >
+            <Button type="text" danger size="small" icon={<DeleteOutlined />} aria-label={`Delete Trip ${record.trip_number}`} />
+          </Popconfirm>
+        </Space>
       ),
     },
   ];
 
-  // Make columns resizable
-  const { resizableColumns, components } = useResizableColumns(columns);
-
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        background: "var(--color-bg)",
-        padding: "var(--space-xl)",
+    <>
+    <ProTable<Trip>
+      headerTitle="Trips"
+      actionRef={actionRef}
+      columns={columns}
+      rowKey="id"
+      request={async (params) => {
+        const { current, pageSize, status, ...rest } = params;
+        const skip = ((current || 1) - 1) * (pageSize || 20);
+        const qs = new URLSearchParams();
+        qs.set("skip", String(skip));
+        qs.set("limit", String(pageSize || 20));
+        if (status) qs.set("status", status as string);
+        const data = await apiFetch<{ data: Trip[]; count: number }>(`/api/v1/trips?${qs.toString()}`);
+        return {
+          data: data.data || [],
+          total: data.count || 0,
+          success: true,
+        };
       }}
-    >
-      <Card>
-        <Space orientation="vertical" size="middle" style={{ width: "100%" }}>
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-            }}
-          >
-            <Space>
-              <Button
-                icon={<ArrowLeftOutlined />}
-                onClick={() => router.push("/dashboard")}
-              >
-                Back
-              </Button>
-              <Title level={2} style={{ margin: 0 }}>
-                Trips
-              </Title>
-            </Space>
-            <Space>
-              <Button icon={<ReloadOutlined />} onClick={() => refetch()}>
-                Refresh
-              </Button>
-              <Button
-                type="primary"
-                icon={<PlusOutlined />}
-                onClick={() => setCreateDrawerOpen(true)}
-              >
-                New Trip
-              </Button>
-            </Space>
-          </div>
-
-          <Table<Trip>
-            key={tableKey}
-            columns={resizableColumns}
-            components={components}
-            dataSource={trips}
-            rowKey="id"
-            loading={loading}
-            sticky={{ offsetHeader: 64 }}
-            scroll={{ x: "max-content" }}
-            onRow={(record) => ({
-              style: record.is_delayed ? { backgroundColor: "color-mix(in srgb, var(--color-orange) 10%, transparent)" } : undefined,
-            })}
-            onChange={(_, filters) => {
-              const next = filters as Record<string, any>;
-              setTableFilters(next);
-              // Sync status filter to URL (AC-1, Story 6.17)
-              const params = new URLSearchParams(searchParams.toString());
-              const statusVal = (next.status as string[] | null)?.[0];
-              if (statusVal) params.set("status", statusVal);
-              else params.delete("status");
-              router.replace(`?${params.toString()}`, { scroll: false });
-            }}
-            locale={{
-              emptyText: hasActiveFilters ? (
-                <EmptyState
-                  message="No results match your filters."
-                  action={{ label: "Clear Filters", onClick: clearAllFilters }}
-                />
-              ) : (
-                <EmptyState
-                  message="No trips found."
-                  action={
-                    hasPermission("trips:create")
-                      ? { label: "Create Trip", onClick: () => setCreateDrawerOpen(true) }
-                      : undefined
-                  }
-                />
-              ),
-            }}
-            rowSelection={getStandardRowSelection(
-              currentPage,
-              pageSize,
-              selectedRowKeys,
-              setSelectedRowKeys
-            )}
-            pagination={{
-              current: currentPage,
-              pageSize,
-              total: totalCount,
-              showTotal: (total) => `Total ${total} trips`,
-              showSizeChanger: true,
-              pageSizeOptions: ["10", "20", "50", "100"],
-              onChange: (page, size) => {
-                setCurrentPage(page);
-                setPageSize(size);
-              },
-            }}
-          />
-        </Space>
-      </Card>
+      params={{ status: searchParams.get("status") || undefined }}
+      search={{ labelWidth: "auto", collapsed: false }}
+      pagination={{
+        defaultPageSize: 20,
+        showSizeChanger: true,
+        pageSizeOptions: ["10", "20", "50", "100"],
+        showTotal: (total) => `Total ${total} trips`,
+      }}
+      scroll={{ x: "max-content" }}
+      onRow={(record) => ({
+        style: record.is_delayed ? { backgroundColor: "color-mix(in srgb, var(--color-orange) 10%, transparent)" } : undefined,
+      })}
+      toolBarRender={() => [
+        <Button
+          key="refresh"
+          icon={<ReloadOutlined />}
+          onClick={() => actionRef.current?.reload()}
+        >
+          Refresh
+        </Button>,
+        <Button
+          key="create"
+          type="primary"
+          icon={<PlusOutlined />}
+          onClick={() => setCreateDrawerOpen(true)}
+        >
+          New Trip
+        </Button>,
+      ]}
+      rowClassName={(record) => record.is_delayed ? "ant-table-row-delayed" : ""}
+    />
 
       <CreateTripDrawer
         open={createDrawerOpen}
         onClose={() => setCreateDrawerOpen(false)}
-        onSuccess={() => invalidateTrips()}
+        onSuccess={() => actionRef.current?.reload()}
       />
 
       <UpdateTripDrawer
         open={!!updateDrawerTripId}
         onClose={() => setUpdateDrawerTripId(null)}
-        onSuccess={() => invalidateTrips()}
+        onSuccess={() => actionRef.current?.reload()}
         tripId={updateDrawerTripId}
       />
 
@@ -512,7 +439,7 @@ function TripsPageContent() {
           setUpdateDrawerTripId(id);
         }}
       />
-    </div>
+    </>
   );
 }
 

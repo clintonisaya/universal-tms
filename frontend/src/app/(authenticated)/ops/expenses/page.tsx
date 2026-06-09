@@ -1,92 +1,61 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useRef, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import {
-  Table,
+  ProTable,
+  ProColumns,
+} from "@ant-design/pro-components";
+import type { ActionType } from "@ant-design/pro-components";
+import {
   Button,
-  Card,
   Space,
-  message,
-  Typography,
   Modal,
   Select,
   Tooltip,
+  App,
+  Typography,
 } from "antd";
 import {
   ReloadOutlined,
-  ArrowLeftOutlined,
   EyeOutlined,
   PlusOutlined,
   PrinterOutlined,
   HistoryOutlined,
   QuestionCircleOutlined,
 } from "@ant-design/icons";
-import type { ColumnsType } from "antd/es/table";
 import type { ExpenseRequestDetailed, ExpenseStatus } from "@/types/expense";
 import type { Trip } from "@/types/trip";
 import { useAuth } from "@/contexts/AuthContext";
-import { useExpenses, useTrips, useInvalidateQueries } from "@/hooks/application/useApi";
+import { useTrips, useInvalidateQueries, apiFetch } from "@/hooks/application/useApi";
 import { AddExpenseModal } from "@/components/expenses/AddExpenseModal";
-import { EmptyState } from "@/components/ui";
-
 import { ExpenseHistoryModal } from "@/components/expenses/ExpenseHistoryModal";
 import { ExpenseReviewModal } from "@/components/expenses/ExpenseReviewModal";
 import { ExpenseStatusBadge } from "@/components/expenses/ExpenseStatusBadge";
 import { TripPaymentPrintLayout } from "@/components/expenses/TripPaymentPrintLayout";
 import { TripDetailDrawer } from "@/components/trips/TripDetailDrawer";
-import {
-  getColumnSearchProps,
-  getColumnFilterProps,
-  getStandardRowSelection,
-  useResizableColumns,
-} from "@/components/ui/tableUtils";
 import { CATEGORY_FILTERS } from "@/constants/expenseConstants";
 
-const { Title } = Typography;
-
-const STATUS_COLORS: Record<ExpenseStatus, string> = {
-  "Pending Manager": "orange",
-  "Pending Finance": "blue",
-  Paid: "green",
-  Rejected: "red",
-  Returned: "purple",
-  Voided: "red",
+const STATUS_FILTERS: Record<string, { text: string }> = {
+  "Pending Manager": { text: "Pending Manager" },
+  "Pending Finance": { text: "Pending Finance" },
+  Paid: { text: "Paid" },
+  Rejected: { text: "Rejected" },
+  Returned: { text: "Returned" },
+  Voided: { text: "Voided" },
 };
-
-const STATUS_FILTERS = Object.keys(STATUS_COLORS).map((status) => ({
-  text: status,
-  value: status,
-}));
-
 
 export default function ExpensesPage() {
   const router = useRouter();
+  const { message } = App.useApp();
   const { user } = useAuth();
   const { invalidateExpenses } = useInvalidateQueries();
+  const actionRef = useRef<ActionType>();
 
-  // Only fetch when user is authenticated
   const isAuthenticated = !!user;
 
-  // Pagination state (must be before useExpenses)
-  const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(20);
-
-  // TanStack Query for expenses and trips data
-  const { data: expensesData, isLoading: loading, refetch } = useExpenses(
-    { skip: (currentPage - 1) * pageSize, limit: pageSize },
-    isAuthenticated,
-  );
+  // Trips data for trip selector dropdown (not for the main table)
   const { data: tripsData, isLoading: tripsLoading } = useTrips({ limit: 100 }, isAuthenticated);
-
-  // Filter to show only trip expenses (NOT office expenses)
-  // Office expenses start with "EX" (both old EXP- and new EX- formats)
-  const expenses = useMemo(() => {
-    const allExpenses = expensesData?.data || [];
-    return allExpenses.filter(
-      (e: ExpenseRequestDetailed) => !e.expense_number?.startsWith("EX")
-    );
-  }, [expensesData]);
 
   // Filter to active trips OR completed/cancelled trips with expense window open
   const trips = useMemo(() => {
@@ -99,20 +68,11 @@ export default function ExpensesPage() {
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
-  const [tableFilters, setTableFilters] = useState<Record<string, any>>({});
-  const [tableKey, setTableKey] = useState(0);
-
-  const hasActiveFilters = Object.values(tableFilters).some(
-    (v) => v != null && (Array.isArray(v) ? v.length > 0 : true)
-  );
-  const clearAllFilters = () => { setTableFilters({}); setTableKey((k) => k + 1); };
 
   // Trip Selection State
   const [tripSelectModalOpen, setTripSelectModalOpen] = useState(false);
   const [selectedTripId, setSelectedTripId] = useState<string | null>(null);
   const [selectedTripNumber, setSelectedTripNumber] = useState<string>("");
-
-  // Payment Modal State
 
   // History Modal State
   const [historyModalOpen, setHistoryModalOpen] = useState(false);
@@ -155,7 +115,6 @@ export default function ExpensesPage() {
     setPrintModalOpen(true);
   };
 
-  // Bulk print - open print preview modal with all selected expenses
   const handleBulkPrint = () => {
     if (selectedRowKeys.length === 0) {
       message.warning("Please select expenses to print");
@@ -175,16 +134,22 @@ export default function ExpensesPage() {
     setTripDrawerOpen(true);
   };
 
-  // Check if print is allowed (after manager approval)
   const canPrint = (status: ExpenseStatus) => {
     return ["Pending Finance", "Paid"].includes(status);
   };
 
-  const columns: ColumnsType<ExpenseRequestDetailed> = [
+  const categoryValueEnum: Record<string, { text: string }> = {};
+  CATEGORY_FILTERS.forEach((f) => {
+    categoryValueEnum[f.value] = { text: f.text };
+  });
+
+  const columns: ProColumns<ExpenseRequestDetailed>[] = [
     {
       title: "Actions",
       key: "actions",
       width: 100,
+      valueType: "option",
+      search: false,
       render: (_, record) => (
         <Space size={4}>
           <Button
@@ -223,39 +188,42 @@ export default function ExpensesPage() {
       dataIndex: "expense_number",
       key: "expense_number",
       width: 180,
-      render: (num: string | null, record: ExpenseRequestDetailed) => (
+      fieldProps: { placeholder: "Search expense number" },
+      render: (_, record) => (
         <a
           onClick={() => handleViewDetail(record)}
           style={{ fontWeight: 600, color: "var(--color-gold)", cursor: "pointer" }}
         >
-          {num || record.id?.slice(0, 8).toUpperCase()}
+          {record.expense_number || record.id?.slice(0, 8).toUpperCase()}
         </a>
       ),
-      ...getColumnSearchProps("expense_number"),
     },
     {
       title: "Date",
       dataIndex: "created_at",
       key: "created_at",
       width: 110,
-      render: (date: string | null) => date ? new Date(date).toLocaleDateString() : "-",
-      sorter: (a, b) => (a.created_at || "").localeCompare(b.created_at || ""),
+      valueType: "date",
+      sorter: true,
+      search: false,
+      render: (_, record) => record.created_at ? new Date(record.created_at).toLocaleDateString() : "-",
     },
     {
       title: "Category",
       dataIndex: "category",
       key: "category",
       width: 120,
-      render: (category: string) => category || "-",
-      ...getColumnFilterProps("category", CATEGORY_FILTERS),
+      valueType: "select",
+      valueEnum: categoryValueEnum,
+      render: (_, record) => record.category || "-",
     },
     {
       title: "Description",
       dataIndex: "description",
       key: "description",
       ellipsis: true,
-      render: (text: string) => text || "-",
-      ...getColumnSearchProps("description"),
+      fieldProps: { placeholder: "Search description" },
+      render: (_, record) => record.description || "-",
     },
     {
       title: "Amount",
@@ -263,131 +231,108 @@ export default function ExpensesPage() {
       key: "amount",
       width: 140,
       align: "right",
-      render: (amount: number, record) => {
+      sorter: true,
+      search: false,
+      render: (_, record) => {
         const cur = record.currency || "TZS";
         return (
           <div style={{ fontWeight: 600 }}>
-            {cur} {Number(amount).toLocaleString("en-US")}
+            {cur} {Number(record.amount).toLocaleString("en-US")}
           </div>
         );
       },
-      sorter: (a, b) => a.amount - b.amount,
     },
     {
       title: "Status",
       dataIndex: "status",
       key: "status",
       width: 275,
-      render: (status: ExpenseStatus) => <ExpenseStatusBadge status={status} />,
-      ...getColumnFilterProps("status", STATUS_FILTERS),
+      valueType: "select",
+      valueEnum: STATUS_FILTERS,
+      render: (_, record) => <ExpenseStatusBadge status={record.status} />,
     },
   ];
 
-  // Make columns resizable
-  const { resizableColumns, components } = useResizableColumns(columns);
-
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        background: "var(--color-bg)",
-        padding: "var(--space-xl)",
-      }}
-    >
-      <Card>
-        <Space orientation="vertical" size="middle" style={{ width: "100%" }}>
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-            }}
-          >
-            <Space>
-              <Button
-                icon={<ArrowLeftOutlined />}
-                onClick={() => router.push("/dashboard")}
-              >
-                Back
-              </Button>
-              <Title level={2} style={{ margin: 0 }}>
-                Trip Expenses
-              </Title>
-            </Space>
-            <Space>
-              {selectedRowKeys.length > 0 && (
-                <Button
-                  icon={<PrinterOutlined />}
-                  onClick={handleBulkPrint}
-                >
-                  Print Selected ({selectedRowKeys.length})
-                </Button>
-              )}
-              <Button icon={<ReloadOutlined />} onClick={() => refetch()}>
-                Refresh
-              </Button>
-              <Button
-                type="primary"
-                icon={<PlusOutlined />}
-                onClick={handleNewExpense}
-              >
-                New Trip Expense
-              </Button>
-            </Space>
-          </div>
-
-          {user?.role === 'ops' && (
-            <div style={{ marginBottom: 8 }}>
-              <Typography.Text type="secondary">
-                Showing: all trip expenses · your office expenses{' '}
-                <Tooltip title="Ops users see all trip expenses and their own submitted office expenses. Managers and Finance see all office expenses.">
-                  <QuestionCircleOutlined style={{ cursor: 'help' }} />
-                </Tooltip>
-              </Typography.Text>
-            </div>
-          )}
-
-          <Table<ExpenseRequestDetailed>
-            key={tableKey}
-            columns={resizableColumns}
-            components={components}
-            dataSource={expenses}
-            rowKey="id"
-            loading={loading}
-            sticky={{ offsetHeader: 64 }}
-            scroll={{ x: "max-content" }}
-            onChange={(_, filters) => setTableFilters(filters as Record<string, any>)}
-            locale={{
-              emptyText: hasActiveFilters ? (
-                <EmptyState
-                  message="No results match your filters."
-                  action={{ label: "Clear Filters", onClick: clearAllFilters }}
-                />
-              ) : (
-                <EmptyState message="No expenses found for this period." />
-              ),
-            }}
-            rowSelection={getStandardRowSelection(
-              currentPage,
-              pageSize,
-              selectedRowKeys,
-              setSelectedRowKeys
+    <>
+      <ProTable<ExpenseRequestDetailed>
+        headerTitle="Trip Expenses"
+        actionRef={actionRef}
+        columns={columns}
+        rowKey="id"
+        request={async (params) => {
+          const { current, pageSize, category, status, ...rest } = params;
+          const skip = ((current || 1) - 1) * (pageSize || 20);
+          const qs = new URLSearchParams();
+          qs.set("skip", String(skip));
+          qs.set("limit", String(pageSize || 20));
+          if (category) qs.set("category", category as string);
+          if (status) qs.set("status", status as string);
+          const data = await apiFetch<{ data: ExpenseRequestDetailed[]; count: number }>(`/api/v1/expenses?${qs.toString()}`);
+          // Filter out office expenses (they start with "EX")
+          const filtered = (data.data || []).filter(
+            (e) => !e.expense_number?.startsWith("EX")
+          );
+          return {
+            data: filtered,
+            total: data.count || 0,
+            success: true,
+          };
+        }}
+        search={{ labelWidth: "auto" }}
+        pagination={{
+          defaultPageSize: 20,
+          showSizeChanger: true,
+          pageSizeOptions: ["10", "20", "50", "100"],
+          showTotal: (total) => `Total ${total} expenses`,
+        }}
+        scroll={{ x: "max-content" }}
+        rowSelection={{
+          selectedRowKeys,
+          onChange: (keys) => setSelectedRowKeys(keys),
+        }}
+        headerTitle={
+          <div>
+            <span>Trip Expenses</span>
+            {user?.role === "ops" && (
+              <div style={{ marginTop: 4 }}>
+                <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                  Showing: all trip expenses · your office expenses{" "}
+                  <Tooltip title="Ops users see all trip expenses and their own submitted office expenses. Managers and Finance see all office expenses.">
+                    <QuestionCircleOutlined style={{ cursor: "help" }} />
+                  </Tooltip>
+                </Typography.Text>
+              </div>
             )}
-            pagination={{
-              current: currentPage,
-              pageSize,
-              total: expensesData?.count ?? 0,
-              showTotal: (total) => `Total ${total} expenses`,
-              showSizeChanger: true,
-              pageSizeOptions: ["10", "20", "50", "100"],
-              onChange: (page, size) => {
-                setCurrentPage(page);
-                setPageSize(size);
-              },
-            }}
-          />
-        </Space>
-      </Card>
+          </div>
+        }
+        toolBarRender={() => [
+          selectedRowKeys.length > 0 && (
+            <Button
+              key="print"
+              icon={<PrinterOutlined />}
+              onClick={handleBulkPrint}
+            >
+              Print Selected ({selectedRowKeys.length})
+            </Button>
+          ),
+          <Button
+            key="refresh"
+            icon={<ReloadOutlined />}
+            onClick={() => actionRef.current?.reload()}
+          >
+            Refresh
+          </Button>,
+          <Button
+            key="create"
+            type="primary"
+            icon={<PlusOutlined />}
+            onClick={handleNewExpense}
+          >
+            New Trip Expense
+          </Button>,
+        ]}
+      />
 
       {/* Trip Selection Modal */}
       <Modal
@@ -434,7 +379,9 @@ export default function ExpensesPage() {
           setSelectedTripId(null);
           setSelectedTripNumber("");
         }}
-        onSuccess={() => invalidateExpenses()}
+        onSuccess={() => {
+          actionRef.current?.reload();
+        }}
         tripId={selectedTripId}
         tripNumber={selectedTripNumber}
       />
@@ -474,6 +421,6 @@ export default function ExpensesPage() {
         }}
         tripId={selectedTripIdForView}
       />
-    </div>
+    </>
   );
 }
