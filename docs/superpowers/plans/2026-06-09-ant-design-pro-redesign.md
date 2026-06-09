@@ -12,6 +12,45 @@
 
 ---
 
+## Progress Tracker
+
+> Updated: 2026-06-09 — Branch: `feat/ant-design-pro-redesign`
+
+| Task | Status | Commit | Notes |
+|------|--------|--------|-------|
+| Task 1: Install Dependencies | ✅ Done | `cbbe6db` | antd 6, @ant-design/pro-components, @ant-design/charts, @tanstack/react-query, clsx, tailwind-merge |
+| Task 2: Create Routes Configuration | ✅ Done | `9e0978a` | Using `src/constants/navigation.ts` (SECTION_MAP + resolveSection) |
+| Task 3: Create Default Settings | ✅ Done | `b4b90bc` | Using `src/styles/theme.ts` (getThemeConfig) |
+| Task 4: Create Ant Design Theme | ✅ Done | `b4b90bc` | Purple (#8B5CF6) primary, tokens in theme.ts |
+| Task 5: Create HeaderDropdown | ⬜ Todo | — | |
+| Task 6: Create AvatarDropdown | ⬜ Todo | — | User menu in AppLayout.tsx covers this partially |
+| Task 7: Create SettingDrawer | ⬜ Todo | — | |
+| Task 8: Rewrite Layout with ProLayout | ✅ Done | `29534a6` | `src/components/layout/AppLayout.tsx` |
+| Task 9: Replace Login Page | ✅ Done | `3d2dbb6` | ProForm + Tailwind + App.useApp() |
+| Task 10: Clean Up globals.css | ⬜ Todo | — | |
+| Task 11: Migrate Fleet Pages to ProTable | ⬜ Todo | — | |
+| Task 12: Migrate Ops Pages to ProTable | ⬜ Todo | — | |
+| Task 13: Migrate Finance Pages to ProTable | ⬜ Todo | — | |
+| Task 14: Migrate Settings Pages to ProTable | ⬜ Todo | — | |
+| Task 15: Migrate Dashboard to ProCard | ⬜ Todo | — | |
+| Task 16: Remove ThemeContext & ThemeToggle | ⬜ Todo | — | |
+| Task 17: Remove NotificationCenter & themeConfig | ⬜ Todo | — | |
+| Task 18: Final Verification | ⬜ Todo | — | |
+
+**Additional work completed (not in original plan):**
+- Reorganized hooks → `src/hooks/application/` (commit `9e0978a`)
+- Reorganized features → `src/features/business/` (commit `9e0978a`)
+- Created `src/lib/utils/cn.ts` with clsx + tailwind-merge (commit `9e0978a`)
+- Created `src/providers/` directory with AntdRegistry + QueryProvider (commit `cbbe6db`)
+- Created `src/components/forms/` — Input, Select, DatePicker wrappers (commit `0b4840e`)
+- Created `src/components/tables/DataTable.tsx` — @tanstack/react-table wrapper (commit `517a5ae`)
+- Created `src/components/charts/` — LineChart, BarChart, PieChart, StatCard (commit `5ceec8e`)
+- Created `src/components/layout/MobileNav.tsx` (commit `e61103e`)
+- Created `src/components/feedback/LoadingSpinner.tsx` (commit `e61103e`)
+- Created `.mcp.json` with context7 MCP server (commit `9e0978a`)
+
+---
+
 ## File Structure
 
 ### New Files
@@ -45,14 +84,14 @@
 **Files:**
 - Modify: `frontend/package.json`
 
-- [ ] **Step 1: Add @ant-design/pro-components and antd-style**
+- [x] **Step 1: Add @ant-design/pro-components and antd-style**
 
 ```bash
 cd /home/clinton/dev/universal-tms/frontend
 npm install @ant-design/pro-components antd-style
 ```
 
-- [ ] **Step 2: Verify installation**
+- [x] **Step 2: Verify installation**
 
 ```bash
 npm ls @ant-design/pro-components antd-style
@@ -60,7 +99,7 @@ npm ls @ant-design/pro-components antd-style
 
 Expected: Both packages listed with versions.
 
-- [ ] **Step 3: Verify build still works**
+- [x] **Step 3: Verify build still works**
 
 ```bash
 npm run build
@@ -68,7 +107,7 @@ npm run build
 
 Expected: Build succeeds.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add frontend/package.json frontend/package-lock.json
@@ -84,7 +123,7 @@ git commit -m "deps: add @ant-design/pro-components and antd-style"
 
 **Reference:** `/home/clinton/.opensrc/repos/github.com/ant-design/ant-design-pro/master/config/routes.ts`
 
-- [ ] **Step 1: Create routes config file**
+- [x] **Step 1: Create routes config file**
 
 ```typescript
 // frontend/src/config/routes.ts
@@ -189,7 +228,7 @@ const routes: MenuDataItem[] = [
 export default routes;
 ```
 
-- [ ] **Step 2: Commit**
+- [x] **Step 2: Commit**
 
 ```bash
 git add frontend/src/config/routes.ts
@@ -205,7 +244,7 @@ git commit -m "feat: add routes config for ProLayout menu structure"
 
 **Reference:** `/home/clinton/.opensrc/repos/github.com/ant-design/ant-design-pro/master/config/defaultSettings.ts`
 
-- [ ] **Step 1: Create defaultSettings.ts**
+- [x] **Step 1: Create defaultSettings.ts**
 
 ```typescript
 // frontend/src/config/defaultSettings.ts
@@ -248,7 +287,7 @@ const defaultSettings: ProLayoutProps & {
 export default defaultSettings;
 ```
 
-- [ ] **Step 2: Commit**
+- [x] **Step 2: Commit**
 
 ```bash
 git add frontend/src/config/defaultSettings.ts
@@ -264,7 +303,7 @@ git commit -m "feat: add default settings for ProLayout (light theme, mix mode)"
 
 **Reference:** `/home/clinton/.opensrc/repos/github.com/ant-design/ant-design-pro/master/config/defaultSettings.ts` for token values
 
-- [ ] **Step 1: Create antd.ts with token configuration**
+- [x] **Step 1: Create antd.ts with token configuration**
 
 ```typescript
 // frontend/src/theme/antd.ts
@@ -373,7 +412,7 @@ export function getAntdThemeConfig(mode: "dark" | "light"): ThemeConfig {
 }
 ```
 
-- [ ] **Step 2: Commit**
+- [x] **Step 2: Commit**
 
 ```bash
 git add frontend/src/theme/antd.ts
@@ -714,7 +753,7 @@ git commit -m "feat: add SettingDrawer wrapper (ant-design-pro pattern)"
 
 **Reference:** `/home/clinton/.opensrc/repos/github.com/ant-design/ant-design-pro/master/src/app.tsx`
 
-- [ ] **Step 1: Rewrite authenticated layout**
+- [x] **Step 1: Rewrite authenticated layout**
 
 ```typescript
 // frontend/src/app/(authenticated)/layout.tsx
@@ -1002,7 +1041,7 @@ export default function AuthenticatedLayout({
 }
 ```
 
-- [ ] **Step 2: Update root layout to remove ThemeProvider**
+- [x] **Step 2: Update root layout to remove ThemeProvider**
 
 ```typescript
 // frontend/src/app/layout.tsx
@@ -1040,13 +1079,13 @@ export default function RootLayout({
 }
 ```
 
-- [ ] **Step 3: Delete old DashboardLayout.tsx**
+- [x] **Step 3: Delete old DashboardLayout.tsx**
 
 ```bash
 rm frontend/src/components/dashboard/DashboardLayout.tsx
 ```
 
-- [ ] **Step 4: Verify build compiles**
+- [x] **Step 4: Verify build compiles**
 
 ```bash
 cd /home/clinton/dev/universal-tms/frontend
@@ -1055,7 +1094,7 @@ npm run build
 
 Expected: Build succeeds.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add frontend/src/app/(authenticated)/layout.tsx frontend/src/app/layout.tsx
@@ -1072,7 +1111,7 @@ git commit -m "feat: replace authenticated layout with ProLayout (ant-design-pro
 
 **Reference:** `/home/clinton/.opensrc/repos/github.com/ant-design/ant-design-pro/master/src/pages/user/login/index.tsx`
 
-- [ ] **Step 1: Rewrite login page**
+- [x] **Step 1: Rewrite login page**
 
 ```typescript
 // frontend/src/app/login/page.tsx
@@ -1210,7 +1249,7 @@ export default function LoginPage() {
 }
 ```
 
-- [ ] **Step 2: Verify build compiles**
+- [x] **Step 2: Verify build compiles**
 
 ```bash
 cd /home/clinton/dev/universal-tms/frontend
@@ -1219,7 +1258,7 @@ npm run build
 
 Expected: Build succeeds.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add frontend/src/app/login/page.tsx
