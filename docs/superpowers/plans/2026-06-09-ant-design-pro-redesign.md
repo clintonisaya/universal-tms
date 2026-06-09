@@ -23,12 +23,12 @@
 | Task 3: Create Default Settings | ✅ Done | `cfcdc91` | Created `src/config/defaultSettings.ts` per plan spec |
 | Task 4: Create Ant Design Theme | ✅ Done | `15b4ce8` | `src/theme/antd.ts` — `#1677ff` primary, `getAntdThemeConfig` |
 | Task 5: Create HeaderDropdown | ✅ Done | `1030b81` | Installed antd-style, created HeaderDropdown component |
-| Task 6: Create AvatarDropdown | ⬜ Todo | — | User menu in AppLayout.tsx covers this partially |
-| Task 7: Create SettingDrawer | ⬜ Todo | — | |
-| Task 8: Rewrite Layout with ProLayout | ✅ Done | `29534a6` | `src/components/layout/AppLayout.tsx` |
+| Task 6: Create AvatarDropdown | ✅ Done | `aecf8f8` | AvatarDropdown + RightContent barrel export |
+| Task 7: Create SettingDrawer | ✅ Done | `9e62a14` | |
+| Task 8: Rewrite Layout with ProLayout | ✅ Done | `b70bc4a` | `src/app/(authenticated)/layout.tsx` — ProLayout + SettingDrawer + AvatarDropdown |
 | Task 9: Replace Login Page | ✅ Done | `3d2dbb6` | ProForm + Tailwind + App.useApp() |
-| Task 10: Clean Up globals.css | ⬜ Todo | — | |
-| Task 11: Migrate Fleet Pages to ProTable | ⬜ Todo | — | |
+| Task 10: Clean Up globals.css | ✅ Done | `712c693` | |
+| Task 11: Migrate Fleet Pages to ProTable | ✅ Done | `6e032ca` | Trucks, Trailers, Drivers pages → ProTable + ModalForm |
 | Task 12: Migrate Ops Pages to ProTable | ⬜ Todo | — | |
 | Task 13: Migrate Finance Pages to ProTable | ⬜ Todo | — | |
 | Task 14: Migrate Settings Pages to ProTable | ⬜ Todo | — | |
@@ -504,7 +504,7 @@ git commit -m "feat: add HeaderDropdown component (from ant-design-pro)"
 
 **Reference:** `/home/clinton/.opensrc/repos/github.com/ant-design/ant-design-pro/master/src/components/RightContent/AvatarDropdown.tsx`
 
-- [ ] **Step 1: Create AvatarDropdown with theme settings option**
+- [x] **Step 1: Create AvatarDropdown with theme settings option**
 
 ```typescript
 // frontend/src/components/RightContent/AvatarDropdown.tsx
@@ -635,14 +635,14 @@ export const AvatarDropdown: React.FC<AvatarDropdownProps> = ({
 export default AvatarDropdown;
 ```
 
-- [ ] **Step 2: Create barrel export**
+- [x] **Step 2: Create barrel export**
 
 ```typescript
 // frontend/src/components/RightContent/index.tsx
 export { AvatarDropdown } from "./AvatarDropdown";
 ```
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add frontend/src/components/RightContent/ frontend/src/components/HeaderDropdown/
@@ -1272,7 +1272,7 @@ git commit -m "feat: replace login page with ProLoginForm (ant-design-pro patter
 **Files:**
 - Modify: `frontend/src/app/globals.css`
 
-- [ ] **Step 1: Rewrite globals.css with minimal resets**
+- [x] **Step 1: Rewrite globals.css with minimal resets**
 
 ```css
 /* frontend/src/app/globals.css */
@@ -1385,7 +1385,7 @@ tr:hover > td .row-actions {
 }
 ```
 
-- [ ] **Step 2: Verify build compiles**
+- [x] **Step 2: Verify build compiles**
 
 ```bash
 cd /home/clinton/dev/universal-tms/frontend
@@ -1394,7 +1394,7 @@ npm run build
 
 Expected: Build succeeds.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add frontend/src/app/globals.css
@@ -1412,7 +1412,7 @@ git commit -m "refactor: clean up globals.css, remove CSS variables"
 
 **Reference:** `/home/clinton/.opensrc/repos/github.com/ant-design/ant-design-pro/master/src/pages/table-list/index.tsx`
 
-- [ ] **Step 1: Migrate Trucks page to ProTable**
+- [x] **Step 1: Migrate Trucks page to ProTable**
 
 ```typescript
 // frontend/src/app/(authenticated)/fleet/trucks/page.tsx
@@ -1641,15 +1641,15 @@ export default function TrucksPage() {
 }
 ```
 
-- [ ] **Step 2: Migrate Trailers page to ProTable**
+- [x] **Step 2: Migrate Trailers page to ProTable**
 
 Apply the same pattern as Trucks page, adapting columns for trailer fields (trailer_number, type, capacity, status).
 
-- [ ] **Step 3: Migrate Drivers page to ProTable**
+- [x] **Step 3: Migrate Drivers page to ProTable**
 
 Apply the same pattern as Trucks page, adapting columns for driver fields (name, license_number, phone, status).
 
-- [ ] **Step 4: Verify build compiles**
+- [x] **Step 4: Verify build compiles**
 
 ```bash
 cd /home/clinton/dev/universal-tms/frontend
@@ -1658,7 +1658,7 @@ npm run build
 
 Expected: Build succeeds.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add frontend/src/app/(authenticated)/fleet/
