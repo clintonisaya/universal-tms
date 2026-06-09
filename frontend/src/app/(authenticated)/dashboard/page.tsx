@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { useSocket } from "@/lib/socket";
 import { useAuth } from "@/contexts/AuthContext";
-import { useNotifications } from "@/hooks/useNotifications";
+import { useNotifications } from "@/hooks/application/useNotifications";
 import {
   useDashboardStats,
   useRecentTrips,
@@ -14,7 +14,7 @@ import {
   useFinancialPulse,
   useInvalidateQueries,
   queryKeys,
-} from "@/hooks/useApi";
+} from "@/hooks/application/useApi";
 import { MetricCard } from "@/components/dashboard/MetricCard";
 import { ProfitTrendChart } from "@/components/dashboard/ProfitTrendChart";
 import { IncomeVsExpenseChart } from "@/components/dashboard/IncomeVsExpenseChart";

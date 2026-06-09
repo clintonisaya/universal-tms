@@ -28,7 +28,7 @@ import type {
   ClientUpdate,
 } from "@/types/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { useClients, useInvalidateQueries } from "@/hooks/useApi";
+import { useClients, useInvalidateQueries } from "@/hooks/application/useApi";
 import {
   getColumnSearchProps,
   getStandardRowSelection,

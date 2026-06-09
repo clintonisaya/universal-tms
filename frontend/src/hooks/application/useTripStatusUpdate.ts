@@ -10,7 +10,7 @@ import {
   ALL_RETURN_STATUSES,
   CLOSED_STATUSES,
 } from "@/constants/tripStatuses";
-import { usePermissions } from "@/hooks/usePermissions";
+import { usePermissions } from "@/hooks/application/usePermissions";
 
 const borderDateFields = [
   "arrived_side_a_at",

@@ -13,9 +13,9 @@ import {
   SendOutlined,
   StopOutlined,
 } from "@ant-design/icons";
-import { useInvoice, useInvalidateQueries, apiFetch } from "@/hooks/useApi";
+import { useInvoice, useInvalidateQueries, apiFetch } from "@/hooks/application/useApi";
 import { sanitizeHtml } from "@/lib/sanitize";
-import { usePermissions } from "@/hooks/usePermissions";
+import { usePermissions } from "@/hooks/application/usePermissions";
 import { getInvoiceDisplayNumber, type Invoice } from "@/types/invoice";
 import { InvoicePrintView } from "./InvoicePrintView";
 import { InvoiceForm } from "./InvoiceForm";

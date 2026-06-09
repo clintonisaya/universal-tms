@@ -25,8 +25,8 @@ import {
 } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
 import { useAuth } from "@/contexts/AuthContext";
-import { usePermissions } from "@/hooks/usePermissions";
-import { useBorderPosts, useInvalidateQueries } from "@/hooks/useApi";
+import { usePermissions } from "@/hooks/application/usePermissions";
+import { useBorderPosts, useInvalidateQueries } from "@/hooks/application/useApi";
 import {
   getColumnSearchProps,
   getStandardRowSelection,

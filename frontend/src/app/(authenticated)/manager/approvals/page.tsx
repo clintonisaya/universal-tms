@@ -25,7 +25,7 @@ import {
 import type { ColumnsType } from "antd/es/table";
 import type { ExpenseRequest, ExpenseStatus, ExpenseRequestDetailed } from "@/types/expense";
 import { useAuth } from "@/contexts/AuthContext";
-import { useExpenses, useInvalidateQueries } from "@/hooks/useApi";
+import { useExpenses, useInvalidateQueries } from "@/hooks/application/useApi";
 import {
   getColumnSearchProps,
   getColumnFilterProps,

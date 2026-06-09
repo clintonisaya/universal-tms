@@ -30,7 +30,7 @@ import type {
   VehicleStatusUpdate,
 } from "@/types/vehicle-status";
 import { useAuth } from "@/contexts/AuthContext";
-import { useVehicleStatuses, useInvalidateQueries } from "@/hooks/useApi";
+import { useVehicleStatuses, useInvalidateQueries } from "@/hooks/application/useApi";
 import {
   getColumnSearchProps,
   getColumnFilterProps,

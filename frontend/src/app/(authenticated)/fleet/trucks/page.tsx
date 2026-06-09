@@ -19,7 +19,7 @@ import { PlusOutlined, ReloadOutlined, ArrowLeftOutlined, EditOutlined, DeleteOu
 import type { ColumnsType } from "antd/es/table";
 import type { Truck, TruckCreate, TruckUpdate } from "@/types/truck";
 import { useAuth } from "@/contexts/AuthContext";
-import { useTrucks, useInvalidateQueries } from "@/hooks/useApi";
+import { useTrucks, useInvalidateQueries } from "@/hooks/application/useApi";
 import {
   getColumnSearchProps,
   getColumnFilterProps,

@@ -19,7 +19,7 @@ import { PlusOutlined, ReloadOutlined, ArrowLeftOutlined, EditOutlined, DeleteOu
 import type { ColumnsType } from "antd/es/table";
 import type { Trailer, TrailerCreate, TrailerUpdate, TrailerType, TrailersResponse } from "@/types/trailer";
 import { useAuth } from "@/contexts/AuthContext";
-import { useTrailers, useInvalidateQueries } from "@/hooks/useApi";
+import { useTrailers, useInvalidateQueries } from "@/hooks/application/useApi";
 import {
   getColumnSearchProps,
   getColumnFilterProps,

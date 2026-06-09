@@ -20,15 +20,15 @@ import {
   CloseOutlined,
 } from "@ant-design/icons";
 import { useAuth } from "@/contexts/AuthContext";
-import { usePermissions } from "@/hooks/usePermissions";
+import { usePermissions } from "@/hooks/application/usePermissions";
 import { useThemeMode } from "@/contexts/ThemeContext";
 import { SECTION_MAP, resolveSection } from "@/constants/navigation";
 import { useTabs } from "@/contexts/TabContext";
 import { NotificationCenter } from "@/components/layout/NotificationCenter";
-import { clearNotifications } from "@/hooks/useNotifications";
+import { clearNotifications } from "@/hooks/application/useNotifications";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { ToDoWidget } from "@/components/dashboard/ToDoWidget";
-import { useTodoCount } from "@/hooks/useApi";
+import { useTodoCount } from "@/hooks/application/useApi";
 
 const { Sider, Content, Header } = Layout;
 

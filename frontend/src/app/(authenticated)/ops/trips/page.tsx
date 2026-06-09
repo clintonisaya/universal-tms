@@ -28,8 +28,8 @@ import {
 import type { ColumnsType } from "antd/es/table";
 import type { Trip, TripStatus } from "@/types/trip";
 import { useAuth } from "@/contexts/AuthContext";
-import { useTrips, useInvalidateQueries, useToggleTripExpenseWindow } from "@/hooks/useApi";
-import { usePermissions } from "@/hooks/usePermissions";
+import { useTrips, useInvalidateQueries, useToggleTripExpenseWindow } from "@/hooks/application/useApi";
+import { usePermissions } from "@/hooks/application/usePermissions";
 import { CreateTripDrawer } from "@/components/trips/CreateTripDrawer";
 import { UpdateTripDrawer } from "@/components/trips/UpdateTripDrawer";
 import { TripDetailDrawer } from "@/components/trips/TripDetailDrawer";

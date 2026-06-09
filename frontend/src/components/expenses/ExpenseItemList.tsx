@@ -5,7 +5,7 @@ import { PlusOutlined, DeleteOutlined } from "@ant-design/icons";
 import { amountInputProps, fmtAmount, fmtCurrency } from "@/lib/utils";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import type { ExpenseRequestDetailed } from "@/types/expense";
-import type { EditableItem } from "@/hooks/useExpenseCalculations";
+import type { EditableItem } from "@/hooks/application/useExpenseCalculations";
 
 const { Text } = Typography;
 

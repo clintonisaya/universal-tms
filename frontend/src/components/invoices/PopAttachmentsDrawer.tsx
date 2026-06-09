@@ -26,8 +26,8 @@ import {
   EyeOutlined,
   PaperClipOutlined,
 } from "@ant-design/icons";
-import { usePermissions } from "@/hooks/usePermissions";
-import { useInvalidateQueries } from "@/hooks/useApi";
+import { usePermissions } from "@/hooks/application/usePermissions";
+import { useInvalidateQueries } from "@/hooks/application/useApi";
 import { fmtCurrency } from "@/lib/utils";
 import { getInvoiceDisplayNumber, type Invoice, type PopAttachmentsGroup, type PopAttachment } from "@/types/invoice";
 

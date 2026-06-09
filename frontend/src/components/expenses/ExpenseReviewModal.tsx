@@ -5,7 +5,7 @@ import { SearchOutlined } from "@ant-design/icons";
 import type { ExpenseRequestDetailed } from "@/types/expense";
 import { ExpenseStatusBadge } from "./ExpenseStatusBadge";
 import { EXPENSE_STEPS } from "@/constants/expenseConstants";
-import { useExpenseCalculations } from "@/hooks/useExpenseCalculations";
+import { useExpenseCalculations } from "@/hooks/application/useExpenseCalculations";
 import { ExpenseSummaryPanel } from "./ExpenseSummaryPanel";
 import { ExpenseItemList } from "./ExpenseItemList";
 import { ExpenseApprovalActions } from "./ExpenseApprovalActions";

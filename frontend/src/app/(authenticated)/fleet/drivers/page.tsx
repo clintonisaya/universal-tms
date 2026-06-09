@@ -38,7 +38,7 @@ import type {
   DriverFormValues,
 } from "@/types/driver";
 import { useAuth } from "@/contexts/AuthContext";
-import { useDrivers, useInvalidateQueries } from "@/hooks/useApi";
+import { useDrivers, useInvalidateQueries } from "@/hooks/application/useApi";
 import {
   getColumnSearchProps,
   getColumnFilterProps,

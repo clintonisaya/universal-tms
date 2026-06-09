@@ -29,8 +29,8 @@ import {
 } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
 import { useAuth } from "@/contexts/AuthContext";
-import { useTracking, useInvalidateQueries } from "@/hooks/useApi";
-import { useTrackingExport, STATUS_COLORS, RISK_COLORS, RETURN_STATUSES, type TrackingRow } from "@/hooks/useTrackingExport";
+import { useTracking, useInvalidateQueries } from "@/hooks/application/useApi";
+import { useTrackingExport, STATUS_COLORS, RISK_COLORS, RETURN_STATUSES, type TrackingRow } from "@/hooks/application/useTrackingExport";
 import { UpdateTripStatusModal } from "@/components/trips/UpdateTripStatusModal";
 import { TripStatusTag } from "@/components/ui/TripStatusTag";
 import { StatusBadge } from "@/components/ui/StatusBadge";

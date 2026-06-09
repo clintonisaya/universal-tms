@@ -28,7 +28,7 @@ import type {
   CargoTypeUpdate,
 } from "@/types/cargo-type";
 import { useAuth } from "@/contexts/AuthContext";
-import { useCargoTypes, useInvalidateQueries } from "@/hooks/useApi";
+import { useCargoTypes, useInvalidateQueries } from "@/hooks/application/useApi";
 import {
   getColumnSearchProps,
   getStandardRowSelection,

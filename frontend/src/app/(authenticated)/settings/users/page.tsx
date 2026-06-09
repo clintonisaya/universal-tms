@@ -31,8 +31,8 @@ import {
 } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
 import { useAuth } from "@/contexts/AuthContext";
-import { useUsers, useInvalidateQueries } from "@/hooks/useApi";
-import { AVAILABLE_PERMISSIONS, ROLE_PERMISSION_PRESETS } from "@/hooks/usePermissions";
+import { useUsers, useInvalidateQueries } from "@/hooks/application/useApi";
+import { AVAILABLE_PERMISSIONS, ROLE_PERMISSION_PRESETS } from "@/hooks/application/usePermissions";
 import BulkActionBar from "@/components/ui/BulkActionBar";
 import {
   getColumnSearchProps,

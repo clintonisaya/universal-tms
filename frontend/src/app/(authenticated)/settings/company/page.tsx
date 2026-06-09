@@ -19,8 +19,8 @@ import {
   BankOutlined,
 } from "@ant-design/icons";
 import { useAuth } from "@/contexts/AuthContext";
-import { usePermissions } from "@/hooks/usePermissions";
-import { useCompanySettings, useInvalidateQueries } from "@/hooks/useApi";
+import { usePermissions } from "@/hooks/application/usePermissions";
+import { useCompanySettings, useInvalidateQueries } from "@/hooks/application/useApi";
 
 const { Title, Text } = Typography;
 

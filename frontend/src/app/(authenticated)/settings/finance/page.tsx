@@ -25,8 +25,8 @@ import { amountInputProps } from "@/lib/utils";
 import type { ColumnsType } from "antd/es/table";
 import type { ExchangeRate, ExchangeRateCreate } from "@/types/finance";
 import { useAuth } from "@/contexts/AuthContext";
-import { usePermissions } from "@/hooks/usePermissions";
-import { useExchangeRates, useInvalidateQueries } from "@/hooks/useApi";
+import { usePermissions } from "@/hooks/application/usePermissions";
+import { useExchangeRates, useInvalidateQueries } from "@/hooks/application/useApi";
 import { getStandardRowSelection, useResizableColumns } from "@/components/ui/tableUtils";
 
 const { Title } = Typography;

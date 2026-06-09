@@ -21,7 +21,7 @@ import {
 import { Space } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { useAuth } from "@/contexts/AuthContext";
-import { useInvoices } from "@/hooks/useApi";
+import { useInvoices } from "@/hooks/application/useApi";
 import { fmtCurrency } from "@/lib/utils";
 import {
   getColumnSearchProps,

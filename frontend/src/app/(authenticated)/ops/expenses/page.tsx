@@ -26,7 +26,7 @@ import type { ColumnsType } from "antd/es/table";
 import type { ExpenseRequestDetailed, ExpenseStatus } from "@/types/expense";
 import type { Trip } from "@/types/trip";
 import { useAuth } from "@/contexts/AuthContext";
-import { useExpenses, useTrips, useInvalidateQueries } from "@/hooks/useApi";
+import { useExpenses, useTrips, useInvalidateQueries } from "@/hooks/application/useApi";
 import { AddExpenseModal } from "@/components/expenses/AddExpenseModal";
 import { EmptyState } from "@/components/ui";
 

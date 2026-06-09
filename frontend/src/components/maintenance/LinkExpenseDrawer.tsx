@@ -24,7 +24,7 @@ import {
 import { LinkOutlined, SearchOutlined } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
 import { EmptyAwareSelect } from "@/components/ui";
-import { useTrucks, useTrailers, apiFetch } from "@/hooks/useApi";
+import { useTrucks, useTrailers, apiFetch } from "@/hooks/application/useApi";
 import type {
   AvailableExpense,
   AvailableExpensesResponse,

@@ -23,8 +23,8 @@ import {
 import type { ColumnsType } from "antd/es/table";
 import { getStandardRowSelection } from "@/components/ui/tableUtils";
 import type { ExpenseRequestDetailed, ExpenseStatus } from "@/types/expense";
-import { useExpenses, useInvalidateQueries } from "@/hooks/useApi";
-import { usePermissions } from "@/hooks/usePermissions";
+import { useExpenses, useInvalidateQueries } from "@/hooks/application/useApi";
+import { usePermissions } from "@/hooks/application/usePermissions";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { ExpenseStatusBadge } from "@/components/expenses/ExpenseStatusBadge";
 import { VoidExpenseModal } from "@/components/expenses/VoidExpenseModal";

@@ -1,9 +1,11 @@
+export { cn } from "./cn";
+
 export function formatRelativeTime(dateString: string | null): string {
   if (!dateString) return "";
   const date = new Date(dateString);
   const now = new Date();
   const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
-  
+
   // Future dates (negative diff) - handle gracefully or show absolute
   if (diffInSeconds < 0) return date.toLocaleDateString();
 

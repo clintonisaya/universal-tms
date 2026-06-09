@@ -4,7 +4,7 @@ import { useState, useRef, useEffect, useMemo } from "react";
 import { Badge, Button, Tooltip, Typography, Divider, Empty } from "antd";
 import { BellOutlined } from "@ant-design/icons";
 import { useAuth } from "@/contexts/AuthContext";
-import { useNotifications } from "@/hooks/useNotifications";
+import { useNotifications } from "@/hooks/application/useNotifications";
 import { TASK_TYPE_ICONS } from "@/types/notification";
 import type { Notification } from "@/types/notification";
 

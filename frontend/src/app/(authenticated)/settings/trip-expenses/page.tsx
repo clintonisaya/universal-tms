@@ -32,7 +32,7 @@ import type {
   TripExpenseTypesResponse,
 } from "@/types/trip-expense-type";
 import { useAuth } from "@/contexts/AuthContext";
-import { useTripExpenseTypes, useInvalidateQueries } from "@/hooks/useApi";
+import { useTripExpenseTypes, useInvalidateQueries } from "@/hooks/application/useApi";
 import {
   getColumnSearchProps,
   getStandardRowSelection,

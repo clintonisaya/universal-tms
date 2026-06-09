@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import type { ColumnsType } from "antd/es/table";
 import type { Trip, TripStatus } from "@/types/trip";
 import { useAuth } from "@/contexts/AuthContext";
-import { usePermissions } from "@/hooks/usePermissions";
+import { usePermissions } from "@/hooks/application/usePermissions";
 import { TripStatusTag } from "@/components/ui/TripStatusTag";
 
 const { Title, Text } = Typography;

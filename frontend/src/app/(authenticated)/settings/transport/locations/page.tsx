@@ -31,7 +31,7 @@ import type {
   CityCreate,
 } from "@/types/location";
 import { useAuth } from "@/contexts/AuthContext";
-import { useCountries, useCities, useInvalidateQueries } from "@/hooks/useApi";
+import { useCountries, useCities, useInvalidateQueries } from "@/hooks/application/useApi";
 import {
   getColumnSearchProps,
   getStandardRowSelection,

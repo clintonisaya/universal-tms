@@ -11,7 +11,7 @@ import {
 } from "@ant-design/icons";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
-import { usePermissions } from "@/hooks/usePermissions";
+import { usePermissions } from "@/hooks/application/usePermissions";
 
 const { Text } = Typography;
 

@@ -20,7 +20,7 @@ import {
 import dayjs from "dayjs";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import type { TripStatus } from "@/types/trip";
-import { useTripStatusUpdate } from "@/hooks/useTripStatusUpdate";
+import { useTripStatusUpdate } from "@/hooks/application/useTripStatusUpdate";
 import { StatusTimeline } from "./StatusTimeline";
 import { StatusDateFields } from "./StatusDateFields";
 

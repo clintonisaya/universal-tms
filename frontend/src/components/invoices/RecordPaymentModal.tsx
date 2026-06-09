@@ -19,12 +19,12 @@ import {
 } from "antd";
 import type { UploadFile } from "antd/es/upload/interface";
 import { DollarOutlined, CheckCircleOutlined, UploadOutlined } from "@ant-design/icons";
-import { useInvalidateQueries, useInvoicePayments } from "@/hooks/useApi";
+import { useInvalidateQueries, useInvoicePayments } from "@/hooks/application/useApi";
 import { fmtCurrency } from "@/lib/utils";
 import { getInvoiceDisplayNumber, type Invoice, type PaymentType, type InvoicePayment } from "@/types/invoice";
 import dayjs from "dayjs";
 import { useAuth } from "@/contexts/AuthContext";
-import { usePermissions } from "@/hooks/usePermissions";
+import { usePermissions } from "@/hooks/application/usePermissions";
 
 const { Text, Title } = Typography;
 

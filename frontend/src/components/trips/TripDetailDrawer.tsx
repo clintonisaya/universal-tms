@@ -12,12 +12,12 @@ import {
   Alert,
 } from "antd";
 import { useAuth } from "@/contexts/AuthContext";
-import { usePermissions } from "@/hooks/usePermissions";
+import { usePermissions } from "@/hooks/application/usePermissions";
 import type { Waybill } from "@/types/waybill";
 import { AddExpenseModal } from "@/components/expenses/AddExpenseModal";
 import { UpdateTripStatusModal } from "@/components/trips/UpdateTripStatusModal";
 import { TripStatusTag } from "@/components/ui/TripStatusTag";
-import { useTripDetail } from "@/hooks/useTripDetail";
+import { useTripDetail } from "@/hooks/application/useTripDetail";
 import { TripInfoPanel } from "./TripInfoPanel";
 import { TripExpensesTab } from "./TripExpensesTab";
 import { TripWaybillsTab } from "./TripWaybillsTab";

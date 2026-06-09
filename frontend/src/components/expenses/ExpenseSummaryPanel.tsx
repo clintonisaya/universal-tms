@@ -2,7 +2,7 @@
 
 import { Row, Col, Input, Select, Typography } from "antd";
 import type { ExpenseRequestDetailed } from "@/types/expense";
-import type { EditableHeader } from "@/hooks/useExpenseCalculations";
+import type { EditableHeader } from "@/hooks/application/useExpenseCalculations";
 import { COMPANY_NAME } from "@/constants/expenseConstants";
 import { fmtCurrency } from "@/lib/utils";
 

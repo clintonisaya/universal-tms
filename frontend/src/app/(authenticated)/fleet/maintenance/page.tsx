@@ -24,8 +24,8 @@ import {
 import type { ColumnsType } from "antd/es/table";
 import type { MaintenanceEvent } from "@/types/maintenance";
 import { useAuth } from "@/contexts/AuthContext";
-import { usePermissions } from "@/hooks/usePermissions";
-import { useMaintenance, useInvalidateQueries } from "@/hooks/useApi";
+import { usePermissions } from "@/hooks/application/usePermissions";
+import { useMaintenance, useInvalidateQueries } from "@/hooks/application/useApi";
 import { CreateMaintenanceDrawer } from "@/components/maintenance/CreateMaintenanceDrawer";
 import { LinkExpenseDrawer } from "@/components/maintenance/LinkExpenseDrawer";
 import {

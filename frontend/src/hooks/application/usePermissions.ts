@@ -1,10 +1,10 @@
 import { useAuth } from "@/contexts/AuthContext";
-import { hasFullAccessRole } from "@/features/permissions/permissionCatalog";
+import { hasFullAccessRole } from "@/features/business/permissions/permissionCatalog";
 
 export {
   AVAILABLE_PERMISSIONS,
   ROLE_PERMISSION_PRESETS,
-} from "@/features/permissions/permissionCatalog";
+} from "@/features/business/permissions/permissionCatalog";
 
 /**
  * Hook for checking user permissions.

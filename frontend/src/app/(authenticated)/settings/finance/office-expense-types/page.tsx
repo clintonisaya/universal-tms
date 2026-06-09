@@ -31,7 +31,7 @@ import type {
   OfficeExpenseTypeUpdate,
 } from "@/types/office-expense-type";
 import { useAuth } from "@/contexts/AuthContext";
-import { useOfficeExpenseTypes, useInvalidateQueries } from "@/hooks/useApi";
+import { useOfficeExpenseTypes, useInvalidateQueries } from "@/hooks/application/useApi";
 import {
   getColumnSearchProps,
   getStandardRowSelection,

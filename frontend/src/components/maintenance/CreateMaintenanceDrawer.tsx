@@ -21,7 +21,7 @@ import {
 import { SaveOutlined } from "@ant-design/icons";
 import { EmptyAwareSelect } from "@/components/ui";
 import { amountInputProps } from "@/lib/utils";
-import { useTrucks, useTrailers } from "@/hooks/useApi";
+import { useTrucks, useTrailers } from "@/hooks/application/useApi";
 import type { MaintenanceEvent, MaintenanceEventCreate } from "@/types/maintenance";
 import dayjs from "dayjs";
 
