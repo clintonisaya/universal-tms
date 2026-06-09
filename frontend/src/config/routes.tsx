@@ -1,4 +1,4 @@
-// frontend/src/config/routes.ts
+// frontend/src/config/routes.tsx
 import type { MenuDataItem } from "@ant-design/pro-components";
 import {
   DashboardOutlined,
@@ -15,20 +15,33 @@ import {
  * Routes configuration for ProLayout.
  * Reference: ant-design-pro/config/routes.ts
  *
- * Each route has: path, name, icon, access (permission key), and optional routes (children).
+ * Uses `MenuDataItem` with `children` for nesting (not `routes`, which is
+ * typed as `undefined` in the current pro-components version).
+ * Each route has: path, name, icon, access (permission key), and optional children.
  * ProLayout renders this as top nav (main sections) + sidebar (sub-pages) in mix mode.
+ *
+ * Note: The `component` field is intentionally omitted. Next.js App Router handles
+ * page resolution via file-system routing, so `path` is sufficient for navigation
+ * (router.push). See: https://nextjs.org/docs/app/building-your-application/routing
+ *
+ * Cross-section paths: Some Finance children route to pages outside /finance/
+ * (e.g. /manager/payments, /settings/finance). These are grouped under Finance
+ * for logical navigation but live at their actual page locations. ProLayout's
+ * default path-prefix active-state matching won't highlight these — Task 8
+ * should add custom matchMenuKeys logic to handle them.
  */
 const routes: MenuDataItem[] = [
   {
     path: "/dashboard",
     name: "Dashboard",
     icon: <DashboardOutlined />,
+    // No access restriction — visible to all authenticated users
   },
   {
     path: "/fleet",
     name: "Fleet",
     icon: <CarOutlined />,
-    routes: [
+    children: [
       { path: "/fleet/trucks", name: "Trucks", access: "fleet:view" },
       { path: "/fleet/trailers", name: "Trailers", access: "fleet:view" },
       { path: "/fleet/drivers", name: "Drivers", access: "fleet:view" },
@@ -39,7 +52,7 @@ const routes: MenuDataItem[] = [
     path: "/ops",
     name: "Operations",
     icon: <ScheduleOutlined />,
-    routes: [
+    children: [
       { path: "/ops/tracking", name: "Tracking", access: "tracking:view" },
       { path: "/ops/waybills", name: "Waybills", access: "waybills:view" },
       { path: "/ops/trips", name: "Trips", access: "trips:view" },
@@ -56,7 +69,7 @@ const routes: MenuDataItem[] = [
     path: "/manager",
     name: "Manager",
     icon: <AuditOutlined />,
-    routes: [
+    children: [
       { path: "/manager/approvals", name: "Approvals", access: "expenses:approve" },
     ],
   },
@@ -64,9 +77,11 @@ const routes: MenuDataItem[] = [
     path: "/finance",
     name: "Finance",
     icon: <BankOutlined />,
-    routes: [
+    children: [
       { path: "/finance/expense-console", name: "Expense Console", access: "expenses:audit-console" },
+      // Cross-section: page lives at /manager/payments, grouped here for logical navigation
       { path: "/manager/payments", name: "Payments", access: "expenses:pay" },
+      // Cross-section: page lives at /settings/finance, grouped here for logical navigation
       { path: "/settings/finance", name: "Exchange Rates", access: "settings:exchange-rates" },
       { path: "/finance/invoice-verification", name: "Invoice Verification", access: "invoices:verify" },
     ],
@@ -75,7 +90,7 @@ const routes: MenuDataItem[] = [
     path: "/reports",
     name: "Reports",
     icon: <BarChartOutlined />,
-    routes: [
+    children: [
       { path: "/reports/profitability", name: "Trip Profitability", access: "reports:view" },
     ],
   },
@@ -83,7 +98,7 @@ const routes: MenuDataItem[] = [
     path: "/settings",
     name: "Settings",
     icon: <SettingOutlined />,
-    routes: [
+    children: [
       { path: "/settings/clients", name: "Clients", access: "settings:clients" },
       { path: "/settings/transport/locations", name: "Locations", access: "settings:locations" },
       { path: "/settings/transport/cargo-types", name: "Cargo Types", access: "settings:cargo-types" },
@@ -97,4 +112,5 @@ const routes: MenuDataItem[] = [
   },
 ];
 
+export { routes };
 export default routes;
