@@ -5,7 +5,7 @@ Aggregates pending tasks across all modules for the current user's role.
 from typing import Any
 
 from fastapi import APIRouter, Query
-from sqlmodel import select
+from sqlmodel import select, func
 from sqlalchemy.orm import selectinload
 
 from app.api.deps import CurrentUser, SessionDep
@@ -16,6 +16,44 @@ from app.models import (
 )
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])
+
+
+@router.get("/count")
+def get_task_count(
+    session: SessionDep,
+    current_user: CurrentUser,
+) -> dict[str, int]:
+    """Lightweight count endpoint for the layout badge. No joins, no eager loading."""
+    role = current_user.role
+    count = 0
+
+    if role in (UserRole.manager, UserRole.admin):
+        count += session.exec(
+            select(func.count()).where(ExpenseRequest.status == ExpenseStatus.pending_manager)
+        ).one()
+
+    if role in (UserRole.finance, UserRole.admin):
+        count += session.exec(
+            select(func.count()).where(ExpenseRequest.status == ExpenseStatus.pending_finance)
+        ).one()
+
+    if role == UserRole.finance:
+        count += session.exec(
+            select(func.count()).where(
+                ExpenseRequest.status == ExpenseStatus.returned,
+                ExpenseRequest.approved_by_id.isnot(None),
+            )
+        ).one()
+
+    if role in (UserRole.ops, UserRole.finance, UserRole.admin):
+        count += session.exec(
+            select(func.count()).where(
+                ExpenseRequest.created_by_id == current_user.id,
+                ExpenseRequest.status == ExpenseStatus.returned.value,
+            )
+        ).one()
+
+    return {"count": count}
 
 
 @router.get("/my-tasks")

@@ -226,14 +226,11 @@ export function useRecentTrips(limit = 5, enabled = true) {
   });
 }
 
-// Todo count for dashboard
+// Todo count for dashboard (lightweight, no joins)
 export function useTodoCount(enabled = true) {
   return useQuery({
     queryKey: queryKeys.todoCount,
-    queryFn: () =>
-      apiFetch<{ total: number }>(
-        "/api/v1/tasks/my-tasks?sort_by=date&sort_order=desc"
-      ),
+    queryFn: () => apiFetch<{ count: number }>("/api/v1/tasks/count"),
     enabled,
   });
 }

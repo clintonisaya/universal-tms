@@ -98,6 +98,9 @@ class Settings(BaseSettings):
     RATE_LIMIT_LOGIN: str = "5/minute"
     RATE_LIMIT_DEFAULT: str = "100/minute"
 
+    # Dashboard cache TTL in seconds (0 = disabled)
+    DASHBOARD_CACHE_TTL: int = 300
+
     @computed_field  # type: ignore[prop-decorator]
     @property
     def emails_enabled(self) -> bool:

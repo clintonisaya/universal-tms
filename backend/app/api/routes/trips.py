@@ -14,6 +14,7 @@ from sqlmodel import func, or_, select
 logger = logging.getLogger(__name__)
 
 from app.api.deps import CurrentUser, SessionDep, assert_user_has_permission
+from app.api.routes.dashboard import invalidate_dashboard_cache
 from app.core.db import commit_or_rollback
 from app.core.storage import storage
 from app.modules.documents import (
@@ -282,6 +283,7 @@ def create_trip(
 
     commit_or_rollback(session)
     session.refresh(trip)
+    invalidate_dashboard_cache()
     return trip
 
 
@@ -502,6 +504,7 @@ def update_trip(
     session.add(trip)
     commit_or_rollback(session)
     session.refresh(trip)
+    invalidate_dashboard_cache()
     return trip
 
 

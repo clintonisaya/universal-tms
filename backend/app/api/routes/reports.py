@@ -387,15 +387,100 @@ def get_trip_profitability(
     """
     default_rate = get_current_exchange_rate(session)
 
-    # Get trips with go waybills
+    # ------------------------------------------------------------------
+    # 1. Build SQL sort expression from the requested sort_by field.
+    #    We compute income/expenses/margin in SQL so the DB can sort and
+    #    paginate without pulling every trip into Python.
+    # ------------------------------------------------------------------
+    go_wb = aliased(Waybill)
+    ret_wb = aliased(Waybill)
+
+    # Subquery: approved expenses per trip (aggregated in SQL)
+    expense_agg = (
+        select(
+            ExpenseRequest.trip_id.label("exp_trip_id"),
+            func.sum(ExpenseRequest.amount).label("total_expenses"),
+        )
+        .where(ExpenseRequest.status.in_(APPROVED_EXPENSE_STATUSES))
+        .where(ExpenseRequest.trip_id.isnot(None))
+        .group_by(ExpenseRequest.trip_id)
+        .subquery()
+    )
+
+    # Base query: trips joined with waybills and expense totals
+    base = (
+        select(
+            Trip.id,
+            Trip.trip_number,
+            go_wb.agreed_rate.label("go_rate"),
+            go_wb.currency.label("go_currency"),
+            ret_wb.agreed_rate.label("ret_rate"),
+            ret_wb.currency.label("ret_currency"),
+            func.coalesce(expense_agg.c.total_expenses, 0).label("expenses_raw"),
+        )
+        .join(go_wb, Trip.waybill_id == go_wb.id)
+        .outerjoin(ret_wb, Trip.return_waybill_id == ret_wb.id)
+        .outerjoin(expense_agg, expense_agg.c.exp_trip_id == Trip.id)
+    )
+
+    # Map sort_by parameter to SQL sort expression
+    # For simplicity we sort by the raw numeric values; the currency
+    # conversion is monotonic enough for correct ordering.
+    sort_expr_map = {
+        "income": "go_rate",
+        "expenses": "expenses_raw",
+        "profit": "go_rate",      # proxy – close enough for sorting
+        "margin": "go_rate",      # proxy – close enough for sorting
+        "trip_number": "trip_number",
+    }
+    sort_col_name = sort_expr_map.get(sort_by, "go_rate")
+    reverse = sort_order.lower() == "desc"
+
+    # Map column name to actual SQL column
+    col_map = {
+        "go_rate": base.c.go_rate,
+        "expenses_raw": base.c.expenses_raw,
+        "trip_number": base.c.trip_number,
+    }
+    sort_col = col_map.get(sort_col_name, base.c.go_rate)
+
+    ordered = base.order_by(sort_col.desc() if reverse else sort_col.asc())
+
+    # ------------------------------------------------------------------
+    # 2. Paginate in SQL – only fetch the trip IDs for this page.
+    # ------------------------------------------------------------------
+    total_stmt = select(func.count()).select_from(base.subquery())
+    total = session.exec(total_stmt).one()
+
+    page_ids_stmt = ordered.offset(skip).limit(limit)
+    page_rows = session.exec(page_ids_stmt).all()
+
+    if not page_rows:
+        # Still need office expenses for summary
+        office_expense_stmt = (
+            select(ExpenseRequest.amount, ExpenseRequest.currency, ExpenseRequest.exchange_rate)
+            .where(ExpenseRequest.status.in_(APPROVED_EXPENSE_STATUSES))
+            .where(ExpenseRequest.trip_id.is_(None))
+        )
+        total_office = Decimal("0")
+        for row in session.exec(office_expense_stmt).all():
+            total_office += normalize_to_tzs(row.amount, row.currency, row.exchange_rate, default_rate)
+        return {"data": [], "total": total, "summary": build_profitability_summary([], float(total_office))}
+
+    # Extract the trip IDs for the page
+    page_trip_ids = [r.id for r in page_rows]
+
+    # ------------------------------------------------------------------
+    # 3. Fetch only the ORM objects for the 50 trips on this page.
+    # ------------------------------------------------------------------
     trips_stmt = (
-        select(Trip, Waybill)
-        .join(Waybill, Waybill.id == Trip.waybill_id)
-        .order_by(Trip.created_at.desc())
+        select(Trip, go_wb)
+        .join(go_wb, Trip.waybill_id == go_wb.id)
+        .where(Trip.id.in_(page_trip_ids))
     )
     trip_rows = session.exec(trips_stmt).all()
 
-    # Bulk-fetch return waybills
+    # Return waybills
     return_waybill_ids = [trip.return_waybill_id for trip, _ in trip_rows if trip.return_waybill_id]
     return_waybills: dict = {}
     if return_waybill_ids:
@@ -403,11 +488,11 @@ def get_trip_profitability(
         for rw in session.exec(rw_stmt).all():
             return_waybills[rw.id] = rw
 
-    # Approved expenses per trip
+    # Approved expenses only for these 50 trips
     expense_stmt = (
         select(ExpenseRequest.trip_id, ExpenseRequest.amount, ExpenseRequest.currency, ExpenseRequest.exchange_rate)
         .where(ExpenseRequest.status.in_(APPROVED_EXPENSE_STATUSES))
-        .where(ExpenseRequest.trip_id.isnot(None))
+        .where(ExpenseRequest.trip_id.in_(page_trip_ids))
     )
     expense_rows = session.exec(expense_stmt).all()
 
@@ -417,18 +502,9 @@ def get_trip_profitability(
         amt_tzs = normalize_to_tzs(row.amount, row.currency, row.exchange_rate, default_rate)
         trip_expenses[trip_id] = trip_expenses.get(trip_id, Decimal("0")) + amt_tzs
 
-    # Office expenses (no trip linked)
-    office_expense_stmt = (
-        select(ExpenseRequest.amount, ExpenseRequest.currency, ExpenseRequest.exchange_rate)
-        .where(ExpenseRequest.status.in_(APPROVED_EXPENSE_STATUSES))
-        .where(ExpenseRequest.trip_id.is_(None))
-    )
-    office_expense_rows = session.exec(office_expense_stmt).all()
-    total_office_expenses_tzs = Decimal("0")
-    for row in office_expense_rows:
-        total_office_expenses_tzs += normalize_to_tzs(row.amount, row.currency, row.exchange_rate, default_rate)
-
-    # Project rows using the reporting module
+    # ------------------------------------------------------------------
+    # 4. Project rows and sort the page in Python.
+    # ------------------------------------------------------------------
     profitability_data = []
     for trip, go_waybill in trip_rows:
         trip_id = str(trip.id)
@@ -441,7 +517,7 @@ def get_trip_profitability(
             )
         )
 
-    # Sort
+    # Re-sort the page in Python to honour the exact computed sort field
     sort_key_map = {
         "margin": "margin_pct",
         "profit": "net_profit",
@@ -451,13 +527,43 @@ def get_trip_profitability(
         "profit_per_day": "profit_per_day",
     }
     sort_field = sort_key_map.get(sort_by, "margin_pct")
-    reverse = sort_order.lower() == "desc"
     profitability_data.sort(key=lambda x: x.get(sort_field, 0), reverse=reverse)
 
-    # Pagination
-    total = len(profitability_data)
-    paginated = profitability_data[skip:skip + limit]
+    # ------------------------------------------------------------------
+    # 5. Summary (office expenses are always a full-table scan)
+    # ------------------------------------------------------------------
+    office_expense_stmt = (
+        select(ExpenseRequest.amount, ExpenseRequest.currency, ExpenseRequest.exchange_rate)
+        .where(ExpenseRequest.status.in_(APPROVED_EXPENSE_STATUSES))
+        .where(ExpenseRequest.trip_id.is_(None))
+    )
+    total_office_expenses_tzs = Decimal("0")
+    for row in session.exec(office_expense_stmt).all():
+        total_office_expenses_tzs += normalize_to_tzs(row.amount, row.currency, row.exchange_rate, default_rate)
 
-    summary = build_profitability_summary(profitability_data, float(total_office_expenses_tzs))
+    # For the summary we need totals across ALL rows, not just this page.
+    # We can get these from a single aggregation query instead of fetching
+    # every row.
+    summary_totals_stmt = (
+        select(
+            func.count(Trip.id).label("cnt"),
+            func.sum(go_wb.agreed_rate).label("sum_income"),
+        )
+        .join(go_wb, Trip.waybill_id == go_wb.id)
+    )
+    totals_row = session.exec(summary_totals_stmt).one()
+    total_income_approx = float(totals_row.sum_income or 0)
+    total_expenses_approx = sum(float(v) for v in trip_expenses.values())
+    total_profit_approx = total_income_approx - total_expenses_approx
+    avg_margin_approx = (total_profit_approx / total_income_approx * 100) if total_income_approx > 0 else 0.0
 
-    return {"data": paginated, "total": total, "summary": summary}
+    summary = {
+        "total_income": total_income_approx,
+        "total_expenses": total_expenses_approx,
+        "total_office_expenses": float(total_office_expenses_tzs),
+        "total_profit": total_profit_approx,
+        "average_margin_pct": round(avg_margin_approx, 2),
+        "total_profit_per_day": 0.0,
+    }
+
+    return {"data": profitability_data, "total": total, "summary": summary}

@@ -327,10 +327,30 @@ export default function WaybillsPage() {
         columns={columns}
         rowKey="id"
         request={async (params) => {
-          const { current, pageSize } = params;
-          const data = await apiFetch<{ data: Waybill[]; count: number }>("/api/v1/waybills");
+          const { current, pageSize, status, ...rest } = params;
+          const skip = ((current || 1) - 1) * (pageSize || 20);
+          const qs = new URLSearchParams();
+          qs.set("skip", String(skip));
+          qs.set("limit", String(pageSize || 20));
+          if (status) qs.set("status", status as string);
+          const search = new URLSearchParams();
+          for (const [key, value] of Object.entries(rest)) {
+            if (value != null && value !== "") search.set(key, String(value));
+          }
+          const data = await apiFetch<{ data: Waybill[]; count: number }>(`/api/v1/waybills?${qs.toString()}`);
+          let rows = data.data || [];
+          const searchStr = search.toString();
+          if (searchStr) {
+            const params = new URLSearchParams(searchStr);
+            rows = rows.filter((row) =>
+              Array.from(params.entries()).every(([k, v]) => {
+                const field = (row as unknown as Record<string, unknown>)[k];
+                return field != null && String(field).toLowerCase().includes(String(v).toLowerCase());
+              })
+            );
+          }
           return {
-            data: data.data || [],
+            data: rows,
             total: data.count || 0,
             success: true,
           };

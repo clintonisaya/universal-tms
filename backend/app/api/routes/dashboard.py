@@ -11,6 +11,8 @@ from fastapi import APIRouter
 from sqlmodel import func, select
 
 from app.api.deps import CurrentUser, SessionDep
+from app.core.cache import dashboard_cache
+from app.core.config import settings
 from app.models import (
     Driver,
     DriverStatus,
@@ -33,17 +35,12 @@ from app.modules.reporting import (
 
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
 
+CACHE_PREFIX = "dashboard:"
 
-@router.get("/stats")
-def get_dashboard_stats(
-    session: SessionDep,
-    current_user: CurrentUser,
-) -> dict[str, Any]:
-    """Return aggregated dashboard statistics.
 
-    All authenticated users can call this endpoint;
-    role-based filtering is handled on the frontend.
-    """
+def _build_stats(session: SessionDep) -> dict[str, Any]:
+    """Heavy aggregate queries – called only on cache miss."""
+
     # --- Trucks ---
     total_trucks = session.exec(select(func.count()).select_from(Truck)).one()
 
@@ -159,3 +156,30 @@ def get_dashboard_stats(
         "total_paid_amount": float(total_paid_amount),
         "profit_trend": profit_trend,
     }
+
+
+@router.get("/stats")
+def get_dashboard_stats(
+    session: SessionDep,
+    current_user: CurrentUser,
+) -> dict[str, Any]:
+    """Return aggregated dashboard statistics.
+
+    All authenticated users can call this endpoint;
+    role-based filtering is handled on the frontend.
+    Results are cached for DASHBOARD_CACHE_TTL seconds.
+    """
+    ttl = settings.DASHBOARD_CACHE_TTL
+    if ttl <= 0:
+        return _build_stats(session)
+
+    return dashboard_cache.get_or_set(
+        f"{CACHE_PREFIX}stats",
+        lambda: _build_stats(session),
+        ttl=ttl,
+    )
+
+
+def invalidate_dashboard_cache() -> None:
+    """Call this after creating/updating a Trip or Expense."""
+    dashboard_cache.invalidate_prefix(CACHE_PREFIX)

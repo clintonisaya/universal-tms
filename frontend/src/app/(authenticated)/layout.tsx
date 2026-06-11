@@ -4,9 +4,9 @@ import { useState, useEffect } from "react";
 import type { Settings as LayoutSettings } from "@ant-design/pro-components";
 import {
   ProConfigProvider,
-  ProLayout,
   enUSIntl,
 } from "@ant-design/pro-components";
+import dynamic from "next/dynamic";
 import { ConfigProvider, App } from "antd";
 import enUS from "antd/locale/en_US";
 import { useRouter, usePathname } from "next/navigation";
@@ -22,6 +22,12 @@ import { useTodoCount } from "@/hooks/application/useApi";
 import { getAntdThemeConfig } from "@/theme/antd";
 import defaultSettings from "@/config/defaultSettings";
 import routes from "@/config/routes";
+
+// ProLayout accesses window.matchMedia during SSR — import client-only
+const ProLayout = dynamic(
+  () => import("@ant-design/pro-components").then((mod) => ({ default: mod.ProLayout })),
+  { ssr: false },
+);
 
 /** Filter route tree by user permissions. */
 function filterRoutesByPermission(
@@ -75,7 +81,7 @@ export default function AuthenticatedLayout({
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [isRedirecting, setIsRedirecting] = useState(false);
 
-  const todoCount = todoData?.total ?? 0;
+  const todoCount = todoData?.count ?? 0;
   const isDark = settings.navTheme === "realDark";
   const themeConfig = getAntdThemeConfig(isDark ? "dark" : "light");
 
@@ -193,6 +199,7 @@ export default function AuthenticatedLayout({
               route={{ routes: filteredRoutes }}
               location={{ pathname }}
               token={defaultSettings.token}
+              menuProps={{ tooltip: undefined } as any}
               menuItemRender={(item, dom) => (
                 <div
                   onClick={() => {
@@ -224,7 +231,7 @@ export default function AuthenticatedLayout({
                     display: "flex",
                     alignItems: "center",
                     gap: 0,
-                    height: 40,
+                    height: 16,
                     overflowX: "auto",
                     borderBottom: "1px solid var(--ant-color-border)",
                     marginBottom: 16,

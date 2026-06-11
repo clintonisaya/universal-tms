@@ -144,7 +144,7 @@ function DashboardContent() {
   // Derive values from query data
   const stats = statsData || null;
   const recentTrips = tripsData?.data || [];
-  const todoCount = todoData?.total ?? 0;
+  const todoCount = todoData?.count ?? 0;
   const financialPulse = pulseData || null;
 
   // AC-4: Freshness indicator — resets when stats data changes

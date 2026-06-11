@@ -14,6 +14,7 @@ from sqlalchemy.orm import selectinload
 from sqlmodel import func, select
 
 from app.api.deps import CurrentUser, SessionDep, assert_user_has_permission
+from app.api.routes.dashboard import invalidate_dashboard_cache
 from app.core.db import commit_or_rollback
 from app.core.socket import sio
 from app.core.storage import storage
@@ -296,6 +297,9 @@ async def create_expense(
     commit_or_rollback(session)
     session.refresh(expense)
 
+    # Invalidate dashboard cache
+    invalidate_dashboard_cache()
+
     # Emit domain events
     await _emit_events([ExpenseCreatedEvent(expense_id=str(expense.id))])
 
@@ -358,6 +362,7 @@ async def update_expense(
         session.add(expense)
         commit_or_rollback(session)
         session.refresh(expense)
+        invalidate_dashboard_cache()
         await _emit_events(plan.events)
         return expense
 
@@ -420,6 +425,7 @@ async def process_payment(
     session.add(expense)
     commit_or_rollback(session)
     session.refresh(expense)
+    invalidate_dashboard_cache()
     await _emit_events(plan.events)
 
     return expense

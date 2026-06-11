@@ -1,7 +1,6 @@
 "use client";
 
 import { message } from "antd";
-import ExcelJS from "exceljs";
 import { apiFetch } from "@/hooks/application/useApi";
 import type { ColorKey } from "@/components/ui/StatusBadge";
 
@@ -125,11 +124,12 @@ export function useTrackingExport() {
   };
 
   const handleExport = async (serverSearch: string) => {
+    const ExcelJS = await import("exceljs");
     const exportData = await fetchAllForExport(serverSearch);
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet("Control Tower");
 
-    type ColDef = Partial<ExcelJS.Column>;
+    type ColDef = Partial<import("exceljs").Column>;
 
     const maxGoBorders = exportData.reduce(
       (max, row) => Math.max(max, (row.border_crossings || []).filter((bc: any) => bc.direction === "go").length), 0
@@ -221,7 +221,7 @@ export function useTrackingExport() {
       ...daysBorderReturnCols,
       { header: "Remark (Go)", key: "remarks", width: 30 },
       { header: "Remark (Return)", key: "return_remarks", width: 30 },
-    ] as Partial<ExcelJS.Column>[];
+    ] as Partial<import("exceljs").Column>[];
 
     worksheet.getRow(1).font = { bold: true };
     worksheet.views = [{ state: "frozen", ySplit: 1 }];
@@ -345,6 +345,7 @@ export function useTrackingExport() {
       return;
     }
 
+    const ExcelJS = await import("exceljs");
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet("Trucks Report");
 
@@ -368,7 +369,7 @@ export function useTrackingExport() {
       ), 0
     );
 
-    const borderCols: Partial<ExcelJS.Column>[] = [];
+    const borderCols: Partial<import("exceljs").Column>[] = [];
     for (let i = 0; i < maxBorders; i++) {
       const n = i + 1;
       const suffix = maxBorders > 1 ? ` ${n}` : "";
@@ -403,7 +404,7 @@ export function useTrackingExport() {
       { header: "Total Days", key: "total_days", width: 12 },
       { header: "Transit Days", key: "transit_days", width: 14 },
       { header: "Remark", key: "remarks", width: 30 },
-    ] as Partial<ExcelJS.Column>[];
+    ] as Partial<import("exceljs").Column>[];
 
     worksheet.getRow(1).font = { bold: true };
     worksheet.views = [{ state: "frozen", ySplit: 1 }];
@@ -428,7 +429,7 @@ export function useTrackingExport() {
       return data;
     };
 
-    const applyRowColor = (excelRow: ExcelJS.Row, resolvedStatus: string) => {
+    const applyRowColor = (excelRow: import("exceljs").Row, resolvedStatus: string) => {
       const colorKey =
         resolvedStatus === "Invoiced" ? "Completed" :
         resolvedStatus === "Offloaded | Waiting for PODs" ? "Waiting for PODs" :

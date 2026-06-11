@@ -176,13 +176,30 @@ export default function TrucksPage() {
         actionRef={actionRef}
         columns={columns}
         rowKey="id"
-        request={async () => {
-          const response = await fetch("/api/v1/trucks", {
+        request={async (params) => {
+          const { current, pageSize, ...rest } = params;
+          const skip = ((current || 1) - 1) * (pageSize || 20);
+          const qs = new URLSearchParams();
+          qs.set("skip", String(skip));
+          qs.set("limit", String(pageSize || 20));
+          const response = await fetch(`/api/v1/trucks?${qs.toString()}`, {
             credentials: "include",
           });
           const data = await response.json();
+          let rows = data.data || [];
+          const searchEntries = Object.entries(rest).filter(
+            ([, v]) => v != null && v !== ""
+          );
+          if (searchEntries.length) {
+            rows = rows.filter((row: Record<string, unknown>) =>
+              searchEntries.every(([k, v]) => {
+                const field = row[k];
+                return field != null && String(field).toLowerCase().includes(String(v).toLowerCase());
+              })
+            );
+          }
           return {
-            data: data.data || [],
+            data: rows,
             total: data.count || 0,
             success: true,
           };
