@@ -93,8 +93,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       clearTimeout(timeoutId);
 
       if (response.ok) {
-        await refreshUser();
-        return true;
+        const userData = await fetchUser();
+        setUser(userData);
+        return Boolean(userData);
       }
       return false;
     } catch (error) {
