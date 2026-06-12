@@ -316,7 +316,7 @@ function UsersContent() {
 
         try {
           for (const id of keys) {
-            const response = await fetch(`/api/v1/users/${id}`, {
+            const response = await fetch(`/api/v1/users/${String(id)}`, {
               method: "DELETE",
               credentials: "include",
             });

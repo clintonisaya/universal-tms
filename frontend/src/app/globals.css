@@ -98,6 +98,12 @@ tr:hover > td .row-actions {
   position: relative !important;
 }
 
+/* Hide Ant Design's default column divider on resizable columns
+   to prevent double vertical lines (AntD ::before + react-resizable handle) */
+.ant-table-thead > tr > th.react-resizable::before {
+  display: none !important;
+}
+
 .ant-table-thead > tr > th.react-resizable {
   overflow: visible;
 }

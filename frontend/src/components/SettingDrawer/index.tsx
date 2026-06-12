@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { SettingDrawer as AntSettingDrawer } from "@ant-design/pro-components";
 import type { Settings as LayoutSettings } from "@ant-design/pro-components";
 
@@ -51,6 +52,25 @@ export function SettingDrawer({
   collapse,
   onCollapseChange,
 }: SettingDrawerWrapperProps) {
+  // Suppress antd v6 deprecation warning for List used internally by pro-components SettingDrawer.
+  // Remove once @ant-design/pro-components drops its List dependency.
+  useEffect(() => {
+    const originalWarn = console.warn;
+    console.warn = (...args: unknown[]) => {
+      if (
+        typeof args[0] === "string" &&
+        args[0].includes("[antd: List]") &&
+        args[0].includes("deprecated")
+      ) {
+        return;
+      }
+      originalWarn(...args);
+    };
+    return () => {
+      console.warn = originalWarn;
+    };
+  }, []);
+
   return (
     <AntSettingDrawer
       disableUrlParams

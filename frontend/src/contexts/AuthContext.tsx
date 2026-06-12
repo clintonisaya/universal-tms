@@ -77,20 +77,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     formData.append("username", username);
     formData.append("password", password);
 
-    const response = await fetch("/api/v1/login/access-token", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
-      },
-      body: formData,
-      credentials: "include",
-    });
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000);
 
-    if (response.ok) {
-      await refreshUser();
-      return true;
+    try {
+      const response = await fetch("/api/v1/login/access-token", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: formData,
+        credentials: "include",
+        signal: controller.signal,
+      });
+      clearTimeout(timeoutId);
+
+      if (response.ok) {
+        await refreshUser();
+        return true;
+      }
+      return false;
+    } catch (error) {
+      clearTimeout(timeoutId);
+      if (error instanceof Error && error.name === "AbortError") {
+        throw new Error("Login request timed out. The server may be unreachable.");
+      }
+      throw error;
     }
-    return false;
   };
 
   const logout = async () => {
