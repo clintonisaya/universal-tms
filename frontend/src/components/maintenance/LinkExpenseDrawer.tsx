@@ -476,7 +476,7 @@ export function LinkExpenseDrawer({
       }
       open={open}
       onClose={onClose}
-      width={step === "select-expense" ? 900 : 700}
+      size={step === "select-expense" ? 900 : 700}
       forceRender
       extra={
         <Space>

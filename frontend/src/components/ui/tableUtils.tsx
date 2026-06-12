@@ -30,7 +30,7 @@ export function getColumnSearchProps<T extends Record<string, any>>(
       <div style={{ padding: 8 }} onKeyDown={(e) => e.stopPropagation()}>
         <Input
           placeholder={`Search ${dataIndex}`}
-          value={selectedKeys[0]}
+          value={String(selectedKeys[0] ?? "")}
           onChange={(e) =>
             setSelectedKeys(e.target.value ? [e.target.value] : [])
           }

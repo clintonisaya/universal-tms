@@ -234,7 +234,7 @@ export default function AuthenticatedLayout({
                     height: 16,
                     overflowX: "auto",
                     borderBottom: "1px solid var(--ant-color-border)",
-                    marginBottom: 16,
+                    marginBottom: 8,
                     scrollbarWidth: "none",
                   }}
                 >

@@ -43,10 +43,9 @@ docker-compose.override.yml
 nul
 pic/
 
-# BMAD / AI tooling artifacts
+
 .claude/
-_bmad/
-_bmad-output/
+CLAUDE.md
 
 # Scratch files
 nablafleet-invoice-generator*.jsx

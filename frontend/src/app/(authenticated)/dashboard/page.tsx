@@ -60,7 +60,7 @@ interface FinancialPulseData {
 }
 
 // Role visibility helpers
-// Admin and Manager see everything (Clinton's requirement)
+// Admin and Manager see everything 
 const FULL_ACCESS_ROLES = ["admin", "manager"];
 
 function canSee(role: string | undefined, allowedRoles: string[]): boolean {

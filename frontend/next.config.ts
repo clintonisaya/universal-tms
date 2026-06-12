@@ -38,12 +38,12 @@ const nextConfig: NextConfig = {
     ];
   },
 
-  // Fixes the API proxy so it works on both Local (Laptop) and Docker (Server)
   async rewrites() {
     const backendUrl =
-      process.env.NODE_ENV === "production"
+      process.env.BACKEND_URL ||
+      (process.env.NODE_ENV === "production"
         ? "http://backend:8000"
-        : "http://localhost:8000";
+        : "http://localhost:8000");
 
     return [
       {

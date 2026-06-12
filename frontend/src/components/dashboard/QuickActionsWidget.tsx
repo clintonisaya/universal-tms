@@ -88,7 +88,7 @@ export function QuickActionsWidget() {
       styles={{ body: { padding: "var(--space-sm) var(--space-lg)" } }}
     >
       <Space wrap align="center">
-        <Text type="secondary" style={{ marginRight: 4 }}>
+        <Text type="secondary" style={{ marginRight: 4, marginLeft: 8}}>
           Quick Actions:
         </Text>
         {visibleActions.map((action) => (

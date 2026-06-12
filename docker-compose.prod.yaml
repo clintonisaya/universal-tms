@@ -55,11 +55,14 @@ services:
         # Passes the variable to the build process
         NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
     restart: unless-stopped
+    depends_on:
+      - backend
     expose:
       - "3000" # Expose internally only (Coolify handles the routing)
     environment:
       - PORT=3000
       - HOSTNAME=0.0.0.0
+      - BACKEND_URL=http://backend:8000
       # This is still needed for runtime logging, though the value is baked in at build
       - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
 

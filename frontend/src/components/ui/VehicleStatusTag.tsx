@@ -3,14 +3,14 @@
 import { StatusBadge, type ColorKey } from "./StatusBadge";
 
 const VEHICLE_STATUS_COLOR_KEYS: Record<string, ColorKey> = {
-  Idle:               "gray",
+  Idle:               "green",
   Loading:            "orange",
   "In Transit":       "blue",
   "At Border":        "orange",
   Offloaded:          "cyan",
   Returned:           "gray",
   "Waiting for PODs": "orange",
-  Maintenance:        "orange",
+  Maintenance:        "red",
 };
 
 export function VehicleStatusTag({ status }: { status: string }) {

@@ -10,7 +10,11 @@ from app.models import CargoType, User, UserCreate, UserRole, VehicleStatus, Cou
 
 logger = logging.getLogger(__name__)
 
-engine = create_engine(str(settings.SQLALCHEMY_DATABASE_URI))
+engine = create_engine(
+    str(settings.SQLALCHEMY_DATABASE_URI),
+    pool_size=20,
+    max_overflow=10,
+)
 
 
 def commit_or_rollback(session: Session) -> None:
