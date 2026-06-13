@@ -277,7 +277,7 @@ export function useTrackingExport() {
         index: ++rowNum,
         leg: "Go",
         waybill_number: row.waybill_number || "-",
-        waybill_status: row.waybill_status || "-",
+        waybill_status: row.waybill_status === "Invoiced" ? "-" : (row.waybill_status || "-"),
         client_name: row.client_name || "-",
         origin: row.origin || "-",
         destination: row.destination || "-",
@@ -305,7 +305,7 @@ export function useTrackingExport() {
           index: ++rowNum,
           leg: "Return",
           waybill_number: row.return_waybill_number || "-",
-          waybill_status: row.return_waybill_status || "-",
+          waybill_status: row.return_waybill_status === "Invoiced" ? "-" : (row.return_waybill_status || "-"),
           client_name: row.return_client_name || "-",
           origin: row.return_origin || "-",
           destination: row.return_destination || "-",
@@ -431,7 +431,6 @@ export function useTrackingExport() {
 
     const applyRowColor = (excelRow: import("exceljs").Row, resolvedStatus: string) => {
       const colorKey =
-        resolvedStatus === "Invoiced" ? "Completed" :
         resolvedStatus === "Offloaded | Waiting for PODs" ? "Waiting for PODs" :
         resolvedStatus;
       const color = STATUS_ROW_COLORS[colorKey] ?? "FFFFFF";
@@ -446,7 +445,6 @@ export function useTrackingExport() {
 
       const goStatus: string =
         row.trip_status === "Completed" || row.trip_status === "Cancelled" ? row.trip_status :
-        row.waybill_status === "Invoiced" ? "Invoiced" :
         row.waybill_status === "Completed" ? "Offloaded | Waiting for PODs" :
         row.trip_status;
       const retStatus: string = row.trip_status;
