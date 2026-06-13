@@ -277,7 +277,7 @@ export function VoidExpenseModal({ expense, open, onClose, onSuccess }: VoidExpe
             <Text strong>{expense.trip.trip_number}</Text>
           </Descriptions.Item>
           <Descriptions.Item label="Route">{expense.trip.route_name || "-"}</Descriptions.Item>
-          <Descriptions.Item label="Status"><StatusBadge status={expense.trip.status} /></Descriptions.Item>
+          <Descriptions.Item label="Status"><StatusBadge status={expense.trip.status} coloredText /></Descriptions.Item>
           <Descriptions.Item label="Current Location">{expense.trip.current_location || "-"}</Descriptions.Item>
         </Descriptions>
       )}

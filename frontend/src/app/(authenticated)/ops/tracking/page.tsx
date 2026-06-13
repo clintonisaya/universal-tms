@@ -154,8 +154,8 @@ function TrackingPageContent() {
       search: false,
       render: (_, r) => (
         <Flex vertical gap={2} align="start">
-          {r.waybill_status && r.waybill_status !== "Invoiced" && <StatusBadge status={`Go: ${r.waybill_status}`} colorKey={STATUS_COLORS[r.waybill_status]} />}
-          {r.return_waybill_status && r.return_waybill_status !== "Invoiced" && <StatusBadge status={`Ret: ${r.return_waybill_status}`} colorKey={STATUS_COLORS[r.return_waybill_status]} />}
+          {r.waybill_status && r.waybill_status !== "Invoiced" && <StatusBadge status={`Go: ${r.waybill_status}`} colorKey={STATUS_COLORS[r.waybill_status]} coloredText />}
+          {r.return_waybill_status && r.return_waybill_status !== "Invoiced" && <StatusBadge status={`Ret: ${r.return_waybill_status}`} colorKey={STATUS_COLORS[r.return_waybill_status]} coloredText />}
           <TripStatusTag status={r.trip_status as any} isDelayed={r.is_delayed} />
         </Flex>
       ),
@@ -246,7 +246,7 @@ function TrackingPageContent() {
       key: "risk",
       width: 80,
       search: false,
-      render: (_, r) => <StatusBadge status={r.risk_level} colorKey={RISK_COLORS[r.risk_level]} />,
+      render: (_, r) => <StatusBadge status={r.risk_level} colorKey={RISK_COLORS[r.risk_level]} coloredText />,
     },
     {
       title: "Arrival Offloading",

@@ -20,6 +20,7 @@ export function VehicleStatusTag({ status }: { status: string }) {
     <StatusBadge
       status={status}
       colorKey={VEHICLE_STATUS_COLOR_KEYS[status] ?? "gray"}
+      coloredText
     />
   );
 }

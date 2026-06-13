@@ -304,7 +304,7 @@ export function ExpenseDetailModal({ open, onClose, expense }: ExpenseDetailModa
             {expense.trip.route_name || "-"}
           </Descriptions.Item>
           <Descriptions.Item label="Status" span={1}>
-            <StatusBadge status={expense.trip.status} colorKey="gray" />
+            <StatusBadge status={expense.trip.status} colorKey="gray" coloredText />
           </Descriptions.Item>
           <Descriptions.Item label="Current Location" span={1}>
             {expense.trip.current_location || "-"}

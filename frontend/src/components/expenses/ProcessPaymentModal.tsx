@@ -367,7 +367,7 @@ export function ProcessPaymentModal({
             {expense.trip.route_name || "-"}
           </Descriptions.Item>
           <Descriptions.Item label="Status">
-            <StatusBadge status={expense.trip.status} />
+            <StatusBadge status={expense.trip.status} coloredText />
           </Descriptions.Item>
           <Descriptions.Item label="Current Location">
             {expense.trip.current_location || "-"}

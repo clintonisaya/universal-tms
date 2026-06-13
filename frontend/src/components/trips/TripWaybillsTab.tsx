@@ -38,11 +38,11 @@ export function TripWaybillsTab({ borderCrossings, loadingCrossings }: TripWaybi
             const filledCount = dateFields.filter((df) => crossing[df.field]).length;
             const completionTag =
               filledCount === 5 ? (
-                <StatusBadge status="Complete" colorKey="green" />
+                <StatusBadge status="Complete" colorKey="green" coloredText />
               ) : filledCount > 0 ? (
-                <StatusBadge status={`In Progress (${filledCount}/5)`} colorKey="orange" />
+                <StatusBadge status={`In Progress (${filledCount}/5)`} colorKey="orange" coloredText />
               ) : (
-                <StatusBadge status="Pending" colorKey="gray" />
+                <StatusBadge status="Pending" colorKey="gray" coloredText />
               );
 
             return {

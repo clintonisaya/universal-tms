@@ -16,6 +16,7 @@ export function WaybillStatusTag({ status }: { status: WaybillStatus }) {
     <StatusBadge
       status={progressStatus}
       colorKey={WAYBILL_STATUS_COLOR_KEYS[progressStatus] ?? "gray"}
+      coloredText
     />
   );
 }

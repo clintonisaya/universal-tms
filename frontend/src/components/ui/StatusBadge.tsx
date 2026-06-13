@@ -24,13 +24,12 @@ interface StatusBadgeProps {
   status: string;
   colorKey?: ColorKey;
   ariaLabel?: string;
+  coloredText?: boolean;
 }
 
-export function StatusBadge({ status, colorKey = "gray", ariaLabel }: StatusBadgeProps) {
-  // Detect dark mode from document attribute (set by layout)
+export function StatusBadge({ status, colorKey = "gray", ariaLabel, coloredText = false }: StatusBadgeProps) {
   const isDark = typeof document !== "undefined" && document.documentElement.getAttribute("data-theme") === "dark";
   const colors = isDark ? DARK : LIGHT;
-  // P1: fall back to gray if colorKey is somehow not in the palette at runtime
   const color = colors[colorKey] ?? colors.gray;
 
   return (
@@ -57,7 +56,7 @@ export function StatusBadge({ status, colorKey = "gray", ariaLabel }: StatusBadg
         style={{
           fontSize: "var(--font-xs)",
           fontWeight: 500,
-          color: "var(--ant-color-text)",
+          color: coloredText ? color : "var(--ant-color-text)",
         }}
       >
         {status}

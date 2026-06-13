@@ -183,7 +183,7 @@ function TasksContent() {
       width: 140,
       render: (type: string) => {
         const info = TASK_TYPE_LABELS[type] || { label: type, color: "gray" as ColorKey };
-        return <StatusBadge status={info.label} colorKey={info.color} />;
+        return <StatusBadge status={info.label} colorKey={info.color} coloredText />;
       },
     },
     {
