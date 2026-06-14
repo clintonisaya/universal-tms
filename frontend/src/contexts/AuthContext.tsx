@@ -4,6 +4,7 @@ import {
   createContext,
   useContext,
   useEffect,
+  useRef,
   useState,
   ReactNode,
 } from "react";
@@ -34,6 +35,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const router = useRouter();
   const pathname = usePathname();
+  const loginCompletedRef = useRef(false);
 
   const fetchUser = async (): Promise<User | null> => {
     // Create an AbortController for timeout
@@ -94,7 +96,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (response.ok) {
         const userData = await fetchUser();
+        loginCompletedRef.current = true;
         setUser(userData);
+        setLoading(false);
         return Boolean(userData);
       }
       return false;
@@ -127,8 +131,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const init = async () => {
       const userData = await fetchUser();
-      setUser(userData);
-      setLoading(false);
+      if (!loginCompletedRef.current) {
+        setUser(userData);
+        setLoading(false);
+      }
     };
     init();
   }, []);
