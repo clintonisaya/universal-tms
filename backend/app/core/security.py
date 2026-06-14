@@ -47,7 +47,7 @@ def set_auth_cookie(response: Response, token: str) -> None:
         key="access_token",
         value=token,
         httponly=True,
-        samesite="lax",
+        samesite="none" if settings.ENVIRONMENT != "local" else "lax",
         secure=settings.ENVIRONMENT != "local",
         max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
         path="/",
@@ -59,7 +59,7 @@ def clear_auth_cookie(response: Response) -> None:
     response.delete_cookie(
         key="access_token",
         httponly=True,
-        samesite="lax",
+        samesite="none" if settings.ENVIRONMENT != "local" else "lax",
         secure=settings.ENVIRONMENT != "local",
         path="/",
     )
