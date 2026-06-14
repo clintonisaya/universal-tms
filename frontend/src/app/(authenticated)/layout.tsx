@@ -100,6 +100,14 @@ export default function AuthenticatedLayout({
     );
   }, [isDark]);
 
+  // Close session modal when a valid user is authenticated.
+  useEffect(() => {
+    if (user) {
+      setShowLoginModal(false);
+      setIsRedirecting(false);
+    }
+  }, [user]);
+
   // Handle auth redirect
   useEffect(() => {
     if (loading) return;
