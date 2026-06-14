@@ -10,7 +10,7 @@ import {
   ProFormDatePicker,
 } from "@ant-design/pro-components";
 import type { ProColumns, ActionType } from "@ant-design/pro-components";
-import { Button, App, Popconfirm, Space, Tag, Tooltip, Typography } from "antd";
+import { Button, App, Popconfirm, Space, Tooltip, Typography } from "antd";
 import {
   PlusOutlined,
   ReloadOutlined,
@@ -21,16 +21,17 @@ import {
 } from "@ant-design/icons";
 import type { Driver, DriverCreate, DriverStatus } from "@/types/driver";
 import { useAuth } from "@/contexts/AuthContext";
+import { StatusBadge, type ColorKey } from "@/components/ui/StatusBadge";
 
 const { Text } = Typography;
 
 const EXPIRY_WARNING_DAYS = 30;
 
-const STATUS_COLORS: Record<DriverStatus, string> = {
+const STATUS_COLORS: Record<DriverStatus, ColorKey> = {
   Active: "green",
   Assigned: "cyan",
   "On Trip": "blue",
-  Inactive: "default",
+  Inactive: "gray",
 };
 
 export default function DriversPage() {
@@ -225,7 +226,7 @@ export default function DriversPage() {
         Inactive: { text: "Inactive" },
       },
       render: (_, record) => (
-        <Tag color={STATUS_COLORS[record.status]}>{record.status}</Tag>
+        <StatusBadge status={record.status} colorKey={STATUS_COLORS[record.status]} coloredText />
       ),
     },
     {

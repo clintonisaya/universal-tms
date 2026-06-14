@@ -44,40 +44,40 @@ function getDualStatusBadges(
   switch (status) {
     case "Pending Manager":
       return [
-        <StatusBadge key="manager" status={`${managerLabel}: Pending`} colorKey="orange" ariaLabel={compact ? `${mFull}: Pending` : undefined} />,
-        <StatusBadge key="finance" status={`${financeLabel}: Waiting`} colorKey="gray"   ariaLabel={compact ? `${fFull}: Waiting` : undefined} />,
+        <StatusBadge key="manager" status={`${managerLabel}: Pending`} colorKey="orange" coloredText ariaLabel={compact ? `${mFull}: Pending` : undefined} />,
+        <StatusBadge key="finance" status={`${financeLabel}: Waiting`} colorKey="gray"   coloredText ariaLabel={compact ? `${fFull}: Waiting` : undefined} />,
       ];
 
     case "Pending Finance":
       return [
-        <StatusBadge key="manager" status={`${managerLabel}: Approved`} colorKey="green"  ariaLabel={compact ? `${mFull}: Approved` : undefined} />,
-        <StatusBadge key="finance" status={`${financeLabel}: Pending`}  colorKey="orange" ariaLabel={compact ? `${fFull}: Pending` : undefined} />,
+        <StatusBadge key="manager" status={`${managerLabel}: Approved`} colorKey="green"  coloredText ariaLabel={compact ? `${mFull}: Approved` : undefined} />,
+        <StatusBadge key="finance" status={`${financeLabel}: Pending`}  colorKey="orange" coloredText ariaLabel={compact ? `${fFull}: Pending` : undefined} />,
       ];
 
     case "Paid":
       return [
-        <StatusBadge key="manager" status={`${managerLabel}: Approved`} colorKey="green" ariaLabel={compact ? `${mFull}: Approved` : undefined} />,
-        <StatusBadge key="finance" status={`${financeLabel}: Paid`}     colorKey="green" ariaLabel={compact ? `${fFull}: Paid` : undefined} />,
+        <StatusBadge key="manager" status={`${managerLabel}: Approved`} colorKey="green" coloredText ariaLabel={compact ? `${mFull}: Approved` : undefined} />,
+        <StatusBadge key="finance" status={`${financeLabel}: Paid`}     colorKey="green" coloredText ariaLabel={compact ? `${fFull}: Paid` : undefined} />,
       ];
 
     case "Rejected":
       return [
-        <StatusBadge key="manager" status={`${managerLabel}: Rejected`} colorKey="red" ariaLabel={compact ? `${mFull}: Rejected` : undefined} />,
+        <StatusBadge key="manager" status={`${managerLabel}: Rejected`} colorKey="red" coloredText ariaLabel={compact ? `${mFull}: Rejected` : undefined} />,
       ];
 
     case "Returned":
       return [
-        <StatusBadge key="manager" status={`${managerLabel}: Returned`} colorKey="orange" ariaLabel={compact ? `${mFull}: Returned` : undefined} />,
+        <StatusBadge key="manager" status={`${managerLabel}: Returned`} colorKey="orange" coloredText ariaLabel={compact ? `${mFull}: Returned` : undefined} />,
       ];
 
     case "Voided":
       return [
-        <StatusBadge key="voided" status="Voided" colorKey="red" />,
+        <StatusBadge key="voided" status="Voided" colorKey="red" coloredText />,
       ];
 
     default:
       return [
-        <StatusBadge key="unknown" status={status} colorKey="gray" />,
+        <StatusBadge key="unknown" status={status} colorKey="gray" coloredText />,
       ];
   }
 }

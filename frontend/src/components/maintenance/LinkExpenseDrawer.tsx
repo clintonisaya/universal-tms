@@ -17,13 +17,13 @@ import {
   Row,
   Col,
   Table,
-  Tag,
   Typography,
   Empty,
 } from "antd";
 import { LinkOutlined, SearchOutlined } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
 import { EmptyAwareSelect } from "@/components/ui";
+import { StatusBadge } from "@/components/ui/StatusBadge";
 import { useTrucks, useTrailers, apiFetch } from "@/hooks/application/useApi";
 import type {
   AvailableExpense,
@@ -199,13 +199,13 @@ export function LinkExpenseDrawer({
       key: "status",
       width: 130,
       render: (status: string) => {
-        const color =
+        const colorKey =
           status === "Paid"
             ? "green"
             : status === "Pending Manager"
             ? "orange"
             : "blue";
-        return <Tag color={color}>{status}</Tag>;
+        return <StatusBadge status={status} colorKey={colorKey as any} coloredText />;
       },
     },
     {
@@ -317,13 +317,11 @@ export function LinkExpenseDrawer({
               <Col span={8}>
                 <Text type="secondary">Status</Text>
                 <br />
-                <Tag
-                  color={
-                    selectedExpense.status === "Paid" ? "green" : "orange"
-                  }
-                >
-                  {selectedExpense.status}
-                </Tag>
+                <StatusBadge
+                  status={selectedExpense.status}
+                  colorKey={selectedExpense.status === "Paid" ? "green" : "orange"}
+                  coloredText
+                />
               </Col>
             </Row>
           </div>

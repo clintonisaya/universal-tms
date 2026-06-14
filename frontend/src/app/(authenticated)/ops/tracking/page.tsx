@@ -96,16 +96,9 @@ function TrackingPageContent() {
     actionRef.current?.reload();
   };
 
-  const isWaybillFinalised = (record: TrackingRow): boolean => {
-    const goLocked = record.waybill_status === "Invoiced";
-    const retLocked = !record.return_waybill_id || record.return_waybill_status === "Invoiced";
-    return goLocked && retLocked;
-  };
-
   const openStatusModal = (record: TrackingRow) => {
     if (!record.trip_id) { message.info("No trip assigned to this waybill yet."); return; }
     if (record.trip_status === "Completed" || record.trip_status === "Cancelled") { message.info("Trip is already completed — status cannot be changed."); return; }
-    if (isWaybillFinalised(record)) { message.info("All waybills on this trip are Invoiced — status cannot be changed."); return; }
     setSelectedTripId(record.trip_id);
     setInitialStatusValues({
       status: record.trip_status,
@@ -161,8 +154,8 @@ function TrackingPageContent() {
       search: false,
       render: (_, r) => (
         <Flex vertical gap={2} align="start">
-          {r.waybill_status && <StatusBadge status={`Go: ${r.waybill_status}`} colorKey={STATUS_COLORS[r.waybill_status]} />}
-          {r.return_waybill_status && <StatusBadge status={`Ret: ${r.return_waybill_status}`} colorKey={STATUS_COLORS[r.return_waybill_status]} />}
+          {r.waybill_status && r.waybill_status !== "Invoiced" && <StatusBadge status={`Go: ${r.waybill_status}`} colorKey={STATUS_COLORS[r.waybill_status]} coloredText />}
+          {r.return_waybill_status && r.return_waybill_status !== "Invoiced" && <StatusBadge status={`Ret: ${r.return_waybill_status}`} colorKey={STATUS_COLORS[r.return_waybill_status]} coloredText />}
           <TripStatusTag status={r.trip_status as any} isDelayed={r.is_delayed} />
         </Flex>
       ),
@@ -200,28 +193,18 @@ function TrackingPageContent() {
         const isReturn = RETURN_STATUSES.has(r.trip_status);
         const from = isReturn && r.return_origin ? r.return_origin : r.origin;
         const to = isReturn && r.return_destination ? r.return_destination : r.destination;
-        const finalised = isWaybillFinalised(r);
         return (
           <Flex vertical gap={0}>
             <Space separator={<Text type="secondary">→</Text>}>
               <Tooltip title={from}><Text style={{ maxWidth: 100, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "inline-block" }}>{from}</Text></Tooltip>
               <Tooltip title={to}><Text style={{ maxWidth: 100, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "inline-block" }}>{to}</Text></Tooltip>
             </Space>
-            {finalised ? (
-              <Tooltip title={r.current_location}>
-                <div>
-                  <EnvironmentOutlined style={{ marginRight: 4, color: "var(--color-text-muted)" }} />
-                  <Text type="secondary">{r.current_location || "-"}</Text>
-                </div>
-              </Tooltip>
-            ) : (
-              <Tooltip title={r.current_location}>
-                <div onClick={() => openStatusModal(r)} style={{ cursor: "pointer" }}>
-                  <EnvironmentOutlined style={{ marginRight: 4, color: "var(--color-orange)" }} />
-                  <Text type="secondary" underline>{r.current_location || "Update Loc"}</Text>
-                </div>
-              </Tooltip>
-            )}
+            <Tooltip title={r.current_location}>
+              <div onClick={() => openStatusModal(r)} style={{ cursor: "pointer" }}>
+                <EnvironmentOutlined style={{ marginRight: 4, color: "var(--color-orange)" }} />
+                <Text type="secondary" underline>{r.current_location || "Update Loc"}</Text>
+              </div>
+            </Tooltip>
           </Flex>
         );
       },
@@ -263,7 +246,7 @@ function TrackingPageContent() {
       key: "risk",
       width: 80,
       search: false,
-      render: (_, r) => <StatusBadge status={r.risk_level} colorKey={RISK_COLORS[r.risk_level]} />,
+      render: (_, r) => <StatusBadge status={r.risk_level} colorKey={RISK_COLORS[r.risk_level]} coloredText />,
     },
     {
       title: "Arrival Offloading",

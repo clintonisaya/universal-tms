@@ -42,6 +42,7 @@ export function TripStatusTag({ status, isDelayed }: TripStatusTagProps) {
     <StatusBadge
       status={status}
       colorKey={TRIP_STATUS_COLOR_KEYS[status] ?? "gray"}
+      coloredText
     />
   );
 
@@ -51,7 +52,7 @@ export function TripStatusTag({ status, isDelayed }: TripStatusTagProps) {
   return (
     <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
       {badge}
-      <StatusBadge status="Delayed" colorKey="orange" />
+      <StatusBadge status="Delayed" colorKey="orange" coloredText />
     </span>
   );
 }
