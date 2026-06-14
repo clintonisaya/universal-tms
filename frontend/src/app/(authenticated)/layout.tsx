@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import type { Settings as LayoutSettings } from "@ant-design/pro-components";
 import {
   ProConfigProvider,
@@ -80,6 +80,7 @@ export default function AuthenticatedLayout({
   const [settingDrawerOpen, setSettingDrawerOpen] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [isRedirecting, setIsRedirecting] = useState(false);
+  const hasCheckedAuth = useRef(false);
 
   const todoCount = todoData?.count ?? 0;
   const isDark = settings.navTheme === "realDark";
@@ -110,7 +111,10 @@ export default function AuthenticatedLayout({
 
   // Handle auth redirect
   useEffect(() => {
-    if (loading) return;
+    if (loading || hasCheckedAuth.current) return;
+
+    hasCheckedAuth.current = true;
+
     if (!user) {
       const wasAuthenticated =
         typeof window !== "undefined" &&
@@ -171,7 +175,7 @@ export default function AuthenticatedLayout({
     );
   }
 
-  if (!user) {
+  if (showLoginModal && !user) {
     return (
       <div
         style={{
@@ -185,6 +189,21 @@ export default function AuthenticatedLayout({
           open={showLoginModal}
           onSuccess={handleLoginSuccess}
         />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div
+        style={{
+          height: "100vh",
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+        }}
+      >
+        Loading...
       </div>
     );
   }
