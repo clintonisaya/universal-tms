@@ -8,7 +8,6 @@ from starlette.middleware.cors import CORSMiddleware
 from app.api.main import api_router
 from app.core.config import settings
 from app.core.limiter import limiter
-from app.core.security import clear_auth_cookie
 from app.core.security_headers import SecurityHeadersMiddleware
 
 
@@ -59,20 +58,9 @@ app.include_router(api_router, prefix=settings.API_V1_STR)
 app.add_middleware(SecurityHeadersMiddleware)
 
 
-@app.middleware("http")
-async def clear_stale_auth_cookie(request: Request, call_next):
-    """Auto-clear the access_token cookie when the backend returns 401.
-
-    This prevents stale/expired cookies from persisting in the browser
-    and causing redirect loops after deployments.
-    """
-    response = await call_next(request)
-    if response.status_code == 401 and request.cookies.get("access_token"):
-        clear_auth_cookie(response)
-    return response
-
-
+import socketio
 import socketio
 from app.core.socket import sio
 
-app = socketio.ASGIApp(sio, app)
+socket_app = socketio.ASGIApp(sio, socketio_path="")
+app.mount("/socket.io", socket_app)
