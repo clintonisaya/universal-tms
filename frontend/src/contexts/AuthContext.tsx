@@ -4,7 +4,6 @@ import {
   createContext,
   useContext,
   useEffect,
-  useRef,
   useState,
   ReactNode,
 } from "react";
@@ -35,7 +34,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const router = useRouter();
   const pathname = usePathname();
-  const loginCompletedRef = useRef(false);
 
   const fetchUser = async (): Promise<User | null> => {
     // Create an AbortController for timeout
@@ -79,36 +77,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     formData.append("username", username);
     formData.append("password", password);
 
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 10000);
+    const response = await fetch("/api/v1/login/access-token", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: formData,
+      credentials: "include",
+    });
 
-    try {
-      const response = await fetch("/api/v1/login/access-token", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded",
-        },
-        body: formData,
-        credentials: "include",
-        signal: controller.signal,
-      });
-      clearTimeout(timeoutId);
-
-      if (response.ok) {
-        const userData = await fetchUser();
-        loginCompletedRef.current = true;
-        setUser(userData);
-        setLoading(false);
-        return Boolean(userData);
-      }
-      return false;
-    } catch (error) {
-      clearTimeout(timeoutId);
-      if (error instanceof Error && error.name === "AbortError") {
-        throw new Error("Login request timed out. The server may be unreachable.");
-      }
-      throw error;
+    if (response.ok) {
+      await refreshUser();
+      return true;
     }
+    return false;
   };
 
   const logout = async () => {
@@ -131,10 +113,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const init = async () => {
       const userData = await fetchUser();
-      if (!loginCompletedRef.current) {
-        setUser(userData);
-        setLoading(false);
-      }
+      setUser(userData);
+      setLoading(false);
     };
     init();
   }, []);
