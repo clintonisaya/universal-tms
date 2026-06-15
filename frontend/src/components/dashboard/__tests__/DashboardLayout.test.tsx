@@ -1,4 +1,4 @@
-import { screen } from "@testing-library/react";
+import { screen, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
 import AuthenticatedLayout from "@/app/(authenticated)/layout";
@@ -14,9 +14,10 @@ vi.mock("next/navigation", () => ({
 
 vi.mock("@/contexts/AuthContext", () => ({
   useAuth: () => ({
-    user: { username: "testuser", role: "admin", is_superuser: true },
+    user: { username: "testuser", role: "admin", is_superuser: true, permissions: [] },
     loading: false,
     logout: vi.fn(),
+    refreshUser: vi.fn(),
   }),
 }));
 
@@ -51,25 +52,39 @@ vi.mock("@/components/dashboard/ToDoWidget", () => ({
   ToDoWidget: () => <button>Tasks</button>,
 }));
 
+vi.mock("@/hooks/application/usePermissions", () => ({
+  usePermissions: () => ({
+    hasAnyPermission: () => true,
+  }),
+}));
+
+vi.mock("@/hooks/application/useApi", () => ({
+  useTodoCount: () => ({ data: { count: 0 } }),
+}));
+
 describe("AuthenticatedLayout", () => {
-  it("renders children correctly", () => {
+  it("renders children correctly", async () => {
     renderWithProviders(
       <AuthenticatedLayout>
         <div>Test Content</div>
       </AuthenticatedLayout>,
     );
 
-    expect(screen.getByText("Test Content")).toBeDefined();
+    await waitFor(() => {
+      expect(screen.getByText("Test Content")).toBeDefined();
+    });
   });
 
-  it("renders sidebar menu items", () => {
+  it("renders sidebar menu items", async () => {
     renderWithProviders(
       <AuthenticatedLayout>
         <div>Test Content</div>
       </AuthenticatedLayout>,
     );
 
-    expect(screen.getByText("Fleet")).toBeDefined();
-    expect(screen.getByText("Operations")).toBeDefined();
+    await waitFor(() => {
+      expect(screen.getByText("Fleet")).toBeDefined();
+      expect(screen.getByText("Operations")).toBeDefined();
+    });
   });
 });
